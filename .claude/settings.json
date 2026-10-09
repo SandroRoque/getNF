@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew:*)",
+      "Bash(adb:*)",
+      "Bash(android:*)",
+      "Bash(emulator:*)",
+      "Bash(avdmanager list:*)",
+      "Bash(sdkmanager --list:*)",
+      "Bash(tools/doctor.sh:*)",
+      "Bash(tools/emulator.sh:*)",
+      "Bash(docker compose -f server/compose.yaml:*)"
+    ]
+  }
+}

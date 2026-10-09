@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PocketBase is reached over plain HTTP: the emulator's host alias (10.0.2.2) in development and,
+  later, a Tailscale address, where WireGuard already encrypts the traffic (docs/decisions.md D6, D12).
+  Tailscale IPs (100.64.0.0/10) can't be listed by range here, so cleartext is allowed app-wide.
+  The SEFAZ portal itself is HTTPS.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

@@ -1,0 +1,11 @@
+# Tags: cross-cutting labels on products. Any number per product; they overlap, so never sum across tags.
+# DRAFT 2026-10-08, add freely. Format: `slug  Description`, one per line.
+# Things derivable from the data (sold by weight, store, price) are NOT tags: they're queried directly.
+
+frozen            Sold frozen
+ultra_processed   Ultra-processed (NOVA group 4)
+organic           Organic
+store_brand       Supermarket's own brand
+imported          Imported
+treat             Non-essential indulgence
+coffee            Part of the coffee habit, beyond the coffee itself (filters, creamer...)

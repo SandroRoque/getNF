@@ -1,0 +1,11 @@
+# Real receipts: personal/financial data and large files. Kept local only.
+# Small, sanitized parser fixtures belong in android/ or server/ test dirs instead.
+/test-media/**
+!/test-media/README.md
+
+# PocketBase runtime data and local credentials
+/server/pb_data/
+/server/.env.local
+
+# Claude Code per-machine settings
+/.claude/settings.local.json

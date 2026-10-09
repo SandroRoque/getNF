@@ -1,0 +1,20 @@
+name: getnf
+
+services:
+  pocketbase:
+    build: .
+    restart: unless-stopped
+    ports:
+      # Loopback only. The emulator reaches it as http://10.0.2.2:8090.
+      # For the real phone, expose via Tailscale (see docs/decisions.md) rather than 0.0.0.0.
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - ./pb_data:/pb/pb_data
+      - ./pb_migrations:/pb/pb_migrations
+      - ./pb_hooks:/pb/pb_hooks
+      # Category tree + tags, synced into PocketBase at startup (pb_hooks/receipts.pb.js).
+      - ../taxonomy:/pb/taxonomy:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8090/api/health"]
+      interval: 30s
+      timeout: 5s

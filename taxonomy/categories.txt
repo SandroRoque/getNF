@@ -1,0 +1,94 @@
+# Spending categories: one tree for every data source (receipts now; card/bank statements etc. later).
+# DRAFT 2026-10-08, edit freely. See docs/decisions.md D14.
+#
+# Format: one node per line, indented by 2 spaces per level. `slug  Label`. `#` starts a comment.
+# A node's id is its slug path, e.g. food.produce.fruit. Changing a Label is free; changing or moving a
+# slug renames the id, so products assigned to it must be migrated (the loader will refuse to orphan them).
+#
+# Rules of thumb:
+# - Each product gets exactly ONE category, the most specific node that fits. Totals then add up to what was spent.
+# - Cross-cutting questions ("ultra-processed", "frozen", "for the coffee ritual") are tags: see tags.txt.
+# - Grocery branches are deep because receipts give item-level detail. Other branches stay shallow until a
+#   source with that detail shows up.
+
+food                          Food & groceries
+  produce                     Fruit & vegetables
+    fruit                     Fruit                     # MACA, TANGERINA, BANANA
+    vegetables                Vegetables                # BROCOLIS, CEBOLA, BATATA, TOMATE
+    greens_herbs              Leafy greens & herbs      # ALFACE
+  meat_fish                   Meat & fish
+    beef                      Beef
+    pork                      Pork
+    poultry                   Poultry
+    fish_seafood              Fish & seafood
+    sausages                  Sausages                  # LING CALAB SEARA
+    cold_cuts                 Cold cuts                 # ham, salami, PEITO FGO EXCELSIOR (sliced chicken breast)
+  dairy_eggs                  Dairy & eggs
+    milk                      Milk                      # LEITE ITALAC
+    cheese                    Cheese                    # QJO MUSS, REQUEIJAO
+    yogurt                    Yogurt & fermented
+    butter_cream              Butter & cream
+    eggs                      Eggs
+  bakery                      Bakery
+    bread                     Bread                     # PAO FRANCES, PAO LTE SEVEN BOYS, PAO HAMB VITAL
+    cakes_pastries            Cakes & pastries
+  grains                      Grains & legumes
+    rice                      Rice
+    beans_legumes             Beans & legumes
+    pasta                     Pasta                     # dry pasta; instant noodles go to ready_meals
+    flour_cereals             Flour, oats & cereals
+  pantry                      Pantry
+    oils_fats                 Oils & fats
+    sugar_sweeteners          Sugar & sweeteners
+    spreads                   Spreads, jams & honey     # DOCE LEITE, Nutella, peanut butter, jam, goiabada, honey
+    sauces_condiments         Sauces & condiments       # MAIONESE HEMMER
+    spices_seasonings         Spices & seasonings
+    canned_preserved          Canned & preserved
+    baking                    Baking supplies
+  ready_meals                 Ready & instant meals
+    instant_noodles           Instant noodles           # MAC INST NISSIN
+    frozen_meals              Frozen meals
+    other                     Other ready meals
+  snacks_sweets               Snacks & sweets
+    chocolate_candy           Chocolate & candy
+    biscuits                  Biscuits & cookies
+    salty_snacks              Chips & salty snacks
+    ice_cream                 Ice cream & desserts
+
+beverages                     Beverages (non-dairy)
+  coffee                      Coffee                    # CAFE 3 CORACOES
+  tea_mate                    Tea & mate
+  juice                       Juice                     # incl. frozen fruit pulp (POLPA BRASFRUT), tag: frozen
+  soft_drinks                 Soft drinks
+  water                       Water
+  alcoholic                   Alcoholic beverages
+    beer                      Beer
+    wine                      Wine
+    spirits                   Spirits
+
+household                     Household supplies
+  cleaning                    Cleaning
+  laundry                     Laundry                   # LVA ROUP LIQ TIXAN
+  kitchen_disposables         Kitchen disposables       # FILTRO PAP BRIGITTA (coffee filter), foil, bags; tag: coffee
+  paper_goods                 Toilet paper & tissues
+  home_maintenance            Small home maintenance    # bulbs, batteries, tools
+
+personal_care                 Personal care
+  hygiene                     Hygiene                   # soap, toothpaste, deodorant
+  cosmetics                   Cosmetics & hair
+  pharmacy_otc                Pharmacy (non-prescription)
+
+pets                          Pets
+baby                          Baby
+
+# Shallow branches for spending that won't come from supermarket receipts.
+eating_out                    Eating out                # restaurants, bakeries' counter, delivery (NFC-e from restaurants land here)
+housing                       Housing                   # rent, condo fees, utilities
+transport                     Transport                 # fuel, ride-hailing, public transport, car upkeep
+health                        Health                    # prescriptions, appointments, insurance
+education                     Education
+leisure                       Leisure & culture
+clothing                      Clothing & shoes
+services                      Services & subscriptions
+taxes_fees                    Taxes & fees
+other                         Other
