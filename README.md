@@ -7,8 +7,8 @@ Personal Android app to archive Brazilian NFC-e receipts (*notas fiscais de cons
    one appears, and the app grabs the page (and the XML, if available).
 3. Photos + raw page + chave de acesso are stored on the phone and uploaded to a self-hosted PocketBase server.
 
-**Status (2026-10-08):** v1 does steps 1–3 end to end (tested in the emulator against the real portal and the
-local PocketBase). See D13 in the decision log for what's deferred.
+**Status:** working end to end on a real phone, including server-side parsing and categorization. See
+[docs/status.md](docs/status.md) for the current state and open items.
 
 Raw captures are the source of truth. Structured data (items, totals, discounts) is derived and can be
 re-extracted later.

@@ -1,6 +1,7 @@
 # getNF: notes for Claude
 
-Read `README.md`, then `docs/decisions.md` (the decision log), before making design choices. Add a new
+Start with `docs/status.md` (current state, how to resume, open items). Read `README.md`, then `docs/decisions.md`
+(the decision log), before making design choices. Add a new
 entry to `docs/decisions.md` for every non-trivial decision. Never rewrite old entries.
 
 ## The user
@@ -25,5 +26,9 @@ Explain Android-specific concepts briefly when they come up.
 
 - `test-media/` holds real receipts and is gitignored. Don't commit it, and don't copy it into tracked test dirs as-is.
   Make reduced/sanitized fixtures if tests need them.
-- Don't hammer `sat.sef.sc.gov.br`. Each automated request raises the chance of a Turnstile challenge.
-  Use the saved pages in `test-media/pages/` for parser work.
+- Don't hammer `sat.sef.sc.gov.br`. It blocks an IP after about 5 lookups per hour, and the PC, emulator and phone
+  share one home IP, so every probe uses up the user's budget for real receipts. Never reload portal pages to debug:
+  use `test-media/pages/`, the fixtures, or DevTools on an already-open WebView (`tools/webview-eval.mjs`). Before any
+  live request, say how many and get a go-ahead (`docs/sefaz-sc.md`).
+- The repo is public. Never commit a real chave (anyone can look the receipt up), store details from real receipts,
+  or anything from `server/.env.local`. Fixtures go through `tools/make-nfce-fixture.py`.
