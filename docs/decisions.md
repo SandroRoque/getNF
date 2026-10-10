@@ -217,3 +217,19 @@ phone's data SIM got an immediate pass, which confirms the block is per IP.
   shows "N receipt(s) waiting for their SEFAZ page" with the budget line and "Fetch next" (oldest first). After a page
   saves, **Next** goes straight to the next waiting one.
 - Budgets start empty on a fresh install (or after clearing data), even if the network was used recently.
+
+## D18. The phone uploads over home Wi‑Fi; Tailscale postponed (2026-10-09, defers D6)
+
+Uploads needed the phone on a USB cable (`adb reverse`). PocketBase now also listens on the PC's LAN address, and the
+phone's server URL is `http://192.168.4.4:8090`.
+- **Why not Tailscale yet:** it adds an account and a background VPN app on the phone, plus a service on the PC, to get
+  uploads from anywhere. Receipts aren't urgent: the app already queues them and WorkManager retries with backoff, so
+  "uploads when I'm home" is enough. The only cost of the LAN route is one more port mapping. Revisit with the NAS.
+- **Bound to the LAN address, never 0.0.0.0.** Docker's published ports go around ufw, so a 0.0.0.0 binding would be
+  open on every interface whatever the firewall says. The address lives in `server/.env` (`GETNF_LAN_IP`, not in git).
+  When unset, compose binds a second loopback address, so a fresh clone still starts.
+- **Exposure:** other devices on the home Wi‑Fi can reach PocketBase's API and admin login. Everything needs a login
+  (D12). Traffic is plain HTTP on the home network, where the risk is low.
+- **Requirements:** the address must stay fixed (a DHCP reservation in the router), and Docker must start at boot
+  (`setup-system.sh` enables `docker.service`; until then it was socket-activated, so PocketBase stayed down after a reboot
+  until something ran a docker command). If the address can't be bound, the container won't start, so the failure is obvious.

@@ -46,8 +46,12 @@ Inside the emulator, the host machine is `10.0.2.2` (so PocketBase is `http://10
 - The app's files are private to it. Look at them with `adb -e shell run-as io.github.sandroroque.getnf ls -R files/receipts`.
 - Debugging the in-app WebView: debug builds expose a DevTools socket. Forward it and query the live page with
   `tools/webview-eval.mjs` (usage in the file header), or open `chrome://inspect` in desktop Chrome.
-- Real phone without Tailscale: `adb -d reverse tcp:8090 tcp:8090` and set the app's server URL to `http://127.0.0.1:8090`.
-  The reverse mapping is lost when the cable is unplugged.
+- Real phone: on home Wi‑Fi it uses `http://192.168.4.4:8090` (D18). PocketBase listens there because `server/.env`
+  (not in git) sets `GETNF_LAN_IP`. If the PC's address changes, update that file and the app's Settings.
+  Away from home without Wi‑Fi, the USB tunnel still works: `adb -d reverse tcp:8090 tcp:8090` and set the URL to
+  `http://127.0.0.1:8090` (lost on unplug).
+- Debug builds only: change a setting with the phone locked by editing `shared_prefs/server.xml` through
+  `adb -d shell run-as io.github.sandroroque.getnf` (force-stop the app first).
 - Schema changes made in the PocketBase admin UI (or via the collections API) are written out as new files in
   `server/pb_migrations/` automatically. Commit them if the change is meant to stay. They're root-owned (written by the
   container), so delete unwanted ones with `docker compose -f server/compose.yaml exec pocketbase rm /pb/pb_migrations/<file>`.

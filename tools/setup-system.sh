@@ -9,6 +9,10 @@ set -euo pipefail
 # android-udev: lets adb talk to the real phone over USB without root.
 pacman -S --needed --noconfirm android-udev
 
+# Docker at boot (not just socket-activated on first use), so PocketBase is up for the phone
+# whenever the PC is on (D18). docker.service waits for network-online, so the LAN address exists by then.
+systemctl enable --now docker.service
+
 user="${SUDO_USER:-}"
 if [[ -n "$user" ]]; then
   getent group adbusers >/dev/null && gpasswd -a "$user" adbusers >/dev/null

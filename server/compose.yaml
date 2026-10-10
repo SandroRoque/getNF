@@ -5,9 +5,11 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      # Loopback only. The emulator reaches it as http://10.0.2.2:8090.
-      # For the real phone, expose via Tailscale (see docs/decisions.md) rather than 0.0.0.0.
+      # Loopback: admin UI, tests, and the emulator (as http://10.0.2.2:8090).
       - "127.0.0.1:8090:8090"
+      # Home network, for the phone (D18). Set GETNF_LAN_IP in server/.env (not in git) to this PC's
+      # LAN address. Never 0.0.0.0: Docker's published ports bypass ufw. Unset = a second loopback address.
+      - "${GETNF_LAN_IP:-127.0.0.2}:8090:8090"
     volumes:
       - ./pb_data:/pb/pb_data
       - ./pb_migrations:/pb/pb_migrations

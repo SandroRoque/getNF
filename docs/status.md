@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-09. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D17). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D18). For the portal's behaviour, read `docs/sefaz-sc.md`.
 
 ## Where it stands
 
@@ -26,10 +26,10 @@ categorized → reportable through the `spending_lines` view.
 . tools/env.sh
 docker compose -f server/compose.yaml up -d            # PocketBase; admin UI http://127.0.0.1:8090/_/
 tools/emulator.sh --headless --camera test-media/video/<video>.mp4   # optional; works with the phone plugged in too
-adb -d reverse tcp:8090 tcp:8090                       # phone → PocketBase over USB. Lost on unplug/reconnect: redo it.
 ```
 
-The phone's server URL is set to `http://127.0.0.1:8090` (the USB tunnel). The emulator uses the build default `http://10.0.2.2:8090`.
+The phone uploads over home Wi‑Fi to `http://192.168.4.4:8090` (D18): no cable needed. Receipts scanned elsewhere wait
+in the queue until the phone is home and the PC is on. The emulator uses the build default `http://10.0.2.2:8090`.
 
 Categorizing new products: PocketBase admin UI → `products`, filter `category = ""`. Or ask Claude to propose a mapping
 and apply it through the API (as was done for the first 75 products).
@@ -44,8 +44,9 @@ and apply it through the API (as was done for the first 75 products).
 
 ## Open items, roughly in priority order
 
-1. **Uploads only work with the phone plugged into this PC** (adb tunnel). Next step: Tailscale (D6) on the phone and
-   the PC/NAS, and point the app's server URL at the tailnet address.
+1. **Uploads only on home Wi‑Fi with the PC on** (D18). Fine for now. Pending, by the user: reserve `192.168.4.4` for
+   this PC in the router's DHCP settings, and run `sudo bash tools/setup-system.sh` once so Docker starts at boot.
+   Tailscale (D6) can come with the NAS if uploads from outside are ever wanted.
 2. **Untested live:** the page screen's **Next** (to the next waiting receipt) only appears after a real save.
 3. **Is the home IP shared (CGNAT)?** Check the router's WAN address: anything in 100.64.0.0/10 means yes.
    Adjust `LookupBudget.LIMIT` once more blocks (or non-blocks) tell us more.
