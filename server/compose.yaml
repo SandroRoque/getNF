@@ -14,6 +14,7 @@ services:
       - ./pb_data:/pb/pb_data
       - ./pb_migrations:/pb/pb_migrations
       - ./pb_hooks:/pb/pb_hooks
+      - ./pb_public:/pb/pb_public:ro
       # Category tree + tags, synced into PocketBase at startup (pb_hooks/receipts.pb.js).
       - ../taxonomy:/pb/taxonomy:ro
     healthcheck:

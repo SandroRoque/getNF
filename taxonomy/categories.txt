@@ -11,84 +11,84 @@
 # - Grocery branches are deep because receipts give item-level detail. Other branches stay shallow until a
 #   source with that detail shows up.
 
-food                          Food & groceries
-  produce                     Fruit & vegetables
-    fruit                     Fruit                     # MACA, TANGERINA, BANANA
-    vegetables                Vegetables                # BROCOLIS, CEBOLA, BATATA, TOMATE
-    greens_herbs              Leafy greens & herbs      # ALFACE
-  meat_fish                   Meat & fish
-    beef                      Beef
-    pork                      Pork
-    poultry                   Poultry
-    fish_seafood              Fish & seafood
-    sausages                  Sausages                  # LING CALAB SEARA
-    cold_cuts                 Cold cuts                 # ham, salami, PEITO FGO EXCELSIOR (sliced chicken breast)
-  dairy_eggs                  Dairy & eggs
-    milk                      Milk                      # LEITE ITALAC
-    cheese                    Cheese                    # QJO MUSS, REQUEIJAO
-    yogurt                    Yogurt & fermented
-    butter_cream              Butter & cream
-    eggs                      Eggs
-  bakery                      Bakery
-    bread                     Bread                     # PAO FRANCES, PAO LTE SEVEN BOYS, PAO HAMB VITAL
-    cakes_pastries            Cakes & pastries
-  grains                      Grains & legumes
-    rice                      Rice
-    beans_legumes             Beans & legumes
-    pasta                     Pasta                     # dry pasta; instant noodles go to ready_meals
-    flour_cereals             Flour, oats & cereals
-  pantry                      Pantry
-    oils_fats                 Oils & fats
-    sugar_sweeteners          Sugar & sweeteners
-    spreads                   Spreads, jams & honey     # DOCE LEITE, Nutella, peanut butter, jam, goiabada, honey
-    sauces_condiments         Sauces & condiments       # MAIONESE HEMMER
-    spices_seasonings         Spices & seasonings
-    canned_preserved          Canned & preserved
-    baking                    Baking supplies
-  ready_meals                 Ready & instant meals
-    instant_noodles           Instant noodles           # MAC INST NISSIN
-    frozen_meals              Frozen meals
-    other                     Other ready meals
-  snacks_sweets               Snacks & sweets
-    chocolate_candy           Chocolate & candy
-    biscuits                  Biscuits & cookies
-    salty_snacks              Chips & salty snacks
-    ice_cream                 Ice cream & desserts
+food                          Alimentos e mercado
+  produce                     Frutas e verduras
+    fruit                     Frutas  # MACA, TANGERINA, BANANA
+    vegetables                Legumes e verduras  # BROCOLIS, CEBOLA, BATATA, TOMATE
+    greens_herbs              Folhas e ervas  # ALFACE
+  meat_fish                   Carnes e peixes
+    beef                      Carne bovina
+    pork                      Carne suína
+    poultry                   Aves
+    fish_seafood              Peixes e frutos do mar
+    sausages                  Linguiças  # LING CALAB SEARA
+    cold_cuts                 Frios  # ham, salami, PEITO FGO EXCELSIOR (sliced chicken breast)
+  dairy_eggs                  Laticínios e ovos
+    milk                      Leite  # LEITE ITALAC
+    cheese                    Queijos  # QJO MUSS, REQUEIJAO
+    yogurt                    Iogurtes e fermentados
+    butter_cream              Manteiga e creme de leite
+    eggs                      Ovos
+  bakery                      Padaria
+    bread                     Pães  # PAO FRANCES, PAO LTE SEVEN BOYS, PAO HAMB VITAL
+    cakes_pastries            Bolos e doces
+  grains                      Grãos e leguminosas
+    rice                      Arroz
+    beans_legumes             Feijão e leguminosas
+    pasta                     Massas  # dry pasta; instant noodles go to ready_meals
+    flour_cereals             Farinhas, aveia e cereais
+  pantry                      Mercearia
+    oils_fats                 Óleos e gorduras
+    sugar_sweeteners          Açúcar e adoçantes
+    spreads                   Pastas, geleias e mel  # DOCE LEITE, Nutella, peanut butter, jam, goiabada, honey
+    sauces_condiments         Molhos e condimentos  # MAIONESE HEMMER
+    spices_seasonings         Temperos e especiarias
+    canned_preserved          Enlatados e conservas
+    baking                    Ingredientes para confeitaria
+  ready_meals                 Refeições prontas e instantâneas
+    instant_noodles           Macarrão instantâneo  # MAC INST NISSIN
+    frozen_meals              Refeições congeladas
+    other                     Outras refeições prontas
+  snacks_sweets               Lanches e doces
+    chocolate_candy           Chocolates e balas
+    biscuits                  Biscoitos e bolachas
+    salty_snacks              Salgadinhos
+    ice_cream                 Sorvetes e sobremesas
 
-beverages                     Beverages (non-dairy)
-  coffee                      Coffee                    # CAFE 3 CORACOES
-  tea_mate                    Tea & mate
-  juice                       Juice                     # incl. frozen fruit pulp (POLPA BRASFRUT), tag: frozen
-  soft_drinks                 Soft drinks
-  water                       Water
-  alcoholic                   Alcoholic beverages
-    beer                      Beer
-    wine                      Wine
-    spirits                   Spirits
+beverages                     Bebidas
+  coffee                      Café  # CAFE 3 CORACOES
+  tea_mate                    Chá e erva-mate
+  juice                       Sucos  # incl. frozen fruit pulp (POLPA BRASFRUT), tag: frozen
+  soft_drinks                 Refrigerantes
+  water                       Água
+  alcoholic                   Bebidas alcoólicas
+    beer                      Cerveja
+    wine                      Vinho
+    spirits                   Destilados
 
-household                     Household supplies
-  cleaning                    Cleaning
-  laundry                     Laundry                   # LVA ROUP LIQ TIXAN
-  kitchen_disposables         Kitchen disposables       # FILTRO PAP BRIGITTA (coffee filter), foil, bags; tag: coffee
-  paper_goods                 Toilet paper & tissues
-  home_maintenance            Small home maintenance    # bulbs, batteries, tools
+household                     Produtos para casa
+  cleaning                    Limpeza
+  laundry                     Lavanderia  # LVA ROUP LIQ TIXAN
+  kitchen_disposables         Descartáveis para cozinha  # FILTRO PAP BRIGITTA (coffee filter), foil, bags; tag: coffee
+  paper_goods                 Papel higiênico e lenços
+  home_maintenance            Pequenos reparos domésticos  # bulbs, batteries, tools
 
-personal_care                 Personal care
-  hygiene                     Hygiene                   # soap, toothpaste, deodorant
-  cosmetics                   Cosmetics & hair
-  pharmacy_otc                Pharmacy (non-prescription)
+personal_care                 Cuidados pessoais
+  hygiene                     Higiene  # soap, toothpaste, deodorant
+  cosmetics                   Cosméticos e cabelo
+  pharmacy_otc                Medicamentos sem receita
 
-pets                          Pets
-baby                          Baby
+pets                          Animais de estimação
+baby                          Bebês
 
 # Shallow branches for spending that won't come from supermarket receipts.
-eating_out                    Eating out                # restaurants, bakeries' counter, delivery (NFC-e from restaurants land here)
-housing                       Housing                   # rent, condo fees, utilities
-transport                     Transport                 # fuel, ride-hailing, public transport, car upkeep
-health                        Health                    # prescriptions, appointments, insurance
-education                     Education
-leisure                       Leisure & culture
-clothing                      Clothing & shoes
-services                      Services & subscriptions
-taxes_fees                    Taxes & fees
-other                         Other
+eating_out                    Alimentação fora de casa  # restaurants, bakeries' counter, delivery (NFC-e from restaurants land here)
+housing                       Moradia  # rent, condo fees, utilities
+transport                     Transporte  # fuel, ride-hailing, public transport, car upkeep
+health                        Saúde  # prescriptions, appointments, insurance
+education                     Educação
+leisure                       Lazer e cultura
+clothing                      Roupas e calçados
+services                      Serviços e assinaturas
+taxes_fees                    Impostos e taxas
+other                         Outros

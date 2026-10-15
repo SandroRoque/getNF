@@ -58,7 +58,7 @@ test("the real taxonomy files parse", () => {
   const cats = d.parseCategories(fs.readFileSync(path.join(dir, "categories.txt"), "utf8"))
   const byPath = Object.fromEntries(cats.map((c) => [c.path, c]))
   assert.equal(byPath["food.produce.fruit"].parent, "food.produce")
-  assert.equal(byPath["beverages.coffee"].label, "Coffee")
+  assert.equal(byPath["beverages.coffee"].label, "Café")
   assert.equal(byPath["food"].parent, null)
   assert.ok(cats.every((c) => c.parent === null || byPath[c.parent]))
   const tags = d.parseTags(fs.readFileSync(path.join(dir, "tags.txt"), "utf8"))

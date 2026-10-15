@@ -1,6 +1,8 @@
 package io.github.sandroroque.getnf
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
@@ -11,7 +13,8 @@ import io.github.sandroroque.getnf.ui.settings.SettingsScreen
 
 /**
  * Navigation 3: the back stack is a plain list of keys; the last one is on screen.
- * Flow: Home → Scan → Page (Scan is replaced, so Back from Page returns Home). Page → Page for "Next" (also replaced).
+ * Flow: Home → Scan → Home after automatic capture; portal lookup is explicitly started from Home.
+ * Page → Page for "Next" replaces the page so Back still returns Home.
  */
 @Composable
 fun MainNavigation() {
@@ -19,6 +22,10 @@ fun MainNavigation() {
 
   NavDisplay(
     backStack = backStack,
+    entryDecorators = listOf(
+      rememberSaveableStateHolderNavEntryDecorator(),
+      rememberViewModelStoreNavEntryDecorator(),
+    ),
     onBack = { backStack.removeLastOrNull() },
     entryProvider =
       entryProvider {
@@ -31,11 +38,7 @@ fun MainNavigation() {
         }
         entry<Scan> {
           ScanScreen(
-            onDone = { chave ->
-              backStack.removeLastOrNull()
-              backStack.add(Page(chave))
-            },
-            onAlreadySaved = { backStack.removeLastOrNull() },
+            onCaptured = { backStack.removeLastOrNull() },
             onCancel = { backStack.removeLastOrNull() },
           )
         }

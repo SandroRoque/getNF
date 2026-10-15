@@ -1,22 +1,62 @@
 # Status and next steps
 
-Last updated 2026-10-09. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D18). For the portal's behaviour, read `docs/sefaz-sc.md`.
+Last updated 2026-10-15. A handoff for picking the project up again. For *why* things are the way they are, read
+`docs/decisions.md` (D1–D34). For the portal's behaviour, read `docs/sefaz-sc.md`.
+For the data flow and analytical semantics, read `docs/architecture.md`.
+
+## Product direction recorded 2026-10-14
+
+See [objectives.md](objectives.md) for the new objectives: a self-contained Android app with a first-class analytical
+experience, continued PC dashboard access, manual item creation/editing/deletion and categorization, the proposed
+IPCI personal inflation index, and evaluation of local/API-assisted catalog workflows. These are future objectives;
+the implementation status below remains the current baseline. Work can proceed in separate increments.
+The proposed stages and their completion criteria are in [roadmap.md](roadmap.md), starting with the data model
+and persistence review.
+The user subsequently chose on-device parsing and optional contributions for shared curation and collective
+analyses; see [local-and-shared-modes.md](local-and-shared-modes.md) and decision D24. These remain planned changes.
 
 ## Where it stands
 
-**Working end to end, tested on the real phone:** scan QR → full-resolution photos → SEFAZ page in a WebView (the user
+**Original pipeline tested end to end; continuous capture completed twice on the Motorola and persisted images.
+A blurred JPEG was accepted, so the quality filter is not yet validated:**
+scan QR → native-resolution analysis frames (1440×1920 in the reviewed captures) → SEFAZ page in a WebView (the user
 taps Validar if a challenge shows) → saved on the phone → uploaded to PocketBase → parsed into products and item lines →
 categorized → reportable through the `spending_lines` view.
 
 - **App (`android/`):** scan, photos, page capture. Receipts can be queued ("Later") and fetched afterwards ("Fetch next").
+  Continuous capture now saves overlapping analysis frames automatically, draws detected edge segments, and
+  measures sharpness exclusively inside an eroded receipt mask. Hints appear together as needed; QR may be read
+  last. Connected top-to-bottom coverage and QR finish the session automatically. Incomplete exit offers explicit
+  code-only/discard/continue choices and preserves prior photos. There is no manual shutter or whole-page rule.
+  Region proposals now validate the paper boundary before drawing. The overlay follows an irregular contour;
+  “Mostrar área analisada” exposes the actual focus mask and debug “Inspecionar frame” freezes one analysis image.
+  Upright/sideways normalization and explicit camera matrices preserve QR/photo/mask coordinates (D31).
+  D32/D33 prevent unanchored capture dead-ends and fix horizontal fallback. Physical JPEG review exposed
+  a remaining blur false positive; capture completion does not yet guarantee legibility of every saved image.
+  Full outlines can now establish geometry while text is blurred. Near-frontal top + lateral edges localize
+  a closer view; content anchors are retained independently of saved photos. A later overview preserves the
+  existing coordinate basis. See [capture-geometry-plan.md](capture-geometry-plan.md) and D30 for delivered scope;
+  bottom-based geometric localization and predicted edge search remain planned.
+  Fetching the SEFAZ page stays separate. See [automatic-capture.md](automatic-capture.md), D28 and
+  [capture-validation.md](capture-validation.md) for test and physical-review evidence. Repeated scans append images
+  to the existing NF. There is no post-save pruning; see [capture-retention-plan.md](capture-retention-plan.md).
   The app paces SEFAZ lookups per network and warns before a fetch would probably get the IP blocked (D17). It skips the
   portal's scripts, styles and images it doesn't need (D16), recognizes the rate-limit page, and pauses the WebView in the background.
 - **Server (`server/`):** PocketBase with hooks that parse every uploaded page (`pb_hooks/lib/`), sync `taxonomy/*.txt`
   at startup, and expose `spending_lines` (D15). Prorated discounts until a photo pass exists (D14).
+- **Dashboard:** `/dashboard/` on the existing PocketBase server (D19). Monthly stacked spending bars → selected
+  month's category pie → grouped products with expandable purchases. Phone app or PocketBase admin login; live reload on
+  opening or Refresh. Date range and category depth controls; responsive PC/phone layout.
+  The selected month's NFs are also listed with dates, stores, totals, and expandable item details across all categories.
 - **Local data** (not in git): the receipts captured so far, every product categorized, in `server/pb_data/` plus the
   photos on the phone. **Back up `server/pb_data/`.** The categorizations exist only there.
-- **Tests:** `cd android && ./gradlew testDebugUnitTest` (19 tests) · `node --test "server/test/*.test.js"` (12 tests).
+- **Tests:** `cd android && ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`:
+  41 unit tests and 35 instrumented vision/capture/lifecycle tests on the emulator; an offline camera journey
+  also read a synthetic QR, saved a photo and completed automatically (see capture-validation.md).
+  Debug build and lint pass. PocketBase's 100-photo migration and rollback were validated in an isolated database;
+  the migration has not been applied to the live server. Android also has a 100-photo technical cap.
+  Server: `node --test server/test/*.test.js server/test/*.test.mjs`
+  (12 parser/derivation tests + 12 dashboard tests). Run `node server/test/dashboard.test.mjs` for individual dashboard results.
 - **Repo:** public at github.com/SandroRoque/getNF, branch `main`. History was squashed before publishing to remove
   personal data. Commits use the GitHub noreply address.
 
@@ -44,14 +84,19 @@ and apply it through the API (as was done for the first 75 products).
 
 ## Open items, roughly in priority order
 
+- **Capture quality first:** reproduce and reject motion-blurred text inside a correct paper mask. Two physical
+  attempts completed, but JPEG review found one blurred image and another softer image among six saved.
+  Synthetic blur benchmarks and conservative retention ranking can proceed without the phone. Keep captures
+  during development; future bad/redundant-image selection is planned, with no deletion implemented (D34).
+  Further device validation must cover long thermal receipts, low contrast, shadows, motion and interruptions.
+
 1. **Uploads only on home Wi‑Fi with the PC on** (D18). Fine for now. Pending, by the user: reserve `192.168.4.4` for
    this PC in the router's DHCP settings, and run `sudo bash tools/setup-system.sh` once so Docker starts at boot.
    Tailscale (D6) can come with the NAS if uploads from outside are ever wanted.
 2. **Untested live:** the page screen's **Next** (to the next waiting receipt) only appears after a real save.
 3. **Is the home IP shared (CGNAT)?** Check the router's WAN address: anything in 100.64.0.0/10 means yes.
    Adjust `LookupBudget.LIMIT` once more blocks (or non-blocks) tell us more.
-4. **Reports:** nothing renders `spending_lines` yet (weekly/monthly/quarterly/yearly per category). Options: a small
-   static page, a notebook, or a dashboard tool reading PocketBase's SQLite/API.
+4. **Reports:** the monthly dashboard is implemented. Weekly/quarterly/yearly views and exports remain future work.
 5. **Photo pass for per-item discounts** (D14): read "Desconto" lines from the photos with a vision model and store them with
    `discount_source = photo`. The re-parse logic already preserves them.
 6. **Category suggestions:** have an LLM propose categories for new products, for the user to confirm.
@@ -68,3 +113,16 @@ and apply it through the API (as was done for the first 75 products).
 - A failing migration stops PocketBase from starting. Validate view SQL first by creating a throwaway collection via the API.
 - New test fixtures must go through `tools/make-nfce-fixture.py`, which replaces chave, store, dates and taxes with fake values.
   Never commit a real chave: anyone can look it up on the portal.
+
+
+## Current capture checkpoint — 2026-10-15
+
+Bounded segmentation, paper-contour validation and coherent mask/overlay publication address the earlier
+multi-second analysis stalls. Focus/torch/zoom controls and geometry/anchor recovery are in the installed APK.
+The short successful physical window had median region analysis 50 ms and overlay-ready time 245 ms; these
+are stage measurements, not display latency or a general performance guarantee.
+
+Persistent geometry, top-based localization and explicit full-document capture are implemented. Bottom-based
+geometric localization and predicted edge search remain planned; see [capture-geometry-plan.md](capture-geometry-plan.md).
+The next independent increment is quality diagnosis and retention planning, not a camera API replacement.
+Photos are retained as evidence; item/discount extraction still uses the fiscal HTML, not photo OCR.

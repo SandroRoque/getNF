@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Despesas · getNF</title>
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.mjs?v=pt-br-20261014"></script>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Painel de despesas getNF"><span class="brand-mark" aria-hidden="true">g</span>getNF <span class="brand-divider">/</span> <span class="brand-section">Despesas</span></a>
+      <div id="account" hidden><span id="updated"></span><button id="refresh" type="button">Atualizar</button><button id="logout" class="quiet" type="button">Sair</button></div>
+    </header>
+    <main>
+      <section id="login-panel" class="login-panel">
+        <span class="eyebrow">SUAS NOTAS, À VISTA</span>
+        <h1>Para onde foi o dinheiro?</h1>
+        <p>Explore suas despesas por mês, categoria e produto.</p>
+        <form id="login-form">
+          <label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required>
+          <label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required>
+          <p class="hint">Use seu acesso de administrador do PocketBase ou sua conta do aplicativo getNF.</p>
+          <button id="sign-in" class="primary" type="submit" disabled>Entrar</button>
+        </form>
+        <p id="login-message" role="status" aria-live="polite"></p>
+        <noscript>Este painel precisa do JavaScript ativado para carregar suas notas.</noscript>
+      </section>
+
+      <div id="dashboard" hidden>
+        <div class="page-heading"><div><span class="eyebrow">HISTÓRICO DE NOTAS</span><h1>Despesas registradas</h1></div><p id="range-summary" class="range-summary"></p></div>
+        <div class="controls" aria-label="Filtros do painel">
+          <div class="range-presets"><button id="latest" type="button">Últimos 12 meses</button><button id="all-history" type="button">Todo o histórico</button></div>
+          <label>De<input id="start" type="month" required></label><label>Até<input id="end" type="month" required></label>
+          <label>Categorias<select id="depth"><option value="1">Amplas</option><option value="2" selected>Detalhadas</option><option value="leaf">Mais específicas</option></select></label>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+        <div id="data-content" hidden>
+          <section class="card overview" aria-labelledby="overview-title">
+            <div class="card-header"><div><h2 id="overview-title">Despesas por mês</h2><p class="subtitle">Valores líquidos das notas capturadas</p></div><div class="overview-total"><span id="history-total"></span><span class="hint">neste período</span></div></div>
+            <div id="bars" class="bar-chart"></div>
+            <div id="bar-legend" class="chart-legend" aria-label="Categorias do gráfico mensal"></div>
+          </section>
+          <div class="details-grid">
+            <section class="card composition" aria-labelledby="composition-title">
+              <div class="card-header"><div><h2 id="composition-title">Detalhamento do mês</h2><p id="month-detail" class="subtitle"></p></div><label class="compact-label">Mês<select id="month-select" aria-label="Mês selecionado"></select></label></div>
+              <div id="pie"></div><div id="pie-legend" class="pie-legend" aria-label="Selecione uma categoria de despesa"></div>
+            </section>
+            <div class="detail-column">
+              <section class="card products" aria-labelledby="products-title">
+                <div class="card-header"><div><h2 id="products-title">Produtos</h2><p id="products-subtitle" class="subtitle">Selecione uma categoria no detalhamento do mês.</p></div><span id="category-total" class="category-total"></span></div>
+                <div id="product-list"></div>
+              </section>
+              <section class="card receipts" aria-labelledby="receipts-title">
+                <div class="card-header"><div><h2 id="receipts-title">Notas do mês</h2><p id="receipts-subtitle" class="subtitle"></p></div><span id="receipts-total" class="category-total"></span></div>
+                <div id="receipt-list"></div>
+              </section>
+            </div>
+          </div>
+          <footer class="data-note">As despesas incluem apenas notas capturadas; um mês sem notas não significa que não houve gastos. Descontos dos itens podem ser rateados. <span id="undated-note"></span></footer>
+        </div>
+      </div>
+    </main>
+    <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+  </div>
+</body>
+</html>

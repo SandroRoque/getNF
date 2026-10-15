@@ -32,6 +32,8 @@ data class Receipt(
   val uploadedVersion: Long? = null,
   val remoteId: String? = null,
   val uploadError: String? = null,
+  val captureSessions: List<String> = emptyList(),
+  val captureSegments: List<CaptureSegment> = emptyList(),
 ) {
   val needsUpload: Boolean
     get() = uploadedVersion != version
@@ -82,6 +84,40 @@ class ReceiptStore(private val root: File, private val now: () -> Long = System:
   suspend fun markUploadError(chave: String, message: String) =
     update(chave, bump = false) { it.copy(uploadError = message) }
 
+  /** Idempotent batch import: manifest publication is the commit point; existing evidence is never replaced. */
+  suspend fun importCapture(session: CaptureSessionManifest, source: File): Receipt = io { mutex.withLock {
+    val key = requireNotNull(session.chave)
+    val old = read(key) ?: Receipt(key, session.qrUrl, now())
+    if (session.id in old.captureSessions) return@withLock old
+    require(old.photos.size + session.segments.size <= MAX_PHOTOS) { "Limite de 100 imagens por nota atingido" }
+    val destination = dir(key).apply { mkdirs() }
+    val created = mutableListOf<File>(); val temporary = mutableListOf<File>()
+    var committed = false
+    try {
+      for (segment in session.segments) for (name in listOf(segment.photo, segment.mask)) {
+        require(File(name).name == name) { "Invalid capture filename" }
+        require(name !in old.photos && old.captureSegments.none { it.mask == name }) { "Cannot replace existing receipt evidence" }
+        val target = File(destination, name)
+        val temp = File(destination, "$name.tmp")
+        temporary += temp
+        File(source, name).copyTo(temp, overwrite = true)
+        check(temp.renameTo(target)) { "Could not import captured image" }
+        created += target
+      }
+      val next = old.copy(
+        qrUrl = old.qrUrl ?: session.qrUrl,
+        photos = old.photos + session.segments.map { it.photo },
+        captureSessions = old.captureSessions + session.id,
+        captureSegments = old.captureSegments + session.segments,
+        version = old.version + 1,
+      )
+      write(next)
+      committed = true
+      publish()
+      next
+    } finally { temporary.forEach { it.delete() }; if (!committed) created.forEach { it.delete() } }
+  } }
+
   private suspend fun update(chave: String, bump: Boolean = true, change: (Receipt) -> Receipt) = io {
     mutex.withLock {
       val old = read(chave) ?: error("no receipt $chave")
@@ -97,7 +133,9 @@ class ReceiptStore(private val root: File, private val now: () -> Long = System:
   // Write-then-rename so a crash never leaves a half-written manifest.
   private fun write(receipt: Receipt) {
     val tmp = File(dir(receipt.chave), "$MANIFEST.tmp")
-    tmp.writeText(json.encodeToString(receipt))
+    java.io.FileOutputStream(tmp).use { output ->
+      output.write(json.encodeToString(receipt).toByteArray(Charsets.UTF_8)); output.fd.sync()
+    }
     check(tmp.renameTo(File(dir(receipt.chave), MANIFEST))) { "could not save ${receipt.chave}" }
   }
 
@@ -109,6 +147,7 @@ class ReceiptStore(private val root: File, private val now: () -> Long = System:
   private suspend fun <T> io(block: suspend () -> T): T = withContext(Dispatchers.IO) { block() }
 
   companion object {
+    const val MAX_PHOTOS = 100
     const val MANIFEST = "receipt.json"
     const val PAGE_FILE = "page.html"
   }

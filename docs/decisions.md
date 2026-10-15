@@ -233,3 +233,271 @@ phone's server URL is `http://192.168.4.4:8090`.
 - **Requirements:** the address must stay fixed (a DHCP reservation in the router), and Docker must start at boot
   (`setup-system.sh` enables `docker.service`; until then it was socket-activated, so PocketBase stayed down after a reboot
   until something ran a docker command). If the address can't be bound, the container won't start, so the failure is obvious.
+
+## D19. Live monthly spending dashboard on the existing PocketBase server (2026-10-10)
+
+- **Local web page:** buildless HTML/CSS/JavaScript and SVG charts in `server/pb_public/dashboard/`, mounted read-only
+  at `/pb/pb_public`. PocketBase serves `/dashboard/` on its existing port and bindings. No additional service,
+  external chart library, cloud publication, or Android screen is needed.
+- **Read-only and authenticated:** sign in with the existing `users` account used by the phone. The browser reads all
+  pages of `spending_lines` and `categories`; no schema changes or new API endpoints. Tokens live in session storage,
+  never in URLs or source; logout/expired authentication clears both token and displayed data.
+- **Interaction:** stacked monthly bars select a month; its category pie or legend selects a category; products group
+  by product ID with expandable dated purchases. All three views stay together, stacked vertically on phones.
+- **Defaults:** latest 12 calendar months through the current month, latest captured month selected within the range,
+  and Detailed category depth (first two taxonomy levels). Controls allow other ranges, All history, Broad, or Most
+  specific categories. Shallow assignments keep their category; uncategorized products remain explicit.
+- **Meaning:** sum line `net` in integer centavos, bucket by the existing store-local receipt month, and display BRL.
+  Quantity totals remain separate by unit. Empty months mean no recorded receipts, not zero actual spending; undated
+  lines are excluded and counted visibly. Item discounts may be prorated, as in D14.
+- **Freshness:** load on opening/login and explicit Refresh, with no background polling. Refresh preserves valid
+  selections. Errors retain previously loaded data with an explicit notice, or a retry prompt before the first load.
+- **Checks:** reconciliation across bars/pie/products/purchases, pagination, unit preservation, rounding, date gaps,
+  and authentication/API errors are covered by dashboard tests. Browser verification uses an isolated profile and
+  the real app account, without creating or changing receipt records.
+
+## D20. Dashboard accepts the saved PocketBase admin login too (2026-10-10)
+
+The admin UI and dashboard share an origin, so Chromium may autofill the admin credentials on the dashboard.
+Rejecting those valid credentials made the dashboard appear broken. Sign-in now tries the phone's `users` collection
+first, then `_superusers` only after an explicit invalid-credentials response. Network, server, and rate-limit errors
+do not trigger a second attempt. The session stores the authenticated collection alongside its token so page reload
+and Refresh use the correct auth endpoint. Older phone-account sessions default to `users`. Logout clears both.
+The dashboard remains read-only and neither account's password nor the collection access rules change.
+
+## D21. Selected month's NF list alongside category drill-down (2026-10-10)
+
+The dashboard now also reads the authenticated `receipts` collection and the existing receipt relation on
+`spending_lines`. A full-width Receipts this month section lists NFs by issue date (newest first), with store, parsed
+item count, and actual total paid. Expand a row to see its items across all categories. The NF list follows the selected
+month and remains independent of pie/category selection. Receipt month uses UTC-3, matching D15; capture dates are
+not used. Dated NFs without parsed items still appear, while undated NFs are counted in the data note. Parser issues
+and differences between item sums and receipt totals remain visible rather than replacing receipt totals with item sums.
+This adds no schema changes or new endpoints, and the dashboard remains read-only.
+
+## D22. Distinct category colors and stronger pie selection (2026-10-10)
+
+Hash-generated hues made unrelated categories look identical (produce and meat, for example). Main category groups
+now have an explicit palette. Additional category colors are chosen by maximizing perceptual separation in OKLab
+from the colors already used at that depth. Registering the full loaded history before filtering keeps assignments
+consistent across month/range changes; the charts and legends share the same category color registry. Uncategorized
+remains neutral gray. A selected pie slice moves out slightly, retains its full color, and dims the other slices;
+hover/keyboard focus restores a slice's full color. Selection remains indicated by its outline and legend state too.
+
+## D23. Android autonomy, user-managed catalog, and personal inflation objectives (2026-10-14)
+
+The user set a new product direction: the app must be self-contained, Android must provide a first-class experience,
+and the dashboard must remain accessible on PC. This revises the long-term server-centered processing direction
+in D14–D15 and the dashboard scope in D19; it does not change the current implementation by itself.
+
+Manual item creation, editing, deletion, and categorization must be available to the user. Agent-assisted catalog
+maintenance is not a sufficient product workflow. Entity boundaries and deletion/history behavior still need design.
+
+The user proposed IPCI — Índice de Preços ao Consumidor Individualíssimo — as an individual inflation measure.
+Its methodology is still open. The user also wants to consider “system one”, beginning with “laya” locally and later
+refining through newer APIs; the exact tools/providers remain to be clarified, so no integration is selected yet.
+
+[objectives.md](objectives.md) records the requirements, open questions, and proposed incremental stages.
+The immediate request is to persist these objectives, not implement all changes simultaneously.
+
+## D24. On-device parser, optional shared curation, and contributor-only collective analysis (2026-10-14)
+
+After considering VPS ETL, the user chose parsing on Android. Users must be able to manually classify, correct
+volume/unit/weight, review their data, and use personal analyses without an external processing service.
+
+Optional receipt contributions support classification, correction, and review by the service operator, building
+a comprehensive product/issuer catalog and price history. The desired scope covers available fiscal, financial,
+and product data; the user prefers not to collect the buyer's name, CPF, or card data. Field and evidence transport
+must still be designed, including buyer data present in raw captures and receipt lookup references.
+
+Collective-data analyses are available only to users who share receipt data. Local-only users retain their personal
+analyses. Private PC access is distinct from collective contribution. Hosting, contribution scope, withdrawal rules,
+and reconciliation of curated versus personal corrections remain open. No service is deployed by this decision.
+
+See [local-and-shared-modes.md](local-and-shared-modes.md). This resolves the parser-location question in the ETL
+comparison; the current implementation still needs migration as described in the roadmap.
+
+## D25. Continuous camera capture with automatic completion (2026-10-14)
+
+The user wants a fluid capture session: point/move the camera over the receipt while the app gathers sufficient
+images, guides adjustments, and closes the camera automatically. Taking individual photos and deciding when
+capture is complete must not be required in the primary flow. This replaces the target manual-photo flow in D3/D13;
+the current app still stops QR analysis once identified and requires manual photos and completion.
+
+Frame selection, document edges, QR detection, focus/legibility checks, and coverage tracking are candidate means,
+not selected algorithms. Long receipts require coverage across overlapping captures; readable QR or detected edges
+alone do not prove all receipt text was captured. Library choice remains open, including evaluating existing scanners.
+
+See [automatic-capture.md](automatic-capture.md) for incremental delivery and evidence required for completion.
+
+## D26. First automatic whole-document capture increment (2026-10-14)
+
+Use the existing CameraX controller, wrapped MlKitAnalyzer (QR plus bundled Latin text recognition), and bundled
+OpenCV for document geometry/quality. Keep analyzing after identifying the QR. A whole quadrilateral with margins,
+legible receipt text, matching QR inside the paper, and a stable hold triggers a high-resolution still. Revalidate
+the saved image before attaching it to ReceiptStore; failed images are removed and capture retries.
+
+Automatic completion returns Home. Portal lookup stays an explicit Home action, so capture completion does not
+silently consume a SEFAZ lookup. Preserve a manual multi-photo fallback offered after 15 seconds for long receipts
+and difficult scenes; continuous automatic multi-segment coverage remains a separate pending increment of D25.
+
+Build, unit tests, device vision tests, lint, and an offline emulator camera journey with a fictitious receipt
+validate this first increment. No live SEFAZ requests were used. Thresholds require real-device calibration, and
+geometric coverage/OCR presence are quality heuristics rather than guarantees about every character. Native library
+and bundled model size should be considered when preparing public distribution.
+
+## D27. Sharpness must be measured exclusively inside the detected receipt area (2026-10-14)
+
+The user made receipt-area detection mandatory: only the visible receipt interior may contribute to sharpness.
+Exclude background and paper/background boundary responses, including filter neighborhoods. A bounding rectangle
+that includes background is insufficient. Support partial receipt regions without requiring all four corners.
+
+When localization is uncertain, mark sharpness unevaluated rather than scoring the whole frame. Apply the same
+rule to candidate frames and saved images. Per-content-region quality must prevent a sharp QR from masking blurred
+text elsewhere. Algorithms remain to be selected; the current inner rectangular ROI does not fully implement this
+requirement. See [automatic-capture.md](automatic-capture.md) for proposed validation criteria.
+
+
+## D28. Continuous capture with masked quality and connected segment coverage (2026-10-14)
+
+Replace D26's whole-page requirement and manual fallback with automatic overlapping segments. Draw detected
+edge segments; show simultaneous need-driven hints and one movement destination. Top, bottom, QR, geometry,
+quality and capture are evaluated continuously, rather than gated steps. Two visible lateral edges suffice.
+
+Use CameraX analysis frames as the actual captured images. OpenCV detects/refines a paper mask and measures
+native-resolution sharpness strictly inside its eroded interior, including filter support. Assess content bands
+separately; a sharp QR cannot validate blurred product text. Recheck the encoded JPEG with the same mask.
+
+Use ORB/RANSAC content registration to establish overlap. Never infer complete coverage from endpoints alone.
+A synthetic top-to-bottom jump exposed false closure with optical flow on repeated receipt rows; remove that
+fallback and require descriptor evidence. Complete only with persisted connected coverage and an associated QR.
+
+Keep provisional images private. Exit without QR discards the attempt. Exit with QR offers code-only retention,
+full attempt discard, or continued capture; preserve all pre-existing note evidence. Rotation retains the session.
+Process recovery keeps only identified code for unfinished attempts; completed batch commits replay idempotently.
+ReceiptStore imports a complete batch atomically, storing original JPEGs, masks and geometry/quality metadata.
+Raise PocketBase's existing photos limit from 20 to 100; do not replace the database.
+
+Synthetic emulator tests and isolated migration validation are documented in capture-validation.md. Camera
+calibration on the Motorola is still required; this decision does not claim field-proven legibility or completeness.
+
+
+## D29. Bound mask refinement and preserve continuous AF (2026-10-15)
+
+Physical Motorola testing exposed multi-second overlay latency: per-frame GrabCut on the full 720-pixel scene
+cost 1.2–3.2 seconds in observed samples. Limit segmentation to a cropped paper ROI on a 240-pixel grid; erode
+before enlargement to exclude coarse boundary uncertainty. Keep focus evaluation at native resolution, inside
+the conservative mask and outside filter support. Publish detected segments before mask/QR/storage work, copy
+luminance in bulk, and evaluate focus once after QR detection. Keep latest-frame backpressure.
+
+Remove area thresholds relative to the entire scene: a narrow receipt and its endpoints must not be rejected
+because there is table around them. Use masked sample counts instead. A 22%-width synthetic receipt adds coverage.
+
+Do not periodically retrigger AF every three seconds. Retain CameraX continuous AF with explicit tap/region focus,
+expiring manual focus requests after two seconds. Expose torch and zoom controls. Camera2 interop remains available
+if measurements establish a specific unmet hardware control; processing latency alone does not justify a rewrite.
+Local debug stage timings contain no fiscal data. See capture-validation.md for physical measurements and limits.
+
+
+## D30. Learn receipt geometry before capture and register zoom independently of photos (2026-10-15)
+
+Separate session geometry, current frame localization, and validated persisted coverage. A confident observation
+of all four physical edges establishes provisional geometry even if text is blurred. Confirm it with another
+compatible overview or two consecutive compatible top observations. Polygon corners at image boundaries do not
+count as physical edges. Keep the original width-256 coordinate basis when a later overview is registered.
+
+Deliver the first slice for overview → closer top view. Use a top-edge similarity transform only with both
+lateral edges, at most 8° deviation from perpendicular, and at most 10% width taper. Strong perspective requires
+content matches; missing support means lost localization. Bottom-based geometry and predicted edge search are
+separate future increments. Geometry lives in the ViewModel session; no schema change or partial-photo resume.
+
+Extract ORB once per frame at a bounded paper-relative scale, independently of photo eligibility. Retain usable
+anchors for new extent/scale, capped at 100. Use reciprocal matches with a ratio test in either direction, preserving
+RANSAC's 12-inlier/55% consensus, spatial spread and projective guards. Synthetic repeated product rows exposed
+false matches during scale normalization; the top-to-bottom jump regression remains a release check.
+
+Use orientation-restricted transverse Hough voting plus observed edge support and paper/background transition
+checks to retain faint overview endpoints. Keep sharpness confined to the conservative current paper mask.
+A full sharp receipt may complete with one validated photo; blurry geometry cannot fill a content gap. QR stays
+independent and required. Show confirmed geometry, and request focus/holding when the top is already visible.
+Build, lint, 41 unit and 19 synthetic instrumented tests pass; physical latency/legibility remain to be verified.
+
+
+## D31. Validate paper regions and render the actual analysis area (2026-10-15)
+
+Physical testing disproved the assumption that the old Hough overlay delimited the paper. Raw scene-line
+candidates were published before mask/localization validation; line length and pair width rewarded the wrong
+background boundaries. Replace the primary detector with bounded region proposals from both threshold
+polarities and gradient contours, scored by observed boundary transition support. Reject components that touch
+the lateral frame limits, while allowing clipped longitudinal ends. Keep a photometrically validated line-based
+fallback for partial/faint regions; no unvalidated line candidates in the normal overlay.
+
+Separate the observed irregular contour, conservative paper mask, and registration quadrilateral. Focus uses a
+shared eroded mask builder with QR/filter-neighbourhood exclusion, also used to expose the actual focus area.
+The user chose an always-visible contour with optional translucent mask and both upright/sideways support.
+Publish contour/mask/axis with a frame ID after analysis instead of mixing early raw lines with older state.
+Debug offers one in-memory frozen analysis frame; it is not persisted or uploaded.
+
+Normalize the longitudinal axis with a quarter turn and apply that transform consistently to camera mapping,
+QR corners, quality and saved bitmaps. Explicit matrices compose analysis→buffer→sensor→view. Clipped ends
+identify the axis when a close visible strip is wider than it is long. Preserve world coordinates and swap mapped
+endpoints when content registration establishes a reversed axis; an orientation change cannot use geometric
+fallback without content association. Preserve that direction on subsequent full-outline fallback. A bounding
+rectangle cannot hide strong perspective and enable the top similarity model.
+
+Use a stricter ORB ratio of 0.6 in either reciprocal direction; retain at least 12 inliers and round the 55% consensus
+requirement upward. Existing gap/long-scan checks and new rotation/scale cases pass. Build, lint, 41 unit and
+30 synthetic instrumented tests pass. Physical acceptance and the visual-update p95 target remain to be measured.
+No database, camera API, neural model or external service change is part of this repair.
+
+
+## D32. Do not initialize an unanchored partial map or rebase saved coverage (2026-10-15)
+
+The first physical check of D31 showed a paper-following contour and much faster region analysis, but sessions
+could remain unregistered. A clean attempt reached `located=true, sharp=true, anchors=0, tracked=false`.
+Prevent a partial frame without usable descriptors from initializing world coordinates. A full-outline map may
+still initialize without sharpness/descriptors for the overview→zoom flow.
+
+If no anchor exists and a usable full overview appears, the engine may replace that provisional reference only
+when there are no saved segments and no pending photo candidate. Once any photo exists, preserve the coordinate
+basis and require registration. Tests exercise both allowed recovery and refusal to rebase existing coverage.
+This fixes a demonstrated tracker dead-end; it does not establish physical acceptance of the full scan flow.
+
+## D33. Require a usable anchor before saving and retain orientation through fallback (2026-10-15)
+
+The follow-up physical attempt exposed a second dead-end: an unanchored full frame could still save a candidate,
+which correctly disabled reference replacement but prevented recovery. Require a retained usable anchor before
+selecting a photo; learning geometry remains independent of sharpness/anchors. A synthetic engine regression
+exercises misleading initial geometry without descriptors, zero saved photos, and recovery on a useful overview.
+
+When threshold/contour proposals fail, try validated line proposals in both quarter-turn orientations, preferring
+the last located orientation. Previously the fallback silently returned to vertical-only analysis for a horizontal
+receipt. Test a faint partial strip on a light table in both orientations. Keep one current-frame mask and apply
+its orientation consistently to QR, photos and preview mapping.
+
+In landscape, reserve side panels for status/controls and the centre for the preview/overlay; controls must not
+cover the whole receipt. Preserve the mask-visibility preference through recreation. A Compose test checks
+landscape control visibility and retained preference. The physical capture remains unapproved until retested.
+
+D33 validation: 41 unit and 35 instrumented tests pass, including low-contrast open strips in both orientations.
+The line fallback uses Canny 8/24 after that regression exposed the old high threshold; focus thresholds remain
+unchanged. Landscape reserves 216 dp side panels; mask visibility survives rotation. The APK was installed on
+the Motorola preserving app data. Functional physical acceptance is still required.
+
+
+## D34. Retain development captures; plan quality and redundancy selection separately (2026-10-15)
+
+Two D33 scans completed on the Motorola, appending batches of four and two images to the same existing NF.
+Review of the six stored JPEGs found four legible main-content images, one clearly motion-blurred image accepted
+by the quality check, and one softer image. This establishes persistence/completion, not reliable legibility.
+Structured data still comes from fiscal HTML; photo OCR is not implemented.
+
+The user accepts keeping many images per NF during development and wants eventual heuristics for rejecting
+bad captures and removing redundancy. Preserve current evidence; this checkpoint adds no deletion policy.
+The current 100-photo technical cap remains, with the server migration tested only in isolation. It is not
+the desired final retention policy. Future selection must preserve unique coverage and useful detail across
+repeated scans, and be evaluated as a dry run before enabling deletion. See capture-retention-plan.md.
+
+The phone is unavailable while charging; synthetic blur/quality evaluation, retention design and repository
+checkpointing can proceed independently. Further physical validation remains necessary before accepting
+the quality filter or enabling automatic pruning.
