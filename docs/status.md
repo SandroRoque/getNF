@@ -109,7 +109,7 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
   during development; future bad/redundant-image selection is planned, with no deletion implemented (D34).
   Further device validation must cover long thermal receipts, low contrast, shadows, motion and interruptions.
 
-0. Photos now upload append-only to `receipt_photos` (D42). Pending: confirm the phone's first upload on the live
+0. Photos upload append-only to `receipt_photos` with masks and metadata (D42); all 51 phone photos are on the live
    server. A restore onto a new machine needs one restart after the first start (D42).
 1. **Uploads only on home Wi‑Fi with the PC on** (D18). Fine for now. Pending, by the user: reserve `192.168.4.4` for
    this PC in the router's DHCP settings, and run `sudo bash tools/setup-system.sh` once so Docker starts at boot.

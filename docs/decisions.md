@@ -725,4 +725,6 @@ photo list (deleting what the phone didn't send), and capture masks and segment 
   hooks: legacy photos kept across a PATCH (2 → 2), duplicate create 400, user update/delete 403, user receipt delete
   403, superuser receipt delete 204 with its photos gone. Live server: backup `pre-receipt-photos-2026-10-15.zip`,
   migration applied, receipts/items/products/categories/spending_lines/legacy photo counts unchanged (9/135/84/75/135/55).
-- Not yet run: the phone's first upload into `receipt_photos` against the live server. No emulator end-to-end run.
+- **Phone, live server:** the first upload added all 51 local photos in ~35 s over home Wi-Fi: 30 capture photos,
+  each with mask and segment, and 21 older photos. Legacy `receipts.photos` stayed at 55; nothing is pending on the
+  phone; a relaunch uploaded nothing more (still 51). No emulator end-to-end run.
