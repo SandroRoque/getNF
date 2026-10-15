@@ -569,3 +569,6 @@ First slice of D35's order, step (a).
 - **Not run:** the two new instrumented tests (`qrReadLastOnAFullNoteStopsWithAMessageAndKeepsExistingPhotos`,
   `lastFreeSlotStillCompletes`). The emulator refused to start because `/home` had 1.8 GB free. Build, lint and
   unit tests pass.
+
+D36 validation: after freeing disk space, all 37 instrumented tests pass on the emulator, including the two new
+cap tests.
