@@ -127,16 +127,44 @@ class DocumentVisionTest {
     finally { bitmap.recycle() }
   }
   @Test fun receiptOnAColouredBoardIsLocatedInsteadOfTheBoard() {
-    // Live test, D39: a red board under the receipt became the mask.
+    // Live tests, D39/D40: a red board under the receipt became the mask; on camera it can read dark and dull.
+    for (board in listOf(Color.rgb(190, 35, 40), Color.rgb(85, 45, 60))) {
+      val bitmap = scene(Color.rgb(236, 236, 232)) { c, p ->
+        p.color = board; c.drawRect(120f, 80f, 780f, 1120f, p)
+        p.color = Color.rgb(60, 20, 25); for (y in 100 until 1100 step 60) c.drawCircle(150f, y.toFloat(), 12f, p)
+        printed(c, p, Color.rgb(246, 246, 240), 260f, 150f, 640f, 1050f)
+      }
+      try { DocumentVision.fromBitmap(bitmap).use {
+        assertTrue("The receipt must be located: ${it.observation}", it.observation.located)
+        assertFalse("The board ${Integer.toHexString(board)} is not paper", it.observation.contains(160.0 / 900, .5))
+        assertTrue(it.observation.contains(.5, .5))
+      } } finally { bitmap.recycle() }
+    }
+  }
+  @Test fun receiptPartlyUnderThePhoneShadowIsStillPaper() {
+    // Live test, D40: the end of the receipt under the phone's shadow stopped being located.
     val bitmap = scene(Color.rgb(236, 236, 232)) { c, p ->
-      p.color = Color.rgb(190, 35, 40); c.drawRect(120f, 80f, 780f, 1120f, p)
-      p.color = Color.rgb(120, 20, 25); for (y in 100 until 1100 step 60) c.drawCircle(150f, y.toFloat(), 12f, p)
-      printed(c, p, Color.rgb(246, 246, 240), 260f, 150f, 640f, 1050f)
+      printed(c, p, Color.rgb(248, 248, 244), 220f, 80f, 680f, 1120f)
+      p.color = Color.argb(110, 0, 0, 0); p.maskFilter = BlurMaskFilter(8f, BlurMaskFilter.Blur.NORMAL)
+      c.drawRect(100f, 780f, 800f, 1200f, p); p.maskFilter = null
+    }
+    try { DocumentVision.fromBitmap(bitmap).use {
+      assertTrue("A partly shadowed receipt must be located: ${it.observation}", it.observation.located)
+      assertTrue(it.observation.contains(.5, .4))
+    } } finally { bitmap.recycle() }
+  }
+  @Test fun shadowedEndOnABoardStaysInsideTheContour() {
+    // Live test, D40 (screenshot): on a red board, the contour cut off the end of the receipt under the shadow.
+    val bitmap = scene(Color.rgb(236, 236, 232)) { c, p ->
+      p.color = Color.rgb(170, 45, 55); c.drawRect(60f, 40f, 840f, 1160f, p)
+      printed(c, p, Color.rgb(248, 248, 244), 220f, 100f, 680f, 1100f)
+      p.color = Color.argb(120, 0, 0, 0); p.maskFilter = BlurMaskFilter(30f, BlurMaskFilter.Blur.NORMAL)
+      c.drawRect(0f, 760f, 900f, 1200f, p); p.maskFilter = null
     }
     try { DocumentVision.fromBitmap(bitmap).use {
       assertTrue("The receipt must be located: ${it.observation}", it.observation.located)
-      assertFalse("The red board is not paper", it.observation.contains(160.0 / 900, .5))
-      assertTrue(it.observation.contains(.5, .5))
+      assertTrue("The shadowed end belongs to the receipt", it.observation.contains(.5, .85))
+      assertFalse("The board is not paper", it.observation.contains(100.0 / 900, .5))
     } } finally { bitmap.recycle() }
   }
   @Test fun pastelReceiptsAreStillPaper() {

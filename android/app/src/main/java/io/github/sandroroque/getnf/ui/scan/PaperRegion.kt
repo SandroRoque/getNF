@@ -6,7 +6,7 @@ import kotlin.math.*
 
 /** Region proposals are supported by a boundary, not by the length of an arbitrary scene line. */
 internal object PaperRegion {
-  private data class Candidate(val contour: Array<Point>, val score: Double, val turn: Int)
+  private data class Candidate(val contour: Array<Point>, val score: Double, val turn: Int, val area: Double)
 
   fun detect(source: Mat, evaluateQuality: Boolean, chroma: Mat? = null): VisionFrame? {
     val gray = Mat(); val smooth = Mat(); val binary = Mat(); val edge = Mat(); val region = Mat()
@@ -47,7 +47,7 @@ internal object PaperRegion {
             // A strong boundary isn't enough: a shadow or a coloured board under the receipt has one too (D39).
             region.setTo(Scalar(0.0)); Imgproc.drawContours(region, listOf(contour), 0, Scalar(255.0), Imgproc.FILLED)
             if (!DocumentVision.paperLike(gray, region, chroma)) continue
-            proposals += Candidate(bounds, support * sqrt(area), turn)
+            proposals += Candidate(bounds, support * sqrt(area), turn, area)
           }
         } finally { contours.forEach { it.release() }; hierarchy.release(); work.release() }
       }
@@ -59,7 +59,28 @@ internal object PaperRegion {
       // Closed gradients retain a faint paper outline even on a lighter table.
       Imgproc.Canny(smooth, edge, 10.0, 30.0)
       Imgproc.morphologyEx(edge, edge, Imgproc.MORPH_CLOSE, kernel); collect(edge)
-      val candidate = proposals.maxByOrNull { it.score } ?: return null
+      // A global threshold splits a receipt partly under the phone's shadow; dividing out slow illumination keeps
+      // the shadowed end with the rest (live test, D40). The sharp paper/background step survives the division.
+      val illumination = Mat(); val flat = Mat()
+      try {
+        Imgproc.GaussianBlur(smooth, illumination, Size(0.0, 0.0), 40.0)
+        Core.divide(smooth, illumination, flat, 160.0, CvType.CV_8UC1)
+        Imgproc.threshold(flat, binary, 0.0, 255.0, Imgproc.THRESH_BINARY or Imgproc.THRESH_OTSU)
+        Imgproc.morphologyEx(binary, binary, Imgproc.MORPH_CLOSE, kernel); collect(binary)
+      } finally { illumination.release(); flat.release() }
+      // A paper-like region well inside another (a receipt on a board, with a margin all round) is the receipt.
+      // A region sharing the outer boundary is part of the same paper (its lit part, beside a shadow), and
+      // near-equal areas are the same outline found by another threshold (D40).
+      var candidate = proposals.maxByOrNull { it.score } ?: return null
+      while (true) {
+        val outer = candidate
+        val curve = MatOfPoint2f(*outer.contour)
+        val inner = try {
+          proposals.filter { inner -> inner.area in outer.area * .25..outer.area * .85 &&
+            inner.contour.count { p -> Imgproc.pointPolygonTest(curve, p, true) >= 6.0 } >= inner.contour.size * .9 }.maxByOrNull { it.score }
+        } finally { curve.release() }
+        candidate = inner ?: break
+      }
       val canonical = Mat(); val mask = Mat.zeros(gray.size(), CvType.CV_8UC1)
       val contour = MatOfPoint(*candidate.contour)
       try {

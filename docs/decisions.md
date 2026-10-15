@@ -655,3 +655,26 @@ created an anchorless map that close upright frames could never localize.
 
 **Limits:** thresholds come from one afternoon's frames under one light. A receipt mostly in shadow, or blank paper
 with little print in view (a long bottom margin), may not be located. Saturation uses the camera's white balance.
+
+## D40. Keep the receipt's axis, replace an anchored provisional map, and tolerate a shadowed end (2026-10-15)
+
+The second live capture with D39 found three more faults.
+
+- **Axis swap.** A map started on a close strip classified sideways (`turn=90`, `INITIAL_STRIP`) later registered
+  upright frames by content with a ~90° rotation. The receipt's length was measured along the map's width: the whole
+  receipt fit in ~20 units and the capture "completed" (top and bottom 11 units apart). Content registration now
+  rejects transforms that turn the receipt's long axis sideways; a 180° flip (axisReversed) is still allowed. The
+  synthetic sequence written for it doesn't reproduce the live registration (it passes without the guard), so the
+  guard has no failing-first test.
+- **Anchored dead-end.** A provisional map with one anchor, from a frame later rejected by OCR, blocked full upright
+  views: D39's replacement required no anchors. Now, before any photo or candidate exists, a map is replaced (anchors
+  cleared) after 4 consecutive sharp, printed frames it can't localize, anchored or not.
+- **Shadowed end.** The user reported the end of the receipt under the phone's shadow was left out. The light
+  fraction for paper drops from 70% to 50% (shadow-only regions read 0.00 on real frames). Region proposals add an
+  Otsu threshold on illumination-normalized luminance (σ40 division), which keeps a shadowed end with the rest. To
+  keep a dark board from winning at 50%, a paper-like region well inside another (>= 90% of its outline >= 6 px
+  inside) is preferred; a region sharing the outer boundary is the same paper. The synthetic "shadowed end on a red
+  board" test passes with or without the new proposals, so the real frame still has to confirm it.
+
+Real frames (CaptureEvidenceEvalTest): unchanged verdicts, shadow rejected, receipt inside the red board located.
+46 unit, 46 instrumented (benchmark unchanged: 107 of 1,476 illegible accepted, none severe) and lint pass.

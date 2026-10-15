@@ -55,6 +55,24 @@ class DocumentTrackerTest {
       assertTrue(tracker.retainedAnchorCount > 0)
     } finally { tracker.close(); receipt.recycle() }
   }
+  @Test fun sidewaysStripThenUprightFramesMeasureTheReceiptAlongItsAxis() {
+    // Live test, D40: a map started on a close sideways strip registered upright frames rotated by 90°, and the
+    // whole receipt fit in ~20 units of "length". This synthetic sequence doesn't reproduce that registration (it
+    // passes without the axis guard); it checks the reset path ends with the length measured along the axis.
+    val tracker = DocumentTracker(); val receipt = textReceipt()
+    val strip = Bitmap.createBitmap(receipt, 0, 0, 900, 640)
+    val sideways = Bitmap.createBitmap(strip, 0, 0, strip.width, strip.height, android.graphics.Matrix().apply { postRotate(90f) }, true)
+    try {
+      DocumentVision.fromBitmap(sideways).use { assertNotNull("Sideways strip must start a map", tracker.track(it, 0).position) }
+      var last: TrackedDocument? = null
+      for (i in 1..8) DocumentVision.fromBitmap(receipt).use { frame ->
+        tracker.track(frame, i * 200L, allowReferenceReset = true).position?.let { last = it }
+      }
+      val visible = assertNotNullAnd(last).visible
+      assertTrue("Receipt length must be measured along its axis: $visible", visible.length > 300)
+    } finally { tracker.close(); receipt.recycle(); strip.recycle(); sideways.recycle() }
+  }
+  private fun <T> assertNotNullAnd(value: T?): T { assertNotNull("No localized frame", value); return value!! }
   @Test fun featurelessOverviewBootstrapsZoomByTopWithoutInventingCoverage() {
     val tracker = DocumentTracker()
     try {

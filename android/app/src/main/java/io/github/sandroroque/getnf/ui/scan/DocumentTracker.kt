@@ -35,8 +35,8 @@ internal class DocumentTracker : AutoCloseable {
   private var lastTop: List<DocumentPoint>? = null
   private var lastTopAt: Long? = null
   private var topObservations = 0
-  /** Consecutive printed frames an unanchored provisional map failed to localize (D39). */
-  private var unanchoredMisses = 0
+  /** Consecutive sharp, printed frames the provisional map failed to localize (D39/D40). */
+  private var misses = 0
 
   fun breakContinuity() { lastTop = null; lastTopAt = null; topObservations = 0 }
 
@@ -65,10 +65,11 @@ internal class DocumentTracker : AutoCloseable {
     try {
       // Before any photo/candidate exists, an unanchored provisional map must not trap
       // the session on an incidental object seen while opening the camera.
-      // Nor may one from a distant overview block a close, printed view in another orientation: after a few such
-      // frames the provisional map is replaced, still only before any photo exists (D39).
-      if (world != null && anchors.isEmpty() && features.usable && allowReferenceReset && (full || (doc.sharp && unanchoredMisses >= 4))) {
-        unanchoredMisses = 0
+      // Nor may any provisional map block printed views it can't localize: after a few such frames it is replaced,
+      // anchors included, still only before any photo or candidate exists (D39/D40).
+      if (world != null && features.usable && allowReferenceReset && ((anchors.isEmpty() && full) || (doc.sharp && misses >= 4))) {
+        misses = 0
+        anchors.forEach { it.close() }; anchors.clear()
         world?.release(); world = null; geometry = null; existingGeometry = null
         lastImageRotation = null; lastAxisReversed = false; breakContinuity()
       }
@@ -83,7 +84,9 @@ internal class DocumentTracker : AutoCloseable {
         source = if (full) LocalizationSource.FULL_OUTLINE else LocalizationSource.INITIAL_STRIP
         if (full) geometry = ReceiptGeometry(rectangle, ReceiptGeometry.aspect(pixels), doc.supportsTopSimilarity && ReceiptGeometry.isFrontFacing(pixels))
       } else {
-        transform = relocalize(features)
+        // Content may flip the receipt (axisReversed) but never turn its long axis sideways: that would measure the
+        // receipt's length along the map's width and fake coverage (a live capture "completed" in ~20 units, D40).
+        transform = relocalize(features)?.let { t -> if (preservesAxis(t, gray.cols(), gray.rows())) t else { t.release(); null } }
         val reference = geometry
         if (transform == null && orientationCompatible && full && reference != null && reference.matchesFullShape(pixels)) {
           val outline = reference.outline
@@ -97,10 +100,10 @@ internal class DocumentTracker : AutoCloseable {
         }
       }
       val accepted = transform ?: run {
-        if (world != null && anchors.isEmpty() && features.usable && doc.sharp) unanchoredMisses++
+        if (world != null && features.usable && doc.sharp) misses++
         return TrackingResult(geometry, null)
       }
-      unanchoredMisses = 0
+      misses = 0
       var transferred = false
       try {
         val mapped = mapDocument(doc, gray.cols(), gray.rows(), accepted, source) ?: return TrackingResult(geometry, null)
@@ -152,6 +155,10 @@ internal class DocumentTracker : AutoCloseable {
     if (anchors.isNotEmpty() && fresh < mapped.visible.length * .20 && !scaleChanged) return
     anchors += Anchor(Features(features.points, features.descriptors.clone()), transform.clone(), mapped.visible, pixelWidth)
     if (anchors.size > 100) anchors.removeAt(1).close()
+  }
+  private fun preservesAxis(transform: Mat, w: Int, h: Int): Boolean {
+    val mapped = project(listOf(DocumentPoint(w / 2.0, h * .3), DocumentPoint(w / 2.0, h * .7)), transform)
+    return abs(mapped[1].y - mapped[0].y) >= abs(mapped[1].x - mapped[0].x)
   }
   private fun relocalize(current: Features): Mat? {
     if (!current.usable) return null

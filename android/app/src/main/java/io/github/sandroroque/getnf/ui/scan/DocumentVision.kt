@@ -113,8 +113,11 @@ internal object DocumentVision {
     } finally { listOf(interior, kernel, blurred, deviation, ink, scaled, bright, hist).forEach { it.release() } }
   }
   @Volatile var DEBUG_PAPER = false
-  /** Most of the interior must be light; print and a sliver of shadow are the minority. */
-  private const val PAPER_MIN_LIGHT_FRACTION = .7
+  /**
+   * Half the interior must be light: a receipt partly under the phone's shadow still passes, a shadow alone (0.00 on
+   * real frames) doesn't. A dark board around a receipt can pass, so PaperRegion prefers the receipt inside it (D40).
+   */
+  private const val PAPER_MIN_LIGHT_FRACTION = .5
   private const val PAPER_MIN_RELATIVE_LIGHT = .6
   /** Pastel yellow/green/blue paper is ~20; a red board read ~80 (D39). */
   private const val PAPER_MAX_CHROMA = 40.0

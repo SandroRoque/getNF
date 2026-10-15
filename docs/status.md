@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-15. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D39). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D40). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -51,7 +51,7 @@ categorized → reportable through the `spending_lines` view.
 - **Local data** (not in git): the receipts captured so far, every product categorized, in `server/pb_data/` plus the
   photos on the phone. **Back up `server/pb_data/`.** The categorizations exist only there.
 - **Tests:** `cd android && ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`:
-  46 unit tests and 43 instrumented vision/capture/lifecycle tests (the D37 focus benchmark and the D38 real-capture eval, which skips without local files). Never run connectedAndroidTest with the phone attached: it uninstalls the app and wipes its receipts on the emulator; an offline camera journey
+  46 unit tests and 46 instrumented vision/capture/lifecycle tests (the D37 focus benchmark and the D38 real-capture eval, which skips without local files). Never run connectedAndroidTest with the phone attached: it uninstalls the app and wipes its receipts on the emulator; an offline camera journey
   also read a synthetic QR, saved a photo and completed automatically (see capture-validation.md).
   Debug build and lint pass. PocketBase's 100-photo migration and rollback were validated in an isolated database;
   the migration was applied to the live server on 2026-10-15 after a backup (D36). Android also has a 100-photo technical cap.
@@ -89,8 +89,8 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
 
 - **Capture quality first:** D37/D38 decide legibility with on-device OCR of each saved candidate (band median
   confidence >= 0.5, calibrated on the real D34 JPEGs: the blurred one credits nothing). OCR takes 146–559 ms on the
-  Motorola. D39 rejects regions that don't look like a receipt (a phone's shadow, a coloured board). Next: another
-  live capture on light and dark backgrounds. Background: Two physical
+  Motorola. D39/D40 reject regions that don't look like a receipt (a phone's shadow, a coloured board), keep the receipt's axis
+  and tolerate a shadowed end. Next: confirm on the phone, with a frame where the shadow covers the end. Background: Two physical
   attempts completed, but JPEG review found one blurred image and another softer image among six saved.
   Synthetic blur benchmarks and conservative retention ranking can proceed without the phone. Keep captures
   during development; future bad/redundant-image selection is planned, with no deletion implemented (D34).
