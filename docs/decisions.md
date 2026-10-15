@@ -678,3 +678,7 @@ The second live capture with D39 found three more faults.
 
 Real frames (CaptureEvidenceEvalTest): unchanged verdicts, shadow rejected, receipt inside the red board located.
 46 unit, 46 instrumented (benchmark unchanged: 107 of 1,476 illegible accepted, none severe) and lint pass.
+
+D40 validation on real frames: the four photos of the red-board capture (17:38), whose capture-time masks left out
+the part under the phone's shadow, are located as the whole receipt by the D40 detection, shadowed end and QR
+included, board excluded.
