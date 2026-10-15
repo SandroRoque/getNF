@@ -14,7 +14,7 @@ Ver [capture-validation.md](capture-validation.md) para evidência e limites des
 
 Hoje há seleção de candidatos úteis dentro de uma sessão, mas não há descarte após gravar nem deduplicação
 entre sessões. Repetir uma NF acrescenta fotos ao mesmo registro. Android tem limite técnico de 100 fotos por
-nota; a migração PocketBase de 20 para 100 foi testada isoladamente e ainda não aplicada ao servidor em uso.
+nota; a migração PocketBase de 20 para 100 foi aplicada ao servidor em uso em 2026-10-15, após backup (D36).
 Isso não constitui a política final de retenção nem uma promessa de armazenamento ilimitado.
 A extração estruturada ainda vem do HTML fiscal; as fotos não passam por OCR de produtos/descontos neste fluxo.
 
@@ -32,6 +32,13 @@ texto térmico fraco ou reduza a captura a distâncias impraticáveis.
 Primeira entrega: benchmark reproduzível, diagnóstico do falso positivo e alteração pequena com regressões
 sintéticas. Conferir também o JPEG decodificado, que é a evidência realmente armazenada. A validação física
 posterior continua necessária; os exemplos pessoais permanecem fora do repositório.
+
+**Diagnóstico da revisão de código (D35):** o score junta os gradientes X e Y (`Core.magnitude`). Borrão de
+movimento apaga só as bordas na direção do movimento, e as perpendiculares mantêm a razão acima de 1,18; é a causa
+provável do JPEG borrado aceito. Segundo caminho: tiles com desvio < 5 são tratados como papel vazio, e o borrão
+reduz o contraste do texto térmico fraco; faixas vazias contam como utilizáveis e o QR sozinho ativa `anyContent`.
+O benchmark deve cobrir os dois casos. Proposta a avaliar: razão por orientação (pior caso) e OCR embarcado nos
+candidatos como critério de legibilidade, reutilizável no OCR de descontos.
 
 ## 2. Classificar redundância sem apagar
 
@@ -58,6 +65,14 @@ Antes de remover arquivos, definir política explícita e revisar a simulação.
 referências de fotos/máscaras, cobertura, recuperação de sessão, versão de upload e referências no servidor;
 interrupção ou nova tentativa não pode perder evidência nem deixar referências quebradas. Usar atualização
 consistente e recuperável; não apagar originais enquanto a seleção não estiver validada.
+
+**Pré-requisito identificado em D35 e confirmado em D36:** o upload atual substitui a lista de fotos do servidor pela do celular.
+Apagar uma foto localmente a apagaria também no servidor, que é hoje o único backup. Antes de qualquer descarte,
+o envio de evidências precisa só acrescentar (com identificação por conteúdo), e máscaras/metadados precisam
+sair do celular. Isso pertence ao desenho da etapa 1 do roadmap.
+
+Também proposto em D35: fazer a seleção final depois da sessão, como evolução deste passo, deixando à captura
+em tempo real apenas a garantia de cobertura suficiente.
 
 Não introduzir limpeza silenciosa retroativa neste incremento. A retenção liberal durante desenvolvimento
 preserva material para diagnosticar erros e comparar avaliadores. Limites de armazenamento e comportamento

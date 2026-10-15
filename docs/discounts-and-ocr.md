@@ -2,7 +2,8 @@
 
 Avaliação de viabilidade em 2026-10-14. OCR local para recuperar descontos ainda é uma proposta; a associação de
 descontos e sua precisão nas fotos do projeto não foram implementadas ou medidas. ML Kit OCR latino embarcado
-já foi integrado à captura automática para verificar presença de texto legível, sem interpretar descontos.
+foi usado no primeiro incremento da captura automática (D26) e removido no fluxo por segmentos (D28); a dependência
+ainda está declarada no catálogo, sem uso. D35 propõe reutilizá-lo como critério de legibilidade dos candidatos.
 
 ## Objetivo
 

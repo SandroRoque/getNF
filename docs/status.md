@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-15. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D34). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D36). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -54,7 +54,7 @@ categorized → reportable through the `spending_lines` view.
   41 unit tests and 35 instrumented vision/capture/lifecycle tests on the emulator; an offline camera journey
   also read a synthetic QR, saved a photo and completed automatically (see capture-validation.md).
   Debug build and lint pass. PocketBase's 100-photo migration and rollback were validated in an isolated database;
-  the migration has not been applied to the live server. Android also has a 100-photo technical cap.
+  the migration was applied to the live server on 2026-10-15 after a backup (D36). Android also has a 100-photo technical cap.
   Server: `node --test server/test/*.test.js server/test/*.test.mjs`
   (12 parser/derivation tests + 12 dashboard tests). Run `node server/test/dashboard.test.mjs` for individual dashboard results.
 - **Repo:** public at github.com/SandroRoque/getNF, branch `main`. History was squashed before publishing to remove
@@ -84,12 +84,17 @@ and apply it through the API (as was done for the first 75 products).
 
 ## Open items, roughly in priority order
 
+Code review findings and the proposed reordering are in D35: per-orientation focus check, blurred text counted as
+blank paper, upload that replaces server photos, the photo-cap dead-end, then roadmap stage 1 before more geometry.
+
 - **Capture quality first:** reproduce and reject motion-blurred text inside a correct paper mask. Two physical
   attempts completed, but JPEG review found one blurred image and another softer image among six saved.
   Synthetic blur benchmarks and conservative retention ranking can proceed without the phone. Keep captures
   during development; future bad/redundant-image selection is planned, with no deletion implemented (D34).
   Further device validation must cover long thermal receipts, low contrast, shadows, motion and interruptions.
 
+0. **Don't delete photos locally** until uploads are append-only: a PATCH replaces the server's photos (D36).
+   **A fresh PocketBase database doesn't start with the hooks** (D36): fix before restoring onto another machine.
 1. **Uploads only on home Wi‑Fi with the PC on** (D18). Fine for now. Pending, by the user: reserve `192.168.4.4` for
    this PC in the router's DHCP settings, and run `sudo bash tools/setup-system.sh` once so Docker starts at boot.
    Tailscale (D6) can come with the NAS if uploads from outside are ever wanted.

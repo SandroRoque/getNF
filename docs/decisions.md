@@ -501,3 +501,71 @@ repeated scans, and be evaluated as a dry run before enabling deletion. See capt
 The phone is unavailable while charging; synthetic blur/quality evaluation, retention design and repository
 checkpointing can proceed independently. Further physical validation remains necessary before accepting
 the quality filter or enabling automatic pruning.
+
+## D35. Review findings: fix quality and upload risks first, then start the data model (2026-10-15)
+
+A code review after D34 (build, lint, 41 unit and 24 server tests passing) found defects the tests don't cover.
+Recorded at the user's request, together with how they fit the roadmap. Nothing is implemented by this entry.
+
+- **Directional blur passes the focus check.** `DocumentVision.quality` divides gradient energy at two scales but
+  combines X and Y with `Core.magnitude`. Motion blur only removes edges along the motion; perpendicular edges keep
+  the ratio above 1.18. This is the likely cause of the accepted blurred JPEG (score 1.324, D34). Evaluate the
+  ratio per orientation (at least X and Y) and take the worst.
+- **Blurred text can count as blank paper.** Tiles with local std < 5 are skipped as empty. Blur lowers contrast, so
+  faint blurred thermal print can fall below it. Blank bands are usable and bridge coverage, and a decoded QR alone
+  sets `anyContent`. An illegible region can then be credited as covered. The synthetic benchmark must include it.
+- **The 100-photo migration is not a manual step.** `server/pb_migrations` is mounted, so PocketBase applies it on the
+  next container restart (e.g. after `setup-system.sh` and a reboot). Until then, receipts with more than 20 photos
+  fail to upload. Back up `pb_data` and restart deliberately, or cap Android at 20 until then.
+- **Upload replaces the server's photo list with the phone's.** `PocketBaseClient.upsert` resends every photo on each
+  version bump; masks and `captureSegments` never leave the phone. The server is the only photo backup and the phone
+  the only copy of capture metadata. Two loss paths follow: future local pruning (capture-retention-plan step 3)
+  would delete the same photos on the server, and a reinstall followed by a rescan of the same chave would replace
+  the server's photos with the new, shorter list. The second depends on PocketBase's PATCH semantics for multi-file
+  fields; verify in an isolated database. Stage 1 of the roadmap must design append-only, content-identified evidence
+  upload before any deletion is enabled.
+- **Capture can dead-end near the photo cap.** Until the QR is read, `photoAllowance` is 100. If the receipt already
+  holds nearly 100 photos and the QR comes last, the session saves past the remaining allowance, then completion is
+  blocked and exit discards the attempt. The message also hardcodes "100".
+- **Smaller items:** the debug APK is 225 MB (OpenCV for every ABI; distribution needs ABI filtering);
+  `mlkit-text-recognition` is declared but unused since D28; every located frame converts and rotates a full
+  bitmap even when it won't become a candidate; the capture error message hides the cause even in debug builds.
+
+**Approaches to evaluate** (proposals, not choices):
+1. Use on-device OCR (ML Kit, already the candidate for discounts in discounts-and-ocr.md) on candidates only, as the
+   legibility criterion, instead of a gradient ratio alone. One component serves capture quality and stage 3.
+2. Move final image selection after the session (capture-retention-plan step 2) and keep real-time logic to
+   "enough coverage exists". Much of D29–D33's tuning would stop being critical.
+3. Revisit how much full coverage is worth: the only planned consumer of the photos is per-item discount OCR.
+4. Take the stored photo with `ImageCapture` when analysis picks the moment, instead of the video-exposure frame.
+
+**Proposed order:** (a) decide the migration, fix the cap dead-end and the stale OCR note; (b) synthetic blur
+benchmark covering both quality defects, per-orientation focus, OCR as a legibility test; (c) pause further
+geometry work (bottom localization, predicted edge search) and start roadmap stage 1, with photos as evidence with
+metadata, append-only upload and a deletion policy; (d) retention step 2 becomes post-session selection on that model.
+
+## D36. Photo limit applied on the server; capture stops cleanly at the cap; PATCH replaces photos (2026-10-15)
+
+First slice of D35's order, step (a).
+
+- **Server:** backup `pre-photo-limit-2026-10-15.zip` created through PocketBase's backup API (kept in
+  `pb_data/backups` and copied to `~/getnf-backups/`, outside the repo; 147 files, `data.db` and `storage/`). A
+  deliberate restart applied the 20 → 100 migration: `photos.maxSelect` is 100; receipts, items, products,
+  categories and `spending_lines` counts were identical before and after (9 / 135 / 84 / 75 / 135); the
+  dashboard responds. The largest receipt had 12 photos, so nothing was failing yet.
+- **Capture cap:** `CaptureEngine` keeps the NF's existing photo count and derives the allowance from it. When an
+  attempt can't fit (QR read last after too many segments, or no slot left while coverage is still missing) it
+  stops selecting and saving, drops the pending candidate, never completes, and keeps a message with the real
+  numbers visible until exit. `KEEP_CODE` keeps the previous photos and drops the attempt's (D28). A last free slot
+  still completes. Debug builds append the exception class and message to the generic capture error.
+- **PATCH semantics, verified in an isolated container** (empty database, fictitious chave, synthetic JPEGs): a
+  record with 3 photos patched the way `PocketBaseClient.upsert` does, with 1 photo, ends with 1 photo, and the 2
+  dropped files are deleted from storage. This confirms D35's loss paths: local pruning, or a reinstall plus a
+  rescan, would delete server photos. Fix it in roadmap stage 1 (append-only evidence upload); until then, no
+  local deletion of photos.
+- **Found on the way, not fixed:** with the hooks mounted, PocketBase 0.40.5 doesn't start on an empty database.
+  Bootstrap logs `taxonomy sync failed: sql: no rows in result set` and `parseStale` then exits with the same error.
+  The live server has data and is unaffected, but restoring onto a new machine (e.g. the NAS) needs this fixed.
+- **Not run:** the two new instrumented tests (`qrReadLastOnAFullNoteStopsWithAMessageAndKeepsExistingPhotos`,
+  `lastFreeSlotStillCompletes`). The emulator refused to start because `/home` had 1.8 GB free. Build, lint and
+  unit tests pass.

@@ -70,7 +70,8 @@ internal class CaptureViewModel(application: Application) : AndroidViewModel(app
   }
   private fun report(failure: Throwable) {
     Log.w("ReceiptCapture", "Capture processing failed", failure)
-    _state.value = _state.value.copy(edges = emptyList(), maskPaths = emptyList(), saving = false, error = "Não foi possível concluir a operação. As fotos anteriores estão preservadas.")
+    val detail = if (BuildConfig.DEBUG) " (${failure::class.simpleName}: ${failure.message})" else ""
+    _state.value = _state.value.copy(edges = emptyList(), maskPaths = emptyList(), saving = false, error = "Não foi possível concluir a operação. As fotos anteriores estão preservadas.$detail")
   }
   override fun onCleared() {
     closing.set(true); attached.set(false)
@@ -109,7 +110,10 @@ internal class CaptureEngine(
   private var lastState = CaptureSessionState()
   private var pendingHint: GuidanceState? = null
   private var hintSince = 0L
-  private var photoAllowance = ReceiptStore.MAX_PHOTOS
+  private var existingPhotos = 0
+  private val photoAllowance get() = ReceiptStore.MAX_PHOTOS - existingPhotos
+  // Once set, the attempt cannot finish: no more photos fit this NF. Exit keeps the code (D36).
+  private var capMessage: String? = null
   private var observedTop: Double? = null
   private var observedBottom: Double? = null
   private var topFrames = 0
@@ -151,7 +155,9 @@ internal class CaptureEngine(
           if (session.chave == null) {
             session = session.copy(chave = frame.key, qrUrl = frame.qrUrl)
             sessions.write(session)
-            photoAllowance = ReceiptStore.MAX_PHOTOS - (runBlocking { receipts.get(frame.key) }?.photos?.size ?: 0)
+            existingPhotos = runBlocking { receipts.get(frame.key) }?.photos?.size ?: 0
+            // The QR may come last, after this attempt already saved more than the NF has room for.
+            if (session.segments.size > photoAllowance) reachCap()
           }
         }
       } else if (session.chave != null && frame.key != session.chave) policy.identify(frame.key)
@@ -171,7 +177,7 @@ internal class CaptureEngine(
     val shown = if (frame.timestampMs - hintSince >= 250 || lastState.segmentCount == 0) guidance else lastState.guidance
     lastState = lastState.copy(edges = edges, maskPaths = maskPaths, frameId = frame.timestampMs, axisAngle = axisAngle, guidance = shown, qr = policy.key != null,
       top = policy.top != null, bottom = policy.bottom != null, connected = policy.connected,
-      segmentCount = session.segments.size, geometryKnown = result.geometry?.confirmed == true, error = null)
+      segmentCount = session.segments.size, geometryKnown = result.geometry?.confirmed == true, error = capMessage)
 
     // Publish one coherent frame before JPEG encoding/fsync. Storage must not hold back its contour.
     publish(lastState)
@@ -180,9 +186,9 @@ internal class CaptureEngine(
       if (lastOverlayAt > 0) CapturePerf.elapsed("overlayInterval", lastOverlayAt)
       lastOverlayAt = CapturePerf.now()
     }
-    if (!policy.conflictingKey && tracker.retainedAnchorCount > 0 && tracked != null && doc.sharp && policy.useful(tracked.bands, tracked.top, tracked.bottom, doc.score)) {
+    if (capMessage == null && !policy.conflictingKey && tracker.retainedAnchorCount > 0 && tracked != null && doc.sharp && policy.useful(tracked.bands, tracked.top, tracked.bottom, doc.score)) {
       if (session.segments.size >= photoAllowance) {
-        lastState = lastState.copy(error = "Limite de 100 imagens por nota atingido. A captura está incompleta.")
+        if (!policy.complete) reachCap()
       } else {
         val current = candidate
         if (current == null || doc.score > current.document.score * 1.03 || policy.gain(tracked.bands) > policy.gain(current.tracked.bands) * 1.2 ||
@@ -198,7 +204,7 @@ internal class CaptureEngine(
     }
     // A candidate is saved even if a subsequent frame is blurred; its own mask and mapping remain authoritative.
     if (candidate != null && frame.timestampMs - windowAt >= 300) CapturePerf.measure("save") { saveCandidate() }
-    if (policy.complete && !done && session.segments.size <= photoAllowance) complete()
+    if (capMessage == null && policy.complete && !done && session.segments.size <= photoAllowance) complete()
     if (BuildConfig.DEBUG && frame.timestampMs - lastDiagnosticAt > 2000) {
       lastDiagnosticAt = frame.timestampMs
       Log.d("ReceiptCapture", "located=${doc.located} sides=${doc.hasSides} sharp=${doc.sharp} tracked=${tracked != null} " +
@@ -208,7 +214,19 @@ internal class CaptureEngine(
     if (!done) publish(lastState)
   }
 
+  private fun reachCap() {
+    candidate?.close(); candidate = null
+    capMessage = if (existingPhotos == 0) "Limite de ${ReceiptStore.MAX_PHOTOS} imagens por nota atingido. Saia e escolha guardar o código."
+      else "Esta nota já tem $existingPhotos imagens, e o limite é ${ReceiptStore.MAX_PHOTOS}. Saia e escolha guardar o código."
+    lastState = lastState.copy(error = capMessage)
+  }
   private fun saveCandidate() {
+    if (session.segments.size >= photoAllowance) {
+      // Identified after this candidate was picked: it no longer fits.
+      candidate?.close(); candidate = null
+      if (!policy.complete) reachCap()
+      return
+    }
     val selected = candidate ?: return
     candidate = null
     selected.use { c ->

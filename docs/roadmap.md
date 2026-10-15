@@ -46,6 +46,9 @@ Definir o papel do servidor e se o PC será apenas consulta ou também edição;
 O parser no Android foi escolhido pelo usuário após a comparação em [etl-options.md](etl-options.md).
 Definir a separação entre cadastro pessoal e compartilhado, conforme [local-and-shared-modes.md](local-and-shared-modes.md).
 Desenhar o fluxo manual o suficiente para verificar que o esquema atende às operações, antes de construir as telas.
+Incluir fotos como evidência com seus metadados (máscara, faixas, qualidade) e um envio ao servidor que só acrescente,
+identificado por conteúdo: o upload atual substitui a lista de fotos do servidor (D35). Proposta de D35: iniciar esta
+etapa depois da correção de qualidade da captura, pausando novos incrementos de geometria.
 
 **Conclusão da etapa:** esquema proposto, exemplos dos fluxos principais, política de correções/exclusões e plano
 de migração registrados. Escolhas aprovadas devem ser adicionadas ao registro de decisões.

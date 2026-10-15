@@ -128,7 +128,7 @@ O filtro de candidatos evita alguns frames redundantes na sessão, mas não há 
 deduplicação entre sessões. Repetir uma NF acrescenta imagens ao mesmo registro. O usuário aceita preservar
 muitas imagens enquanto desenvolvemos; não apagar evidências para resolver o falso positivo de nitidez.
 O limite técnico atual de 100 fotos não define a política final de retenção. A migração correspondente foi
-validada isoladamente e ainda não foi aplicada ao servidor em uso.
+aplicada ao servidor em uso em 2026-10-15, após backup (D36).
 
 Heurísticas futuras devem rejeitar capturas ruins e selecionar as melhores entre redundantes sem perder
 cobertura exclusiva, detalhes legíveis ou descontos. Primeiro avaliar em simulação, com razões de seleção

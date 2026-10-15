@@ -231,4 +231,50 @@ class CaptureEngineTest {
       assertTrue(state.exited)
     } finally { engine.close(); original.recycle() }
   }
+  private fun withExistingPhotos(receipts: ReceiptStore, count: Int) = runBlocking {
+    receipts.open(key, "https://example.invalid/")
+    repeat(count) { i -> receipts.addPhoto(key, java.io.File(receipts.dir(key), "old-$i.jpg").apply { writeBytes(ByteArray(0)) }) }
+  }
+  @Test fun qrReadLastOnAFullNoteStopsWithAMessageAndKeepsExistingPhotos() {
+    val receipts = ReceiptStore(tmp.newFolder("receipts")); val sessionRoot = tmp.newFolder("sessions")
+    val sessions = CaptureSessionStore(sessionRoot)
+    withExistingPhotos(receipts, 99)
+    var state = CaptureSessionState(); var uploads = 0
+    val engine = CaptureEngine(sessions, receipts, { state = it }, { uploads++ })
+    val original = longReceipt(); var time = 0L
+    try {
+      for (y in 0..1800 step 100) repeat(if (y == 1800) 6 else 3) {
+        val bitmap = Bitmap.createBitmap(original, 0, y, 900, 1200).copy(Bitmap.Config.ARGB_8888, false)
+        val qr = y == 1800
+        val packet = ReceiptFrame(DocumentVision.fromBitmap(bitmap), if (qr) key else null, if (qr) "https://example.invalid/" else null,
+          if (qr) listOf(DocumentPoint(.4, .6), DocumentPoint(.6, .6), DocumentPoint(.6, .8), DocumentPoint(.4, .8)) else emptyList(),
+          time, FrameMapping(900, 1200, 0, Matrix(), Matrix()), bitmap)
+        try { engine.observe(packet) } finally { packet.close() }
+        time += 200
+      }
+      assertFalse("A capture past the photo cap cannot complete: $state", state.completed)
+      assertTrue("The cap message must stay visible: $state", state.error?.contains("99 imagens") == true)
+      engine.exit(ExitChoice.KEEP_CODE)
+      assertEquals(99, runBlocking { receipts.get(key) }!!.photos.size)
+      assertTrue(sessionRoot.listFiles().orEmpty().isEmpty())
+      assertEquals(1, uploads)
+    } finally { engine.close(); original.recycle() }
+  }
+  @Test fun lastFreeSlotStillCompletes() {
+    val receipts = ReceiptStore(tmp.newFolder("receipts")); val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
+    withExistingPhotos(receipts, 99)
+    var state = CaptureSessionState()
+    val engine = CaptureEngine(sessions, receipts, { state = it }, { }); val original = longReceipt()
+    try {
+      repeat(6) { i ->
+        val bitmap = original.copy(Bitmap.Config.ARGB_8888, false)
+        val packet = ReceiptFrame(DocumentVision.fromBitmap(bitmap), key, "https://example.invalid/",
+          listOf(DocumentPoint(.4, .6), DocumentPoint(.6, .6), DocumentPoint(.6, .8), DocumentPoint(.4, .8)),
+          i * 200L, FrameMapping(900, 3000, 0, Matrix(), Matrix()), bitmap)
+        try { engine.observe(packet) } finally { packet.close() }
+      }
+      assertTrue("One photo still fits: $state", state.completed)
+      assertEquals(100, runBlocking { receipts.get(key) }!!.photos.size)
+    } finally { engine.close(); original.recycle() }
+  }
 }
