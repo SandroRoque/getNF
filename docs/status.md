@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-15. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D41). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D42). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -51,7 +51,7 @@ categorized → reportable through the `spending_lines` view.
 - **Local data** (not in git): the receipts captured so far, every product categorized, in `server/pb_data/` plus the
   photos on the phone. **Back up `server/pb_data/`.** The categorizations exist only there.
 - **Tests:** `cd android && ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`:
-  46 unit tests and 47 instrumented vision/capture/lifecycle tests (the D37 focus benchmark and the D38 real-capture eval, which skips without local files). Never run connectedAndroidTest with the phone attached: it uninstalls the app and wipes its receipts on the emulator; an offline camera journey
+  51 unit tests and 47 instrumented vision/capture/lifecycle tests (the D37 focus benchmark and the D38 real-capture eval, which skips without local files). Never run connectedAndroidTest with the phone attached: it uninstalls the app and wipes its receipts on the emulator; an offline camera journey
   also read a synthetic QR, saved a photo and completed automatically (see capture-validation.md).
   Debug build and lint pass. PocketBase's 100-photo migration and rollback were validated in an isolated database;
   the migration was applied to the live server on 2026-10-15 after a backup (D36). Android also has a 100-photo technical cap.
@@ -109,8 +109,8 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
   during development; future bad/redundant-image selection is planned, with no deletion implemented (D34).
   Further device validation must cover long thermal receipts, low contrast, shadows, motion and interruptions.
 
-0. **Don't delete photos locally** until uploads are append-only: a PATCH replaces the server's photos (D36).
-   **A fresh PocketBase database doesn't start with the hooks** (D36): fix before restoring onto another machine.
+0. Photos now upload append-only to `receipt_photos` (D42). Pending: confirm the phone's first upload on the live
+   server. A restore onto a new machine needs one restart after the first start (D42).
 1. **Uploads only on home Wi‑Fi with the PC on** (D18). Fine for now. Pending, by the user: reserve `192.168.4.4` for
    this PC in the router's DHCP settings, and run `sudo bash tools/setup-system.sh` once so Docker starts at boot.
    Tailscale (D6) can come with the NAS if uploads from outside are ever wanted.

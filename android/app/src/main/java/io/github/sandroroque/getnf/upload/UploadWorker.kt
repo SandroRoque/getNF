@@ -41,7 +41,12 @@ class UploadWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         try {
           val id = client.upsert(config, token, receipt, store.dir(receipt.chave))
           store.markUploaded(receipt.chave, receipt.version, id)
-          Log.i(TAG, "uploaded ${receipt.chave} v${receipt.version} as $id")
+          // Each photo is confirmed on its own, so an interrupted run resumes where it stopped (D42).
+          for (photo in receipt.pendingPhotos) {
+            client.uploadPhoto(config, token, id, store.dir(receipt.chave), photo, receipt.captureSegments.find { it.photo == photo })
+            store.markPhotoUploaded(receipt.chave, photo)
+          }
+          Log.i(TAG, "uploaded receipt v${receipt.version} as $id with ${receipt.pendingPhotos.size} new photo(s)")
         } catch (e: PocketBaseException) {
           // Bad data for this one receipt: record it and carry on with the rest.
           Log.w(TAG, "rejected ${receipt.chave}", e)

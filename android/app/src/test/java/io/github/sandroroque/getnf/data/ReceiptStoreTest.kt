@@ -61,5 +61,25 @@ class ReceiptStoreTest {
   }
 
   @Test
+  fun photosStayPendingUntilEachIsConfirmed() = runTest {
+    val store = store()
+    val r = store.open(chave, "qr")
+    val a = store.newPhotoFile(chave).apply { writeBytes(byteArrayOf(1)) }; store.addPhoto(chave, a)
+    val b = store.newPhotoFile(chave).apply { writeBytes(byteArrayOf(2)) }; store.addPhoto(chave, b)
+    store.markUploaded(chave, store.get(chave)!!.version, "abc")
+    // Receipt fields are up to date, but photos are confirmed one by one (D42).
+    assertTrue(store.get(chave)!!.needsUpload)
+    val version = store.get(chave)!!.version
+    store.markPhotoUploaded(chave, a.name)
+    assertEquals(listOf(b.name), store.get(chave)!!.pendingPhotos)
+    store.markPhotoUploaded(chave, b.name); store.markPhotoUploaded(chave, b.name)
+    val done = store().apply { load() }.receipts.value.single()
+    assertFalse(done.needsUpload)
+    assertEquals(listOf(a.name, b.name), done.uploadedPhotos)
+    assertEquals(version, done.version)
+    assertTrue(r.version < version)
+  }
+
+  @Test
   fun getUnknownIsNull() = runTest { assertNull(store().get(chave)) }
 }

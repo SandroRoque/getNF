@@ -73,7 +73,7 @@ consistente e recuperável; não apagar originais enquanto a seleção não esti
 **Pré-requisito identificado em D35 e confirmado em D36:** o upload atual substitui a lista de fotos do servidor pela do celular.
 Apagar uma foto localmente a apagaria também no servidor, que é hoje o único backup. Antes de qualquer descarte,
 o envio de evidências precisa só acrescentar (com identificação por conteúdo), e máscaras/metadados precisam
-sair do celular. Isso pertence ao desenho da etapa 1 do roadmap.
+sair do celular. Isso pertence ao desenho da etapa 1 do roadmap. **Atendido em D42:** fotos vão para `receipt_photos`, que só aceita acréscimo pela API, com máscara e metadados; o campo antigo guarda cópias duplicadas até uma política de retenção.
 
 Também proposto em D35: fazer a seleção final depois da sessão, como evolução deste passo, deixando à captura
 em tempo real apenas a garantia de cobertura suficiente.

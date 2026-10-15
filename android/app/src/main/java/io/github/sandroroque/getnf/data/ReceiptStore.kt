@@ -34,9 +34,13 @@ data class Receipt(
   val uploadError: String? = null,
   val captureSessions: List<String> = emptyList(),
   val captureSegments: List<CaptureSegment> = emptyList(),
+  /** Photos confirmed in the server's append-only receipt_photos collection (D42), by local file name. */
+  val uploadedPhotos: List<String> = emptyList(),
 ) {
+  val pendingPhotos: List<String>
+    get() = photos.filter { it !in uploadedPhotos }
   val needsUpload: Boolean
-    get() = uploadedVersion != version
+    get() = uploadedVersion != version || pendingPhotos.isNotEmpty()
 }
 
 class ReceiptStore(private val root: File, private val now: () -> Long = System::currentTimeMillis) {
@@ -80,6 +84,10 @@ class ReceiptStore(private val root: File, private val now: () -> Long = System:
 
   suspend fun markUploaded(chave: String, version: Long, remoteId: String) =
     update(chave, bump = false) { it.copy(uploadedVersion = version, remoteId = remoteId, uploadError = null) }
+
+  /** Not a local change: doesn't bump [Receipt.version]. */
+  suspend fun markPhotoUploaded(chave: String, photo: String) =
+    update(chave, bump = false) { if (photo in it.uploadedPhotos) it else it.copy(uploadedPhotos = it.uploadedPhotos + photo) }
 
   suspend fun markUploadError(chave: String, message: String) =
     update(chave, bump = false) { it.copy(uploadError = message) }

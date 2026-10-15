@@ -18,6 +18,15 @@ onRecordAfterUpdateSuccess((e) => {
 // On start: load taxonomy edits, and re-parse anything parsed by an older parser. Restart the server to apply either.
 onBootstrap((e) => {
   e.next()
+  // On an empty database the migrations haven't run yet at bootstrap, so the collections don't exist and every
+  // query fails. Skip instead of aborting startup (D42); the next start syncs. JSVM has no post-migration hook.
+  try {
+    e.app.findCollectionByNameOrId("receipts")
+    e.app.findCollectionByNameOrId("categories")
+  } catch (_) {
+    console.log("getnf: collections not created yet (fresh database); taxonomy sync and re-parse run on the next start")
+    return
+  }
   const ingest = require(`${__hooks}/lib/ingest.js`)
   const dir = $os.getenv("GETNF_TAXONOMY_DIR") || "/pb/taxonomy"
   try {

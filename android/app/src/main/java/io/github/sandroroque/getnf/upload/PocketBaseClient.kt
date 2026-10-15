@@ -1,5 +1,6 @@
 package io.github.sandroroque.getnf.upload
 
+import io.github.sandroroque.getnf.data.CaptureSegment
 import io.github.sandroroque.getnf.data.Receipt
 import io.github.sandroroque.getnf.data.ServerConfig
 import java.io.File
@@ -44,8 +45,9 @@ class PocketBaseClient(private val http: OkHttpClient = OkHttpClient()) {
   }
 
   /**
-   * Creates or fully replaces the server record for [receipt]. Files are sent again every time, so
-   * a retry after a lost response is harmless. Returns the record id.
+   * Creates or updates the server record for [receipt]: chave, URLs, dates and the page. Photos are never sent here:
+   * a multipart `photos` field replaces the server's list and deletes the files left out (D36). They go to
+   * receipt_photos with [uploadPhoto] instead. A retry after a lost response is harmless. Returns the record id.
    */
   fun upsert(config: ServerConfig, token: String, receipt: Receipt, dir: File): String {
     val id = receipt.remoteId ?: findId(config, token, receipt.chave)
@@ -55,9 +57,6 @@ class PocketBaseClient(private val http: OkHttpClient = OkHttpClient()) {
     receipt.pageUrl?.let { form.addFormDataPart("page_url", it) }
     form.addFormDataPart("captured_at", Instant.ofEpochMilli(receipt.capturedAt).toString())
     receipt.pageFetchedAt?.let { form.addFormDataPart("page_fetched_at", Instant.ofEpochMilli(it).toString()) }
-    for (name in receipt.photos) {
-      form.addFormDataPart("photos", name, File(dir, name).asRequestBody(JPEG))
-    }
     receipt.pageFile?.let { form.addFormDataPart("page", it, File(dir, it).asRequestBody(HTML)) }
 
     val url = if (id == null) api(config, "collections/receipts/records") else api(config, "collections/receipts/records/$id")
@@ -71,6 +70,41 @@ class PocketBaseClient(private val http: OkHttpClient = OkHttpClient()) {
       // The record we uploaded before was deleted on the server: look it up again / recreate it.
       if (e.status == 404 && receipt.remoteId != null) upsert(config, token, receipt.copy(remoteId = null), dir) else throw e
     }
+  }
+
+  /**
+   * Adds one photo to the append-only receipt_photos collection, with its capture mask and segment when it has one.
+   * Idempotent: if the server already holds this (receipt, local name), e.g. after a lost response, returns that
+   * record's id instead of failing.
+   */
+  fun uploadPhoto(config: ServerConfig, token: String, receiptId: String, dir: File, name: String, segment: CaptureSegment?): String {
+    existingPhoto(config, token, receiptId, name)?.let { return it }
+    val image = File(dir, name)
+    val form = MultipartBody.Builder().setType(MultipartBody.FORM)
+      .addFormDataPart("receipt", receiptId)
+      .addFormDataPart("local_name", name)
+      .addFormDataPart("image", name, image.asRequestBody(JPEG))
+      .addFormDataPart("captured_at", Instant.ofEpochMilli(segment?.capturedAt ?: image.lastModified()).toString())
+    if (segment != null) {
+      form.addFormDataPart("session_id", segment.sessionId)
+      form.addFormDataPart("segment", Json.encodeToString(CaptureSegment.serializer(), segment))
+      File(dir, segment.mask).takeIf { it.isFile }?.let { form.addFormDataPart("mask", it.name, it.asRequestBody(PNG)) }
+    }
+    val request = Request.Builder().url(api(config, "collections/receipt_photos/records")).header("Authorization", token).post(form.build()).build()
+    return try {
+      call(request)["id"]!!.jsonPrimitive.content
+    } catch (e: PocketBaseException) {
+      // A concurrent or earlier upload won the unique (receipt, local_name) index.
+      if (e.status == 400) existingPhoto(config, token, receiptId, name) ?: throw e else throw e
+    }
+  }
+
+  private fun existingPhoto(config: ServerConfig, token: String, receiptId: String, name: String): String? {
+    val url = api(config, "collections/receipt_photos/records").newBuilder()
+      .addQueryParameter("filter", "receipt='$receiptId' && local_name='$name'")
+      .addQueryParameter("fields", "id").addQueryParameter("perPage", "1").build()
+    val items = call(Request.Builder().url(url).header("Authorization", token).build())["items"]!!.jsonArray
+    return items.firstOrNull()?.jsonObject?.get("id")?.jsonPrimitive?.content
   }
 
   private fun findId(config: ServerConfig, token: String, chave: String): String? {
@@ -100,6 +134,7 @@ class PocketBaseClient(private val http: OkHttpClient = OkHttpClient()) {
   private companion object {
     val JSON = "application/json".toMediaType()
     val JPEG = "image/jpeg".toMediaType()
+    val PNG = "image/png".toMediaType()
     val HTML = "text/html; charset=utf-8".toMediaType()
   }
 }

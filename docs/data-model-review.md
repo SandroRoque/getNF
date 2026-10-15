@@ -88,6 +88,13 @@ As linhas de compra já são a base das observações de preço. Não é necess�
 histórico de preços duplicado. Cestas, pesos e versões metodológicas do IPCI serão definidos quando a metodologia
 for discutida; por enquanto, preservar identidade, datas, unidades, preços e origem das correções.
 
+## Evidências (definido em D42)
+
+Fotos são evidência imutável: uma linha por foto em `receipt_photos`, com máscara e metadados da captura, criada
+pelo app e nunca alterada ou apagada pela API. Apagar uma nota apaga suas fotos; a futura exclusão pelo app deve
+avisar quantas fotos irão junto e exigir confirmação. No Android, o manifesto da nota registra quais fotos o servidor
+já confirmou. Falta incluir essa entidade no esquema local (Room) da etapa 2.
+
 ## Ordem proposta para o trabalho
 
 1. Definir entidades e operações com exemplos concretos de cadastro, correção, reprocessamento e exclusão.

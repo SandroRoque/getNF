@@ -698,3 +698,31 @@ The user judged capture good enough to move on, and so do the measurements: the 
 work is recorded under Known capture limits in status.md. **Long receipts that need several overlapping photos
 (stitching/registration across segments) were never tested on the phone**; every live capture so far was a short
 receipt that fits one or two frames. Next: roadmap stage 1 (data model, append-only evidence upload).
+
+## D42. Photos are append-only evidence in their own collection (2026-10-15)
+
+First slice of roadmap stage 1, chosen because of the loss paths confirmed in D36: the upload replaced the server's
+photo list (deleting what the phone didn't send), and capture masks and segment metadata existed only on the phone.
+
+- **`receipt_photos`** (PocketBase): one record per photo with `receipt`, `local_name` (unique per receipt),
+  `session_id`, `image` (JPEG), `mask` (PNG, optional), `segment` (capture JSON: polygon, bands, ends, score) and
+  `captured_at`. Authenticated users can create and read; nobody can update or delete through the API. The legacy
+  `receipts.photos` field is no longer written by the app; a PATCH without it keeps its files.
+- **Deleting a receipt deletes its photos** (cascade), as the user chose. Today only a superuser can delete, in the
+  PocketBase admin, whose confirmation doesn't mention the photos. **Requirement for the app's future delete
+  (stage 4): warn how many photos will go with the receipt and require an explicit confirmation.**
+- **App:** `Receipt.uploadedPhotos` records photos the server confirmed. The upload updates the receipt without
+  photos, then adds each pending photo to `receipt_photos` (mask and segment when it has them), confirming them one
+  by one so an interrupted run resumes. It first looks the photo up and treats a unique-index rejection as already
+  uploaded, so retries never duplicate.
+- **Existing photos are uploaded once more** into `receipt_photos`, now with masks and metadata, as the user chose.
+  The ~55 legacy copies stay in `receipts.photos` until a retention policy removes duplicates.
+- **Fresh databases:** the bootstrap hook skips taxonomy sync and re-parse when the collections don't exist yet (the
+  JSVM runs onBootstrap before migrations and has no post-migration hook); the next start syncs. A restore onto a new
+  machine therefore needs one restart after the first start.
+- **Verified:** client request shapes with a fake server (no `photos` field ever; mask/segment sent; existing photo not
+  re-sent; lost-response retry resolves to the existing record). On an isolated PocketBase with the real migrations and
+  hooks: legacy photos kept across a PATCH (2 → 2), duplicate create 400, user update/delete 403, user receipt delete
+  403, superuser receipt delete 204 with its photos gone. Live server: backup `pre-receipt-photos-2026-10-15.zip`,
+  migration applied, receipts/items/products/categories/spending_lines/legacy photo counts unchanged (9/135/84/75/135/55).
+- Not yet run: the phone's first upload into `receipt_photos` against the live server. No emulator end-to-end run.
