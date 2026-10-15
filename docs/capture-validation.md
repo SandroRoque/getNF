@@ -257,3 +257,32 @@ no parser da página fiscal já salva. A revisão foi visual, sem alegação de 
 rejeitar borrão de movimento/baixa legibilidade mesmo quando a máscara do papel está correta, sem aumentar um
 limiar global que prejudique texto térmico fraco. Não apagar as imagens do usuário nem descartar silenciosamente
 as evidências já guardadas ao tratar essa falha.
+
+## Benchmark sintético de legibilidade — 2026-10-15 (D37)
+
+`FocusBenchmarkTest` (instrumentado) gera recibos sintéticos 1440×1920 com texto conhecido: tinta normal e
+térmica fraca, fontes 20/28/36 px, uma cena com QR. Aplica 16 degradações (nenhuma; desfoque gaussiano σ 1, 2 e
+3,5; borrão de movimento de 5, 9, 15 e 25 px a 0°, 45° e 90°), com e sem JPEG 92. O gabarito vem do OCR do ML Kit
+comparado ao texto conhecido: a faixa é legível quando todas as suas linhas têm ≥ 90% dos caracteres corretos.
+Faixas avaliadas: 3.008 com texto, 1.532 legíveis; as pontas do papel ficam de fora. Resultados no logcat
+(`FocusBenchmark`). Rodar sozinho:
+`./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.sandroroque.getnf.ui.scan.FocusBenchmarkTest`
+(cerca de 6 min no emulador).
+
+| Critério | Ilegíveis aprovadas | Legíveis rejeitadas |
+| --- | --- | --- |
+| Métrica anterior (razão combinada X+Y, limiar 1,18) | 440 | 787 |
+| Razão por direção, limiar 1,18 | 55 | 1.194 |
+| Razão por direção, limiar 1,40 | 1 | 1.467 |
+| OCR com confiança ≥ 0,7 (sem gabarito) | 3 | 354 |
+| OCR com confiança ≥ 0,8 (sem gabarito) | 0 | 562 |
+| Adotado: pré-filtro por direção ≥ 0,7 + OCR ≥ 0,8 | 0 | 594 |
+
+Diagnóstico: a razão de gradientes mede borrão em pixels, mas legibilidade depende do borrão relativo ao tamanho
+da letra. Texto de 36 px nítido era reprovado (score 0,92) e texto de 20 px com borrão de 9 px aprovado; nenhum
+limiar separa os dois. O borrão de movimento passava porque X e Y eram somados. A cena com QR mostrou o segundo
+defeito: texto fraco borrado classificado como papel em branco era liberado porque o QR contava como conteúdo.
+
+OCR levou mediana de 1,6 s (máx. 2,9 s) por imagem no emulador; não representa o Motorola. Limites: cenas
+sintéticas com fonte monoespaçada e sem ruído de sensor; o gabarito também é OCR, então mede legibilidade para
+máquina, não para pessoas. A confiança do ML Kit por linha é usada sem calibração no aparelho.

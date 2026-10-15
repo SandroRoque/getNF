@@ -45,7 +45,7 @@ class CaptureEngineTest {
     try {
       DocumentVision.fromBitmap(overview).use { vision ->
         assertTrue("The blurred overview must retain physical edges: ${vision.observation}", vision.observation.hasFullOutline)
-        assertFalse("Blurred content cannot count as a photo", vision.observation.sharp)
+        // The gradient score only pre-filters now; OCR rejects this frame at save time (D37), checked below.
         val packet = ReceiptFrame(VisionFrame(vision.gray.clone(), vision.mask.clone(), vision.observation), null, null, emptyList(),
           0, FrameMapping(900, 3000, 0, Matrix(), Matrix()), overview.copy(Bitmap.Config.ARGB_8888, false))
         try { engine.observe(packet) } finally { packet.close() }

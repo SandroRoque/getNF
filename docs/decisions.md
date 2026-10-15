@@ -572,3 +572,36 @@ First slice of D35's order, step (a).
 
 D36 validation: after freeing disk space, all 37 instrumented tests pass on the emulator, including the two new
 cap tests.
+
+## D37. Capture legibility decided by on-device OCR; the gradient score only pre-filters (2026-10-15)
+
+A synthetic benchmark with OCR ground truth (capture-validation.md) reproduced both D35 defects and showed that
+the gradient ratio can't be calibrated: it measures blur in pixels while legibility depends on blur relative to
+character size. Sharp 36 px text failed and 20 px text with 9 px motion blur passed; per-direction scoring fixed
+motion blur but no threshold separated legible from illegible (1.18: 55 illegible accepted, 1,194 of 1,532
+legible rejected). OCR confidence alone, without ground truth, did: at 0.8, 0 illegible accepted.
+
+- **Saved candidates are read with ML Kit Latin OCR** (already a dependency, unused since D28), once per candidate
+  on the decoded JPEG, never per analysis frame (`TextLegibility`). A content band counts as covered only when OCR
+  read at least one line in it and every line has confidence ≥ 0.8. Only the legible parts of the candidate's
+  bands are credited (mapped linearly onto the tracked bands); a candidate with nothing legible is discarded.
+  Lines outside the paper mask are ignored. When no line is confident, a second pass reads the image rotated
+  180°, because the canonical image can be upside down (D31).
+- **Gradient score:** per-direction ratio (worst of X and Y), threshold lowered from 1.18 to 0.7. It now only keeps
+  OCR off gross blur. Pre-filter + OCR on the benchmark: 0 illegible accepted, 594 of 1,532 legible rejected.
+- **Blank paper:** content is also detected from line-scale structure (difference of Gaussians, read only where
+  its ~15 px support stays inside the paper), so blurred faint print isn't classified as blank. A decoded QR no
+  longer makes blank bands bridgeable; only text OCR read in the same image does.
+- **Exceptions, deliberately:** a band whose only content is the decoded QR passes (the QR is its evidence); a
+  band holding a paper end with no OCR line counts as blank, because the coarse mask can include a sliver of
+  table there. Without it the ends were never credited and sideways captures couldn't complete.
+- **Guidance:** with a loose pre-filter, the focus hint shows for 1.5 s after OCR rejects a candidate.
+- **Tests:** the instrumented install grants runtime permissions (`installOptions -g`); the camera lifecycle tests
+  depended on a manual `pm grant` that each run's uninstall wiped. 41 unit tests, 38 instrumented tests including
+  the benchmark, and lint pass.
+
+**Limits:** synthetic evidence only, and the ground truth is machine legibility. About 39% of legible bands are
+still rejected, so captures need more frames. OCR runs synchronously on the capture executor: analysis and the
+overlay pause while a candidate is read (1.6 s median on the emulator, unmeasured on the Motorola). Faint
+blurred print below the structure threshold can still pass as blank inside a frame where other text is legible.
+Next: measure OCR time and confidences on the Motorola, including the six D34 JPEGs, before trusting 0.8.

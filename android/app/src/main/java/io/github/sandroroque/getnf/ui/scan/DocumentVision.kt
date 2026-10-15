@@ -325,6 +325,8 @@ internal object DocumentVision {
   fun quality(source: Mat, paperMask: Mat, qr: List<DocumentPoint> = emptyList()): List<RegionQuality> {
     val mask = focusMask(paperMask, qr); val paper = Mat(); val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(9.0, 9.0))
     val smooth = Mat(); val gx = Mat(); val gy = Mat(); val bx = Mat(); val by = Mat(); val blurred = Mat()
+    val coarse = Mat(); val shading = Mat(); val band = Mat(); val inner = Mat()
+    val innerKernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(31.0, 31.0))
     val rows = mutableListOf<RegionQuality>()
     try {
       Imgproc.erode(paperMask, paper, kernel)
@@ -332,8 +334,17 @@ internal object DocumentVision {
       Imgproc.GaussianBlur(source, blurred, Size(7.0, 7.0), 1.5)
       Imgproc.Sobel(smooth, gx, CvType.CV_32F, 1, 0); Imgproc.Sobel(smooth, gy, CvType.CV_32F, 0, 1)
       Imgproc.Sobel(blurred, bx, CvType.CV_32F, 1, 0); Imgproc.Sobel(blurred, by, CvType.CV_32F, 0, 1)
+      listOf(gx, gy, bx, by).forEach { Core.absdiff(it, Scalar.all(0.0), it) }
+      // Text-line-scale structure survives blur; slow shading doesn't. Blurred print stays "content", so it can't
+      // pass as blank paper and bridge coverage (D37).
+      Imgproc.GaussianBlur(source, coarse, Size(0.0, 0.0), 1.5)
+      Imgproc.GaussianBlur(source, shading, Size(0.0, 0.0), 5.0)
+      Core.subtract(coarse, shading, band, Mat(), CvType.CV_32F)
+      // Its support is ~15 px, so it is only read where that support stays on paper (D27).
+      Imgproc.erode(mask, inner, innerKernel)
       val step = 96
-      var anyContent = qr.size >= 4
+      // A decoded QR proves nothing about the text's focus (D27/D28).
+      var anyContent = false
       for (y in 0 until source.rows() step step) {
         var bad = false; var content = false; val scores = mutableListOf<Double>(); var paperPixels = 0
         val height = min(step, source.rows() - y)
@@ -343,24 +354,28 @@ internal object DocumentVision {
           val paperRegion = paper.submat(rect)
           try { paperPixels += Core.countNonZero(paperRegion) } finally { paperRegion.release() }
           if (pixels < 64) { m.release(); continue }
-          val original = source.submat(rect); val mean = MatOfDouble(); val std = MatOfDouble()
+          val original = source.submat(rect); val structure = band.submat(rect); val innerTile = inner.submat(rect)
+          val mean = MatOfDouble(); val std = MatOfDouble()
           try {
             Core.meanStdDev(original, mean, std, m)
-            if (std.toArray()[0] >= 5.0) {
-              content = true; anyContent = true
-              fun energy(a: Mat, b: Mat): Double {
-                val ra = a.submat(rect); val rb = b.submat(rect); val magnitude = Mat()
-                try { Core.magnitude(ra, rb, magnitude); return Core.mean(magnitude, m).`val`[0] }
-                finally { ra.release(); rb.release(); magnitude.release() }
-              }
-              val sharp = energy(gx, gy); val soft = energy(bx, by)
-              val score = sharp / max(1.0, soft)
-              scores += score
-              // The scale ratio measures focus independently of contrast. An absolute energy
-              // floor falsely rejects sharp, faint print and the white quiet zone around a QR.
-              if (score < 1.18) bad = true
+            val contrast = std.toArray()[0]
+            val blurredPrint = Core.countNonZero(innerTile) >= 64 && run {
+              Core.meanStdDev(structure, mean, std, innerTile); std.toArray()[0] >= CONTENT_STRUCTURE
             }
-          } finally { m.release(); original.release(); mean.release(); std.release() }
+            if (contrast >= 5.0 || blurredPrint) {
+              content = true; anyContent = true
+              fun ratio(sharp: Mat, soft: Mat): Double {
+                val a = sharp.submat(rect); val b = soft.submat(rect)
+                try { return Core.mean(a, m).`val`[0] / max(.5, Core.mean(b, m).`val`[0]) } finally { a.release(); b.release() }
+              }
+              // Worst direction: motion blur only softens edges across the motion, so a combined magnitude hides it.
+              val score = min(ratio(gx, bx), ratio(gy, by))
+              scores += score
+              // Only a coarse pre-filter: the ratio depends on text size, so legibility is decided by OCR on the
+              // saved candidate (TextLegibility, D37). The threshold keeps OCR from running on gross blur.
+              if (score < PREFILTER) bad = true
+            }
+          } finally { m.release(); original.release(); structure.release(); innerTile.release(); mean.release(); std.release() }
         }
         val qrHere = qr.isNotEmpty() && qr.minOf { it.y } < (y + height).toDouble() / source.rows() && qr.maxOf { it.y } > y.toDouble() / source.rows()
         rows += RegionQuality(CaptureBand(y.toDouble() / source.rows(), (y + height).toDouble() / source.rows()),
@@ -368,6 +383,9 @@ internal object DocumentVision {
       }
       // Blank paper alone is not evidence of focus; blank bands can bridge text within the same good image.
       return rows.map { it.copy(usable = it.usable && anyContent) }
-    } finally { listOf(mask, paper, kernel, smooth, gx, gy, bx, by, blurred).forEach { it.release() } }
+    } finally { listOf(mask, paper, kernel, smooth, gx, gy, bx, by, blurred, coarse, shading, band, inner, innerKernel).forEach { it.release() } }
   }
+  private const val CONTENT_STRUCTURE = 1.5
+  /** Synthetic benchmark: with OCR >= 0.8, no illegible band accepted and few extra legible ones rejected. */
+  private const val PREFILTER = .7
 }

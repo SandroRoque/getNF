@@ -8,6 +8,9 @@ plugins {
 
 android {
     namespace = "io.github.sandroroque.getnf"
+    // Grant runtime permissions (CAMERA) on install, so instrumented camera tests don't depend on a manual
+    // `pm grant` that each connectedAndroidTest uninstall wipes.
+    installation { installOptions += listOf("-g") }
     compileSdk = 36
     defaultConfig {
         applicationId = "io.github.sandroroque.getnf"

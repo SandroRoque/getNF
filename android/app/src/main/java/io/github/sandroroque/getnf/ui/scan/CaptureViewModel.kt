@@ -89,6 +89,7 @@ internal class CaptureEngine(
   private val receipts: ReceiptStore,
   private val publish: (CaptureSessionState) -> Unit,
   private val enqueueUpload: () -> Unit,
+  private val legibility: TextLegibility = TextLegibility(),
 ) : AutoCloseable {
   private data class Candidate(
     val bitmap: Bitmap,
@@ -114,6 +115,9 @@ internal class CaptureEngine(
   private val photoAllowance get() = ReceiptStore.MAX_PHOTOS - existingPhotos
   // Once set, the attempt cannot finish: no more photos fit this NF. Exit keeps the code (D36).
   private var capMessage: String? = null
+  // The gradient pre-filter is loose (D37): after OCR rejects a photo, ask for focus for a moment.
+  private var illegibleAt = Long.MIN_VALUE / 2
+  private var frameAt = 0L
   private var observedTop: Double? = null
   private var observedBottom: Double? = null
   private var topFrames = 0
@@ -172,7 +176,10 @@ internal class CaptureEngine(
     val axisStart = frame.mapping.map(DocumentPoint(.5, .3)); val axisEnd = frame.mapping.map(DocumentPoint(.5, .7))
     val axisAngle = if (axisStart != null && axisEnd != null)
       Math.toDegrees(kotlin.math.atan2(axisEnd.y - axisStart.y, axisEnd.x - axisStart.x)).toFloat() - 90f + if (position?.axisReversed == true) 180f else 0f else 0f
-    val guidance = policy.guidance(doc, tracked != null, tracked?.center, position?.top != null, result.geometry?.confirmed == true)
+    frameAt = frame.timestampMs
+    val guidance = policy.guidance(doc, tracked != null, tracked?.center, position?.top != null, result.geometry?.confirmed == true).let { g ->
+      if (frame.timestampMs - illegibleAt > 1500 || CaptureHint.FOCUS in g.warnings) g else g.copy(warnings = listOf(CaptureHint.FOCUS) + g.warnings)
+    }
     if (pendingHint != guidance) { pendingHint = guidance; hintSince = frame.timestampMs }
     val shown = if (frame.timestampMs - hintSince >= 250 || lastState.segmentCount == 0) guidance else lastState.guidance
     lastState = lastState.copy(edges = edges, maskPaths = maskPaths, frameId = frame.timestampMs, axisAngle = axisAngle, guidance = shown, qr = policy.key != null,
@@ -236,21 +243,28 @@ internal class CaptureEngine(
       var kept = false
       try {
         writeBitmap(c.bitmap, image, Bitmap.CompressFormat.JPEG)
-        if (!validateCapturedSegment(image, c.mask, c.document.usableBands, c.qr)) {
-          if (BuildConfig.DEBUG) Log.d("ReceiptCapture", "candidateRejected=encodedQuality top=${c.tracked.top != null} bottom=${c.tracked.bottom != null}")
+        val imageBands = c.document.usableBands
+        val legible = validateCapturedSegment(image, c.mask, imageBands, c.qr, legibility, listOfNotNull(c.document.top, c.document.bottom))
+        // Credit only what OCR could read; the rest of the frame stays uncovered (D37).
+        val credited = imageBands.zip(c.tracked.bands).flatMap { (imageBand, worldBand) ->
+          intersectBands(listOf(imageBand), legible).map { restrictBand(imageBand, worldBand, it, c.tracked.axisReversed) }
+        }.let(::mergeBands)
+        if (credited.isEmpty()) {
+          illegibleAt = frameAt
+          if (BuildConfig.DEBUG) Log.d("ReceiptCapture", "candidateRejected=illegible top=${c.tracked.top != null} bottom=${c.tracked.bottom != null}")
           return
         }
         val maskBitmap = Bitmap.createBitmap(c.mask.cols(), c.mask.rows(), Bitmap.Config.ARGB_8888)
         try { Utils.matToBitmap(c.mask, maskBitmap); writeBitmap(maskBitmap, maskFile, Bitmap.CompressFormat.PNG) }
         finally { maskBitmap.recycle() }
         val segment = CaptureSegment(image.name, maskFile.name, c.document.polygon.map { listOf(it.x, it.y) },
-          c.tracked.bands.map { listOf(it.start, it.end) }, c.tracked.top, c.tracked.bottom,
+          credited.map { listOf(it.start, it.end) }, c.tracked.top, c.tracked.bottom,
           c.document.score, System.currentTimeMillis(), session.id)
         session = session.copy(segments = session.segments + segment)
         sessions.write(session)
         kept = true
-        policy.credit(c.tracked.bands, c.tracked.top, c.tracked.bottom, c.document.score)
-        if (BuildConfig.DEBUG) Log.d("ReceiptCapture", "segmentAccepted bands=${c.tracked.bands} top=${c.tracked.top} bottom=${c.tracked.bottom}")
+        policy.credit(credited, c.tracked.top, c.tracked.bottom, c.document.score)
+        if (BuildConfig.DEBUG) Log.d("ReceiptCapture", "segmentAccepted bands=$credited of ${c.tracked.bands} top=${c.tracked.top} bottom=${c.tracked.bottom}")
         lastState = lastState.copy(segmentCount = session.segments.size, top = policy.top != null,
           bottom = policy.bottom != null, connected = policy.connected)
       } finally { if (!kept) { image.delete(); maskFile.delete() } }
@@ -285,6 +299,6 @@ internal class CaptureEngine(
     try {
       // Navigation/process cleanup conserves only an identified code, never provisional photos.
       if (!done) exit(ExitChoice.KEEP_CODE)
-    } finally { tracker.close() }
+    } finally { tracker.close(); legibility.close() }
   }
 }

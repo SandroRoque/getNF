@@ -40,6 +40,10 @@ reduz o contraste do texto térmico fraco; faixas vazias contam como utilizávei
 O benchmark deve cobrir os dois casos. Proposta a avaliar: razão por orientação (pior caso) e OCR embarcado nos
 candidatos como critério de legibilidade, reutilizável no OCR de descontos.
 
+**Resultado (D37):** o benchmark sintético está em `FocusBenchmarkTest`. A razão de gradientes não separa
+legível de ilegível em tamanhos de letra diferentes; a decisão passou ao OCR embarcado em cada candidato salvo,
+com o gradiente só como pré-filtro. Falta a calibração no Motorola. Números em capture-validation.md.
+
 ## 2. Classificar redundância sem apagar
 
 Propor metadados por imagem: sessão/frame, dimensões, máscara, regiões de conteúdo avaliadas, medidas de
