@@ -303,3 +303,13 @@ borrada por movimento, ilegível; `5b11-1` mais suave, legível; as outras oito 
 - OCR no emulador: cerca de 1,7–2,1 s por foto real (uma de 3,9 s). Ainda sem medição no Motorola.
 - Benchmark sintético com a regra nova: 111 de 1.476 faixas ilegíveis aceitas, 107 delas parcialmente legíveis
   (50–89% dos caracteres) e 4 graves (< 50%); 129 de 1.532 legíveis rejeitadas (antes: 594).
+
+## Primeira captura ao vivo com OCR — 2026-10-15 (D39)
+
+Com o APK do D38 instalado preservando os dados, o usuário capturou a mesma nota. OCR no Motorola: 146–559 ms por
+candidato (contra 1,6–2 s no emulador). Sobre fundo claro, a sombra retangular do celular foi localizada como nota;
+sem textura, não gerava âncoras e o rastreamento não avançava. Depois, com um fundo vermelho sob a nota, a captura
+concluiu rápido, mas a máscara cobriu o fundo inteiro. Quatro fotos foram anexadas à nota (parte delas com sombra
+ou fundo na máscara; não há como removê-las pelo app). Fotos e máscaras foram copiadas para pasta temporária fora do
+repositório e reavaliadas com `CaptureEvidenceEvalTest` após as correções do D39: sombra rejeitada, fundo vermelho
+rejeitado com a nota localizada dentro dele.

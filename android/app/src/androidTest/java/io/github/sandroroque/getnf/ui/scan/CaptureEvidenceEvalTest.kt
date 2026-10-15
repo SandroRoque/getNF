@@ -33,6 +33,19 @@ class CaptureEvidenceEvalTest {
           Utils.bitmapToMat(bitmap, rgba); Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY)
           Utils.bitmapToMat(maskBitmap, small); Imgproc.cvtColor(small, small, Imgproc.COLOR_RGBA2GRAY)
           Imgproc.resize(small, mask, gray.size(), 0.0, 0.0, Imgproc.INTER_NEAREST)
+          // Detection on the stored frame, as the analyzer would see it now (D39); overlay saved for local review.
+          DocumentVision.DEBUG_PAPER = true
+          Log.i("CaptureEval", "%s paper candidates:".format(photo.name.takeLast(12)))
+          DocumentVision.fromBitmap(bitmap).use { frame ->
+            DocumentVision.DEBUG_PAPER = false
+            Log.i("CaptureEval", "%s detect located=%s sides=%s rotation=%d".format(photo.name.takeLast(12), frame.observation.located, frame.observation.hasSides, frame.rotation))
+            val out = File(dir.parentFile, "eval-out").apply { mkdirs() }
+            val canonical = if (frame.rotation == 0) bitmap else android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height,
+              android.graphics.Matrix().apply { postRotate(frame.rotation.toFloat()) }, true)
+            val overlay = CaptureInspection.render(canonical, frame.observation, frame.mask)
+            File(out, photo.name.removeSuffix(".jpg") + ".detect.png").outputStream().use { overlay.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            overlay.recycle(); if (canonical !== bitmap) canonical.recycle()
+          }
           val quality = DocumentVision.quality(gray, mask)
           val started = System.nanoTime()
           val lines = legibility.read(bitmap, mask)

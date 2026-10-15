@@ -8,8 +8,8 @@ import kotlin.math.*
 internal object PaperRegion {
   private data class Candidate(val contour: Array<Point>, val score: Double, val turn: Int)
 
-  fun detect(source: Mat, evaluateQuality: Boolean): VisionFrame? {
-    val gray = Mat(); val smooth = Mat(); val binary = Mat(); val edge = Mat()
+  fun detect(source: Mat, evaluateQuality: Boolean, chroma: Mat? = null): VisionFrame? {
+    val gray = Mat(); val smooth = Mat(); val binary = Mat(); val edge = Mat(); val region = Mat()
     val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(3.0, 3.0))
     try {
       val scale = min(1.0, 720.0 / max(source.cols(), source.rows()))
@@ -44,10 +44,14 @@ internal object PaperRegion {
             // Both lateral edges must be observed. A large background component touching
             // the side of the image is not the paper, even when it shares one strong edge.
             if (bounds.any { if (turn == 0) it.x <= 1 || it.x >= gray.cols() - 2 else it.y <= 1 || it.y >= gray.rows() - 2 }) continue
+            // A strong boundary isn't enough: a shadow or a coloured board under the receipt has one too (D39).
+            region.setTo(Scalar(0.0)); Imgproc.drawContours(region, listOf(contour), 0, Scalar(255.0), Imgproc.FILLED)
+            if (!DocumentVision.paperLike(gray, region, chroma)) continue
             proposals += Candidate(bounds, support * sqrt(area), turn)
           }
         } finally { contours.forEach { it.release() }; hierarchy.release(); work.release() }
       }
+      region.create(gray.size(), CvType.CV_8UC1)
       Imgproc.threshold(smooth, binary, 0.0, 255.0, Imgproc.THRESH_BINARY or Imgproc.THRESH_OTSU)
       Imgproc.morphologyEx(binary, binary, Imgproc.MORPH_CLOSE, kernel)
       collect(binary)
@@ -115,7 +119,7 @@ internal object PaperRegion {
             if (evaluateQuality) DocumentVision.quality(native, nativeMask) else emptyList()), candidate.turn)
         } finally { native.release(); nativeMask.release() }
       } finally { contour.release(); canonical.release(); mask.release() }
-    } finally { gray.release(); smooth.release(); binary.release(); edge.release(); kernel.release() }
+    } finally { gray.release(); smooth.release(); binary.release(); edge.release(); region.release(); kernel.release() }
   }
 
   private fun candidatePoints(mask: Mat): Array<Point> {

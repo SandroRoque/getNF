@@ -56,6 +56,8 @@ class PaperRegionTest {
     val image = Bitmap.createBitmap(900, 1200, Bitmap.Config.ARGB_8888)
     val c = Canvas(image); val p = Paint(); c.drawColor(Color.DKGRAY); p.color = Color.WHITE
     c.drawPath(Path().apply { moveTo(300f, 80f); lineTo(600f, 80f); lineTo(760f, 1120f); lineTo(140f, 1120f); close() }, p)
+    // Paper must look printed (D39).
+    print(c, 330f, 140f, 570f, 1080f)
     try { DocumentVision.fromBitmap(image).use { frame ->
       assertTrue(frame.observation.located)
       assertFalse(frame.observation.supportsTopSimilarity)
@@ -68,6 +70,7 @@ class PaperRegionTest {
     val image = Bitmap.createBitmap(1200, 600, Bitmap.Config.ARGB_8888)
     val c = Canvas(image); val p = Paint()
     c.drawColor(Color.DKGRAY); p.color = Color.WHITE; c.drawRect(100f, 0f, 1100f, 600f, p)
+    print(c, 140f, 20f, 1060f, 590f)
     val side = Bitmap.createBitmap(image, 0, 0, image.width, image.height, Matrix().apply { postRotate(-90f) }, true)
     try {
       val a = imageMat(image); val b = imageMat(side)
@@ -82,6 +85,13 @@ class PaperRegionTest {
       } ?: fail("Sideways partial region was not found")
       } finally { a.release(); b.release() }
     } finally { image.recycle(); side.recycle() }
+  }
+  private fun print(c: Canvas, left: Float, top: Float, right: Float, bottom: Float) {
+    val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = 24f; typeface = Typeface.MONOSPACE }
+    c.save(); c.clipRect(left, top, right, bottom)
+    var y = top + 24
+    while (y < bottom) { c.drawText("ITEM 07 FEIJAO 1KG 8,49 ".repeat(4), left, y, p); y += 34 }
+    c.restore()
   }
   private fun imageMat(bitmap: Bitmap): Mat {
     val rgba = Mat(); val gray = Mat()

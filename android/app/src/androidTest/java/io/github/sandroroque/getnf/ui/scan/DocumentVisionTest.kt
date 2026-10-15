@@ -106,6 +106,47 @@ class DocumentVisionTest {
       assertFalse(quality.filter { it.hasContent }.all { it.usable })
     } finally { bitmap.recycle(); source.release(); mask.release(); blurred.release() }
   }
+  private fun scene(background: Int, draw: (Canvas, Paint) -> Unit): Bitmap {
+    val bitmap = Bitmap.createBitmap(900, 1200, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap); val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    canvas.drawColor(background); draw(canvas, paint); return bitmap
+  }
+  private fun printed(canvas: Canvas, paint: Paint, paper: Int, left: Float, top: Float, right: Float, bottom: Float) {
+    paint.color = paper; canvas.drawRect(left, top, right, bottom, paint)
+    paint.color = Color.rgb(40, 40, 40); paint.textSize = 24f; paint.typeface = Typeface.MONOSPACE
+    var y = top + 50
+    while (y < bottom - 20) { canvas.drawText("ITEM 12 ARROZ 5KG 24,90", left + 15, y, paint); y += 34 }
+  }
+  @Test fun phoneShadowOnAWhiteTableIsNotPaper() {
+    // Live test, D39: the phone's rectangular shadow on a light table was located as the receipt.
+    val bitmap = scene(Color.rgb(236, 236, 232)) { c, p ->
+      p.color = Color.rgb(150, 150, 148); p.maskFilter = BlurMaskFilter(6f, BlurMaskFilter.Blur.NORMAL)
+      c.drawRect(260f, 200f, 640f, 1000f, p); p.maskFilter = null
+    }
+    try { DocumentVision.fromBitmap(bitmap).use { assertFalse("A flat shadow is not paper: ${it.observation}", it.observation.located) } }
+    finally { bitmap.recycle() }
+  }
+  @Test fun receiptOnAColouredBoardIsLocatedInsteadOfTheBoard() {
+    // Live test, D39: a red board under the receipt became the mask.
+    val bitmap = scene(Color.rgb(236, 236, 232)) { c, p ->
+      p.color = Color.rgb(190, 35, 40); c.drawRect(120f, 80f, 780f, 1120f, p)
+      p.color = Color.rgb(120, 20, 25); for (y in 100 until 1100 step 60) c.drawCircle(150f, y.toFloat(), 12f, p)
+      printed(c, p, Color.rgb(246, 246, 240), 260f, 150f, 640f, 1050f)
+    }
+    try { DocumentVision.fromBitmap(bitmap).use {
+      assertTrue("The receipt must be located: ${it.observation}", it.observation.located)
+      assertFalse("The red board is not paper", it.observation.contains(160.0 / 900, .5))
+      assertTrue(it.observation.contains(.5, .5))
+    } } finally { bitmap.recycle() }
+  }
+  @Test fun pastelReceiptsAreStillPaper() {
+    // NFs are always light, but white, yellow, green or blue.
+    for (paper in listOf(Color.rgb(250, 248, 240), Color.rgb(250, 244, 200), Color.rgb(212, 244, 212), Color.rgb(202, 224, 250))) {
+      val bitmap = scene(Color.rgb(65, 75, 80)) { c, p -> printed(c, p, paper, 200f, 80f, 700f, 1120f) }
+      try { DocumentVision.fromBitmap(bitmap).use { assertTrue("Paper ${Integer.toHexString(paper)} must be located: ${it.observation}", it.observation.located) } }
+      finally { bitmap.recycle() }
+    }
+  }
   @Test fun emptySceneHasNoPaperMaskOrSharpness() {
     val bitmap = Bitmap.createBitmap(900, 1200, Bitmap.Config.ARGB_8888)
     try { DocumentVision.fromBitmap(bitmap).use { assertFalse(it.observation.located); assertFalse(it.observation.sharp) } }

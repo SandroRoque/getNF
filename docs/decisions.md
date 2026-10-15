@@ -629,3 +629,29 @@ signal that matters.
 **Limits:** one illegible real photo is thin evidence; the threshold needs more real captures, including faint and
 partially blurred ones. A blurred strip between legible text bands would pass as unread content; depth-of-field blur
 usually grows toward one end, but it isn't excluded. OCR time on the Motorola is still unmeasured.
+
+## D39. A region must look like a receipt; long unread stretches aren't print; an anchorless map yields (2026-10-15)
+
+The first live capture with D38 exposed three faults. On a white table the phone's rectangular shadow was located as
+the receipt: it has a strong boundary but no texture, so it never produced anchors, and frames with it in the mask were
+saved. On a red board, the board's outline became the mask with the receipt inside. And a distant sideways overview
+created an anchorless map that close upright frames could never localize.
+
+- **Paper validation** (`DocumentVision.paperLike`), applied to every region proposal and to the line fallback:
+  at least 70% of the interior (25 px away from the boundary, at 720 px scale) must be light (>= 0.6 of the
+  scene's 90th-percentile luminance); mean colour saturation <= 40; and >= 0.4% of the interior must deviate from
+  its σ3 blur by >= 6 levels (print). The analyzer now reads the camera's U/V planes at quarter resolution.
+  Receipts are always light but come in white, yellow, green or blue pastel; those read ~3–25 and pass.
+- Real frames (capture-validation.md): the shadow frames are no longer located (light fraction 0.00); on the red
+  board, the board is rejected (0.63 light) and the receipt inside it located; all frames with a visible receipt
+  that reached validation passed (0.76–1.00 light, saturation 3–15).
+- **Legibility:** unread content between legible text counts only in runs of <= 2 bands (a logo, a gap), and an image
+  needs >= 2 legible text bands to credit anything. A wrong mask over a shadow was credited by D38's bracketing rule.
+- **Tracking:** before any photo exists, an anchorless provisional map is replaced after 4 consecutive sharp, printed
+  frames it fails to localize, not only by a new full overview (extends D32).
+- Synthetic tests cover a soft shadow on a light table, a receipt on a red board, four pastel papers, and the
+  sideways-overview-then-close sequence; geometry fixtures now carry print. Benchmark: 107 of 1,476 illegible bands
+  accepted, none severe (< 50% characters right); 129 of 1,532 legible rejected.
+
+**Limits:** thresholds come from one afternoon's frames under one light. A receipt mostly in shadow, or blank paper
+with little print in view (a long bottom margin), may not be located. Saturation uses the camera's white balance.

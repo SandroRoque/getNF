@@ -35,6 +35,8 @@ internal class DocumentTracker : AutoCloseable {
   private var lastTop: List<DocumentPoint>? = null
   private var lastTopAt: Long? = null
   private var topObservations = 0
+  /** Consecutive printed frames an unanchored provisional map failed to localize (D39). */
+  private var unanchoredMisses = 0
 
   fun breakContinuity() { lastTop = null; lastTopAt = null; topObservations = 0 }
 
@@ -63,7 +65,10 @@ internal class DocumentTracker : AutoCloseable {
     try {
       // Before any photo/candidate exists, an unanchored provisional map must not trap
       // the session on an incidental object seen while opening the camera.
-      if (world != null && anchors.isEmpty() && full && features.usable && allowReferenceReset) {
+      // Nor may one from a distant overview block a close, printed view in another orientation: after a few such
+      // frames the provisional map is replaced, still only before any photo exists (D39).
+      if (world != null && anchors.isEmpty() && features.usable && allowReferenceReset && (full || (doc.sharp && unanchoredMisses >= 4))) {
+        unanchoredMisses = 0
         world?.release(); world = null; geometry = null; existingGeometry = null
         lastImageRotation = null; lastAxisReversed = false; breakContinuity()
       }
@@ -91,7 +96,11 @@ internal class DocumentTracker : AutoCloseable {
           source = LocalizationSource.TOP_EDGE
         }
       }
-      val accepted = transform ?: return TrackingResult(geometry, null)
+      val accepted = transform ?: run {
+        if (world != null && anchors.isEmpty() && features.usable && doc.sharp) unanchoredMisses++
+        return TrackingResult(geometry, null)
+      }
+      unanchoredMisses = 0
       var transferred = false
       try {
         val mapped = mapDocument(doc, gray.cols(), gray.rows(), accepted, source) ?: return TrackingResult(geometry, null)

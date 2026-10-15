@@ -125,12 +125,14 @@ internal class ReceiptCameraAnalyzer(
       lastAt = image.imageInfo.timestamp
     }
     val analysisStartedAt = CapturePerf.now()
-    var source: Mat? = null; var vision: VisionFrame? = null; var bitmap: Bitmap? = null
+    var source: Mat? = null; var vision: VisionFrame? = null; var bitmap: Bitmap? = null; var chroma: Mat? = null
     try {
       val inverse = Matrix()
       check(image.imageInfo.sensorToBufferTransformMatrix.invert(inverse))
       source = CapturePerf.measure("gray") { DocumentVision.gray(image) }
-      vision = CapturePerf.measure("vision") { DocumentVision.analyze(source, evaluateQuality = false, preferredRotation = lastLocatedRotation) }
+      chroma = CapturePerf.measure("chroma") { DocumentVision.chroma(image) }
+      vision = CapturePerf.measure("vision") { DocumentVision.analyze(source, evaluateQuality = false, preferredRotation = lastLocatedRotation, chroma = chroma) }
+      chroma.release(); chroma = null
       if (vision.observation.located) lastLocatedRotation = vision.rotation
       val mapping = FrameMapping(image.width, image.height, image.imageInfo.rotationDegrees, inverse, sensorToView?.let(::Matrix), vision.rotation)
       if (vision.rotation == 90) org.opencv.core.Core.rotate(source, source, org.opencv.core.Core.ROTATE_90_CLOCKWISE)
@@ -147,7 +149,7 @@ internal class ReceiptCameraAnalyzer(
       delegate.analyze(image)
     } catch (failure: Exception) {
       pending.remove(image.imageInfo.timestamp)
-      source?.release(); vision?.close(); bitmap?.recycle(); image.close(); processing.set(false)
+      source?.release(); chroma?.release(); vision?.close(); bitmap?.recycle(); image.close(); processing.set(false)
       onError(failure); finishClose()
     }
   }

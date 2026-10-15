@@ -35,6 +35,26 @@ class DocumentTrackerTest {
     for (i in 0..25) c.drawText("ITEM ${i.toString().padStart(2, '0')} ${100000 + random.nextInt(899999)} 12,50", 200f, 130f + i * 36, p)
     return bitmap
   }
+  @Test fun unanchoredOverviewInAnotherOrientationDoesNotBlockACloseView() {
+    // Live test, D39: a distant sideways overview created an anchorless map; close upright frames never localized.
+    val tracker = DocumentTracker(); val receipt = textReceipt()
+    try {
+      VisionFrame(Mat(720, 540, CvType.CV_8UC1, Scalar(180.0)), Mat(720, 540, CvType.CV_8UC1, Scalar(255.0)), blank().observation, 90).use {
+        assertNotNull(tracker.track(it, 0).position)
+      }
+      assertEquals(0, tracker.retainedAnchorCount)
+      val close = Bitmap.createBitmap(receipt, 0, 0, 900, 700)
+      var localized = false
+      try {
+        for (i in 1..8) DocumentVision.fromBitmap(close).use { frame ->
+          assertFalse("Close view must not be a full outline", frame.observation.hasFullOutline)
+          if (tracker.track(frame, i * 200L, allowReferenceReset = true).position != null) localized = true
+        }
+      } finally { close.recycle() }
+      assertTrue("A close printed view must replace the anchorless provisional map", localized)
+      assertTrue(tracker.retainedAnchorCount > 0)
+    } finally { tracker.close(); receipt.recycle() }
+  }
   @Test fun featurelessOverviewBootstrapsZoomByTopWithoutInventingCoverage() {
     val tracker = DocumentTracker()
     try {

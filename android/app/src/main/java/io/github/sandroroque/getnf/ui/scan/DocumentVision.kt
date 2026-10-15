@@ -37,11 +37,98 @@ internal object DocumentVision {
       }
     }
   }
+  /**
+   * Colour saturation (distance of U/V from neutral) at a quarter of the luma resolution, oriented like [gray].
+   * Receipts are always light, in white or pastel tones; a saturated region isn't paper (D39).
+   */
+  fun chroma(image: ImageProxy): Mat {
+    check(loaded)
+    val u = image.planes[1]; val v = image.planes[2]
+    val ub = u.buffer.duplicate(); val vb = v.buffer.duplicate(); val ubase = ub.position(); val vbase = vb.position()
+    val w = image.width / 4; val h = image.height / 4
+    val bytes = ByteArray(w * h)
+    for (y in 0 until h) for (x in 0 until w) {
+      // Chroma planes are half resolution; sample every other chroma pixel.
+      val du = (ub.get(ubase + (y * 2) * u.rowStride + (x * 2) * u.pixelStride).toInt() and 255) - 128
+      val dv = (vb.get(vbase + (y * 2) * v.rowStride + (x * 2) * v.pixelStride).toInt() and 255) - 128
+      bytes[y * w + x] = min(255, sqrt((du * du + dv * dv).toDouble()).toInt()).toByte()
+    }
+    return Mat(h, w, CvType.CV_8UC1).also { result ->
+      result.put(0, 0, bytes)
+      when (image.imageInfo.rotationDegrees) {
+        90 -> Core.rotate(result, result, Core.ROTATE_90_CLOCKWISE)
+        180 -> Core.rotate(result, result, Core.ROTATE_180)
+        270 -> Core.rotate(result, result, Core.ROTATE_90_COUNTERCLOCKWISE)
+      }
+    }
+  }
+  fun chroma(rgba: Mat): Mat {
+    val rgb = Mat(); val yuv = Mat(); val channels = mutableListOf<Mat>(); val result = Mat()
+    try {
+      Imgproc.cvtColor(rgba, rgb, Imgproc.COLOR_RGBA2RGB); Imgproc.cvtColor(rgb, yuv, Imgproc.COLOR_RGB2YUV)
+      Core.split(yuv, channels)
+      val du = Mat(); val dv = Mat()
+      try {
+        channels[1].convertTo(du, CvType.CV_32F, 1.0, -128.0); channels[2].convertTo(dv, CvType.CV_32F, 1.0, -128.0)
+        Core.magnitude(du, dv, du); du.convertTo(result, CvType.CV_8UC1)
+      } finally { du.release(); dv.release() }
+      Imgproc.resize(result, result, Size(rgba.cols() / 4.0, rgba.rows() / 4.0), 0.0, 0.0, Imgproc.INTER_AREA)
+      return result
+    } finally { rgb.release(); yuv.release(); channels.forEach { it.release() } }
+  }
+
+  /**
+   * Whether a proposed region looks like a receipt, all inputs at the same size (D39): mostly light (a phone's shadow
+   * on a white table is darker than the scene; a dark board around a receipt is not mostly light), not saturated (a
+   * red board under the paper), and printed (text texture spread over the region, unlike a flat shadow). Pastel
+   * white/yellow/green/blue paper passes.
+   */
+  fun paperLike(gray: Mat, region: Mat, chroma: Mat?): Boolean {
+    // Far enough from the boundary that its ramp (a soft shadow edge) can't pass for print.
+    val interior = Mat(); val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(25.0, 25.0))
+    val blurred = Mat(); val deviation = Mat(); val ink = Mat(); val scaled = Mat(); val bright = Mat(); val hist = Mat()
+    try {
+      Imgproc.erode(region, interior, kernel)
+      val area = Core.countNonZero(interior)
+      if (area < 200) return false
+      Imgproc.calcHist(listOf(gray), MatOfInt(0), Mat(), hist, MatOfInt(64), MatOfFloat(0f, 256f))
+      val counts = DoubleArray(64) { hist.get(it, 0)[0] }; val total = counts.sum()
+      var acc = 0.0; var p90 = 255.0
+      for (i in 63 downTo 0) { acc += counts[i]; if (acc >= total * .10) { p90 = i * 4.0 + 2; break } }
+      Imgproc.threshold(gray, bright, p90 * PAPER_MIN_RELATIVE_LIGHT, 255.0, Imgproc.THRESH_BINARY)
+      Core.bitwise_and(bright, interior, bright)
+      val light = Core.countNonZero(bright).toDouble() / area
+      val saturation = if (chroma == null) 0.0 else {
+        Imgproc.resize(chroma, scaled, gray.size(), 0.0, 0.0, Imgproc.INTER_LINEAR); Core.mean(scaled, interior).`val`[0]
+      }
+      Imgproc.GaussianBlur(gray, blurred, Size(0.0, 0.0), 3.0)
+      Core.absdiff(gray, blurred, deviation)
+      Imgproc.threshold(deviation, ink, PAPER_INK_DEVIATION, 255.0, Imgproc.THRESH_BINARY)
+      Core.bitwise_and(ink, interior, ink)
+      val printed = Core.countNonZero(ink).toDouble() / area
+      val ok = light >= PAPER_MIN_LIGHT_FRACTION && saturation <= PAPER_MAX_CHROMA && printed >= PAPER_MIN_INK
+      if (android.util.Log.isLoggable("PaperLike", android.util.Log.VERBOSE) || DEBUG_PAPER)
+        android.util.Log.v("PaperLike", "area=$area light=%.2f chroma=%.1f ink=%.4f ok=$ok".format(light, saturation, printed))
+      return ok
+    } finally { listOf(interior, kernel, blurred, deviation, ink, scaled, bright, hist).forEach { it.release() } }
+  }
+  @Volatile var DEBUG_PAPER = false
+  /** Most of the interior must be light; print and a sliver of shadow are the minority. */
+  private const val PAPER_MIN_LIGHT_FRACTION = .7
+  private const val PAPER_MIN_RELATIVE_LIGHT = .6
+  /** Pastel yellow/green/blue paper is ~20; a red board read ~80 (D39). */
+  private const val PAPER_MAX_CHROMA = 40.0
+  private const val PAPER_INK_DEVIATION = 6.0
+  private const val PAPER_MIN_INK = .004
+
   fun fromBitmap(bitmap: Bitmap): VisionFrame {
     check(loaded)
-    val rgba = Mat(); val gray = Mat()
-    try { Utils.bitmapToMat(bitmap, rgba); Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY); return analyze(gray) }
-    finally { rgba.release(); gray.release() }
+    val rgba = Mat(); val gray = Mat(); var chroma: Mat? = null
+    try {
+      Utils.bitmapToMat(bitmap, rgba); Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY)
+      chroma = chroma(rgba)
+      return analyze(gray, chroma = chroma)
+    } finally { rgba.release(); gray.release(); chroma?.release() }
   }
 
   private data class Line(val a: Point, val b: Point) {
@@ -51,18 +138,19 @@ internal object DocumentVision {
     val high get() = max(a.y, b.y)
   }
 
-  fun analyze(source: Mat, evaluateQuality: Boolean = true, preferredRotation: Int? = null): VisionFrame {
+  fun analyze(source: Mat, evaluateQuality: Boolean = true, preferredRotation: Int? = null, chroma: Mat? = null): VisionFrame {
     check(loaded)
     val regionAt = CapturePerf.now()
-    PaperRegion.detect(source, evaluateQuality)?.let { CapturePerf.elapsed("region", regionAt); return it }
+    PaperRegion.detect(source, evaluateQuality, chroma)?.let { CapturePerf.elapsed("region", regionAt); return it }
     for (turn in if (preferredRotation == 90) listOf(90, 0) else listOf(0, 90)) {
-      val canonical = Mat()
+      val canonical = Mat(); val canonicalChroma = chroma?.let { Mat() }
       try {
         if (turn == 90) Core.rotate(source, canonical, Core.ROTATE_90_CLOCKWISE) else source.copyTo(canonical)
+        if (chroma != null) { if (turn == 90) Core.rotate(chroma, canonicalChroma, Core.ROTATE_90_CLOCKWISE) else chroma.copyTo(canonicalChroma) }
         val fallback = validatedLines(canonical, evaluateQuality, turn)
-        if (fallback.observation.located && fallback.observation.hasSides) return fallback
+        if (fallback.observation.located && fallback.observation.hasSides && paperLike(fallback.gray, fallback.mask, canonicalChroma)) return fallback
         fallback.close()
-      } finally { canonical.release() }
+      } finally { canonical.release(); canonicalChroma?.release() }
     }
     val gray = Mat()
     val scale = min(1.0, 720.0 / max(source.cols(), source.rows()))

@@ -47,14 +47,18 @@ internal class TextLegibility(
      * strict (D38).
      */
     const val MIN_CONFIDENCE = .5
+    const val MAX_UNREAD_RUN = 2
+    const val MIN_TEXT_BANDS = 2
 
     private enum class Verdict { LEGIBLE, ILLEGIBLE, BLANK, UNREAD }
 
     /**
      * Bands passing both the gradient pre-filter and OCR. A band with OCR lines needs their median confidence
-     * >= [MIN_CONFIDENCE]. Content OCR couldn't read at all (a logo, the QR, a sliver of table at a paper end, a gap
-     * between items) passes only between legible text bands of the same image, or holding the QR or a paper end.
-     * Blank paper bridges only when the image has legible text. An image without legible text credits nothing.
+     * >= [MIN_CONFIDENCE]. Content OCR couldn't read at all (a logo, a gap between items) passes only in short runs
+     * (<= [MAX_UNREAD_RUN] bands) between legible text bands of the same image, or holding the QR or a paper end; a
+     * long unread stretch is not print (a shadow inside a wrong mask was credited this way, D39). Blank paper
+     * bridges only when the image has legible text. An image with fewer than [MIN_TEXT_BANDS] legible text bands
+     * credits nothing.
      */
     fun legibleBands(quality: List<RegionQuality>, lines: List<OcrLine>, qr: List<DocumentPoint>,
       ends: List<Double> = emptyList()): List<CaptureBand> {
@@ -70,13 +74,20 @@ internal class TextLegibility(
         }
       }
       val text = verdicts.indices.filter { verdicts[it] == Verdict.LEGIBLE }
-      if (text.isEmpty()) return emptyList()
+      if (text.size < MIN_TEXT_BANDS) return emptyList()
+      fun unreadRun(i: Int): Int {
+        var a = i; var b = i
+        while (a > 0 && verdicts[a - 1] == Verdict.UNREAD) a--
+        while (b < verdicts.lastIndex && verdicts[b + 1] == Verdict.UNREAD) b++
+        return b - a + 1
+      }
       return mergeBands(quality.indices.filter { i ->
         val band = quality[i].band
         when (verdicts[i]) {
           Verdict.LEGIBLE, Verdict.BLANK -> true
           Verdict.ILLEGIBLE -> false
-          Verdict.UNREAD -> overlapsQr(band) || ends.any { it >= band.start && it < band.end } || (text.first() < i && i < text.last())
+          Verdict.UNREAD -> overlapsQr(band) || ends.any { it >= band.start && it < band.end } ||
+            (text.first() < i && i < text.last() && unreadRun(i) <= MAX_UNREAD_RUN)
         }
       }.map { quality[it].band })
     }
