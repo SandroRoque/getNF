@@ -286,3 +286,20 @@ defeito: texto fraco borrado classificado como papel em branco era liberado porq
 OCR levou mediana de 1,6 s (máx. 2,9 s) por imagem no emulador; não representa o Motorola. Limites: cenas
 sintéticas com fonte monoespaçada e sem ruído de sensor; o gabarito também é OCR, então mede legibilidade para
 máquina, não para pessoas. A confiança do ML Kit por linha é usada sem calibração no aparelho.
+
+## Fotos reais pelo critério de OCR — 2026-10-15 (D38)
+
+As 10 fotos de captura do Motorola (lotes `5663` das 00:42, ainda salvas deitadas por versão anterior e giradas
+90° só para a avaliação; `cf32` e `5b11`, os seis do D34) foram copiadas com as máscaras para uma pasta temporária
+fora do repositório e avaliadas no emulador por `CaptureEvidenceEvalTest`, que só roda com arquivos postos em
+`files/eval/` via `run-as` e registra apenas números. Gabarito visual (revisão em resolução original): `5b11-0`
+borrada por movimento, ilegível; `5b11-1` mais suave, legível; as outras oito legíveis.
+
+- Com o critério do D37 (toda linha ≥ 0,8), nenhuma faixa de nenhuma foto passava: a confiança por linha do ML Kit
+  em papel térmico real fica entre 0,5 e 0,85 (medianas por imagem de 0,57 a 0,72). A captura não concluiria.
+- A foto borrada não produziu nenhuma linha de OCR; a suave teve mediana 0,51.
+- Regra adotada (D38): mediana ≥ 0,5 por faixa; conteúdo sem linha lida passa entre faixas de texto legível, no QR
+  ou na ponta do papel. Resultado: borrada 0 de 13 faixas com conteúdo; suave 9 de 15; legíveis de 12/13 a 16/19.
+- OCR no emulador: cerca de 1,7–2,1 s por foto real (uma de 3,9 s). Ainda sem medição no Motorola.
+- Benchmark sintético com a regra nova: 111 de 1.476 faixas ilegíveis aceitas, 107 delas parcialmente legíveis
+  (50–89% dos caracteres) e 4 graves (< 50%); 129 de 1.532 legíveis rejeitadas (antes: 594).

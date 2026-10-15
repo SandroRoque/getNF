@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-15. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D37). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D38). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -51,7 +51,7 @@ categorized → reportable through the `spending_lines` view.
 - **Local data** (not in git): the receipts captured so far, every product categorized, in `server/pb_data/` plus the
   photos on the phone. **Back up `server/pb_data/`.** The categorizations exist only there.
 - **Tests:** `cd android && ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`:
-  41 unit tests and 38 instrumented vision/capture/lifecycle tests (one is the D37 focus benchmark) on the emulator; an offline camera journey
+  41 unit tests and 39 instrumented vision/capture/lifecycle tests (the D37 focus benchmark and the D38 real-capture eval, which skips without local files). Never run connectedAndroidTest with the phone attached: it uninstalls the app and wipes its receipts on the emulator; an offline camera journey
   also read a synthetic QR, saved a photo and completed automatically (see capture-validation.md).
   Debug build and lint pass. PocketBase's 100-photo migration and rollback were validated in an isolated database;
   the migration was applied to the live server on 2026-10-15 after a backup (D36). Android also has a 100-photo technical cap.
@@ -87,9 +87,9 @@ and apply it through the API (as was done for the first 75 products).
 Code review findings and the proposed reordering are in D35: per-orientation focus check, blurred text counted as
 blank paper, upload that replaces server photos, the photo-cap dead-end, then roadmap stage 1 before more geometry.
 
-- **Capture quality first:** D37 moved the legibility decision to on-device OCR of each saved candidate; the synthetic
-  benchmark accepts no illegible band. Next: measure OCR time and confidence on the Motorola (and the six D34 JPEGs)
-  before trusting the 0.8 threshold; OCR currently pauses analysis while it runs. Background: Two physical
+- **Capture quality first:** D37/D38 decide legibility with on-device OCR of each saved candidate (band median
+  confidence >= 0.5, calibrated on the real D34 JPEGs: the blurred one credits nothing). Next: a live capture on the
+  Motorola to measure OCR time and completion; OCR currently pauses analysis while it runs. Background: Two physical
   attempts completed, but JPEG review found one blurred image and another softer image among six saved.
   Synthetic blur benchmarks and conservative retention ranking can proceed without the phone. Keep captures
   during development; future bad/redundant-image selection is planned, with no deletion implemented (D34).

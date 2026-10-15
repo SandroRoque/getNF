@@ -605,3 +605,27 @@ still rejected, so captures need more frames. OCR runs synchronously on the capt
 overlay pause while a candidate is read (1.6 s median on the emulator, unmeasured on the Motorola). Faint
 blurred print below the structure threshold can still pass as blank inside a frame where other text is legible.
 Next: measure OCR time and confidences on the Motorola, including the six D34 JPEGs, before trusting 0.8.
+
+## D38. OCR legibility recalibrated on real receipts: band median confidence >= 0.5 (2026-10-15)
+
+D37's threshold came from synthetic text and was wrong for thermal paper. On the ten real capture JPEGs
+(capture-validation.md), ML Kit's per-line confidence for legible print was 0.5–0.85 and no band passed "every
+line >= 0.8", so captures could never complete. The motion-blurred JPEG produced no OCR line at all, which is the
+signal that matters.
+
+- A band with OCR lines is legible when their **median** confidence is >= 0.5.
+- Content OCR couldn't read (logo, QR, a table sliver at a paper end, gaps between items) passes only between legible
+  text bands of the same image, or when it holds the decoded QR or a paper end. An image without legible text credits
+  nothing. Blank paper bridges only in images with legible text.
+- Real JPEGs: blurred 0 of 13 content bands; the softer one 9 of 15; legible ones 12/13 to 16/19.
+- Synthetic benchmark: 111 of 1,476 illegible bands accepted, 107 of them partially legible (50–89% characters);
+  4 severe (< 50%). 129 of 1,532 legible rejected (594 under D37). The benchmark now asserts these as regression
+  bounds (severe <= 5, legible rejected <= 15%) instead of zero false accepts.
+- `CaptureEvidenceEvalTest` evaluates real JPEGs placed in the app's private `files/eval/` on a test device; it is
+  skipped otherwise and logs only numbers.
+- Instrumented tests must not run on the phone: connectedAndroidTest uninstalls the app and would wipe its receipts.
+  With the phone attached, install APKs with `adb -s <emulator> install -r -g` and run `am instrument` there.
+
+**Limits:** one illegible real photo is thin evidence; the threshold needs more real captures, including faint and
+partially blurred ones. A blurred strip between legible text bands would pass as unread content; depth-of-field blur
+usually grows toward one end, but it isn't excluded. OCR time on the Motorola is still unmeasured.

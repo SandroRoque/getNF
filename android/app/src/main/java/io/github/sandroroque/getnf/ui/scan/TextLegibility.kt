@@ -41,34 +41,44 @@ internal class TextLegibility(
   override fun close() = recognizer.close()
 
   companion object {
-    /** Synthetic benchmark: no illegible band accepted at 0.8 (capture-validation.md, D37). */
-    const val MIN_CONFIDENCE = .8
+    /**
+     * Median OCR line confidence a band needs. Real thermal receipts read at 0.5–0.85 per line (legible JPEGs had
+     * image medians 0.57–0.72; the motion-blurred one produced no line at all), so the synthetic 0.8 was far too
+     * strict (D38).
+     */
+    const val MIN_CONFIDENCE = .5
+
+    private enum class Verdict { LEGIBLE, ILLEGIBLE, BLANK, UNREAD }
 
     /**
-     * Bands passing both the gradient pre-filter and OCR. A content band needs at least one OCR line and all of its
-     * lines confident. A band whose only content is the decoded QR passes: the QR is its evidence. Blank paper only
-     * bridges when the same image proved some text legible. A band holding a paper end ([ends]) with no OCR line is
-     * treated as blank: the coarse mask can include a sliver of table there, which looks like content but isn't print.
+     * Bands passing both the gradient pre-filter and OCR. A band with OCR lines needs their median confidence
+     * >= [MIN_CONFIDENCE]. Content OCR couldn't read at all (a logo, the QR, a sliver of table at a paper end, a gap
+     * between items) passes only between legible text bands of the same image, or holding the QR or a paper end.
+     * Blank paper bridges only when the image has legible text. An image without legible text credits nothing.
      */
     fun legibleBands(quality: List<RegionQuality>, lines: List<OcrLine>, qr: List<DocumentPoint>,
       ends: List<Double> = emptyList()): List<CaptureBand> {
       val qrSpan = if (qr.size >= 4) CaptureBand(qr.minOf { it.y }, qr.maxOf { it.y }) else null
       fun overlapsQr(band: CaptureBand) = qrSpan != null && qrSpan.start < band.end && qrSpan.end > band.start
-      var anyText = false
       val verdicts = quality.map { q ->
-        val inside = lines.filter { it.center.y >= q.band.start && it.center.y < q.band.end }
-        val legibleText = inside.isNotEmpty() && inside.all { it.confidence >= MIN_CONFIDENCE }
-        if (q.usable && q.hasContent && legibleText) anyText = true
-        q to when {
-          !q.usable -> false
-          !q.hasContent -> null // blank: decided below
-          inside.isEmpty() && overlapsQr(q.band) -> true
-          inside.isEmpty() && ends.any { it >= q.band.start && it < q.band.end } -> null
-          else -> legibleText
+        val inside = lines.filter { it.center.y >= q.band.start && it.center.y < q.band.end }.map { it.confidence }.sorted()
+        when {
+          !q.usable -> Verdict.ILLEGIBLE
+          inside.isNotEmpty() -> if (inside[inside.size / 2] >= MIN_CONFIDENCE) Verdict.LEGIBLE else Verdict.ILLEGIBLE
+          !q.hasContent -> Verdict.BLANK
+          else -> Verdict.UNREAD
         }
       }
-      // Only text OCR actually read lets blank paper bridge; a QR alone proves nothing about the print (D27/D28).
-      return mergeBands(verdicts.filter { (_, ok) -> ok == true || (ok == null && anyText) }.map { it.first.band })
+      val text = verdicts.indices.filter { verdicts[it] == Verdict.LEGIBLE }
+      if (text.isEmpty()) return emptyList()
+      return mergeBands(quality.indices.filter { i ->
+        val band = quality[i].band
+        when (verdicts[i]) {
+          Verdict.LEGIBLE, Verdict.BLANK -> true
+          Verdict.ILLEGIBLE -> false
+          Verdict.UNREAD -> overlapsQr(band) || ends.any { it >= band.start && it < band.end } || (text.first() < i && i < text.last())
+        }
+      }.map { quality[it].band })
     }
   }
 }
