@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-15. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D40). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D41). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -51,7 +51,7 @@ categorized → reportable through the `spending_lines` view.
 - **Local data** (not in git): the receipts captured so far, every product categorized, in `server/pb_data/` plus the
   photos on the phone. **Back up `server/pb_data/`.** The categorizations exist only there.
 - **Tests:** `cd android && ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`:
-  46 unit tests and 46 instrumented vision/capture/lifecycle tests (the D37 focus benchmark and the D38 real-capture eval, which skips without local files). Never run connectedAndroidTest with the phone attached: it uninstalls the app and wipes its receipts on the emulator; an offline camera journey
+  46 unit tests and 47 instrumented vision/capture/lifecycle tests (the D37 focus benchmark and the D38 real-capture eval, which skips without local files). Never run connectedAndroidTest with the phone attached: it uninstalls the app and wipes its receipts on the emulator; an offline camera journey
   also read a synthetic QR, saved a photo and completed automatically (see capture-validation.md).
   Debug build and lint pass. PocketBase's 100-photo migration and rollback were validated in an isolated database;
   the migration was applied to the live server on 2026-10-15 after a backup (D36). Android also has a 100-photo technical cap.
@@ -82,6 +82,19 @@ and apply it through the API (as was done for the first 75 products).
 - **Never probe the live portal for development.** Use saved pages, fixtures, or DevTools on an already-open WebView
   (`tools/webview-eval.mjs`). The PC, emulator and phone share the home IP.
 
+## Known capture limits (D41)
+
+Capture is good enough to move on (short receipts complete in seconds; OCR rejects blur). Not done or not proven:
+
+- **Long receipts were never tested on the phone.** Every live capture fitted one or two frames; coverage built from
+  several overlapping photos (content registration between segments) has only synthetic tests.
+- The paper mask can still leak a little into a patterned background, and a strong shadow across the receipt can
+  cut the mask at the shadow. OCR, not the mask, decides what counts as legible.
+- Captures save more redundant photos than needed (up to 9 per short receipt); no pruning exists (D34).
+- The OCR threshold (median line confidence >= 0.5) rests on a dozen real photos of one receipt under one light.
+- OCR runs on the capture executor, pausing analysis for ~0.3 s per candidate on the Motorola.
+- Test captures added 30+ photos to one real NF; the app can't remove them.
+
 ## Open items, roughly in priority order
 
 Code review findings and the proposed reordering are in D35: per-orientation focus check, blurred text counted as
@@ -89,8 +102,8 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
 
 - **Capture quality first:** D37/D38 decide legibility with on-device OCR of each saved candidate (band median
   confidence >= 0.5, calibrated on the real D34 JPEGs: the blurred one credits nothing). OCR takes 146–559 ms on the
-  Motorola. D39/D40 reject regions that don't look like a receipt (a phone's shadow, a coloured board), keep the receipt's axis
-  and tolerate a shadowed end. Next: confirm on the phone, with a frame where the shadow covers the end. Background: Two physical
+  Motorola. D39–D41 reject regions that don't look like a receipt, keep the receipt's axis and trim mask leaks.
+  The capture front is closed for now; see Known capture limits. Next: roadmap stage 1. Background: Two physical
   attempts completed, but JPEG review found one blurred image and another softer image among six saved.
   Synthetic blur benchmarks and conservative retention ranking can proceed without the phone. Keep captures
   during development; future bad/redundant-image selection is planned, with no deletion implemented (D34).

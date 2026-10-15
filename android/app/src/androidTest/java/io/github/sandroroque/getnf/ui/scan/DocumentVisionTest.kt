@@ -141,6 +141,22 @@ class DocumentVisionTest {
       } } finally { bitmap.recycle() }
     }
   }
+  @Test fun patternedBoardTouchingTheReceiptDoesNotLeakIntoTheMask() {
+    // Live test, D41: the contour followed thin light filaments of the board's print where they touched the paper.
+    val bitmap = scene(Color.rgb(236, 236, 232)) { c, p ->
+      p.color = Color.rgb(170, 45, 55); c.drawRect(60f, 40f, 840f, 1160f, p)
+      printed(c, p, Color.rgb(246, 246, 240), 260f, 100f, 640f, 1100f)
+      p.color = Color.rgb(240, 236, 230); p.strokeWidth = 4f; p.style = Paint.Style.STROKE
+      for (y in 200..1000 step 120) c.drawPath(android.graphics.Path().apply {
+        moveTo(262f, y.toFloat()); cubicTo(200f, y - 40f, 150f, y + 60f, 110f, y + 10f) }, p)
+      p.style = Paint.Style.FILL
+    }
+    try { DocumentVision.fromBitmap(bitmap).use {
+      assertTrue("The receipt must be located: ${it.observation}", it.observation.located)
+      assertTrue(it.observation.contains(.5, .5))
+      for (y in listOf(.2, .5, .8)) assertFalse("Board filaments at y=$y leaked into the mask", it.observation.contains(160.0 / 900, y))
+    } } finally { bitmap.recycle() }
+  }
   @Test fun receiptPartlyUnderThePhoneShadowIsStillPaper() {
     // Live test, D40: the end of the receipt under the phone's shadow stopped being located.
     val bitmap = scene(Color.rgb(236, 236, 232)) { c, p ->

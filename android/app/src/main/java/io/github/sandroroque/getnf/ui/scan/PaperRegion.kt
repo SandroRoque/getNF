@@ -85,6 +85,7 @@ internal object PaperRegion {
       val contour = MatOfPoint(*candidate.contour)
       try {
         Imgproc.drawContours(mask, listOf(contour), 0, Scalar(255.0), Imgproc.FILLED)
+        trimLeaks(mask)
         if (candidate.turn == 90) {
           Core.rotate(gray, canonical, Core.ROTATE_90_CLOCKWISE)
           Core.rotate(mask, mask, Core.ROTATE_90_CLOCKWISE)
@@ -141,6 +142,26 @@ internal object PaperRegion {
         } finally { native.release(); nativeMask.release() }
       } finally { contour.release(); canonical.release(); mask.release() }
     } finally { gray.release(); smooth.release(); binary.release(); edge.release(); region.release(); kernel.release() }
+  }
+
+  /**
+   * A receipt is a strip with straight sides; thin filaments of a patterned background that touch its edge leak into
+   * the threshold region (live test, D41). An opening removes anything thinner than ~15 px at this scale; pixels of
+   * the original within that distance of the opened shape come back, so the corners (which registration and the
+   * top-edge model measure) stay sharp. Only the largest remaining piece is kept.
+   */
+  private fun trimLeaks(mask: Mat) {
+    val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(15.0, 15.0))
+    val contours = mutableListOf<MatOfPoint>(); val hierarchy = Mat(); val work = Mat(); val near = Mat()
+    try {
+      Imgproc.morphologyEx(mask, work, Imgproc.MORPH_OPEN, kernel)
+      Imgproc.dilate(work, near, kernel)
+      Core.bitwise_and(mask, near, mask)
+      mask.copyTo(work)
+      Imgproc.findContours(work, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
+      val largest = contours.maxByOrNull { Imgproc.contourArea(it) } ?: return
+      mask.setTo(Scalar(0.0)); Imgproc.drawContours(mask, listOf(largest), 0, Scalar(255.0), Imgproc.FILLED)
+    } finally { kernel.release(); contours.forEach { it.release() }; hierarchy.release(); work.release(); near.release() }
   }
 
   private fun candidatePoints(mask: Mat): Array<Point> {

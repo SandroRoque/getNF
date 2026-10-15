@@ -682,3 +682,19 @@ Real frames (CaptureEvidenceEvalTest): unchanged verdicts, shadow rejected, rece
 D40 validation on real frames: the four photos of the red-board capture (17:38), whose capture-time masks left out
 the part under the phone's shadow, are located as the whole receipt by the D40 detection, shadowed end and QR
 included, board excluded.
+
+## D41. Trim background leaks from the paper mask; close the capture front for now (2026-10-15)
+
+On a patterned red board the contour followed light filaments of the print where they touched the receipt. The
+selected region is now opened with a 15 px ellipse (at 720 px scale), original pixels within 15 px of the opened
+shape are restored (a plain opening rounded the corners and broke the overview→top-zoom confirmation test), and the
+result is reduced to its largest piece before use.
+On the real frames of that capture the leak shrinks but doesn't disappear (one frame keeps a blotch at a corner);
+the synthetic filament test passes with or without the trim. 46 unit and 47 instrumented tests and lint pass. A frame with a strong shadow across the receipt
+still stops the mask at the shadow.
+
+The user judged capture good enough to move on, and so do the measurements: the last two live captures completed in
+3 and 10 s with a consistent receipt length (530–575 units) and OCR rejecting blur in 250–470 ms. Remaining capture
+work is recorded under Known capture limits in status.md. **Long receipts that need several overlapping photos
+(stitching/registration across segments) were never tested on the phone**; every live capture so far was a short
+receipt that fits one or two frames. Next: roadmap stage 1 (data model, append-only evidence upload).
