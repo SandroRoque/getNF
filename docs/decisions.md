@@ -763,3 +763,17 @@ different wines into one "wine", is not identity. Products stay **one code, one 
 GTIN, or a store code together with the store's CNPJ. Nothing is merged. Grouping similar products is the category's
 job for spending totals, and a future price-comparison concern (IPCI). A product with purchases can only be archived.
 If a store turns out to change an item's internal code, that gets its own decision.
+
+**Second correction (2026-10-17):** the user pointed out that banana caturra is banana caturra at any market, so the
+same item sold at several stores needs one unifying identity. That differs from merging different wines into "wine".
+data-model.md now has two levels:
+
+- **Store item** (`store_item`): one per code as the receipt shows it (GTIN, or store code with the store's CNPJ),
+  created automatically. Each line points to its store item.
+- **Product**: what the thing is, with name, category, size and tags. Each store item points to a product. A new code
+  gets a product of its own, and the user can link a store item to an existing product.
+
+Linking or unlinking never changes a purchase, because lines point to store items. Rule: link only the same item
+(same variety, same way of selling), and warn when units are incompatible. Different products stay separate and are
+grouped by category. A single line can still be corrected to another product (`product_override_id`). This
+supersedes the "one code, one product" rule of the first correction.

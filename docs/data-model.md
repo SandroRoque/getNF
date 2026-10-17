@@ -75,38 +75,55 @@ Dinheiro é sempre `Long` em centavos. Quantidade e preço unitário são `Long`
 | Grupo | Colunas | Quem escreve |
 | --- | --- | --- |
 | Extraído | `description`, `code`, `qty_e4`, `unit`, `unit_price_e4`, `gross_cents` | só a extração |
-| Associação | `product_id` FK → `product`; `assignment` = `auto` \| `manual` | a extração (se `auto`) ou o usuário |
+| Associação | `store_item_id` FK → `store_item`, pelo código | só a extração |
+| Correção | `product_override_id` FK → `product`, nulo | o usuário, só para esta linha |
 | Desconto | `discount_cents`; `discount_source` = `html` \| `photo` \| `manual` \| `prorated`; `discount_review` = `unreviewed` \| `confirmed` | extração, OCR, usuário ou rateio |
 | Estado | `orphaned` bool | o reprocessamento (ver abaixo) |
 
-O valor líquido não é guardado; é sempre calculado como `gross_cents − discount_cents`. O rateio só escreve linhas com
+O produto efetivo da linha é `product_override_id`, se houver, senão o produto do item da loja. O valor líquido não é guardado; é sempre calculado como `gross_cents − discount_cents`. O rateio só escreve linhas com
 `discount_source = prorated`, e só distribui o desconto total da nota menos os descontos já observados ou manuais.
 
 ### Catálogo
+
+Dois níveis: o **item da loja** é o cadastro como a nota mostra; o **produto** é o que a coisa é. Um produto pode
+reunir itens de várias lojas ("Banana caturra" no mercado A e no mercado B), e cada mercado continua com seu cadastro.
+
+**`store_item`**, com chave única (`code_kind`, `code`, `store_cnpj`):
+
+| Coluna | Tipo | Notas |
+| --- | --- | --- |
+| `id` | text PK (UUID) | |
+| `code_kind` | text | `gtin` (código de barras, vale em qualquer loja) ou `store` (código interno da loja) |
+| `code` | text | o código lido na nota |
+| `store_cnpj` | text | loja dona do código interno; vazio para `gtin` |
+| `description` | text | a última descrição lida ("BANANA CATURRA KG") |
+| `parsed_size_e6`, `parsed_size_unit` | | tamanho deduzido da descrição, quando houver |
+| `product_id` | FK → `product` | para qual produto este item conta |
+
+A regra atual de `derive.productKey` decide o tipo: GTIN válido e fora da faixa restrita vira `gtin`, e qualquer outro
+código vira `store`, valendo só junto com o CNPJ da loja (o "243" de uma loja não é o "243" de outra). Um código
+desconhecido cria um item da loja e um produto novo só dele.
 
 **`product`**
 
 | Coluna | Tipo | Notas |
 | --- | --- | --- |
-| `id` | text PK (UUID) | id interno, para as referências não dependerem do código |
-| `code_kind` | text | `gtin` (código de barras, vale em qualquer loja) ou `store` (código interno da loja) |
-| `code` | text | o código lido na nota |
-| `store_cnpj` | text | loja dona do código interno; vazio para `gtin` |
-| `name` | text, nulo | nome dado pelo usuário; nulo exibe a última descrição extraída |
+| `id` | text PK (UUID) | o identificador que unifica os itens das lojas |
+| `name` | text, nulo | nome dado pelo usuário; nulo exibe a descrição do item da loja mais recente |
 | `category_id` | FK → `category`, nulo | nulo = não categorizado |
-| `size_e6`, `size_unit` (`kg` \| `l`), `size_source` (`parsed` \| `manual`) | | `manual` nunca é sobrescrito |
+| `size_e6`, `size_unit` (`kg` \| `l`), `size_source` (`parsed` \| `manual`) | | `manual` nunca é sobrescrito; `parsed` vem do item da loja |
 | `archived` | bool | some das listas; o histórico continua |
 | `created_at` | | |
 
-Chave única (`code_kind`, `code`, `store_cnpj`): **um código, um produto**, como hoje no servidor. A regra atual de
-`derive.productKey` continua decidindo o tipo: GTIN válido e fora da faixa restrita vira `gtin`, e qualquer outro
-código vira `store`, valendo só junto com o CNPJ da loja (o "243" de uma loja não é o "243" de outra). Uma linha com
-código desconhecido cria um produto novo.
+**Vincular e desvincular.** O usuário pode dizer "este item do mercado B também é Banana caturra": o item passa a
+apontar para o produto existente, e o produto que tinha nascido só para ele é descartado se não tiver nada manual
+(nome, categoria, tamanho ou tags); se tiver, o app pergunta. Desvincular devolve ao item um produto próprio. As linhas
+apontam para o item da loja, não para o produto, então vincular e desvincular nunca alteram uma compra.
 
-Produtos não são juntados. Itens parecidos (vinhos diferentes, a banana de duas lojas, cafés de marcas diferentes)
-continuam produtos distintos, cada um com seu histórico de preço. Agrupá-los é papel da categoria e, no futuro, da
-comparação de preços (ver "Fora deste desenho"). Se aparecer na prática uma loja que troca o código interno de um item,
-isso terá uma decisão própria.
+Regra: vincule só o que é o mesmo item, com a mesma variedade e a mesma forma de venda. Banana caturra e banana prata,
+ou vinhos diferentes, ficam em produtos separados; agrupá-los é papel da categoria e, no futuro, da comparação de
+preços. O app avisa ao vincular itens de unidades incompatíveis (kg com unidade), porque o preço por kg deixaria de ser
+comparável. O preço continua visível por loja, porque cada linha sabe de qual nota e loja veio.
 
 **`category`**
 
@@ -130,11 +147,11 @@ reconhecida pelo seu número na nota, não pelo código.
 Uma nota é reprocessada quando a página muda ou quando `parser_version` sobe. As linhas novas são casadas com as
 existentes por (`chave`, `line_no`).
 
-- **Mesmo `line_no` e mesmo `code`:** regrava os campos extraídos. Associação manual, desconto manual ou confirmado e
-  qualquer dado do catálogo ficam intactos. Com `assignment = auto`, a associação é recalculada pelo código.
+- **Mesmo `line_no` e mesmo `code`:** regrava os campos extraídos. Correção de produto da linha, desconto manual ou confirmado e
+  qualquer dado do catálogo ficam intactos. O item da loja é recalculado pelo código.
 - **Mesmo `line_no` e outro `code`, ou linha que sumiu:** se a linha tinha algo manual, ela não é apagada. Fica
   `orphaned = true` e aparece como pendência de revisão. Sem nada manual, é substituída ou removida.
-- **Linha nova:** associada pelo código, como numa nota nova.
+- **Linha nova:** associada ao item da loja pelo código, como numa nota nova.
 
 Os dados reais indicam que o caso órfão não deve ocorrer com a página da SEFAZ, porque o número da linha é o `nItem` do
 documento. A regra existe para OCR e para formatos futuros.
@@ -145,29 +162,39 @@ Os exemplos são fictícios. Ids encurtados.
 
 ### 1. Nota nova com produto conhecido
 
-Antes: `product(P1, gtin, <gtin do café>)`, com `P1.category = bebidas.cafe`.
+Antes: `store_item(S1, gtin, <gtin do café>) → P1`, com `P1.category = bebidas.cafe`.
 
 A nota `N1` traz a linha 3 com esse GTIN. Resultado:
-`receipt_line(N1, 3, product=P1, assignment=auto, discount_source=prorated)`.
+`receipt_line(N1, 3, store_item=S1, discount_source=prorated)`, com produto efetivo `P1`.
 
 A linha já entra na categoria Café sem nenhuma ação.
 
-### 2. Tamanho corrigido e depois um parser novo
+### 2. Banana caturra em dois mercados
+
+O mercado A vende `BANANA CATURRA KG` com código interno `243`: `store_item(S2, store, 243, A) → P2`, e o usuário
+chamou `P2` de "Banana caturra", categoria Frutas. A primeira compra no mercado B traz `BAN CATURRA KG`, código `1050`,
+e cria `store_item(S3, store, 1050, B) → P3`, sem nada manual.
+
+O usuário vincula `S3` a `P2`. Resultado: `S3 → P2` e `P3` é descartado. As linhas de B não mudam; seu produto
+efetivo passa a ser `P2`. O histórico de preço de "Banana caturra" junta as duas lojas e pode ser separado por loja.
+As próximas compras em B já caem em `P2`. Desvincular `S3` cria de novo um produto só dele.
+
+### 3. Tamanho corrigido e depois um parser novo
 
 A descrição é `CAFE TORRADO 5OOG` (com a letra O no lugar do zero), e `parseSize` não reconhece o tamanho. O usuário
 informa 500 g: `P1.size_e6 = 500000, size_unit = kg, size_source = manual`.
 
 O parser sobe de versão e a nota é reprocessada. As linhas são regravadas e `P1` não muda.
 
-### 3. Associação corrigida e depois reprocessamento
+### 4. Correção do produto de uma linha e depois reprocessamento
 
 A linha `N1/5` usa o código interno `77`, que a loja reutilizou para outro produto. Ela caiu em `P4` (Detergente), mas
-é Esponja. O usuário reassocia a linha a `P5`: `assignment = manual`.
+é Esponja. O usuário corrige só essa linha: `product_override_id = P5`.
 
-No reprocessamento, a linha 5 continua com o código `77` e a associação manual é preservada. Só as linhas com
-`assignment = auto` seguem o código.
+No reprocessamento, a linha 5 continua com o código `77` e a correção é preservada. As outras compras desse código continuam em `P4`. Se a loja
+trocou de vez o que o código significa, o certo é desvincular o item da loja, não corrigir linha a linha.
 
-### 4. Desconto manual
+### 5. Desconto manual
 
 A nota `N2` tem desconto total de R$ 3,00, e o usuário vê na foto R$ 2,00 de desconto na linha 2. Resultado:
 - a linha 2 fica com `discount_cents = 200, source = manual, review = confirmed`;
@@ -176,12 +203,12 @@ A nota `N2` tem desconto total de R$ 3,00, e o usuário vê na foto R$ 2,00 de d
 
 O total da nota não muda; só muda a distribuição entre as categorias.
 
-### 5. Exclusões
+### 6. Exclusões
 
 - **Nota:** "Apagar a nota de 12/03 no Mercado X? Ela tem 23 linhas e 14 fotos, que serão apagadas também." O usuário
   confirma. A nota, as linhas, as fotos e a página são apagadas no celular e, pela cópia, no servidor. Produtos que
   ficaram sem compras continuam no catálogo.
-- **Produto sem compras:** é apagado direto.
+- **Produto sem compras:** é apagado direto, com os itens da loja sem compras que apontavam para ele.
 - **Produto com compras:** a tela mostra quantas compras ele tem e oferece arquivar: o produto some das listas e as
   compras continuam nos relatórios. Não existe apagar um produto e perder suas compras. Se ele aparecer de novo numa
   nota, volta a ser listado.
@@ -205,7 +232,7 @@ O total da nota não muda; só muda a distribuição entre as categorias.
 ## Papel do servidor
 
 O celular envia ao servidor, num só sentido, as notas, as linhas com seus valores efetivos (produto, desconto e
-origem) e o catálogo (produtos, categorias e tags). As fotos continuam em `receipt_photos` (D42).
+origem) e o catálogo (itens da loja, produtos, categorias e tags). As fotos continuam em `receipt_photos` (D42).
 
 - **Sem conflitos de sincronização:** o servidor nunca edita.
 - **Fim do parse no servidor:** depois da troca, o PocketBase deixa de parsear e as regras de edição do admin são
@@ -224,7 +251,8 @@ origem) e o catálogo (produtos, categorias e tags). As fotos continuam em `rece
    - semear a taxonomia;
    - importar os manifestos atuais em `receipt` e `receipt_photo`, preservando o estado de envio;
    - parsear as páginas localmente;
-   - aplicar a exportação, casando pelas chaves de produto.
+   - criar um item da loja e um produto para cada produto do servidor (hoje são 1 para 1) e aplicar a
+     exportação, casando pelas chaves de produto.
 4. **Conferir** antes de mudar o envio:
    - mesmas contagens de notas, linhas e produtos;
    - mesma categoria em cada produto;
@@ -236,10 +264,11 @@ para a etapa 2. O JSON tem descrições de compras reais e não entra no reposit
 
 ## Fora deste desenho
 
-- **Agrupar produtos parecidos para comparar preços** (bananas de lojas diferentes, vinhos, café 500 g de marcas
-  diferentes): é uma decisão de análise (IPCI), não de identidade. Os produtos continuam distintos; pode virar uma
-  tabela de grupos de comparação depois. Para os totais de gasto, a categoria já agrupa.
-- **Vínculo com o cadastro compartilhado e curadoria:** o id local e o código do produto permitem associar depois,
+- **Agrupar produtos diferentes para comparar preços** (vinhos, café 500 g de marcas diferentes, banana caturra com
+  prata): é uma decisão de análise (IPCI), não de identidade. Os produtos continuam distintos; pode virar uma tabela de
+  grupos de comparação depois. Para os totais de gasto, a categoria já agrupa. O mesmo item em lojas diferentes não é
+  esse caso: ele é unificado no produto (fluxo 2).
+- **Vínculo com o cadastro compartilhado e curadoria:** o id local do produto e os códigos dos itens da loja permitem associar depois,
   sem depender de ids remotos ([local-and-shared-modes.md](local-and-shared-modes.md)).
 - **Classificação histórica por época:** foi recusada por agora (D43).
 - **OCR de descontos:** o esquema já tem `source = photo` e o estado de revisão.
