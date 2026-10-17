@@ -832,3 +832,36 @@ and a queryable copy; the phone becomes the source of truth in stages 3–4.
     sessions and no upload errors;
   - no upload ran;
   - the server stayed at 9 receipts and 51 `receipt_photos`, with no receipt updated.
+
+## D46. Stage 2b: a read-only copy of the server's lines and catalog on the phone (2026-10-17)
+
+- **Schema v2** (Room auto-migration 1→2, tested with `MigrationTestHelper`): adds `issuer`, `category`, `tag`,
+  `product`, `store_item`, `product_tag` and `receipt_line` as in data-model.md.
+  - **Deviation from the doc:** the parsed receipt header (issuer, issue time, totals in cents, parser version, parse
+    error) lives in its own `receipt_parsed` table instead of `receipt`. ReceiptStore rewrites whole `receipt` rows, and
+    a separate table keeps those writes from ever clearing parsed fields.
+- **ServerMirror** makes the phone's lines and catalog match a server snapshot, in one immediate transaction (a
+  failure changes nothing).
+  - Local ids stay stable: categories match by path, tags by slug, store items by code key, lines by (chave, line).
+  - Each server product becomes one store item and one product. A manual size goes to the product; a parsed size goes
+    to the store item.
+  - Whatever the server no longer has is dropped from the copy. That is safe only while nothing is edited on the phone
+    (stage 4 changes this).
+  - It uses `useWriterConnection { immediateTransaction }`, not `withTransaction`, which takes the framework path and
+    fails under the bundled JVM driver.
+- **Refresh.** `PocketBaseClient.fetchSnapshot` reads categories, tags, products, receipts (without the heavy
+  `parsed` JSON), receipt_items, and the receipt_photos count per receipt, paginated. UploadWorker refreshes the copy
+  after its uploads, with the same login. A refresh failure is only logged.
+- **Startup.** The app now enqueues the worker on every start, except under instrumented tests (debug builds point at
+  the real server).
+- **Fewer PATCHes.** A receipt whose record is current (remote id, uploaded version) no longer gets a PATCH when only
+  photos are pending, so its page isn't re-sent and re-parsed.
+- **Receipts only the server has** are adopted by `ReceiptStore.adoptRemote` as already uploaded, with their page
+  downloaded.
+  - Their legacy `receipts.photos` are downloaded and queued for receipt_photos **only when the server receipt has no
+    receipt_photos yet**. Otherwise a fresh install would re-send the same evidence under the server's file names and
+    duplicate it.
+  - An adopted receipt whose evidence is already in receipt_photos gets no local photos for now. Restoring evidence is
+    stage 2c's job.
+- **Tests.** 63 unit tests (ServerMirror: mapping, idempotence, removals, rollback, adoption, store-local monthly
+  totals; client: pagination, field conversion, file token, no partial download) and 48 instrumented tests pass.

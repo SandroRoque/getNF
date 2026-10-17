@@ -138,6 +138,18 @@ class ReceiptStore(
     } finally { temporary.forEach { it.delete() }; if (!committed) created.forEach { it.delete() } }
   } }
 
+  /**
+   * Creates a receipt that only the server had (D46), with its already-downloaded [photos] pending for receipt_photos.
+   * The receipt itself counts as uploaded. A receipt the phone already has is left alone.
+   */
+  suspend fun adoptRemote(receipt: Receipt, photos: List<String>) = io {
+    mutex.withLock {
+      if (read(receipt.chave) != null) return@withLock
+      dao.save(receipt.row(), photos.mapIndexed { i, name -> PhotoRow(receipt.chave, name, i, uploaded = false, segment = null) })
+      publish()
+    }
+  }
+
   /** Changes receipt-level fields only; photos have their own calls. */
   private suspend fun update(chave: String, bump: Boolean = true, change: (Receipt) -> Receipt) = io {
     mutex.withLock {

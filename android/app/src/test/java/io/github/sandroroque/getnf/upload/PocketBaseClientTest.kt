@@ -74,4 +74,54 @@ class PocketBaseClientTest {
     server.enqueue(json("""{"items":[{"id":"ph7"}]}"""))
     assertEquals("ph7", PocketBaseClient().uploadPhoto(config, "t", "rec1", dir, "photo-2.jpg", null))
   }
+
+  @Test fun snapshotReadsEveryPageAndConvertsFields() {
+    val client = PocketBaseClient(pageSize = 1)
+    server.enqueue(json("""{"items":[{"receipt":"r1"}]}"""))
+    server.enqueue(json("""{"items":[{"receipt":"r1"}]}"""))
+    server.enqueue(json("""{"items":[]}"""))
+    // Each collection: a full page, then a short one.
+    server.enqueue(json("""{"items":[{"id":"c1","path":"food","label":"Comida","order":1,"parent":""}]}"""))
+    server.enqueue(json("""{"items":[]}"""))
+    server.enqueue(json("""{"items":[]}"""))
+    server.enqueue(json("""{"items":[{"id":"p1","key":"gtin:7890000000017","description":"CAFE","category":"c1","tags":[],"size_qty":0,"size_unit":"","size_source":""}]}"""))
+    server.enqueue(json("""{"items":[]}"""))
+    server.enqueue(json("""{"items":[{"id":"r1","chave":"$chave","qr_url":"","captured_at":"2026-01-15 13:00:00.000Z","page_url":"","page_fetched_at":"","page":"page_x.html","photos":["a.jpg"],"store_name":"M","store_cnpj":"1","issued_at":"2026-01-15 13:00:00.000Z","total_gross":1.5,"discount":0,"total_paid":1.5,"parser_version":1,"parse_error":""}]}"""))
+    server.enqueue(json("""{"items":[]}"""))
+    server.enqueue(json("""{"items":[{"receipt":"r1","line":1,"product":"p1","description":"CAFE","code":"7890000000017","qty":1,"unit":"UN","unit_price":1.5,"gross":1.5,"discount":0,"discount_source":"prorated"}]}"""))
+    server.enqueue(json("""{"items":[]}"""))
+    val s = client.fetchSnapshot(config, "t")
+    assertEquals(null, s.categories.single().parentId)
+    assertEquals(null, s.products.single().sizeQty)
+    val r = s.receipts.single()
+    assertEquals(java.time.Instant.parse("2026-01-15T13:00:00Z").toEpochMilli(), r.issuedAt)
+    assertEquals(null, r.qrUrl)
+    assertEquals(null, r.pageFetchedAt)
+    assertEquals(listOf("a.jpg"), r.photos)
+    assertEquals(2, r.evidencePhotos)
+    assertEquals(1, s.items.single().line)
+    repeat(3) { server.takeRequest() } // receipt_photos
+    val first = server.takeRequest()
+    assertEquals("/api/collections/categories/records", first.url.encodedPath)
+    assertEquals("1", first.url.queryParameter("page"))
+    assertEquals("2", server.takeRequest().url.queryParameter("page"))
+    assertEquals(12, server.requestCount)
+  }
+
+  @Test fun downloadUsesAFileTokenAndLeavesNothingOnFailure() {
+    val dir = tmp.newFolder()
+    server.enqueue(json("""{"token":"ft"}"""))
+    server.enqueue(MockResponse.Builder().code(200).body("jpeg").build())
+    PocketBaseClient().download(config, "t", "receipts", "r1", "a.jpg", java.io.File(dir, "a.jpg"))
+    assertEquals("jpeg", java.io.File(dir, "a.jpg").readText())
+    server.takeRequest()
+    val get = server.takeRequest()
+    assertEquals("/api/files/receipts/r1/a.jpg", get.url.encodedPath)
+    assertEquals("ft", get.url.queryParameter("token"))
+
+    server.enqueue(json("""{"token":"ft"}"""))
+    server.enqueue(MockResponse.Builder().code(404).body("{}").build())
+    try { PocketBaseClient().download(config, "t", "receipts", "r1", "b.jpg", java.io.File(dir, "b.jpg")) } catch (_: PocketBaseException) {}
+    assertEquals(listOf("a.jpg"), dir.list()!!.toList())
+  }
 }

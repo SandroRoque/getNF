@@ -106,6 +106,7 @@ dependencies {
   androidTestImplementation(libs.androidx.test.ext.junit)
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.espresso.core)
+  androidTestImplementation(libs.androidx.room.testing)
 
   // Camera + QR decoding (ML Kit bundled model: no Play Services needed)
   implementation(libs.androidx.camera.camera2)

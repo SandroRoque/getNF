@@ -1,6 +1,7 @@
 package io.github.sandroroque.getnf.data
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -16,8 +17,8 @@ import androidx.room.Transaction
 import androidx.room.Update
 
 /**
- * Local database (D45, schema in docs/data-model.md). Stage 2a holds receipts and their photo evidence; photos and
- * pages stay files in `receipts/<chave>/`, rows only name them.
+ * Local database (D45, D46; schema in docs/data-model.md). Receipts and their photo evidence (ReceiptStore), plus the
+ * parsed lines and catalog (Catalog.kt). Photos and pages stay files in `receipts/<chave>/`; rows only name them.
  */
 @Entity(tableName = "receipt")
 data class ReceiptRow(
@@ -84,9 +85,19 @@ abstract class ReceiptDao {
   }
 }
 
-@Database(entities = [ReceiptRow::class, PhotoRow::class, CaptureSessionRow::class], version = 1)
+@Database(
+  entities = [
+    ReceiptRow::class, PhotoRow::class, CaptureSessionRow::class,
+    ReceiptParsedRow::class, IssuerRow::class, CategoryRow::class, TagRow::class, ProductRow::class, StoreItemRow::class,
+    ProductTagRow::class, ReceiptLineRow::class,
+  ],
+  version = 2,
+  // Every version ships a migration from the one before; schemas are exported to android/app/schemas.
+  autoMigrations = [AutoMigration(from = 1, to = 2)],
+)
 abstract class ReceiptDatabase : RoomDatabase() {
   abstract fun receipts(): ReceiptDao
+  abstract fun catalog(): CatalogDao
 
   companion object {
     const val NAME = "getnf.db"
