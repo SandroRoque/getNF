@@ -865,3 +865,18 @@ and a queryable copy; the phone becomes the source of truth in stages 3–4.
     stage 2c's job.
 - **Tests.** 63 unit tests (ServerMirror: mapping, idempotence, removals, rollback, adoption, store-local monthly
   totals; client: pagination, field conversion, file token, no partial download) and 48 instrumented tests pass.
+- **Phone (2026-10-17).** Backup first: `~/getnf-backups/phone-pre-mirror-2026-10-17.tar` (108 files, matching the
+  phone). After installing over the old APK, the first run:
+  - adopted the server-only receipt with its 4 legacy photos;
+  - mirrored 84 products, 9 receipts and 135 lines;
+  - uploaded those 4 photos.
+
+  Compared with the live server, using counts only:
+  - 9/135/84 receipts/lines/products on both;
+  - 0 products with a different category;
+  - all 61 month×category cells of `spending_lines` equal (192,775 cents in total on both sides);
+  - 0 photos pending on the phone;
+  - `receipt_photos` at 55, with all 9 receipts now covered;
+  - no receipt record updated on the server.
+
+  A relaunch refreshed the copy and uploaded nothing more.
