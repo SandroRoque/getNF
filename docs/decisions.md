@@ -777,3 +777,23 @@ Linking or unlinking never changes a purchase, because lines point to store item
 (same variety, same way of selling), and warn when units are incompatible. Different products stay separate and are
 grouped by category. A single line can still be corrected to another product (`product_override_id`). This
 supersedes the "one code, one product" rule of the first correction.
+
+## D44. data-model.md approved: the local schema and policies for stage 2 (2026-10-17)
+
+After two corrections (recorded under D43), the user approved [data-model.md](data-model.md) and moved on to stage 2:
+
+- **Evidence is immutable.** Extracted values are never edited. Corrections live in the catalog (product name,
+  category, size, tags) or as explicit per-line fields (`product_override_id`, manual discount with source and
+  review state).
+- **Store item and product.** A store item is one per code, as the receipt shows it. A product is what the thing is.
+  Linking store items to a product unifies the same item across stores without touching purchases.
+- **Re-parse.** Lines are matched by line number. A line with manual data that no longer matches becomes an orphan
+  for review and is never dropped.
+- **Deletion.**
+  - A receipt goes with its lines, photos and page, after a warning and a confirmation.
+  - A product with purchases can only be archived.
+  - Deleting a category asks where its products go, and leaves a tombstone so the taxonomy doesn't recreate it.
+- **Taxonomy.** It is a seed that only adds.
+- **Server.** It receives a one-way copy, and `spending_lines` keeps its shape.
+- **Migration.** Carry over the server's manual work, and verify counts, categories and monthly totals before
+  switching the upload.
