@@ -24,7 +24,7 @@ class CaptureSessionStoreTest {
     return session
   }
   @Test fun importPreservesExistingPhotosAndIsIdempotent() = runTest {
-    val receipts = ReceiptStore(tmp.newFolder("receipts"))
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase())
     receipts.open(key, "old-url")
     val old = File(receipts.dir(key), "old.jpg").apply { writeText("existing") }
     receipts.addPhoto(key, old)
@@ -40,7 +40,7 @@ class CaptureSessionStoreTest {
   @Test fun processRecoveryKeepsOnlyCodeForUnfinishedCapture() = runTest {
     val root = tmp.newFolder("sessions"); val sessions = CaptureSessionStore(root)
     val session = prepare(sessions)
-    val receipts = ReceiptStore(tmp.newFolder("receipts"))
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase())
     CaptureSessionStore(root).recover(receipts)
     assertNotNull(receipts.get(key)); assertTrue(receipts.get(key)!!.photos.isEmpty())
     assertFalse(sessions.dir(session.id).exists())
@@ -48,14 +48,14 @@ class CaptureSessionStoreTest {
   @Test fun processRecoveryWithoutQrDiscardsAllImages() = runTest {
     val root = tmp.newFolder("sessions"); val sessions = CaptureSessionStore(root)
     val session = prepare(sessions, withQr = false)
-    val receipts = ReceiptStore(tmp.newFolder("receipts"))
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase())
     CaptureSessionStore(root).recover(receipts)
     assertTrue(receipts.receipts.value.isEmpty()); assertFalse(sessions.dir(session.id).exists())
   }
   @Test fun interruptedCommitCanFinishWithoutDuplicatingImages() = runTest {
     val root = tmp.newFolder("sessions"); val sessions = CaptureSessionStore(root)
     val session = prepare(sessions, committing = true)
-    val receipts = ReceiptStore(tmp.newFolder("receipts"))
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase())
     receipts.importCapture(session, sessions.dir(session.id)) // Simulate crash after receipt commit, before temp cleanup.
     CaptureSessionStore(root).recover(receipts)
     assertEquals(1, receipts.get(key)!!.photos.size)
@@ -64,7 +64,7 @@ class CaptureSessionStoreTest {
   @Test fun missingSourceDoesNotPublishPartialBatchOrDeleteOldPhotos() = runTest {
     val sessions = CaptureSessionStore(tmp.newFolder("sessions")); val session = prepare(sessions, true)
     File(sessions.dir(session.id), session.segments.single().mask).delete()
-    val receipts = ReceiptStore(tmp.newFolder("receipts"))
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase())
     val before = receipts.open(key, "existing")
     try { receipts.importCapture(session, sessions.dir(session.id)); fail("Expected a missing-file error") } catch (_: java.io.IOException) { }
     assertEquals(before, receipts.get(key))
@@ -74,13 +74,13 @@ class CaptureSessionStoreTest {
     val root = tmp.newFolder("sessions"); val sessions = CaptureSessionStore(root)
     val session = prepare(sessions, committing = true)
     File(sessions.dir(session.id), session.segments.single().mask).delete()
-    val receipts = ReceiptStore(tmp.newFolder("receipts")); val before = receipts.open(key, "existing")
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase()); val before = receipts.open(key, "existing")
     assertEquals(1, CaptureSessionStore(root).recover(receipts))
     assertEquals(before, receipts.get(key)); assertTrue(sessions.dir(session.id).exists())
   }
   @Test fun quotaRejectsTheEntireBatchWithoutChangingExistingPhotos() = runTest {
     val sessions = CaptureSessionStore(tmp.newFolder("sessions")); val session = prepare(sessions, true)
-    val receipts = ReceiptStore(tmp.newFolder("receipts")); receipts.open(key, null)
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase()); receipts.open(key, null)
     repeat(ReceiptStore.MAX_PHOTOS) { i ->
       val file = File(receipts.dir(key), "old-$i.jpg").apply { writeText("existing") }
       receipts.addPhoto(key, file)
@@ -91,7 +91,7 @@ class CaptureSessionStoreTest {
   }
   @Test fun activeSessionIsNeverCleanedByStartupRecovery() = runTest {
     val sessions = CaptureSessionStore(tmp.newFolder("sessions")); val session = prepare(sessions)
-    val receipts = ReceiptStore(tmp.newFolder("receipts"))
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase())
     sessions.recover(receipts)
     assertTrue(sessions.dir(session.id).exists()); assertNull(receipts.get(key))
   }

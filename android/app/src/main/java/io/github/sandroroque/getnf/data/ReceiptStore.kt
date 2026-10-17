@@ -1,5 +1,6 @@
 package io.github.sandroroque.getnf.data
 
+import android.util.Log
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,8 +13,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
- * What the phone knows about one receipt. Lives in `receipts/<chave>/receipt.json`, next to the
- * photos and the saved page (see docs/decisions.md D11).
+ * What the phone knows about one receipt, assembled from the local database (D45). Photos and the saved page are files
+ * in `receipts/<chave>/`. Until D45 this was the `receipt.json` manifest itself (D11); it stays serializable so
+ * [ReceiptStore.load] can import those manifests.
  */
 @Serializable
 data class Receipt(
@@ -43,12 +45,15 @@ data class Receipt(
     get() = uploadedVersion != version || pendingPhotos.isNotEmpty()
 }
 
-class ReceiptStore(private val root: File, private val now: () -> Long = System::currentTimeMillis) {
+class ReceiptStore(
+  private val root: File,
+  database: ReceiptDatabase,
+  private val now: () -> Long = System::currentTimeMillis,
+  private val warn: (String, Throwable?) -> Unit = { message, error -> Log.w(TAG, message, error) },
+) {
+  private val dao = database.receipts()
   private val mutex = Mutex()
-  private val json = Json {
-    prettyPrint = true
-    ignoreUnknownKeys = true
-  }
+  private val json = Json { ignoreUnknownKeys = true }
   private val _receipts = MutableStateFlow<List<Receipt>>(emptyList())
 
   /** All receipts, newest first. Call [load] once at startup. */
@@ -56,7 +61,8 @@ class ReceiptStore(private val root: File, private val now: () -> Long = System:
 
   fun dir(chave: String): File = File(root, chave)
 
-  suspend fun load() = io { mutex.withLock { publish() } }
+  /** Imports any pre-D45 manifests, then publishes. */
+  suspend fun load() = io { mutex.withLock { importManifests(); publish() } }
 
   suspend fun get(chave: String): Receipt? = io { mutex.withLock { read(chave) } }
 
@@ -66,7 +72,7 @@ class ReceiptStore(private val root: File, private val now: () -> Long = System:
       read(chave)
         ?: Receipt(chave = chave, qrUrl = qrUrl, capturedAt = now(), version = 1).also {
           dir(chave).mkdirs()
-          write(it)
+          dao.save(it.row())
           publish()
         }
     }
@@ -75,7 +81,13 @@ class ReceiptStore(private val root: File, private val now: () -> Long = System:
   /** A fresh file to hand to the camera. Call [addPhoto] once it's been written. */
   fun newPhotoFile(chave: String): File = File(dir(chave), "photo-${now()}.jpg")
 
-  suspend fun addPhoto(chave: String, file: File) = update(chave) { it.copy(photos = it.photos + file.name) }
+  suspend fun addPhoto(chave: String, file: File) = io {
+    mutex.withLock {
+      val old = read(chave) ?: error("no receipt $chave")
+      dao.save(old.row().copy(version = old.version + 1), listOf(PhotoRow(chave, file.name, old.photos.size, uploaded = false, segment = null)))
+      publish()
+    }
+  }
 
   suspend fun savePage(chave: String, url: String, html: String) {
     io { File(dir(chave), PAGE_FILE).writeText(html, Charsets.UTF_8) }
@@ -86,13 +98,14 @@ class ReceiptStore(private val root: File, private val now: () -> Long = System:
     update(chave, bump = false) { it.copy(uploadedVersion = version, remoteId = remoteId, uploadError = null) }
 
   /** Not a local change: doesn't bump [Receipt.version]. */
-  suspend fun markPhotoUploaded(chave: String, photo: String) =
-    update(chave, bump = false) { if (photo in it.uploadedPhotos) it else it.copy(uploadedPhotos = it.uploadedPhotos + photo) }
+  suspend fun markPhotoUploaded(chave: String, photo: String) = io {
+    mutex.withLock { dao.markPhotoUploaded(chave, photo); publish() }
+  }
 
   suspend fun markUploadError(chave: String, message: String) =
     update(chave, bump = false) { it.copy(uploadError = message) }
 
-  /** Idempotent batch import: manifest publication is the commit point; existing evidence is never replaced. */
+  /** Idempotent batch import: the database transaction is the commit point; existing evidence is never replaced. */
   suspend fun importCapture(session: CaptureSessionManifest, source: File): Receipt = io { mutex.withLock {
     val key = requireNotNull(session.chave)
     val old = read(key) ?: Receipt(key, session.qrUrl, now())
@@ -112,44 +125,74 @@ class ReceiptStore(private val root: File, private val now: () -> Long = System:
         check(temp.renameTo(target)) { "Could not import captured image" }
         created += target
       }
-      val next = old.copy(
-        qrUrl = old.qrUrl ?: session.qrUrl,
-        photos = old.photos + session.segments.map { it.photo },
-        captureSessions = old.captureSessions + session.id,
-        captureSegments = old.captureSegments + session.segments,
-        version = old.version + 1,
+      dao.save(
+        old.copy(qrUrl = old.qrUrl ?: session.qrUrl, version = old.version + 1).row(),
+        session.segments.mapIndexed { i, segment ->
+          PhotoRow(key, segment.photo, old.photos.size + i, uploaded = false, segment = json.encodeToString(segment))
+        },
+        listOf(CaptureSessionRow(key, session.id, old.captureSessions.size)),
       )
-      write(next)
       committed = true
       publish()
-      next
+      read(key)!!
     } finally { temporary.forEach { it.delete() }; if (!committed) created.forEach { it.delete() } }
   } }
 
+  /** Changes receipt-level fields only; photos have their own calls. */
   private suspend fun update(chave: String, bump: Boolean = true, change: (Receipt) -> Receipt) = io {
     mutex.withLock {
       val old = read(chave) ?: error("no receipt $chave")
       val new = change(old).let { if (bump) it.copy(version = old.version + 1) else it }
-      write(new)
+      dao.save(new.row())
       publish()
     }
   }
 
-  private fun read(chave: String): Receipt? =
-    File(dir(chave), MANIFEST).takeIf { it.isFile }?.let { json.decodeFromString<Receipt>(it.readText()) }
+  private suspend fun read(chave: String): Receipt? =
+    dao.receipt(chave)?.let { assemble(it, dao.photos(chave), dao.sessions(chave)) }
 
-  // Write-then-rename so a crash never leaves a half-written manifest.
-  private fun write(receipt: Receipt) {
-    val tmp = File(dir(receipt.chave), "$MANIFEST.tmp")
-    java.io.FileOutputStream(tmp).use { output ->
-      output.write(json.encodeToString(receipt).toByteArray(Charsets.UTF_8)); output.fd.sync()
-    }
-    check(tmp.renameTo(File(dir(receipt.chave), MANIFEST))) { "could not save ${receipt.chave}" }
+  private suspend fun publish() {
+    val photos = dao.photos().groupBy { it.receipt }
+    val sessions = dao.sessions().groupBy { it.receipt }
+    _receipts.value = dao.receipts().map { assemble(it, photos[it.chave].orEmpty(), sessions[it.chave].orEmpty()) }
+      .sortedByDescending { it.capturedAt }
   }
 
-  private fun publish() {
-    val all = root.listFiles().orEmpty().filter { it.isDirectory }.mapNotNull { read(it.name) }
-    _receipts.value = all.sortedByDescending { it.capturedAt }
+  private fun assemble(row: ReceiptRow, photos: List<PhotoRow>, sessions: List<CaptureSessionRow>) = Receipt(
+    chave = row.chave, qrUrl = row.qrUrl, capturedAt = row.capturedAt, photos = photos.map { it.localName },
+    pageUrl = row.pageUrl, pageFile = row.pageFile, pageFetchedAt = row.pageFetchedAt, version = row.version,
+    uploadedVersion = row.uploadedVersion, remoteId = row.remoteId, uploadError = row.uploadError,
+    captureSessions = sessions.map { it.sessionId },
+    captureSegments = photos.mapNotNull { p -> p.segment?.let { json.decodeFromString<CaptureSegment>(it) } },
+    uploadedPhotos = photos.filter { it.uploaded }.map { it.localName },
+  )
+
+  private fun Receipt.row() =
+    ReceiptRow(chave, qrUrl, capturedAt, pageUrl, pageFile, pageFetchedAt, version, uploadedVersion, remoteId, uploadError)
+
+  /**
+   * One-time import of the pre-D45 `receipt.json` manifests, keeping versions and upload state so nothing is re-sent.
+   * A manifest is renamed once its receipt is in the database, never deleted: it stays as a fallback, and can't bring
+   * back a receipt deleted later. A crash between insert and rename just renames on the next load.
+   */
+  private suspend fun importManifests() {
+    for (dir in root.listFiles().orEmpty().filter { it.isDirectory }) {
+      val manifest = File(dir, MANIFEST).takeIf { it.isFile } ?: continue
+      try {
+        val r = json.decodeFromString<Receipt>(manifest.readText())
+        require(r.chave == dir.name) { "manifest chave doesn't match its directory" }
+        if (dao.receipt(r.chave) == null) dao.save(
+          r.row(),
+          r.photos.mapIndexed { i, name ->
+            PhotoRow(r.chave, name, i, name in r.uploadedPhotos, r.captureSegments.find { it.photo == name }?.let { json.encodeToString(it) })
+          },
+          r.captureSessions.mapIndexed { i, id -> CaptureSessionRow(r.chave, id, i) },
+        )
+        if (!manifest.renameTo(File(dir, MIGRATED_MANIFEST))) warn("could not rename the imported manifest of ${dir.name}", null)
+      } catch (e: Exception) {
+        warn("skipping unreadable manifest ${dir.name}", e)
+      }
+    }
   }
 
   private suspend fun <T> io(block: suspend () -> T): T = withContext(Dispatchers.IO) { block() }
@@ -157,6 +200,8 @@ class ReceiptStore(private val root: File, private val now: () -> Long = System:
   companion object {
     const val MAX_PHOTOS = 100
     const val MANIFEST = "receipt.json"
+    const val MIGRATED_MANIFEST = "receipt.json.migrated"
     const val PAGE_FILE = "page.html"
+    private const val TAG = "ReceiptStore"
   }
 }

@@ -2,6 +2,7 @@ package io.github.sandroroque.getnf
 
 import android.app.Application
 import io.github.sandroroque.getnf.data.LookupBudget
+import io.github.sandroroque.getnf.data.ReceiptDatabase
 import io.github.sandroroque.getnf.data.ReceiptStore
 import io.github.sandroroque.getnf.data.CaptureSessionStore
 import io.github.sandroroque.getnf.data.ServerSettings
@@ -13,7 +14,8 @@ import kotlinx.coroutines.launch
 
 /** App-wide singletons. Small enough that a DI framework isn't worth it yet. */
 class GetNFApp : Application() {
-  val receiptStore by lazy { ReceiptStore(File(filesDir, "receipts")) }
+  val database by lazy { ReceiptDatabase.open(this) }
+  val receiptStore by lazy { ReceiptStore(File(filesDir, "receipts"), database) }
   val captureSessions by lazy { CaptureSessionStore(File(filesDir, "capture-sessions")) }
   val serverSettings by lazy { ServerSettings(this) }
   val pocketBase by lazy { PocketBaseClient() }

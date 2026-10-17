@@ -797,3 +797,31 @@ After two corrections (recorded under D43), the user approved [data-model.md](da
 - **Server.** It receives a one-way copy, and `spending_lines` keeps its shape.
 - **Migration.** Carry over the server's manual work, and verify counts, categories and monthly totals before
   switching the upload.
+
+## D45. Stage 2a: receipts and photo evidence move into a Room database (2026-10-17)
+
+First slice of stage 2. Correction to data-model.md's migration plan: in the roadmap, parsing on the phone is stage
+3. During stage 2 the server keeps parsing and remains where products are categorized. The phone gains the database
+and a queryable copy; the phone becomes the source of truth in stages 3–4.
+
+- **Database.** `getnf.db` (Room 2.8.5, KSP 2.3.12) has three tables:
+  - `receipt`: the old manifest's receipt fields;
+  - `receipt_photo`: name, order, uploaded flag, and the capture segment JSON (which holds the mask name);
+  - `capture_session`: the sessions already imported, so importing the same capture again is a no-op.
+
+  Photos and pages stay files in `receipts/<chave>/`. Exported schemas are committed in `android/app/schemas/`, so
+  later versions must ship migrations.
+- **Same API.** `ReceiptStore` keeps its API and the `Receipt` shape, so capture, home, page and upload are
+  unchanged. Every change is one transaction. `importCapture` still copies files first and commits in the database
+  last. Receipt rows are updated, never REPLACEd: a REPLACE deletes the row first, and the cascade would delete its
+  photos.
+- **One-time import.** On load, each `receipt.json` is imported with its versions and upload state, so nothing is
+  re-sent, and then renamed to `receipt.json.migrated`, never deleted. A manifest whose receipt already exists is
+  only renamed, so the database always wins. An unreadable manifest is skipped and logged.
+- **Limitation:** an APK older than D45 sees no receipts. Recovery is the backup taken before installing.
+- **Tests.**
+  - Local JVM tests run Room on a bundled SQLite (`sqlite-bundled-jvm`, explicit journal mode).
+  - Four new tests cover the import (fields and upload state preserved, idempotent, database wins, corrupt manifest
+    skipped) and changes after the import.
+  - 55 unit and 47 instrumented tests pass.
+  - On the emulator, a planted legacy manifest showed up in the real app as uploaded, with no upload attempted.

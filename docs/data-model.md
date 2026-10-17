@@ -241,26 +241,31 @@ origem) e o catálogo (itens da loja, produtos, categorias e tags). As fotos con
 - **Exclusões:** chegam ao servidor como remoções na próxima cópia.
 - **Fora do escopo:** sincronização em dois sentidos e edição pelo PC. Podem virar uma etapa própria.
 
-## Plano de migração (etapa 2)
+## Plano de migração
 
-1. **Backup:** do servidor (`POST /api/backups`, cópia em `~/getnf-backups/`) e dos diretórios das notas no celular.
-2. **Exportação única do servidor** para um JSON:
-   - para cada chave de produto (`gtin:…` ou `store:cnpj:code`): o caminho da categoria, as tags e o tamanho manual;
-   - as notas que só existem no servidor, com a página. Hoje o servidor tem 9 notas e o celular 8.
-3. **No celular:**
-   - semear a taxonomia;
-   - importar os manifestos atuais em `receipt` e `receipt_photo`, preservando o estado de envio;
-   - parsear as páginas localmente;
-   - criar um item da loja e um produto para cada produto do servidor (hoje são 1 para 1) e aplicar a
-     exportação, casando pelas chaves de produto.
-4. **Conferir** antes de mudar o envio:
-   - mesmas contagens de notas, linhas e produtos;
-   - mesma categoria em cada produto;
-   - totais por mês iguais aos do dashboard atual.
-5. **Mudar o envio para o formato novo** e desligar o parse no servidor, nessa ordem e só depois da conferência.
+Correção de 2026-10-17: no roadmap, ler as notas no celular é a etapa 3. Na etapa 2 o servidor continua lendo as
+notas e continua sendo onde se categoriza; o celular ganha o banco e uma cópia consultável. A inversão (o celular como
+fonte da verdade, envio num só sentido) acontece nas etapas 3 e 4.
 
-A exportação é um JSON local, entregue ao app pelo adb ou por um endpoint autenticado do servidor. A escolha fica
-para a etapa 2. O JSON tem descrições de compras reais e não entra no repositório.
+**Etapa 2:**
+- **2a (D45):** banco no celular para notas, fotos e sessões de captura. Os `receipt.json` são importados uma vez e
+  renomeados para `receipt.json.migrated`, preservando versões e estado de envio. Nada muda na tela nem no envio.
+- **2b:** as demais tabelas, e uma cópia somente leitura, vinda do servidor, das linhas e do catálogo:
+  - categorias, tags e tamanhos manuais;
+  - cada produto do servidor vira um item da loja e um produto (hoje 1 para 1), casando pelas chaves de produto;
+  - a nota que só existe no servidor (hoje o servidor tem 9 e o celular 8).
+
+  Conferir contagens, a categoria de cada produto e os totais por mês contra o dashboard.
+- **2c:** exportar e restaurar o banco, as fotos e as páginas, com uma restauração real verificada.
+
+**Etapas 3 e 4:**
+1. Backup do servidor (`POST /api/backups`, cópia em `~/getnf-backups/`) e do celular.
+2. O parser em Kotlin cobre as mesmas fixtures que o de JS, e as notas são lidas no celular.
+3. O cadastro passa a ser editado no celular. Nesse momento, conferir de novo contagens, categorias e totais por mês.
+4. Mudar o envio para a cópia num só sentido e desligar o parse e a edição no servidor, nessa ordem e só depois da
+   conferência.
+
+Dados de compras reais que passarem pelo PC durante a migração (exportações em JSON) não entram no repositório.
 
 ## Fora deste desenho
 

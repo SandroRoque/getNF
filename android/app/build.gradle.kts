@@ -4,7 +4,12 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.ksp)
+  alias(libs.plugins.room)
 }
+
+// Exported schemas are committed: each app version must migrate the previous one (D45).
+room { schemaDirectory("$projectDir/schemas") }
 
 android {
     namespace = "io.github.sandroroque.getnf"
@@ -93,6 +98,8 @@ dependencies {
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.okhttp.mockwebserver)
+  // Room on the JVM for local tests: a bundled SQLite instead of the device's framework one.
+  testImplementation(libs.androidx.sqlite.bundled.jvm)
 
   // Instrumented tests: jUnit rules and runners
   androidTestImplementation(libs.androidx.test.core)
@@ -112,6 +119,8 @@ dependencies {
 
   // Storage + upload
   implementation(libs.kotlinx.serialization.json)
+  implementation(libs.androidx.room.runtime)
+  ksp(libs.androidx.room.compiler)
   implementation(libs.androidx.work.runtime.ktx)
   implementation(libs.okhttp)
 

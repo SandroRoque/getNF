@@ -4,6 +4,7 @@ import android.graphics.*
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.sandroroque.getnf.data.CaptureSessionStore
 import io.github.sandroroque.getnf.data.ReceiptStore
+import io.github.sandroroque.getnf.data.testDatabase
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
@@ -38,7 +39,7 @@ class CaptureEngineTest {
     } finally { input.release(); output.release() }
   }
   @Test fun blurredOverviewThenSharpTopZoomCapturesOnlyTheSharpPart() {
-    val receipts = ReceiptStore(tmp.newFolder("receipts")); val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase()); val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
     var state = CaptureSessionState(); var uploads = 0
     val engine = CaptureEngine(sessions, receipts, { state = it }, { uploads++ })
     val original = longReceipt(); val overview = blurred(original)
@@ -65,7 +66,7 @@ class CaptureEngineTest {
     } finally { engine.close(); original.recycle(); overview.recycle() }
   }
   @Test fun unanchoredFullFrameCannotSaveAndBlockRecovery() {
-    val receipts = ReceiptStore(tmp.newFolder()); val sessions = CaptureSessionStore(tmp.newFolder())
+    val receipts = ReceiptStore(tmp.newFolder(), testDatabase()); val sessions = CaptureSessionStore(tmp.newFolder())
     var state = CaptureSessionState()
     val engine = CaptureEngine(sessions, receipts, { state = it }, { }); val original = longReceipt()
     try {
@@ -95,7 +96,7 @@ class CaptureEngineTest {
   }
   @Test fun sidewaysPaperCompletesWithOneCanonicalPhoto() {
     for (angle in listOf(-90f, 90f)) {
-      val receipts = ReceiptStore(tmp.newFolder()); val sessions = CaptureSessionStore(tmp.newFolder())
+      val receipts = ReceiptStore(tmp.newFolder(), testDatabase()); val sessions = CaptureSessionStore(tmp.newFolder())
       var state = CaptureSessionState()
       val engine = CaptureEngine(sessions, receipts, { state = it }, { }); val original = longReceipt()
       val turned = Bitmap.createBitmap(original, 0, 0, original.width, original.height, Matrix().apply { postRotate(angle) }, true)
@@ -118,7 +119,7 @@ class CaptureEngineTest {
     }
   }
   @Test fun fullSharpDocumentWithQrCompletesWithOnePhoto() {
-    val receipts = ReceiptStore(tmp.newFolder("receipts")); val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase()); val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
     var state = CaptureSessionState(); var uploads = 0
     val engine = CaptureEngine(sessions, receipts, { state = it }, { uploads++ }); val original = longReceipt()
     try {
@@ -135,7 +136,7 @@ class CaptureEngineTest {
     } finally { engine.close(); original.recycle() }
   }
   @Test fun knownFullShapeCannotFillABlurredContentGap() {
-    val receipts = ReceiptStore(tmp.newFolder("receipts")); val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase()); val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
     var state = CaptureSessionState()
     val engine = CaptureEngine(sessions, receipts, { state = it }, { }); val original = longReceipt()
     try {
@@ -156,7 +157,7 @@ class CaptureEngineTest {
     } finally { engine.close(); original.recycle() }
   }
   @Test fun scansLongReceiptAutomaticallyAndReadsQrLast() {
-    val root = tmp.newFolder("receipts"); val receipts = ReceiptStore(root)
+    val root = tmp.newFolder("receipts"); val receipts = ReceiptStore(root, testDatabase())
     val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
     var state = CaptureSessionState(); var uploads = 0
     val engine = CaptureEngine(sessions, receipts, { state = it }, { uploads++ })
@@ -187,7 +188,7 @@ class CaptureEngineTest {
     } finally { engine.close(); original.recycle() }
   }
   @Test fun jumpingFromTopToBottomCannotCompleteUntilTheGapIsScanned() {
-    val receipts = ReceiptStore(tmp.newFolder("receipts")); val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase()); val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
     var state = CaptureSessionState()
     val engine = CaptureEngine(sessions, receipts, { state = it }, { })
     val original = longReceipt(); var time = 0L
@@ -212,7 +213,7 @@ class CaptureEngineTest {
     } finally { engine.close(); original.recycle() }
   }
   @Test fun exitingWithQrKeepsCodeButDropsSessionImages() {
-    val receipts = ReceiptStore(tmp.newFolder("receipts")); val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase()); val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
     var state = CaptureSessionState()
     val engine = CaptureEngine(sessions, receipts, { state = it }, { })
     val original = longReceipt()
@@ -236,7 +237,7 @@ class CaptureEngineTest {
     repeat(count) { i -> receipts.addPhoto(key, java.io.File(receipts.dir(key), "old-$i.jpg").apply { writeBytes(ByteArray(0)) }) }
   }
   @Test fun qrReadLastOnAFullNoteStopsWithAMessageAndKeepsExistingPhotos() {
-    val receipts = ReceiptStore(tmp.newFolder("receipts")); val sessionRoot = tmp.newFolder("sessions")
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase()); val sessionRoot = tmp.newFolder("sessions")
     val sessions = CaptureSessionStore(sessionRoot)
     withExistingPhotos(receipts, 99)
     var state = CaptureSessionState(); var uploads = 0
@@ -261,7 +262,7 @@ class CaptureEngineTest {
     } finally { engine.close(); original.recycle() }
   }
   @Test fun lastFreeSlotStillCompletes() {
-    val receipts = ReceiptStore(tmp.newFolder("receipts")); val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
+    val receipts = ReceiptStore(tmp.newFolder("receipts"), testDatabase()); val sessions = CaptureSessionStore(tmp.newFolder("sessions"))
     withExistingPhotos(receipts, 99)
     var state = CaptureSessionState()
     val engine = CaptureEngine(sessions, receipts, { state = it }, { }); val original = longReceipt()
