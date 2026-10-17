@@ -50,6 +50,10 @@ Incluir fotos como evidência com seus metadados (máscara, faixas, qualidade) e
 identificado por conteúdo: o upload atual substitui a lista de fotos do servidor (D35). Proposta de D35: iniciar esta
 etapa depois da correção de qualidade da captura, pausando novos incrementos de geometria.
 
+Situação em 2026-10-17: fotos como evidência entregues (D42). O papel do PC (só consulta) e a categoria nos
+relatórios (a atual) foram decididos, e Room foi validado no build (D43). O esquema, os fluxos, a política de exclusão
+e o plano de migração estão propostos em [data-model.md](data-model.md) e aguardam aprovação.
+
 **Conclusão da etapa:** esquema proposto, exemplos dos fluxos principais, política de correções/exclusões e plano
 de migração registrados. Escolhas aprovadas devem ser adicionadas ao registro de decisões.
 

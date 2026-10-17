@@ -2,6 +2,9 @@
 
 2026-10-14. Proposta para discussão; não é um esquema aprovado nem uma migração implementada.
 
+**Atualização 2026-10-17:** o desenho concreto (esquema, fluxos, exclusão, taxonomia e migração) está em
+[data-model.md](data-model.md). Este documento fica como o raciocínio que levou a ele.
+
 **Atualização da discussão:** após avaliar ETL em VPS, o usuário escolheu parser no Android. O modelo também deve
 acomodar compartilhamento opcional e curadoria sem comprometer o modo local; ver
 [local-and-shared-modes.md](local-and-shared-modes.md) para as fronteiras entre cadastros e os dados a compartilhar.

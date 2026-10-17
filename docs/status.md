@@ -1,7 +1,7 @@
 # Status and next steps
 
-Last updated 2026-10-15. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D42). For the portal's behaviour, read `docs/sefaz-sc.md`.
+Last updated 2026-10-17. A handoff for picking the project up again. For *why* things are the way they are, read
+`docs/decisions.md` (D1–D43). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -109,6 +109,9 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
   during development; future bad/redundant-image selection is planned, with no deletion implemented (D34).
   Further device validation must cover long thermal receipts, low contrast, shadows, motion and interruptions.
 
+0. **Stage 1 data model awaiting review:** [data-model.md](data-model.md) proposes the Room schema, re-parse rule,
+   deletion policy, taxonomy seeding and migration plan. PC read-only and current-category reports are decided, and
+   Room is validated in the build (D43). After approval: a decision entry, then stage 2 (implement and migrate).
 0. Photos upload append-only to `receipt_photos` with masks and metadata (D42); all 51 phone photos are on the live
    server. A restore onto a new machine needs one restart after the first start (D42).
 1. **Uploads only on home Wi‑Fi with the PC on** (D18). Fine for now. Pending, by the user: reserve `192.168.4.4` for

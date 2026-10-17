@@ -728,3 +728,31 @@ photo list (deleting what the phone didn't send), and capture masks and segment 
 - **Phone, live server:** the first upload added all 51 local photos in ~35 s over home Wi-Fi: 30 capture photos,
   each with mask and segment, and 21 older photos. Legacy `receipts.photos` stayed at 55; nothing is pending on the
   phone; a relaunch uploaded nothing more (still 51). No emulator end-to-end run.
+
+## D43. Stage 1 data model: phone is the source of truth, PC read-only, reports use the current category (2026-10-17)
+
+Second slice of roadmap stage 1. The user decided two questions while planning it:
+
+- **The PC only reads.** The phone owns the structured data and sends the server a one-way copy (notes, lines with
+  their effective product/discount, catalog) for the dashboard and as a backup. The server never edits, so there
+  are no sync conflicts. After the cutover PocketBase stops parsing and the admin edit rules close. Two-way sync and
+  editing from the PC are out of scope and could become their own stage.
+- **Reports use each product's current category.** Recategorizing corrects history, as the dashboard already does.
+  Lines don't store the category of their time.
+
+Measured in the same slice:
+
+- **Room works in this build.** AGP 9.0.1 with built-in Kotlin 2.3.20, Room 2.8.5 and KSP 2.3.12: `assembleDebug`
+  passes and an instrumented write/read test passes on the emulator. The APK grew 16 KB, because Room's runtime
+  already came in through WorkManager. This was a throwaway branch; nothing was merged.
+- **Read-only checks on the live server** (counts only; script kept outside the repo):
+  - quantities have up to 3 decimals and unit prices up to 2;
+  - `qty × unit_price` matches the line total on all 135 lines;
+  - re-parsing every stored page gives the same (line, code) on all 9 receipts;
+  - 4 receipts repeat a code across lines, so lines are matched by line number, not by code;
+  - 97 codes are GTINs and 38 store codes, none empty;
+  - manual work to carry over: 82 categorized products (33 categories), 4 tagged and 3 manual sizes;
+  - the server has 9 receipts and the phone 8.
+
+[data-model.md](data-model.md) holds the proposed schema, flows, re-parse rule, deletion policy, taxonomy seeding and
+migration plan. Its choices are not approved yet. They get their own entry after the user reviews the document.
