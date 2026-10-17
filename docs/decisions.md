@@ -756,3 +756,10 @@ Measured in the same slice:
 
 [data-model.md](data-model.md) holds the proposed schema, flows, re-parse rule, deletion policy, taxonomy seeding and
 migration plan. Its choices are not approved yet. They get their own entry after the user reviews the document.
+
+**Correction after review (2026-10-17):** the first draft of data-model.md let one product hold several codes and
+offered merging products (e.g. the same bulk item at two stores). The user rejected it: merging similar items, such as
+different wines into one "wine", is not identity. Products stay **one code, one product**, as on the server today: a
+GTIN, or a store code together with the store's CNPJ. Nothing is merged. Grouping similar products is the category's
+job for spending totals, and a future price-comparison concern (IPCI). A product with purchases can only be archived.
+If a store turns out to change an item's internal code, that gets its own decision.
