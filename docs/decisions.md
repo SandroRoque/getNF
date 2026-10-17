@@ -825,3 +825,10 @@ and a queryable copy; the phone becomes the source of truth in stages 3–4.
     skipped) and changes after the import.
   - 55 unit and 47 instrumented tests pass.
   - On the emulator, a planted legacy manifest showed up in the real app as uploaded, with no upload attempted.
+- **Phone (2026-10-17).** The app data was backed up first, to `~/getnf-backups/phone-pre-room-2026-10-17.tar`
+  (103 files, matching the phone). The APK was installed over the old one, keeping data. On first launch:
+  - all 8 manifests were imported and renamed;
+  - the database holds 8 receipts with no pending version, 51 photos (all uploaded, 30 with segments), 8 capture
+    sessions and no upload errors;
+  - no upload ran;
+  - the server stayed at 9 receipts and 51 `receipt_photos`, with no receipt updated.
