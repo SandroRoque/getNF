@@ -1091,7 +1091,11 @@ had.
   - **Partial** on the sixth, an older low-resolution photo of five identical items: R$ 0,10 of R$ 0,50 found.
   - **Nothing** on the three receipts without a discount. That includes one whose NF holds three photos of a
     different receipt, with `Desconto` lines: no code matched.
-- **OCR time:** about 2.7 s per 3072×4096 photo on the emulator. Not yet measured on the phone.
+- **OCR time:** about 2.7 s per 3072×4096 photo on the emulator.
+- **Phone (2026-10-21).** Backup first: `~/getnf-backups/phone-pre-photo-discounts-2026-10-21.tar` (105 files,
+  matching the phone). On the R$ 4,40 receipt, "Discounts from photos" said "From 2 photo(s): 4 discount(s), R$ 4,40
+  of R$ 4,40. All found." in under 5 s. Lines 10, 11, 14 and 15 got 156, 204, 24 and 56 cents (`photo`), as printed;
+  every other line 0, which includes the lombo that prorating had given 79 cents. No other receipt changed.
 - **Not done:** showing the evidence crop so the user can confirm (the review state stays `unreviewed`), and a way to
   go back to prorated (needs stage 4's line editing). The server still prorates: its dashboard shows prorated
   discounts until stage 4's one-way copy sends the phone's lines.
