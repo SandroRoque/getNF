@@ -17,6 +17,7 @@ import io.github.sandroroque.getnf.data.ServerConfig
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -46,6 +47,9 @@ class UploadWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         refreshMirror(app, client, config, token)
         // Receipts adopted from the server bring legacy photos still missing from receipt_photos.
         upload(client, config, token, store)
+      } catch (e: CancellationException) {
+        // The worker was replaced or stopped: let it end instead of logging a failed refresh and carrying on.
+        throw e
       } catch (e: Exception) {
         // The copy is only for reading during stage 2; it's refreshed again on the next run.
         Log.w(TAG, "server mirror refresh failed", e)

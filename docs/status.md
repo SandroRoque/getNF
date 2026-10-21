@@ -141,9 +141,7 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
 7. **Size parsing gaps** (`server/pb_hooks/lib/derive.js` `parseSize`): "1K" (= 1 kg) and "1 25KG" (= 1.25 kg) aren't
    understood. Those were fixed by hand (`size_source = manual`).
 8. **Manual-chave fallback** for damaged QR codes (D3/D13): not built.
-9. **UploadWorker swallows `CancellationException`** in its mirror-refresh catch: a replaced worker logs "refresh failed"
-   and keeps running. It should rethrow, like ReceiptParser does.
-10. **Minor:** a few details-page assets slip past the blocking before `onPageStarted` fires (D16).
+9. **Minor:** a few details-page assets slip past the blocking before `onPageStarted` fires (D16).
 
 ## Gotchas
 
