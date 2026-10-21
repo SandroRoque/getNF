@@ -5,6 +5,7 @@ import io.github.sandroroque.getnf.data.BackupService
 import io.github.sandroroque.getnf.data.LookupBudget
 import io.github.sandroroque.getnf.data.PendingRestore
 import io.github.sandroroque.getnf.data.ReceiptDatabase
+import io.github.sandroroque.getnf.data.ReceiptParser
 import io.github.sandroroque.getnf.data.ReceiptStore
 import io.github.sandroroque.getnf.data.CaptureSessionStore
 import io.github.sandroroque.getnf.data.ServerMirror
@@ -21,6 +22,7 @@ class GetNFApp : Application() {
   val receiptStore by lazy { ReceiptStore(File(filesDir, "receipts"), database) }
   val backup by lazy { BackupService(this, database, File(filesDir, "receipts")) }
   val serverMirror by lazy { ServerMirror(database) }
+  val receiptParser by lazy { ReceiptParser(database, File(filesDir, "receipts")) }
   val captureSessions by lazy { CaptureSessionStore(File(filesDir, "capture-sessions")) }
   val serverSettings by lazy { ServerSettings(this) }
   val pocketBase by lazy { PocketBaseClient() }
@@ -43,6 +45,8 @@ class GetNFApp : Application() {
       if (deferred > 0) android.util.Log.w("ReceiptCapture", "$deferred capture batch(es) await recovery")
       receiptStore.load()
       restore.cleanUp()
+      // Pages saved before D49, or read by an older parser (D49).
+      receiptParser.parsePending(receiptStore.receipts.value).let { if (it > 0) android.util.Log.i("ReceiptParser", "parsed $it saved page(s)") }
       // Catch anything left over from a previous run (e.g. the app was killed mid-upload), and refresh the copy of
       // the server's lines and catalog (D46). Not under instrumented tests: debug builds point at the real server.
       if (!underInstrumentation()) UploadWorker.enqueue(this@GetNFApp)

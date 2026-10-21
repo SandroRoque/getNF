@@ -123,6 +123,8 @@ fun PageScreen(chave: String, onDone: () -> Unit, onNext: (String) -> Unit) {
             } else {
               scope.launch {
                 store.savePage(chave, finalUrl, html)
+                // Items on the phone right away, server or not (D49).
+                store.get(chave)?.let { app.receiptParser.parse(it) }
                 status = Status.Saved
               }
             }

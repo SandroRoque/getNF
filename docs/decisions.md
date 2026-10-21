@@ -965,3 +965,46 @@ answers as the server.
   (categories, tags, manual sizes, which product a store item belongs to), matched by code key. A store item the
   server doesn't know yet gets its own uncategorized product. A page that fails to parse keeps its receipt and shows
   the error. Before the switch, the phone's lines are compared with the mirrored ones for the real receipts.
+
+## D49. Stage 3b: the phone parses its own pages; the server still supplies the catalog (2026-10-20)
+
+Carries out the plan at the end of D48. A saved page becomes items, totals and store items on the phone, with no
+server involved. Categorizing stays on the server until stage 4.
+
+- **`ReceiptParser`** writes `receipt_parsed`, `receipt_line`, `issuer` and store items from the saved page, in one
+  immediate transaction, with ingest.js's rules:
+  - **Store items:** a code already known as a store item keeps its product, and so its category. Its wording and
+    parsed size are updated. An unknown code gets a new uncategorized product.
+  - **Discounts:** a line's discount from a photo or set by hand survives a re-parse, matched by line number, together
+    with its review state and any product correction. The rest of the receipt's discount is prorated over the other
+    lines.
+  - **Header:** paid is "Valor a pagar", or else gross minus discount. Warnings are stored in the server's wording
+    ("warnings: …").
+  - **Unreadable page** (or a page whose chave is another receipt's): the receipt and its earlier header and lines
+    stay, and the error is recorded. It's retried only when the page is fetched again or the parser changes.
+- **When it runs:** when a page is saved, at startup for every receipt that needs it, and after the upload worker
+  adopts receipts that only the server had. A receipt needs it when the phone hasn't parsed it yet, parsed it with
+  another `VERSION`, or fetched the page again since (`pageFetchedAt` changed). One parse runs at a time.
+- **Schema v3** (auto-migration 2→3, tested): `receipt_parsed.source` (`server` by default, `phone`) and
+  `receipt_parsed.pageFetchedAt`. Rows from before D49 count as the server's, so the first start of this version
+  parses every saved page on the phone.
+- **ServerMirror now:**
+  - skips the header and lines of receipts the phone parsed, also when the server doesn't have them;
+  - never deletes a store item that a line uses, even if the server doesn't know it yet;
+  - still sets a known store item's product category, tags and manual size, matched by code;
+  - no longer clears a store item's parsed size just because the server holds a manual one.
+- **List screen:** each receipt shows its item count and amount paid, a warning in red, or "Couldn't read the page"
+  with the error.
+- **Real data, before switching** (`ExportReparseTest`, local only: `GETNF_EXPORT_DIR` = the unzipped D47 export):
+  - a copy of the phone's database, reparsed with ReceiptParser, gave the server's 135 lines for all 9 receipts,
+    field for field, including store item and discount;
+  - same 9 headers;
+  - same 84 store items and products, no new product;
+  - all 61 month×category totals unchanged.
+
+  A one-cent change in a server line makes it fail.
+- **Tests.** 93 unit tests (ReceiptParser: header, lines, store items, uncategorized new codes, known codes keeping
+  their category, photo/manual discounts across a re-fetch, unreadable and foreign pages, warnings, when to re-parse,
+  and the mirror leaving phone parses alone while still categorizing). The 2→3 migration test passes on the emulator.
+  On the emulator app, a receipt with the fixture page showed "8 item(s) · R$ 30,64", and the two with dummy pages
+  showed the error.

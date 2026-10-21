@@ -40,10 +40,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.sandroroque.getnf.GetNFApp
 import io.github.sandroroque.getnf.data.Chave
+import io.github.sandroroque.getnf.data.ParsedSummary
 import io.github.sandroroque.getnf.data.Receipt
 import io.github.sandroroque.getnf.theme.GetNFTheme
 import io.github.sandroroque.getnf.upload.UploadWorker
 import java.text.DateFormat
+import java.text.NumberFormat
+import java.util.Locale
 import java.util.Date
 
 @Composable
@@ -51,6 +54,7 @@ fun HomeScreen(onScan: () -> Unit, onOpenPage: (String) -> Unit, onSettings: () 
   val context = LocalContext.current
   val app = context.applicationContext as GetNFApp
   val receipts by app.receiptStore.receipts.collectAsStateWithLifecycle()
+  val parsed by remember { app.database.catalog().summaries() }.collectAsStateWithLifecycle(emptyList())
   val budgetCheck = rememberBudgetCheck()
   // Re-read the budget every 30 s (slots free up over time; the network may change).
   var budgetLine by remember { mutableStateOf("") }
@@ -63,6 +67,7 @@ fun HomeScreen(onScan: () -> Unit, onOpenPage: (String) -> Unit, onSettings: () 
   }
   HomeScreen(
     receipts = receipts,
+    parsed = parsed.associateBy { it.chave },
     budgetLine = budgetLine,
     onScan = onScan,
     onOpenPage = { chave -> budgetCheck.request(onFetch = { onOpenPage(chave) }, onLater = {}) },
@@ -79,6 +84,7 @@ fun waitingForPage(receipts: List<Receipt>): List<Receipt> = receipts.filter { i
 @Composable
 internal fun HomeScreen(
   receipts: List<Receipt>,
+  parsed: Map<String, ParsedSummary>,
   budgetLine: String,
   onScan: () -> Unit,
   onOpenPage: (String) -> Unit,
@@ -113,7 +119,7 @@ internal fun HomeScreen(
         }
         items(receipts, key = { it.chave }) { receipt ->
           // Only receipts without a page are tappable: no reason to hit the portal again for the others.
-          ReceiptCard(receipt, onClick = if (receipt.pageFile == null) ({ onOpenPage(receipt.chave) }) else null)
+          ReceiptCard(receipt, parsed[receipt.chave], onClick = if (receipt.pageFile == null) ({ onOpenPage(receipt.chave) }) else null)
         }
       }
     }
@@ -134,7 +140,7 @@ private fun WaitingBar(count: Int, budgetLine: String, onFetchNext: () -> Unit) 
 }
 
 @Composable
-private fun ReceiptCard(receipt: Receipt, onClick: (() -> Unit)?) {
+private fun ReceiptCard(receipt: Receipt, parsed: ParsedSummary?, onClick: (() -> Unit)?) {
   Card(Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)) {
     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
       Text(
@@ -150,8 +156,22 @@ private fun ReceiptCard(receipt: Receipt, onClick: (() -> Unit)?) {
           else -> "upload pending"
         }
       Text("${receipt.photos.size} photo(s) · $page · $upload", style = MaterialTheme.typography.bodyMedium)
+      parsed?.let { ParsedLine(it) }
     }
   }
+}
+
+/** What was read from the page: items and amount paid, or why it couldn't be read (D49). */
+@Composable
+private fun ParsedLine(p: ParsedSummary) {
+  // Warnings come with lines; an error without lines means the page couldn't be read at all.
+  if (p.lines == 0 && p.parseError != null) {
+    Text("Couldn't read the page: ${p.parseError}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+    return
+  }
+  val paid = p.paidCents?.let { " · " + NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(it / 100.0) } ?: ""
+  Text("${p.lines} item(s)$paid", style = MaterialTheme.typography.bodyMedium)
+  p.parseError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
 }
 
 @Preview(showBackground = true)
@@ -163,6 +183,10 @@ private fun HomeScreenPreview() {
         listOf(
           Receipt(chave = "42260611222333000181651090000012341123456789", capturedAt = 0, photos = listOf("a.jpg"), version = 2)
         ),
+      parsed = mapOf(
+        "42260611222333000181651090000012341123456789" to
+          ParsedSummary("42260611222333000181651090000012341123456789", 8, 3064, null, "phone"),
+      ),
       budgetLine = "4 of 5 SEFAZ lookups left this hour on Wi-Fi.",
       onScan = {},
       onOpenPage = {},

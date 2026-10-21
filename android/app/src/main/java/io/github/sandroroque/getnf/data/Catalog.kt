@@ -1,5 +1,6 @@
 package io.github.sandroroque.getnf.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -9,14 +10,16 @@ import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 /*
  * Lines and catalog (docs/data-model.md, D46). Money is Long cents, quantities and unit prices Long at scale 4, sizes
- * Long millionths of a kg or litre. During stage 2 these tables mirror the server (ServerMirror); nothing edits them
- * on the phone yet.
+ * Long millionths of a kg or litre. ReceiptParser writes a receipt's header and lines from its saved page (D49);
+ * ServerMirror copies the server's catalog, and the lines of receipts the phone hasn't parsed. Nothing is edited by
+ * hand on the phone yet.
  */
 
-/** What the server's parser read from a receipt's page. Its own table, so ReceiptStore's row writes never touch it. */
+/** What a parser read from a receipt's page. Its own table, so ReceiptStore's row writes never touch it. */
 @Entity(
   tableName = "receipt_parsed",
   foreignKeys = [ForeignKey(ReceiptRow::class, ["chave"], ["chave"], onDelete = ForeignKey.CASCADE)],
@@ -31,7 +34,19 @@ data class ReceiptParsedRow(
   val paidCents: Long?,
   val parserVersion: Int?,
   val parseError: String?,
-)
+  /** [SOURCE_PHONE] once ReceiptParser wrote it; ServerMirror then leaves the receipt alone (D49). */
+  @ColumnInfo(defaultValue = SOURCE_SERVER) val source: String = SOURCE_SERVER,
+  /** The receipt's pageFetchedAt when the phone parsed it: a re-fetched page is parsed again. */
+  val pageFetchedAt: Long? = null,
+) {
+  companion object {
+    const val SOURCE_SERVER = "server"
+    const val SOURCE_PHONE = "phone"
+  }
+}
+
+/** One line per receipt for the list screen. */
+data class ParsedSummary(val chave: String, val lines: Int, val paidCents: Long?, val parseError: String?, val source: String)
 
 @Entity(tableName = "issuer")
 data class IssuerRow(@PrimaryKey val cnpj: String, val name: String)
@@ -151,6 +166,20 @@ abstract class CatalogDao {
   @Query("SELECT * FROM receipt_line ORDER BY receipt, lineNo") abstract suspend fun lines(): List<ReceiptLineRow>
   @Query("SELECT * FROM receipt_parsed") abstract suspend fun parsed(): List<ReceiptParsedRow>
   @Query("SELECT * FROM issuer") abstract suspend fun issuers(): List<IssuerRow>
+  @Query("SELECT * FROM receipt_parsed WHERE chave = :chave") abstract suspend fun parsed(chave: String): ReceiptParsedRow?
+  @Query("SELECT * FROM receipt_line WHERE receipt = :chave ORDER BY lineNo") abstract suspend fun lines(chave: String): List<ReceiptLineRow>
+  @Query("SELECT * FROM store_item WHERE codeKind = :kind AND code = :code AND storeCnpj = :storeCnpj")
+  abstract suspend fun storeItem(kind: String, code: String, storeCnpj: String): StoreItemRow?
+  @Query("SELECT DISTINCT storeItemId FROM receipt_line") abstract suspend fun storeItemsInUse(): List<String>
+
+  @Query(
+    """
+    SELECT rp.chave, (SELECT COUNT(*) FROM receipt_line l WHERE l.receipt = rp.chave) AS lines, rp.paidCents,
+           rp.parseError, rp.source
+    FROM receipt_parsed rp
+    """,
+  )
+  abstract fun summaries(): Flow<List<ParsedSummary>>
 
   @Insert abstract suspend fun insertCategory(row: CategoryRow)
   @Update abstract suspend fun updateCategory(row: CategoryRow): Int

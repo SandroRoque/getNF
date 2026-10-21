@@ -63,9 +63,13 @@ data class ServerItem(
 )
 
 /**
- * Stage 2's read-only copy of the server's parsed lines and catalog (D46). The server still parses and is where
- * products are categorized, so each refresh makes the local lines and catalog match it, in one transaction. Local ids
- * stay stable across refreshes: categories match by path, tags by slug, store items by code, lines by (chave, line).
+ * The copy of the server's catalog and parsed lines (D46). The server is still where products are categorized, so
+ * each refresh makes the local catalog match it, in one transaction. Local ids stay stable across refreshes:
+ * categories match by path, tags by slug, store items by code, lines by (chave, line).
+ *
+ * Since D49 the phone parses its own pages: receipts ReceiptParser has written are left alone, and store items their
+ * lines use are kept even when the server doesn't know them yet. The server still decides a known store item's
+ * product, category, tags and manual size.
  */
 class ServerMirror(
   private val database: ReceiptDatabase,
@@ -80,6 +84,7 @@ class ServerMirror(
    */
   suspend fun apply(snapshot: ServerSnapshot): Int = database.useWriterConnection { it.immediateTransaction {
     val local = database.receipts().receipts().map { it.chave }.toSet()
+    val phoneParsed = dao.parsed().filter { it.source == ReceiptParsedRow.SOURCE_PHONE }.map { it.chave }.toSet()
 
     // Categories, parents first (a path's parent is always shorter).
     val oldCategories = dao.categories().associateBy { it.seedPath }
@@ -117,9 +122,11 @@ class ServerMirror(
       )
       if (dao.updateProduct(product) == 0) dao.insertProduct(product)
       val parsed = p.sizeSource == "parsed" && p.sizeQty != null
+      // A manual size hides the server's parsed one; the phone's own reading (ReceiptParser) stays.
       val item = StoreItemRow(
         existing?.id ?: newId(), key.first, key.second, key.third, p.description,
-        parsedSizeE6 = if (parsed) e6(p.sizeQty!!) else null, parsedSizeUnit = if (parsed) p.sizeUnit else null, productId = productId,
+        parsedSizeE6 = if (parsed) e6(p.sizeQty!!) else existing?.parsedSizeE6,
+        parsedSizeUnit = if (parsed) p.sizeUnit else existing?.parsedSizeUnit, productId = productId,
       )
       if (dao.updateStoreItem(item) == 0) dao.insertStoreItem(item)
       storeItemIds[p.id] = item.id
@@ -133,7 +140,7 @@ class ServerMirror(
     val items = snapshot.items.groupBy { it.receiptId }
     var written = 0
     for (r in snapshot.receipts) {
-      if (r.chave !in local) continue
+      if (r.chave !in local || r.chave in phoneParsed) continue
       dao.deleteLines(r.chave)
       if (!r.storeCnpj.isNullOrEmpty()) dao.putIssuer(IssuerRow(r.storeCnpj, r.storeName.orEmpty()))
       dao.putParsed(ReceiptParsedRow(
@@ -150,11 +157,11 @@ class ServerMirror(
       dao.insertLines(lines)
       written += lines.size
     }
-    // The server no longer has it: drop the mirror's copy (stage 2 holds no local edits). Receipts stay; they're ReceiptStore's.
+    // The server no longer has it: drop the mirror's copy. Receipts stay; they're ReceiptStore's. So does the phone's parse.
     val serverChaves = chaves.values.toSet()
-    for (chave in local - serverChaves) { dao.deleteLines(chave); dao.deleteParsed(chave) }
+    for (chave in local - serverChaves - phoneParsed) { dao.deleteLines(chave); dao.deleteParsed(chave) }
     dao.deleteUnusedIssuers()
-    val keptItems = storeItemIds.values.toSet()
+    val keptItems = storeItemIds.values.toSet() + dao.storeItemsInUse()
     dao.deleteStoreItems(dao.storeItems().map { it.id }.filter { it !in keptItems })
     val keptProducts = dao.storeItems().map { it.productId }.toSet()
     dao.deleteProducts(dao.products().map { it.id }.filter { it !in keptProducts })

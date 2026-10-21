@@ -106,6 +106,8 @@ class UploadWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     }
     val lines = app.serverMirror.apply(snapshot)
     Log.i(TAG, "mirrored ${snapshot.products.size} products, ${snapshot.receipts.size} receipts, $lines lines")
+    // Adopted receipts came with their page: read it on the phone too (D49).
+    app.receiptParser.parsePending(store.receipts.value)
   }
 
   companion object {
