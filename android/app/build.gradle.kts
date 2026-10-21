@@ -59,6 +59,13 @@ android {
       shaders = false
     }
 
+    // The parser fixtures live with the server's tests; the Kotlin port reads the same files (D48).
+    sourceSets["test"].resources.srcDir("../../server/test/fixtures")
+    // The parity helper and goldens are shared with the on-device tests (Android's regex engine differs).
+    sourceSets["test"].kotlin.srcDir("src/sharedTest/java")
+    sourceSets["androidTest"].kotlin.srcDir("src/sharedTest/java")
+    sourceSets["androidTest"].resources.srcDirs("../../server/test/fixtures", "src/test/resources")
+
     packaging {
       resources {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"

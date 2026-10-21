@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-20. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D47). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D48). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -51,11 +51,12 @@ categorized → reportable through the `spending_lines` view.
 - **Local data** (not in git): the receipts captured so far, every product categorized, in `server/pb_data/` plus the
   photos on the phone. **Back up `server/pb_data/`.** The categorizations exist only there.
 - **Tests:** `cd android && ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`:
-  71 unit tests and 49 instrumented vision/capture/lifecycle tests (the D37 focus benchmark and the D38 real-capture eval, which skips without local files). Never run connectedAndroidTest with the phone attached: it uninstalls the app and wipes its receipts on the emulator; an offline camera journey
+  84 unit tests and 51 instrumented vision/capture/lifecycle tests (the D37 focus benchmark and the D38 real-capture eval, which skips without local files). Never run connectedAndroidTest with the phone attached: it uninstalls the app and wipes its receipts on the emulator; an offline camera journey
   also read a synthetic QR, saved a photo and completed automatically (see capture-validation.md).
   Debug build and lint pass. PocketBase's 100-photo migration and rollback were validated in an isolated database;
   the migration was applied to the live server on 2026-10-15 after a backup (D36). Android also has a 100-photo technical cap.
-  Server: `node --test server/test/*.test.js server/test/*.test.mjs`
+  Server: `node --test server/test/*.test.js server/test/*.test.mjs`. After changing either parser: `node tools/nfce-golden.mjs`
+  (parity goldens, D48).
   (12 parser/derivation tests + 12 dashboard tests). Run `node server/test/dashboard.test.mjs` for individual dashboard results.
 - **Repo:** public at github.com/SandroRoque/getNF, branch `main`. History was squashed before publishing to remove
   personal data. Commits use the GitHub noreply address.
@@ -115,7 +116,11 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
    catalog, refreshed after each upload run and at startup. 2c (D47): Settings → Export data / Restore data writes or
    reads one zip (database, pages, photos, masks, hashes); a restore is checked first and swapped in on restart.
    Verified on the emulator after a reinstall and on the phone with the real data (2026-10-20): what came back was
-   identical to what was exported. **Stage 2 is complete. Next: roadmap stage 3, parsing on the phone.** Installing an APK older than D45 shows an empty list; restore from backup.
+   identical to what was exported. **Stage 2 is complete.**
+0. **Stage 3 (parsing on the phone) in progress.** 3a (D48): the server's parser and derivation are ported to Kotlin
+   (`android/.../parse/`) and match the JS field for field on the fixtures and on all 10 real pages, on the JVM and
+   the emulator (`tools/nfce-golden.mjs`). Not called by the app yet. Next: 3b, parse on the phone when a page is
+   saved (plan in D48). Installing an APK older than D45 shows an empty list; restore from backup.
 0. Photos upload append-only to `receipt_photos` with masks and metadata (D42); all 51 phone photos are on the live
    server. A restore onto a new machine needs one restart after the first start (D42).
 1. **Uploads only on home Wi‑Fi with the PC on** (D18). Fine for now. Pending, by the user: reserve `192.168.4.4` for

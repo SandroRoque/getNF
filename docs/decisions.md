@@ -930,3 +930,38 @@ and a queryable copy; the phone becomes the source of truth in stages 3–4.
     back on its own in a new process and logged "restored a backup". The startup refresh mirrored 84/9/135 and
     uploaded nothing. Afterwards every table and all 94 files were identical to the export.
   - Stage 2 is complete: the data can be queried on the phone, the migration was checked, and a restore was verified.
+
+## D48. Stage 3a: the server's parser and derivation, ported to Kotlin and held to the JS by golden files (2026-10-20)
+
+First slice of stage 3 (parsing on the phone). Nothing in the app calls the port yet. It must first give the same
+answers as the server.
+
+- **Port.** `parse/NfcePage.kt` is `nfce_page.js` and `parse/Derive.kt` is the parts of `derive.js` the phone needs:
+  GTIN check, code key, size from the description, discount allocation and line discounts. The taxonomy file
+  parsers stay on the server until the phone owns the catalog (stage 4).
+  - It reads the page's decimal text exactly, straight into the database's units: Long cents, quantities and unit
+    prices at scale 4, sizes in millionths. The JS goes through floats and rounds, and gives the same numbers for
+    every page seen so far.
+  - Allocation ranks the leftover cents by exact integer remainder instead of a float fraction. Ties still go to the
+    earlier line.
+  - `NfcePage.VERSION` equals the JS `VERSION` (1). Both must change together.
+  - Known size gaps ("1K", "1 25KG", status.md) are ported unchanged, so the two sides keep agreeing. They get fixed in
+    both at once.
+- **Parity.** `tools/nfce-golden.mjs` runs the JS on every fixture in `server/test/fixtures/` and writes golden JSON
+  in the phone's units to `android/app/src/test/resources/nfce-golden/`. `NfceParityTest` compares the two field by
+  field: header, items, code key, size, prorated discount, totals, payments, taxes and warning text. The fixtures stay
+  in the server's directory; the Android tests read them from there.
+  - **Real pages, kept out of git:** `node tools/nfce-golden.mjs <dir>` writes a golden file next to each page, and
+    `GETNF_PARITY_DIR=<dir>` adds them to the test.
+  - **Run on the device too:** Android's java.util.regex is ICU-based, not the JVM's. `NfceParityDeviceTest` runs the
+    same comparison (helper in `src/sharedTest/`) on the emulator, and its `parityDir` argument takes real pages
+    copied into the app's files.
+  - **Result:** all 10 real pages available (the 9 phone receipts from the D47 export, plus the one in
+    `test-media/pages/`; 155 items) match field for field on the JVM and on the emulator. A golden value off by one
+    cent fails the test. The Turnstile challenge page is rejected by both.
+- **Next (3b).** Parse on the phone when a page is saved, and for saved pages whose local parse is missing or older
+  than `VERSION`. The phone's parse becomes the source of `receipt_parsed`, `receipt_line`, `issuer` and store item
+  wording and parsed sizes. Until stage 4 makes the phone the editor, the server still supplies the catalog side
+  (categories, tags, manual sizes, which product a store item belongs to), matched by code key. A store item the
+  server doesn't know yet gets its own uncategorized product. A page that fails to parse keeps its receipt and shows
+  the error. Before the switch, the phone's lines are compared with the mirrored ones for the real receipts.

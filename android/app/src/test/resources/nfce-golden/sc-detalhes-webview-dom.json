@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "chave": "42260111222333000181651090000000011123456784",
+  "store": {
+    "name": "SUPERMERCADO EXEMPLO LTDA",
+    "cnpj": "11222333000181",
+    "address": "RUA EXEMPLO, 100 , , CENTRO , CIDADE EXEMPLO , SC"
+  },
+  "number": "1",
+  "series": "109",
+  "issuedAt": 1768482000000,
+  "authorizationProtocol": "000000000000000",
+  "authorizedAt": 1768482000000,
+  "items": [
+    {
+      "line": 1,
+      "description": "PAO LTE SEVEN BOYS 450G",
+      "code": "7891193010081",
+      "qtyE4": 10000,
+      "unit": "UN",
+      "unitPriceE4": 67900,
+      "totalCents": 679,
+      "serverKey": "gtin:7891193010081",
+      "sizeE6": 450000,
+      "sizeUnit": "kg",
+      "discountCents": 0,
+      "discountSource": "prorated"
+    },
+    {
+      "line": 2,
+      "description": "PAO HAMB VITAL 300G C G",
+      "code": "7898103550125",
+      "qtyE4": 10000,
+      "unit": "UN",
+      "unitPriceE4": 68900,
+      "totalCents": 689,
+      "serverKey": "gtin:7898103550125",
+      "sizeE6": 300000,
+      "sizeUnit": "kg",
+      "discountCents": 0,
+      "discountSource": "prorated"
+    },
+    {
+      "line": 3,
+      "description": "LEITE ITALAC INTEG 1L",
+      "code": "7898080640611",
+      "qtyE4": 10000,
+      "unit": "UN",
+      "unitPriceE4": 48900,
+      "totalCents": 489,
+      "serverKey": "gtin:7898080640611",
+      "sizeE6": 1000000,
+      "sizeUnit": "l",
+      "discountCents": 0,
+      "discountSource": "prorated"
+    },
+    {
+      "line": 4,
+      "description": "MAIONESE HEMMER 200G",
+      "code": "7891031412251",
+      "qtyE4": 10000,
+      "unit": "UN",
+      "unitPriceE4": 59900,
+      "totalCents": 599,
+      "serverKey": "gtin:7891031412251",
+      "sizeE6": 200000,
+      "sizeUnit": "kg",
+      "discountCents": 0,
+      "discountSource": "prorated"
+    },
+    {
+      "line": 5,
+      "description": "LING CALAB SEARA 400G",
+      "code": "7894904009862",
+      "qtyE4": 10000,
+      "unit": "UN",
+      "unitPriceE4": 149800,
+      "totalCents": 1498,
+      "serverKey": "gtin:7894904009862",
+      "sizeE6": 400000,
+      "sizeUnit": "kg",
+      "discountCents": 0,
+      "discountSource": "prorated"
+    },
+    {
+      "line": 6,
+      "description": "CEBOLA KG",
+      "code": "218",
+      "qtyE4": 7000,
+      "unit": "KG",
+      "unitPriceE4": 69800,
+      "totalCents": 489,
+      "serverKey": "store:11222333000181:218",
+      "sizeE6": null,
+      "sizeUnit": null,
+      "discountCents": 0,
+      "discountSource": "prorated"
+    }
+  ],
+  "totals": {
+    "itemsCount": 6,
+    "grossCents": 4443,
+    "discountCents": 0,
+    "surchargeCents": null,
+    "payableCents": 4443,
+    "changeCents": null,
+    "raw": {
+      "Qtd. total de itens:": "6",
+      "Valor a pagar R$:": "44,43"
+    }
+  },
+  "payments": [
+    {
+      "method": "Cartão de Crédito",
+      "amountCents": 4443
+    }
+  ],
+  "taxesEstimate": {
+    "federalCents": 123,
+    "stateCents": 234,
+    "municipalCents": 0
+  },
+  "warnings": []
+}

@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "chave": "42260111222333000181651090000000011123456784",
+  "store": {
+    "name": "SUPERMERCADO EXEMPLO LTDA",
+    "cnpj": "11222333000181",
+    "address": "RUA EXEMPLO, 100 , , CENTRO , CIDADE EXEMPLO , SC"
+  },
+  "number": "1",
+  "series": "109",
+  "issuedAt": 1768482000000,
+  "authorizationProtocol": "000000000000000",
+  "authorizedAt": 1768482000000,
+  "items": [
+    {
+      "line": 1,
+      "description": "MACA NAC KG",
+      "code": "243",
+      "qtyE4": 6400,
+      "unit": "KG",
+      "unitPriceE4": 87800,
+      "totalCents": 562,
+      "serverKey": "store:11222333000181:243",
+      "sizeE6": null,
+      "sizeUnit": null,
+      "discountCents": 9,
+      "discountSource": "prorated"
+    },
+    {
+      "line": 2,
+      "description": "POLPA BRASFRUT 100G",
+      "code": "7896014400287",
+      "qtyE4": 10000,
+      "unit": "UN",
+      "unitPriceE4": 29800,
+      "totalCents": 298,
+      "serverKey": "gtin:7896014400287",
+      "sizeE6": 100000,
+      "sizeUnit": "kg",
+      "discountCents": 5,
+      "discountSource": "prorated"
+    },
+    {
+      "line": 3,
+      "description": "POLPA BRASFRUT 100G",
+      "code": "7896014400287",
+      "qtyE4": 10000,
+      "unit": "UN",
+      "unitPriceE4": 29800,
+      "totalCents": 298,
+      "serverKey": "gtin:7896014400287",
+      "sizeE6": 100000,
+      "sizeUnit": "kg",
+      "discountCents": 5,
+      "discountSource": "prorated"
+    },
+    {
+      "line": 4,
+      "description": "POLPA BRASFRUT 100G",
+      "code": "7896014400287",
+      "qtyE4": 10000,
+      "unit": "UN",
+      "unitPriceE4": 29800,
+      "totalCents": 298,
+      "serverKey": "gtin:7896014400287",
+      "sizeE6": 100000,
+      "sizeUnit": "kg",
+      "discountCents": 5,
+      "discountSource": "prorated"
+    },
+    {
+      "line": 5,
+      "description": "POLPA BRASFRUT 100G",
+      "code": "7896014400287",
+      "qtyE4": 10000,
+      "unit": "UN",
+      "unitPriceE4": 29800,
+      "totalCents": 298,
+      "serverKey": "gtin:7896014400287",
+      "sizeE6": 100000,
+      "sizeUnit": "kg",
+      "discountCents": 5,
+      "discountSource": "prorated"
+    },
+    {
+      "line": 6,
+      "description": "POLPA BRASFRUT 100G",
+      "code": "7896014400287",
+      "qtyE4": 10000,
+      "unit": "UN",
+      "unitPriceE4": 29800,
+      "totalCents": 298,
+      "serverKey": "gtin:7896014400287",
+      "sizeE6": 100000,
+      "sizeUnit": "kg",
+      "discountCents": 4,
+      "discountSource": "prorated"
+    },
+    {
+      "line": 7,
+      "description": "BROCOLIS MC",
+      "code": "1043570",
+      "qtyE4": 10000,
+      "unit": "UN",
+      "unitPriceE4": 69800,
+      "totalCents": 698,
+      "serverKey": "store:11222333000181:1043570",
+      "sizeE6": null,
+      "sizeUnit": null,
+      "discountCents": 11,
+      "discountSource": "prorated"
+    },
+    {
+      "line": 8,
+      "description": "TANGERINA KG",
+      "code": "1725",
+      "qtyE4": 7300,
+      "unit": "KG",
+      "unitPriceE4": 49800,
+      "totalCents": 364,
+      "serverKey": "store:11222333000181:1725",
+      "sizeE6": null,
+      "sizeUnit": null,
+      "discountCents": 6,
+      "discountSource": "prorated"
+    }
+  ],
+  "totals": {
+    "itemsCount": 8,
+    "grossCents": 3114,
+    "discountCents": 50,
+    "surchargeCents": null,
+    "payableCents": 3064,
+    "changeCents": null,
+    "raw": {
+      "Qtd. total de itens:": "8",
+      "Valor total R$:": "31,14",
+      "Descontos R$:": "0,50",
+      "Valor a pagar R$:": "30,64"
+    }
+  },
+  "payments": [
+    {
+      "method": "Cartão de Crédito",
+      "amountCents": 3064
+    }
+  ],
+  "taxesEstimate": {
+    "federalCents": 123,
+    "stateCents": 234,
+    "municipalCents": 0
+  },
+  "warnings": []
+}
