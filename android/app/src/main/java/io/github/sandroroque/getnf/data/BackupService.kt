@@ -1,13 +1,11 @@
 package io.github.sandroroque.getnf.data
 
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.Context
 import android.net.Uri
 import androidx.room.useWriterConnection
 import io.github.sandroroque.getnf.BuildConfig
+import io.github.sandroroque.getnf.RestartActivity
 import java.io.File
-import kotlin.system.exitProcess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -75,10 +73,7 @@ class BackupService(
   /** Stages the inspected backup and restarts the app; GetNFApp swaps it in before opening the database. */
   suspend fun restoreAndRestart() {
     stage()
-    val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)!!
-    val intent = PendingIntent.getActivity(context, 0, launch, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_CANCEL_CURRENT)
-    context.getSystemService(AlarmManager::class.java).set(AlarmManager.RTC, System.currentTimeMillis() + 500, intent)
-    exitProcess(0)
+    RestartActivity.restart(context)
   }
 
   fun discardInspected() { File(context.cacheDir, LOCAL_COPY).delete() }

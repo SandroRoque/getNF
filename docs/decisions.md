@@ -880,3 +880,42 @@ and a queryable copy; the phone becomes the source of truth in stages 3–4.
   - no receipt record updated on the server.
 
   A relaunch refreshed the copy and uploaded nothing more.
+
+## D47. Stage 2c: export and restore through a user-picked file, swapped in on restart (2026-10-17, fixes 2026-10-20)
+
+- **What a backup holds.** One zip, written to a file the user picks through the system picker (Storage Access
+  Framework, so no storage permission):
+  - `db/getnf.db`: a copy taken while holding Room's writer connection, after a `wal_checkpoint(TRUNCATE)`, so
+    nothing can be written between the checkpoint, the copy and the file list;
+  - `receipts/<chave>/<file>`: every page, photo and mask the database refers to;
+  - `manifest.json`: format, app and schema version, counts (receipts, photos, lines, products) and a SHA-256 per file.
+
+  Server credentials, the lookup budget and open capture sessions are left out.
+- **Restore.** Settings copies the picked file into the cache and checks every hash, then shows the backup's counts
+  next to the phone's. Nothing changes until the user taps Replace. A backup from a newer schema is refused; an older
+  one is accepted, and Room migrates it when it opens. Archive paths are limited to the database and files directly
+  inside a 44-digit chave directory.
+- **Swap on restart.** Replace extracts into `restore/staged`, verifying hashes again, and writes `restore/READY`.
+  `GetNFApp.onCreate` swaps it in before anything opens the database:
+  - the current database and receipts move to `restore/previous`, and stay there until the restored database has
+    opened;
+  - every step is skipped when already done, so a start interrupted halfway finishes the swap on the next one;
+  - a failed swap is logged and retried on the next start instead of crash-looping.
+- **Fixes after the first emulator run (2026-10-20):**
+  - **The app didn't come back.** The restart used an alarm with a PendingIntent. Android 14+ blocks that
+    ("Background activity launch blocked") because the app's process is dead when the alarm fires. The restore was
+    applied only once the user opened the app by hand. Now `RestartActivity` runs in its own `:restart` process
+    (the ProcessPhoenix pattern) and is started while the app is still in the foreground. It kills the old process
+    and opens the app again. `GetNFApp.onCreate` does nothing in that process.
+  - **Fresh install, interrupted swap.** With no database to move aside, `previous` held only a `getnf.db.none`
+    marker, but the "already moved aside" check looked only for `getnf.db`. A start interrupted after the restored
+    database was in place would then have moved it into `previous`, leaving an empty app.
+  - **Leftovers from a failed start.** If a swap failed after the originals were moved aside, that start could create
+    an empty database or receipt directory at the live paths, and every retry would then fail. Once `previous` holds
+    the originals, whatever is at a live path with a staged copy still present is deleted before the move.
+- **Tests.** 71 unit tests (archive round trip, corrupt/missing/newer/foreign archives, unsafe paths, swap, cleanup,
+  interrupted swaps including on a fresh install, leftovers from a failed start). The instrumented `BackupServiceTest`
+  (export, wipe, restore and compare every table and file) passes on the emulator.
+- **Emulator (2026-10-20).** Seeded with 2 synthetic receipts (fake chaves, 6 random photos, 2 pages). Exported from
+  Settings, uninstalled the app, reinstalled, restored. The app restarted on its own (new pid, "restored a backup"
+  logged). All 8 files had identical SHA-256s, and the `receipt` and `receipt_photo` rows were identical.

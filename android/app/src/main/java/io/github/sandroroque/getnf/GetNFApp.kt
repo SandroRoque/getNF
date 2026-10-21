@@ -31,6 +31,8 @@ class GetNFApp : Application() {
 
   override fun onCreate() {
     super.onCreate()
+    // RestartActivity's process only relaunches the app: it must not swap a restore or open the database.
+    if (processName().endsWith(RestartActivity.PROCESS_SUFFIX)) return
     // A restore staged by Settings is swapped in before anything opens the database (D47).
     val restore = PendingRestore(filesDir, getDatabasePath(ReceiptDatabase.NAME))
     // A failure leaves it staged: the next start finishes it (each step skips what's done) instead of crash-looping.
@@ -46,6 +48,10 @@ class GetNFApp : Application() {
       if (!underInstrumentation()) UploadWorker.enqueue(this@GetNFApp)
     }
   }
+
+  private fun processName() =
+    if (android.os.Build.VERSION.SDK_INT >= 28) getProcessName()
+    else File("/proc/self/cmdline").readText().substringBefore('\u0000')
 
   private fun underInstrumentation() =
     runCatching { Class.forName("androidx.test.platform.app.InstrumentationRegistry") }.isSuccess

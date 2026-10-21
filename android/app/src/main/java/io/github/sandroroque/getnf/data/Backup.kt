@@ -136,15 +136,23 @@ class PendingRestore(private val filesDir: File, private val database: File) {
     val receipts = File(filesDir, "receipts")
     previous.mkdirs()
     // Current data out of the way. Once previous holds it, never again: by then the live paths hold restored data.
-    if (!File(previous, "getnf.db").exists()) {
+    if (!File(previous, "getnf.db").exists() && !File(previous, "getnf.db.none").exists()) {
       for (suffix in listOf("-wal", "-shm", "-journal")) File(database.path + suffix).let { if (it.exists()) move(it, File(previous, it.name)) }
       if (database.exists()) move(database, File(previous, "getnf.db")) else File(previous, "getnf.db.none").writeText("")
     }
     if (!File(previous, "receipts").exists() && !File(previous, "receipts.none").exists()) {
       if (receipts.exists()) move(receipts, File(previous, "receipts")) else File(previous, "receipts.none").writeText("")
     }
-    File(staged, BackupArchive.DATABASE).let { if (it.exists()) { database.parentFile!!.mkdirs(); move(it, database) } }
-    File(staged, "receipts").let { if (it.exists()) move(it, receipts) else receipts.mkdirs() }
+    // previous holds the original data now. Whatever sits at a live path while its staged copy still exists was made
+    // by a start whose swap failed (an empty database Room created, say), so it goes.
+    File(staged, BackupArchive.DATABASE).let {
+      if (it.exists()) {
+        for (suffix in listOf("", "-wal", "-shm", "-journal")) File(database.path + suffix).delete()
+        database.parentFile!!.mkdirs()
+        move(it, database)
+      }
+    }
+    File(staged, "receipts").let { if (it.exists()) { receipts.deleteRecursively(); move(it, receipts) } else receipts.mkdirs() }
     ready.delete()
     staged.deleteRecursively()
     return true

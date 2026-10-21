@@ -128,4 +128,36 @@ class BackupTest {
     restore.cleanUp()
     assertFalse(File(files, "restore").listFiles().orEmpty().any { it.name == "previous" })
   }
+
+  @Test fun anInterruptedRestoreOntoAFreshInstallKeepsTheRestoredData() {
+    val files = tmp.newFolder("files"); val db = File(tmp.root, "databases/getnf.db")
+    val restore = PendingRestore(files, db)
+    BackupArchive.extract(archive(), restore.staged, 2)
+    restore.markReady()
+    // Crash right after the database was swapped in, before the receipts were.
+    File(files, "restore/previous").mkdirs(); File(files, "restore/previous/getnf.db.none").writeText("")
+    db.parentFile!!.mkdirs(); check(File(restore.staged, BackupArchive.DATABASE).renameTo(db))
+    assertTrue(restore.applyIfReady())
+    assertEquals("database", db.readText())
+    assertEquals(listOf("a.jpg", "page.html"), File(files, "receipts/$chave").list()!!.sorted())
+  }
+
+  @Test fun whatAFailedStartCreatedAtTheLivePathsIsReplaced() {
+    val files = tmp.newFolder("files"); val db = File(tmp.root, "databases/getnf.db")
+    live(files, db)
+    val restore = PendingRestore(files, db)
+    BackupArchive.extract(archive(), restore.staged, 2)
+    restore.markReady()
+    // The swap failed after moving the current data aside; the app then opened an empty database and receipt dir.
+    File(files, "restore/previous").mkdirs()
+    check(db.renameTo(File(files, "restore/previous/getnf.db")))
+    check(File(files, "receipts").renameTo(File(files, "restore/previous/receipts")))
+    db.writeText("empty db"); File(db.path + "-wal").writeText("empty wal"); File(files, "receipts/$chave").mkdirs()
+    File(files, "receipts/$chave/new.jpg").writeText("x")
+    assertTrue(restore.applyIfReady())
+    assertEquals("database", db.readText())
+    assertFalse(File(db.path + "-wal").exists())
+    assertEquals(listOf("a.jpg", "page.html"), File(files, "receipts/$chave").list()!!.sorted())
+    assertEquals("old db", File(files, "restore/previous/getnf.db").readText())
+  }
 }

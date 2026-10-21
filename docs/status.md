@@ -1,7 +1,7 @@
 # Status and next steps
 
-Last updated 2026-10-17. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D46). For the portal's behaviour, read `docs/sefaz-sc.md`.
+Last updated 2026-10-20. A handoff for picking the project up again. For *why* things are the way they are, read
+`docs/decisions.md` (D1–D47). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -112,7 +112,10 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
 0. **Stage 2 (local database) in progress.** The data model is approved (D44, [data-model.md](data-model.md)).
    2a (D45) moved receipts, photos and capture sessions into Room (`getnf.db`) and imports the old `receipt.json`
    manifests once, renaming them to `receipt.json.migrated`. 2b (D46) keeps a read-only copy of the server's lines and
-   catalog, refreshed after each upload run and at startup. Next: 2c (export and restore). Installing an APK older than D45 shows an empty list; restore from backup.
+   catalog, refreshed after each upload run and at startup. 2c (D47): Settings → Export data / Restore data writes or
+   reads one zip (database, pages, photos, masks, hashes); a restore is checked first and swapped in on restart.
+   Verified on the emulator after a reinstall. **Next: an export/restore on the phone with the real data**, which
+   closes stage 2. Installing an APK older than D45 shows an empty list; restore from backup.
 0. Photos upload append-only to `receipt_photos` with masks and metadata (D42); all 51 phone photos are on the live
    server. A restore onto a new machine needs one restart after the first start (D42).
 1. **Uploads only on home Wi‑Fi with the PC on** (D18). Fine for now. Pending, by the user: reserve `192.168.4.4` for
