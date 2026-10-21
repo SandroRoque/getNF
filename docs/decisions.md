@@ -1053,3 +1053,32 @@ server involved. Categorizing stays on the server until stage 4.
   phone with a real receipt: 15 lines with the server's categories, the totals matching the list.
 - **Tests.** 99 unit tests (queries: store name, line order, category and parent labels, a line's correction
   winning; formats).
+
+## D51. Interpreted fields are suggestions with a source and a review state; models propose, the user confirms (2026-10-21)
+
+Recorded after a design conversation, not code. No implementation changes with this entry.
+
+- **The split.**
+  - **Deterministic, stays in code:** reading the structured SEFAZ HTML, totals, discount prorating, GTIN check
+    digits. These are exact and proven by the parity tests (D48).
+  - **Interpretive, needs intelligence plus the user's confirmation:**
+    - pack size: "10KG" on a suitcase is capacity, "1 25KG" means 1.25 kg, "1K" means 1 kg;
+    - product identity: one item under different codes or stores, abbreviations such as "QJO MUSS";
+    - category;
+    - grouping products for price comparison (the IPCI, stage 7).
+
+  Regexes and switch cases can't settle these. They can only guess.
+- **Every interpreted field is a suggestion with a source (regex, LLM, user) and a review state**, the way
+  `discountSource` / `discountReview` already work for discounts. Today's parsed size is really an unmarked regex guess;
+  the size source on store items and products should say so. Only a value the user confirmed or entered is final.
+- **The regex stays as a free first pass.** A model proposes the unclear or new cases. The user confirms or corrects
+  them on a review list on the phone.
+- **Confirmations are remembered per store item or product**, so a code is asked about once. A later reparse or model
+  run never overwrites a confirmed value (the same rule as D49's "manual, no size" marker).
+- **Where it lands.**
+  - **Stage 4** (manual categorization on the phone) builds the review screen, the source/review-state fields and the
+    "ask once" memory, with regex as the only suggester. The manual flow must be complete first.
+  - **Stage 8** plugs models in as further suggestion sources: local first, then APIs. It adds no new storage or screens.
+  - Status open item 6 (LLM category suggestions) and item 7 (size gaps such as "1K") are the same thread.
+- **Still open:** what the objectives call "system one" and "laya" locally. They were kept as the user wrote them;
+  **ask the user what they refer to before choosing any tool** (D24 era notes, objectives.md §4).

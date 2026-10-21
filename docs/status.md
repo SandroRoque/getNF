@@ -1,7 +1,7 @@
 # Status and next steps
 
-Last updated 2026-10-20. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D50). For the portal's behaviour, read `docs/sefaz-sc.md`.
+Last updated 2026-10-21. A handoff for picking the project up again. For *why* things are the way they are, read
+`docs/decisions.md` (D1–D51). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -136,11 +136,14 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
 4. **Reports:** the monthly dashboard is implemented. Weekly/quarterly/yearly views and exports remain future work.
 5. **Photo pass for per-item discounts** (D14): read "Desconto" lines from the photos with a vision model and store them with
    `discount_source = photo`. The re-parse logic already preserves them.
-6. **Category suggestions:** have an LLM propose categories for new products, for the user to confirm.
+6. **Category suggestions:** have an LLM propose categories for new products, for the user to confirm. Part of D51: interpreted fields (size, identity, category) become suggestions with a source and review
+   state; stage 4 builds the review screen, stage 8 plugs models in.
 7. **Size parsing gaps** (`server/pb_hooks/lib/derive.js` `parseSize`): "1K" (= 1 kg) and "1 25KG" (= 1.25 kg) aren't
    understood. Those were fixed by hand (`size_source = manual`).
 8. **Manual-chave fallback** for damaged QR codes (D3/D13): not built.
-9. **Minor:** a few details-page assets slip past the blocking before `onPageStarted` fires (D16).
+9. **UploadWorker swallows `CancellationException`** in its mirror-refresh catch: a replaced worker logs "refresh failed"
+   and keeps running. It should rethrow, like ReceiptParser does.
+10. **Minor:** a few details-page assets slip past the blocking before `onPageStarted` fires (D16).
 
 ## Gotchas
 

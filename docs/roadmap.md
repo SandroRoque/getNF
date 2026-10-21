@@ -88,6 +88,11 @@ as edições sobrevivem ao reprocessamento. O fluxo manual deve estar completo a
 Incluir correção manual dos descontos e distinção entre valores observados e rateados. OCR pode sugerir valores,
 mas origem e estado de revisão precisam permanecer visíveis.
 
+Campos interpretados (tamanho da embalagem, identidade do produto, categoria) passam a ser sugestões com origem
+(regex, LLM, usuário) e estado de revisão, como os descontos (D51). Esta etapa constrói a tela de revisão no celular
+e a memória das confirmações por item da loja ou produto, de modo que cada código seja perguntado uma só vez e um
+reprocessamento nunca sobrescreva um valor confirmado. A única fonte de sugestão aqui é o regex atual.
+
 ## 5. Entregar análise de primeira classe no Android
 
 Disponibilizar resumo de gastos, filtros por período e categoria, detalhes de notas e produtos e evolução dos
@@ -123,6 +128,9 @@ no Android e no dashboard do PC. Não apresentar uma leitura numérica quando a 
 
 ## 8. Experimentar assistência local e depois APIs
 
+Modelos entram como novas fontes de sugestão para os campos interpretados da etapa 4 (D51): tamanho da embalagem,
+identidade do produto, categoria e agrupamento para o IPCI. O regex continua como primeira passada gratuita; o modelo
+propõe só os casos incertos ou novos, e o usuário confirma na tela de revisão. Não cria armazenamento nem telas novas.
 Identificar o que o usuário chamou de “system one” e “laya” antes de escolher ferramentas. Experimentar primeiro
 a assistência local para cadastro/categorização, com sugestões que o usuário aceita, rejeita ou corrige.
 Depois avaliar outras APIs, considerando qualidade, custo, dados enviados e funcionamento sem conexão.
