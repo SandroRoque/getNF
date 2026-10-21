@@ -1021,5 +1021,13 @@ server involved. Categorizing stays on the server until stage 4.
     on purpose (a suitcase described as "10KG"). The mirror turned that into "no manual size", so the phone's reading
     of the description (10 kg on the store item) would have counted. The mirror now keeps `sizeSource = manual` with
     no size on the product, which overrides the store item's parsed size. A hand-set 1.25 kg was already right.
-  - The phone is otherwise as the first run left it: phone parses, with the one stuck error, to be cleared when these
-    fixes are installed.
+- **Phone with the fixes (2026-10-21).** The stuck receipt's parse marker was cleared once by hand (the app stopped,
+  `receipt_parsed.pageFetchedAt` set to NULL), and the fixed build installed over the first one. Compared with the
+  pre-install backup:
+  - all 9 receipts parsed on the phone, none with an error;
+  - the 9 headers, the 135 lines, receipts, photos, categories, tags and issuers are identical;
+  - the only differences are intended: 2 store items now hold the description's size (10 kg, 25 kg), and the
+    suitcase's product is `manual` with no size. The 25 kg item's product has its hand-set 1.25 kg.
+
+  A second start parsed nothing, and its server refresh left every table identical. The list shows items and amount
+  paid per receipt.
