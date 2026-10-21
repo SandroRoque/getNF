@@ -919,3 +919,14 @@ and a queryable copy; the phone becomes the source of truth in stages 3–4.
 - **Emulator (2026-10-20).** Seeded with 2 synthetic receipts (fake chaves, 6 random photos, 2 pages). Exported from
   Settings, uninstalled the app, reinstalled, restored. The app restarted on its own (new pid, "restored a backup"
   logged). All 8 files had identical SHA-256s, and the `receipt` and `receipt_photo` rows were identical.
+- **Phone (2026-10-20).** Backup first: `~/getnf-backups/phone-pre-restore-2026-10-20.tar` (113 files, matching the
+  phone). After installing over the D46 APK:
+  - **Export** from Settings: 9 receipts, 55 photos, 135 lines, 84 products; 127 MB, 95 files, every hash correct
+    (copy in `~/getnf-backups/phone-export-2026-10-20.zip`). Every table of the exported database matched the
+    pre-install copy row for row. The 94 photos, masks and pages were byte-identical.
+  - The export leaves out the 8 `receipt.json.migrated` files. D45 imported them and nothing reads them, so a restore
+    drops them. They remain in the tar.
+  - **Restore** of that file onto the same phone: the dialog showed 9/55 on both sides. After Replace, the app came
+    back on its own in a new process and logged "restored a backup". The startup refresh mirrored 84/9/135 and
+    uploaded nothing. Afterwards every table and all 94 files were identical to the export.
+  - Stage 2 is complete: the data can be queried on the phone, the migration was checked, and a restore was verified.
