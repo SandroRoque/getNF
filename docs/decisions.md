@@ -1102,3 +1102,32 @@ had.
 - **Tests:** 115 unit tests (reading: assignment, partial/conflict, unrecognized and distant items, short codes,
   overlapping photos and majorities, the same product twice, from/to prices, another receipt's photo; applying:
   remainder prorated, kept across re-parse, cache, manual kept, conflict changes nothing).
+
+## D52. The paper mask stops at the receipt's straight sides (2026-10-21)
+
+- **Seen live:** a receipt on a dark chair, with a lit patch of the cloth beside it. The overlay and the analyzed area
+  spread over a large part of the background to the left of and below the receipt. Coverage never completed, and the
+  app kept asking to go back to the last recognized segment.
+- **Cause:** on one of that capture's saved frames (re-run with `CaptureEvidenceEvalTest`), the plain Otsu region
+  itself held the patch: it's as light as paper in shade. No receipt-only region was proposed, so choosing among
+  proposals (D40) couldn't help. `trimLeaks` (D41) only removes strands thinner than ~15 px.
+- **Fix:** `PaperRegion.straightenSides`, after `trimLeaks`. Along the receipt's axis, each row's outermost mask pixel
+  on each side is collected, and a line is fitted to each side:
+  - **The fit:** RANSAC over sampled row pairs, with inliers within 2 px, then least squares over the inliers. A
+    candidate steeper than 0.35 (across the axis) is refused, since that would be the bulge's own outline.
+  - **The cut:** whatever reaches more than 3% of the receipt's width past a side's line is cut.
+  - **Left alone:** a side is fitted only when 30% of the rows lie on one line. Rows where the mask reaches the
+    image border don't count, since the edge isn't seen there. So an irregular outline with no straight stretch
+    stays as it was.
+- **Proposal logging:** `DEBUG_PAPER` now also logs every proposal's source (otsu, otsu-inverted, canny, flattened),
+  area and score, the chosen one, and what straightening cut.
+- **Checked:**
+  - **The saved frame:** its bump of background on the left side is gone, with 9,981 px cut at analysis scale. The
+    other four frames of the capture are unchanged.
+  - **New synthetic test:** a lit irregular patch merged with the lower half of a receipt's side. Without the fix it
+    put ~40% of the paper's area of background into the mask; with it, what remains is the tolerance strip (~2%).
+  - **All 48 vision/capture instrumented tests** pass on the emulator.
+- **Not yet checked live:** the original failure (the live frames aren't saved). Per-frame cost not measured; it's two
+  line fits over at most ~720 rows.
+- **Known, separate:** a white receipt on a white table still gives a fragmented mask (frame 0 of the same capture).
+  That's low contrast, not a leak.

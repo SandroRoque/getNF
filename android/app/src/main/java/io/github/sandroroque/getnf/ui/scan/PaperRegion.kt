@@ -6,7 +6,12 @@ import kotlin.math.*
 
 /** Region proposals are supported by a boundary, not by the length of an arbitrary scene line. */
 internal object PaperRegion {
-  private data class Candidate(val contour: Array<Point>, val score: Double, val turn: Int, val area: Double)
+  /** How far past its fitted line a side may reach, as a fraction of the receipt's width (D52). */
+  private const val SIDE_TOLERANCE = .03
+  /** A side is fitted only when this share of the rows lies on one straight line. */
+  private const val MIN_SIDE_INLIERS = .3
+
+  private data class Candidate(val contour: Array<Point>, val score: Double, val turn: Int, val area: Double, val source: String)
 
   fun detect(source: Mat, evaluateQuality: Boolean, chroma: Mat? = null): VisionFrame? {
     val gray = Mat(); val smooth = Mat(); val binary = Mat(); val edge = Mat(); val region = Mat()
@@ -17,7 +22,7 @@ internal object PaperRegion {
       Imgproc.GaussianBlur(gray, smooth, Size(5.0, 5.0), 1.0)
       val pixels = ByteArray(gray.rows() * gray.cols()).also { smooth.get(0, 0, it) }
       val proposals = mutableListOf<Candidate>()
-      fun collect(input: Mat) {
+      fun collect(input: Mat, source: String) {
         val contours = mutableListOf<MatOfPoint>(); val hierarchy = Mat(); val work = input.clone()
         try {
           Imgproc.findContours(work, contours, hierarchy, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE)
@@ -47,18 +52,18 @@ internal object PaperRegion {
             // A strong boundary isn't enough: a shadow or a coloured board under the receipt has one too (D39).
             region.setTo(Scalar(0.0)); Imgproc.drawContours(region, listOf(contour), 0, Scalar(255.0), Imgproc.FILLED)
             if (!DocumentVision.paperLike(gray, region, chroma)) continue
-            proposals += Candidate(bounds, support * sqrt(area), turn, area)
+            proposals += Candidate(bounds, support * sqrt(area), turn, area, source)
           }
         } finally { contours.forEach { it.release() }; hierarchy.release(); work.release() }
       }
       region.create(gray.size(), CvType.CV_8UC1)
       Imgproc.threshold(smooth, binary, 0.0, 255.0, Imgproc.THRESH_BINARY or Imgproc.THRESH_OTSU)
       Imgproc.morphologyEx(binary, binary, Imgproc.MORPH_CLOSE, kernel)
-      collect(binary)
-      Core.bitwise_not(binary, binary); collect(binary)
+      collect(binary, "otsu")
+      Core.bitwise_not(binary, binary); collect(binary, "otsu-inverted")
       // Closed gradients retain a faint paper outline even on a lighter table.
       Imgproc.Canny(smooth, edge, 10.0, 30.0)
-      Imgproc.morphologyEx(edge, edge, Imgproc.MORPH_CLOSE, kernel); collect(edge)
+      Imgproc.morphologyEx(edge, edge, Imgproc.MORPH_CLOSE, kernel); collect(edge, "canny")
       // A global threshold splits a receipt partly under the phone's shadow; dividing out slow illumination keeps
       // the shadowed end with the rest (live test, D40). The sharp paper/background step survives the division.
       val illumination = Mat(); val flat = Mat()
@@ -66,11 +71,13 @@ internal object PaperRegion {
         Imgproc.GaussianBlur(smooth, illumination, Size(0.0, 0.0), 40.0)
         Core.divide(smooth, illumination, flat, 160.0, CvType.CV_8UC1)
         Imgproc.threshold(flat, binary, 0.0, 255.0, Imgproc.THRESH_BINARY or Imgproc.THRESH_OTSU)
-        Imgproc.morphologyEx(binary, binary, Imgproc.MORPH_CLOSE, kernel); collect(binary)
+        Imgproc.morphologyEx(binary, binary, Imgproc.MORPH_CLOSE, kernel); collect(binary, "flattened")
       } finally { illumination.release(); flat.release() }
       // A paper-like region well inside another (a receipt on a board, with a margin all round) is the receipt.
       // A region sharing the outer boundary is part of the same paper (its lit part, beside a shadow), and
       // near-equal areas are the same outline found by another threshold (D40).
+      if (DocumentVision.DEBUG_PAPER) for (c in proposals) android.util.Log.v("PaperRegion",
+        "proposal ${c.source} area=%.0f (%.2f of frame) score=%.1f turn=${c.turn}".format(c.area, c.area / gray.total(), c.score))
       var candidate = proposals.maxByOrNull { it.score } ?: return null
       while (true) {
         val outer = candidate
@@ -81,11 +88,13 @@ internal object PaperRegion {
         } finally { curve.release() }
         candidate = inner ?: break
       }
+      if (DocumentVision.DEBUG_PAPER) android.util.Log.v("PaperRegion", "chosen ${candidate.source} area=%.0f".format(candidate.area))
       val canonical = Mat(); val mask = Mat.zeros(gray.size(), CvType.CV_8UC1)
       val contour = MatOfPoint(*candidate.contour)
       try {
         Imgproc.drawContours(mask, listOf(contour), 0, Scalar(255.0), Imgproc.FILLED)
         trimLeaks(mask)
+        straightenSides(mask, candidate.turn)
         if (candidate.turn == 90) {
           Core.rotate(gray, canonical, Core.ROTATE_90_CLOCKWISE)
           Core.rotate(mask, mask, Core.ROTATE_90_CLOCKWISE)
@@ -162,6 +171,68 @@ internal object PaperRegion {
       val largest = contours.maxByOrNull { Imgproc.contourArea(it) } ?: return
       mask.setTo(Scalar(0.0)); Imgproc.drawContours(mask, listOf(largest), 0, Scalar(255.0), Imgproc.FILLED)
     } finally { kernel.release(); contours.forEach { it.release() }; hierarchy.release(); work.release(); near.release() }
+  }
+
+  /**
+   * A receipt's long sides are straight. A light patch of the background touching one (live test on a dark chair,
+   * D52) passes the same threshold as the paper and bulges out of that side: too wide for [trimLeaks]. Each side's
+   * line is fitted robustly to the mask's outermost pixel per row (rows along the receipt's axis), so a bulge
+   * covering even half the side doesn't move it, and what sticks out beyond the line by more than a small tolerance
+   * is cut. A side whose fit is weak (no straight stretch to speak of) is left alone, as are rows where the mask
+   * reaches the image border (the edge isn't seen there).
+   */
+  private fun straightenSides(mask: Mat, turn: Int) {
+    val work = if (turn == 90) Mat().also { Core.transpose(mask, it) } else mask
+    try {
+      val w = work.cols(); val h = work.rows()
+      val pixels = ByteArray(w * h).also { work.get(0, 0, it) }
+      val left = IntArray(h) { -1 }; val right = IntArray(h) { -1 }
+      for (y in 0 until h) {
+        var x = 0; while (x < w && pixels[y * w + x].toInt() == 0) x++
+        if (x == w) continue
+        var r = w - 1; while (pixels[y * w + r].toInt() == 0) r--
+        left[y] = x; right[y] = r
+      }
+      val rows = (0 until h).filter { left[it] >= 0 }
+      if (rows.size < 20) return
+      val width = rows.map { right[it] - left[it] }.sorted()[rows.size / 2].toDouble()
+      val tolerance = max(4.0, width * SIDE_TOLERANCE)
+      fun fit(edge: IntArray, outward: Int): ((Int) -> Double)? {
+        val seen = rows.filter { edge[it] in 2 until w - 2 }
+        if (seen.size < rows.size * MIN_SIDE_INLIERS) return null
+        val sample = seen.filterIndexed { i, _ -> i % max(1, seen.size / 40) == 0 }
+        var best: Pair<Double, Double>? = null; var bestCount = 0
+        for (i in sample.indices) for (j in i + 1 until sample.size) {
+          val y0 = sample[i]; val y1 = sample[j]; if (y1 - y0 < h / 10) continue
+          val slope = (edge[y1] - edge[y0]).toDouble() / (y1 - y0); val icept = edge[y0] - slope * y0
+          if (abs(slope) > .35) continue // sides run along the axis; a steeper "side" is the bulge itself
+          val count = seen.count { abs(edge[it] - (icept + slope * it)) <= 2.0 }
+          if (count > bestCount) { bestCount = count; best = slope to icept }
+        }
+        val (slope0, icept0) = best ?: return null
+        if (bestCount < rows.size * MIN_SIDE_INLIERS) return null
+        // Least squares over the inliers.
+        val inliers = seen.filter { abs(edge[it] - (icept0 + slope0 * it)) <= 2.0 }
+        val my = inliers.average(); val mx = inliers.map { edge[it].toDouble() }.average()
+        val sxx = inliers.sumOf { (it - my) * (it - my) }
+        val slope = if (sxx < 1e-9) slope0 else inliers.sumOf { (it - my) * (edge[it] - mx) } / sxx
+        val icept = mx - slope * my
+        return { y -> icept + slope * y + outward * tolerance }
+      }
+      val leftLine = fit(left, -1); val rightLine = fit(right, 1)
+      if (leftLine == null && rightLine == null) return
+      var cut = 0
+      for (y in rows) {
+        val a = leftLine?.let { ceil(it(y)).toInt().coerceIn(0, w) } ?: 0
+        val b = rightLine?.let { floor(it(y)).toInt().coerceIn(-1, w - 1) } ?: (w - 1)
+        for (x in left[y] until min(a, right[y] + 1)) if (pixels[y * w + x].toInt() != 0) { pixels[y * w + x] = 0; cut++ }
+        for (x in max(b + 1, left[y]) .. right[y]) if (pixels[y * w + x].toInt() != 0) { pixels[y * w + x] = 0; cut++ }
+      }
+      if (cut == 0) return
+      work.put(0, 0, pixels)
+      if (DocumentVision.DEBUG_PAPER) android.util.Log.v("PaperRegion", "straightened sides: cut $cut px (left=${leftLine != null} right=${rightLine != null})")
+      if (turn == 90) Core.transpose(work, mask)
+    } finally { if (work !== mask) work.release() }
   }
 
   private fun candidatePoints(mask: Mat): Array<Point> {

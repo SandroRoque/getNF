@@ -152,4 +152,45 @@ class PaperRegionTest {
       } finally { mask.release() }
     } finally { paper.release(); kernel.release() }
   }
+
+  /**
+   * The live failure of D52: a receipt on a dark chair, with a lighter patch of the background (lit cloth) touching
+   * its left side along the lower half. The patch passes the same threshold as the paper; the mask must stop at the
+   * receipt's straight side instead of bulging into it.
+   */
+  @Test fun aLightPatchTouchingOneSideIsCutAtTheStraightEdge() {
+    DocumentVision.ensureLoaded()
+    val image = Bitmap.createBitmap(900, 1200, Bitmap.Config.ARGB_8888)
+    val truth = Bitmap.createBitmap(900, 1200, Bitmap.Config.ARGB_8888)
+    val c = Canvas(image); val t = Canvas(truth); val p = Paint(Paint.ANTI_ALIAS_FLAG)
+    c.drawColor(Color.rgb(45, 48, 52)); t.drawColor(Color.BLACK)
+    // The lit patch: irregular, as light as shadowed paper, merging with the receipt's left side from mid-height down.
+    p.color = Color.rgb(170, 178, 182); p.style = Paint.Style.FILL
+    c.drawPath(Path().apply {
+      moveTo(380f, 560f); lineTo(150f, 600f); lineTo(90f, 760f); lineTo(140f, 930f); lineTo(60f, 1060f)
+      lineTo(120f, 1130f); lineTo(380f, 1110f); close()
+    }, p)
+    val paper = RectF(370f, 90f, 700f, 1110f)
+    p.color = Color.rgb(232, 236, 238); c.drawRect(paper, p)
+    p.color = Color.WHITE; t.drawRect(paper, p)
+    p.color = Color.BLACK; p.textSize = 23f; p.typeface = Typeface.MONOSPACE
+    for (i in 0..28) c.drawText("ITEM $i 12,50", 395f, 160f + i * 32, p)
+    try { DocumentVision.fromBitmap(image).use { frame ->
+      assertTrue("Paper not located: ${frame.observation}", frame.observation.located)
+      val rgba = Mat(); val gray = Mat(); val resized = Mat(); val outside = Mat(); val leak = Mat(); val core = Mat(); val covered = Mat()
+      val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(9.0, 9.0))
+      try {
+        org.opencv.android.Utils.bitmapToMat(truth, rgba); Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY)
+        Imgproc.resize(gray, resized, frame.mask.size(), 0.0, 0.0, Imgproc.INTER_NEAREST)
+        Core.compare(resized, Scalar(250.0), outside, Core.CMP_LT); Core.bitwise_and(outside, frame.mask, leak)
+        val paperPixels = Core.countNonZero(resized).toDouble()
+        // What may remain is the side tolerance (3% of the width) along the patch: ~2% of the paper. Without the
+        // straightening it was ~40%.
+        assertTrue("The patch leaks into the mask: ${Core.countNonZero(leak)} px", Core.countNonZero(leak) <= paperPixels * .03)
+        Imgproc.erode(resized, core, kernel); Core.bitwise_and(core, frame.mask, covered)
+        assertTrue("Useful paper must be preserved", Core.countNonZero(covered) >= Core.countNonZero(core) * .95)
+        assertFalse(frame.observation.contains(.15, .75))
+      } finally { listOf(rgba, gray, resized, outside, leak, core, covered, kernel).forEach { it.release() } }
+    } } finally { image.recycle(); truth.recycle() }
+  }
 }
