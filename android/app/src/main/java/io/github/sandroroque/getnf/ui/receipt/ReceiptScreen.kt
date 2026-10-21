@@ -35,6 +35,8 @@ import io.github.sandroroque.getnf.GetNFApp
 import io.github.sandroroque.getnf.data.Chave
 import io.github.sandroroque.getnf.data.LineDetail
 import io.github.sandroroque.getnf.data.ParsedHeader
+import io.github.sandroroque.getnf.data.PhotoDiscountReader
+import io.github.sandroroque.getnf.discounts.PhotoDiscounts
 import io.github.sandroroque.getnf.data.ReceiptParsedRow
 import io.github.sandroroque.getnf.data.ReceiptParser
 import io.github.sandroroque.getnf.theme.GetNFTheme
@@ -49,6 +51,8 @@ fun ReceiptScreen(chave: String) {
   val app = LocalContext.current.applicationContext as GetNFApp
   val header by remember(chave) { app.database.catalog().header(chave) }.collectAsStateWithLifecycle(null)
   val lines by remember(chave) { app.database.catalog().lineDetails(chave) }.collectAsStateWithLifecycle(emptyList())
+  val receipts by app.receiptStore.receipts.collectAsStateWithLifecycle()
+  val photos = receipts.firstOrNull { it.chave == chave }?.photos?.size ?: 0
   val scope = rememberCoroutineScope()
   var status by remember { mutableStateOf<String?>(null) }
   var busy by remember { mutableStateOf(false) }
@@ -58,6 +62,17 @@ fun ReceiptScreen(chave: String) {
     lines = lines,
     status = status,
     busy = busy,
+    photos = photos,
+    onReadDiscounts = {
+      busy = true; status = "Reading $photos photo(s)…"
+      scope.launch {
+        status = runCatching { app.receiptStore.get(chave)?.let { app.photoDiscounts.read(it) } }.fold(
+          onSuccess = { it?.let(::discountMessage) ?: "No receipt" },
+          onFailure = { "Couldn't read the photos: ${it.message}" },
+        )
+        busy = false
+      }
+    },
     onReadAgain = {
       busy = true
       scope.launch {
@@ -81,6 +96,8 @@ internal fun ReceiptScreen(
   lines: List<LineDetail>,
   status: String?,
   busy: Boolean,
+  photos: Int,
+  onReadDiscounts: () -> Unit,
   onReadAgain: () -> Unit,
 ) {
   Scaffold(
@@ -91,7 +108,7 @@ internal fun ReceiptScreen(
       contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      item(key = "header") { HeaderCard(chave, header, lines.size, status, busy, onReadAgain) }
+      item(key = "header") { HeaderCard(chave, header, lines.size, status, busy, photos, onReadDiscounts, onReadAgain) }
       items(lines, key = { it.lineNo }) { line ->
         LineRow(line)
         HorizontalDivider()
@@ -101,7 +118,10 @@ internal fun ReceiptScreen(
 }
 
 @Composable
-private fun HeaderCard(chave: String, h: ParsedHeader?, lineCount: Int, status: String?, busy: Boolean, onReadAgain: () -> Unit) {
+private fun HeaderCard(
+  chave: String, h: ParsedHeader?, lineCount: Int, status: String?, busy: Boolean, photos: Int,
+  onReadDiscounts: () -> Unit, onReadAgain: () -> Unit,
+) {
   Card(Modifier.fillMaxWidth()) {
     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
       h?.issuedAt?.let {
@@ -119,8 +139,25 @@ private fun HeaderCard(chave: String, h: ParsedHeader?, lineCount: Int, status: 
         h.parseError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
       }
       status?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-      OutlinedButton(onClick = onReadAgain, enabled = !busy) { Text("Read page again") }
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Only worth it when there's a discount to split and photos to read it from (D51).
+        if ((h?.discountCents ?: 0) > 0 && photos > 0)
+          OutlinedButton(onClick = onReadDiscounts, enabled = !busy) { Text("Discounts from photos") }
+        OutlinedButton(onClick = onReadAgain, enabled = !busy) { Text("Read page again") }
+      }
     }
+  }
+}
+
+/** What came of reading the photos, in a sentence. */
+private fun discountMessage(o: PhotoDiscountReader.Outcome): String {
+  val r = o.result
+  val found = "${r.discounts.size} discount(s), ${Format.brl(r.foundCents)} of ${Format.brl(r.totalCents)}"
+  return when (r.verdict) {
+    PhotoDiscounts.Verdict.COMPLETE -> "From ${o.photos} photo(s): $found. All found."
+    PhotoDiscounts.Verdict.PARTIAL -> "From ${o.photos} photo(s): $found. The rest stays prorated."
+    PhotoDiscounts.Verdict.NONE -> "No discount found in ${o.photos} photo(s). Nothing changed."
+    PhotoDiscounts.Verdict.CONFLICT -> "The photos don't add up (${r.problems.first()}). Nothing changed."
   }
 }
 
@@ -165,6 +202,8 @@ private fun ReceiptScreenPreview() {
       ),
       status = null,
       busy = false,
+      photos = 2,
+      onReadDiscounts = {},
       onReadAgain = {},
     )
   }

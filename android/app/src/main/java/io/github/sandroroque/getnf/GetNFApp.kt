@@ -6,6 +6,8 @@ import io.github.sandroroque.getnf.data.LookupBudget
 import io.github.sandroroque.getnf.data.PendingRestore
 import io.github.sandroroque.getnf.data.ReceiptDatabase
 import io.github.sandroroque.getnf.data.ReceiptParser
+import io.github.sandroroque.getnf.data.PhotoDiscountReader
+import io.github.sandroroque.getnf.discounts.PhotoOcr
 import io.github.sandroroque.getnf.data.ReceiptStore
 import io.github.sandroroque.getnf.data.CaptureSessionStore
 import io.github.sandroroque.getnf.data.ServerMirror
@@ -23,6 +25,8 @@ class GetNFApp : Application() {
   val backup by lazy { BackupService(this, database, File(filesDir, "receipts")) }
   val serverMirror by lazy { ServerMirror(database) }
   val receiptParser by lazy { ReceiptParser(database, File(filesDir, "receipts")) }
+  private val photoOcr by lazy { PhotoOcr(this) }
+  val photoDiscounts by lazy { PhotoDiscountReader(database, File(filesDir, "receipts")) { photoOcr.read(it) } }
   val captureSessions by lazy { CaptureSessionStore(File(filesDir, "capture-sessions")) }
   val serverSettings by lazy { ServerSettings(this) }
   val pocketBase by lazy { PocketBaseClient() }

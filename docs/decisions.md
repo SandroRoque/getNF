@@ -1053,3 +1053,48 @@ server involved. Categorizing stays on the server until stage 4.
   phone with a real receipt: 15 lines with the server's categories, the totals matching the list.
 - **Tests.** 99 unit tests (queries: store name, line order, category and parent labels, a line's correction
   winning; formats).
+
+## D51. Stage 3d: per-item discounts read from the photos, on the phone (2026-10-21)
+
+The page gives only the receipt's total discount, so lines got a prorated share of it (D14). The printed receipt says
+which items had a discount. On a real receipt, prorating had given the R$ 29,98 lombo R$ 0,79 of discount it never
+had.
+
+- **OCR:** `PhotoOcr` runs ML Kit's bundled Latin recognizer, already in the app for legibility (D37), on the saved
+  photo with its EXIF orientation applied. It keeps each line's text and box. Results are cached next to the photo
+  (`<photo>.ocr1.json`, not part of a backup; it's rebuilt when needed).
+- **Reading** (`discounts/PhotoDiscounts`, pure, JVM-tested). The HTML says what the items are, so OCR is only asked
+  where each item's discount is:
+  - **Anchors:** an item is found by the HTML's code among a line's first tokens, with OCR's letter-for-digit
+    confusions undone. The printed item number is too often misread ("J1" for 11) to anchor on. A short in-store
+    code also needs the description's first word on the same line.
+  - **Same product rung up more than once:** the matching lines pair with the items in print order when the counts
+    agree; otherwise a readable item number decides.
+  - **`Desconto: 1,56` lines** (the supermarket's layout) go to the nearest item-looking line above, only if that line
+    is a found item and the gap is within 2.2 line heights. A discount under an item OCR couldn't place stays
+    unassigned rather than landing on the item above. The totals block's "Desconto R$ …" is never taken.
+  - **`De R$ 256,51 por R$ 166,73`** (the pharmacy's layout): the "from" price is the line's gross, which names the
+    item when it's unique on the receipt; the discount is the difference.
+  - **Several photos:** readings of the same item from overlapping photos count once. When they differ, the value read
+    at least twice as often as any other wins; otherwise it's a conflict.
+  - **Verdict:** `COMPLETE` when the readings add up to the page's discount, `PARTIAL` when less, `NONE`, or
+    `CONFLICT` (readings exceed the total, a discount exceeds its line, or photos disagree), in which case nothing is
+    applied.
+- **Applying** (`PhotoDiscountReader`): found discounts become `photo` (unreviewed), and the rest of the total is
+  prorated over the other lines. A `manual` discount is never replaced. ReceiptParser keeps photo and manual
+  discounts across re-parses (D49). It runs on demand from the receipt screen ("Discounts from photos"), as D14
+  intended, shown only when the receipt has a discount and photos.
+- **Real photos** (OCR recorded on the emulator from the D47 export, `PhotoDiscountsEvalTest`, local only):
+  - **Complete** on 5 of the 6 receipts with a discount: four supermarket receipts (R$ 4,40 as 4 discounts, R$ 2,80
+    as 5, R$ 1,50 as 2 on the same product rung up twice, R$ 0,56 as 2) and the pharmacy (R$ 133,49, agreed by 23 and
+    24 of its 32 photos despite misread digits in others).
+  - **Partial** on the sixth, an older low-resolution photo of five identical items: R$ 0,10 of R$ 0,50 found.
+  - **Nothing** on the three receipts without a discount. That includes one whose NF holds three photos of a
+    different receipt, with `Desconto` lines: no code matched.
+- **OCR time:** about 2.7 s per 3072×4096 photo on the emulator. Not yet measured on the phone.
+- **Not done:** showing the evidence crop so the user can confirm (the review state stays `unreviewed`), and a way to
+  go back to prorated (needs stage 4's line editing). The server still prorates: its dashboard shows prorated
+  discounts until stage 4's one-way copy sends the phone's lines.
+- **Tests:** 115 unit tests (reading: assignment, partial/conflict, unrecognized and distant items, short codes,
+  overlapping photos and majorities, the same product twice, from/to prices, another receipt's photo; applying:
+  remainder prorated, kept across re-parse, cache, manual kept, conflict changes nothing).
