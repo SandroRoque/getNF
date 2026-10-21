@@ -10,4 +10,7 @@ import kotlinx.serialization.Serializable
 /** The SEFAZ page for an already-scanned receipt. */
 @Serializable data class Page(val chave: String) : NavKey
 
+/** What was read from a receipt's saved page (D50). */
+@Serializable data class ReceiptDetail(val chave: String) : NavKey
+
 @Serializable data object Settings : NavKey

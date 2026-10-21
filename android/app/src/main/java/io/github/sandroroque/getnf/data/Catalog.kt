@@ -45,6 +45,36 @@ data class ReceiptParsedRow(
   }
 }
 
+/** A receipt line as the detail screen shows it, with the product's category (D50). */
+data class LineDetail(
+  val lineNo: Int,
+  val description: String,
+  val code: String,
+  val qtyE4: Long,
+  val unit: String?,
+  val unitPriceE4: Long,
+  val grossCents: Long,
+  val discountCents: Long,
+  val discountSource: String,
+  val productName: String?,
+  val categoryLabel: String?,
+  val parentLabel: String?,
+)
+
+/** A receipt's parsed header with its store's name. */
+data class ParsedHeader(
+  val chave: String,
+  val issuerName: String?,
+  val issuerCnpj: String?,
+  val issuedAt: Long?,
+  val grossCents: Long?,
+  val discountCents: Long?,
+  val paidCents: Long?,
+  val parserVersion: Int?,
+  val parseError: String?,
+  val source: String,
+)
+
 /** One line per receipt for the list screen. */
 data class ParsedSummary(val chave: String, val lines: Int, val paidCents: Long?, val parseError: String?, val source: String)
 
@@ -183,6 +213,32 @@ abstract class CatalogDao {
     """,
   )
   abstract fun summaries(): Flow<List<ParsedSummary>>
+
+  @Query(
+    """
+    SELECT rp.chave, i.name AS issuerName, rp.issuerCnpj, rp.issuedAt, rp.grossCents, rp.discountCents, rp.paidCents,
+           rp.parserVersion, rp.parseError, rp.source
+    FROM receipt_parsed rp LEFT JOIN issuer i ON i.cnpj = rp.issuerCnpj
+    WHERE rp.chave = :chave
+    """,
+  )
+  abstract fun header(chave: String): Flow<ParsedHeader?>
+
+  /** A line's product is its own correction, else its store item's product. */
+  @Query(
+    """
+    SELECT l.lineNo, l.description, l.code, l.qtyE4, l.unit, l.unitPriceE4, l.grossCents, l.discountCents,
+           l.discountSource, p.name AS productName, c.label AS categoryLabel, pc.label AS parentLabel
+    FROM receipt_line l
+    JOIN store_item s ON s.id = l.storeItemId
+    JOIN product p ON p.id = COALESCE(l.productOverrideId, s.productId)
+    LEFT JOIN category c ON c.id = p.categoryId
+    LEFT JOIN category pc ON pc.id = c.parentId
+    WHERE l.receipt = :chave
+    ORDER BY l.lineNo
+    """,
+  )
+  abstract fun lineDetails(chave: String): Flow<List<LineDetail>>
 
   @Insert abstract suspend fun insertCategory(row: CategoryRow)
   @Update abstract suspend fun updateCategory(row: CategoryRow): Int

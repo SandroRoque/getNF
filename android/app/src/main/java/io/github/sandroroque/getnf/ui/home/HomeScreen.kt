@@ -43,14 +43,13 @@ import io.github.sandroroque.getnf.data.Chave
 import io.github.sandroroque.getnf.data.ParsedSummary
 import io.github.sandroroque.getnf.data.Receipt
 import io.github.sandroroque.getnf.theme.GetNFTheme
+import io.github.sandroroque.getnf.ui.Format
 import io.github.sandroroque.getnf.upload.UploadWorker
 import java.text.DateFormat
-import java.text.NumberFormat
-import java.util.Locale
 import java.util.Date
 
 @Composable
-fun HomeScreen(onScan: () -> Unit, onOpenPage: (String) -> Unit, onSettings: () -> Unit) {
+fun HomeScreen(onScan: () -> Unit, onOpenPage: (String) -> Unit, onOpenReceipt: (String) -> Unit, onSettings: () -> Unit) {
   val context = LocalContext.current
   val app = context.applicationContext as GetNFApp
   val receipts by app.receiptStore.receipts.collectAsStateWithLifecycle()
@@ -71,6 +70,7 @@ fun HomeScreen(onScan: () -> Unit, onOpenPage: (String) -> Unit, onSettings: () 
     budgetLine = budgetLine,
     onScan = onScan,
     onOpenPage = { chave -> budgetCheck.request(onFetch = { onOpenPage(chave) }, onLater = {}) },
+    onOpenReceipt = onOpenReceipt,
     onSettings = onSettings,
     onUpload = { UploadWorker.enqueue(context) },
   )
@@ -88,6 +88,7 @@ internal fun HomeScreen(
   budgetLine: String,
   onScan: () -> Unit,
   onOpenPage: (String) -> Unit,
+  onOpenReceipt: (String) -> Unit,
   onSettings: () -> Unit,
   onUpload: () -> Unit,
 ) {
@@ -118,8 +119,10 @@ internal fun HomeScreen(
           item(key = "waiting") { WaitingBar(waiting.size, budgetLine, onFetchNext = { onOpenPage(waiting.first().chave) }) }
         }
         items(receipts, key = { it.chave }) { receipt ->
-          // Only receipts without a page are tappable: no reason to hit the portal again for the others.
-          ReceiptCard(receipt, parsed[receipt.chave], onClick = if (receipt.pageFile == null) ({ onOpenPage(receipt.chave) }) else null)
+          // Without a page, a tap fetches it; with one, it shows what was read. The portal is never hit again.
+          ReceiptCard(receipt, parsed[receipt.chave], onClick = {
+            if (receipt.pageFile == null) onOpenPage(receipt.chave) else onOpenReceipt(receipt.chave)
+          })
         }
       }
     }
@@ -169,7 +172,7 @@ private fun ParsedLine(p: ParsedSummary) {
     Text("Couldn't read the page: ${p.parseError}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
     return
   }
-  val paid = p.paidCents?.let { " · " + NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(it / 100.0) } ?: ""
+  val paid = p.paidCents?.let { " · " + Format.brl(it) } ?: ""
   Text("${p.lines} item(s)$paid", style = MaterialTheme.typography.bodyMedium)
   p.parseError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
 }
@@ -190,6 +193,7 @@ private fun HomeScreenPreview() {
       budgetLine = "4 of 5 SEFAZ lookups left this hour on Wi-Fi.",
       onScan = {},
       onOpenPage = {},
+      onOpenReceipt = {},
       onSettings = {},
       onUpload = {},
     )

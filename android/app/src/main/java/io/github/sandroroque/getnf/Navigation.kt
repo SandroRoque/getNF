@@ -8,12 +8,14 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import io.github.sandroroque.getnf.ui.home.HomeScreen
 import io.github.sandroroque.getnf.ui.page.PageScreen
+import io.github.sandroroque.getnf.ui.receipt.ReceiptScreen
 import io.github.sandroroque.getnf.ui.scan.ScanScreen
 import io.github.sandroroque.getnf.ui.settings.SettingsScreen
 
 /**
  * Navigation 3: the back stack is a plain list of keys; the last one is on screen.
  * Flow: Home → Scan → Home after automatic capture; portal lookup is explicitly started from Home.
+ * Home → ReceiptDetail shows what was read from a saved page.
  * Page → Page for "Next" replaces the page so Back still returns Home.
  */
 @Composable
@@ -33,6 +35,7 @@ fun MainNavigation() {
           HomeScreen(
             onScan = { backStack.add(Scan) },
             onOpenPage = { chave -> backStack.add(Page(chave)) },
+            onOpenReceipt = { chave -> backStack.add(ReceiptDetail(chave)) },
             onSettings = { backStack.add(Settings) },
           )
         }
@@ -53,6 +56,7 @@ fun MainNavigation() {
             },
           )
         }
+        entry<ReceiptDetail> { key -> ReceiptScreen(chave = key.chave) }
         entry<Settings> { SettingsScreen(onDone = { backStack.removeLastOrNull() }) }
       },
   )

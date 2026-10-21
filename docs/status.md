@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-20. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D49). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D50). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -51,7 +51,7 @@ categorized → reportable through the `spending_lines` view.
 - **Local data** (not in git): the receipts captured so far, every product categorized, in `server/pb_data/` plus the
   photos on the phone. **Back up `server/pb_data/`.** The categorizations exist only there.
 - **Tests:** `cd android && ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`:
-  96 unit tests and 52 instrumented vision/capture/lifecycle tests (the D37 focus benchmark and the D38 real-capture eval, which skips without local files). Never run connectedAndroidTest with the phone attached: it uninstalls the app and wipes its receipts on the emulator; an offline camera journey
+  99 unit tests and 52 instrumented vision/capture/lifecycle tests (the D37 focus benchmark and the D38 real-capture eval, which skips without local files). Never run connectedAndroidTest with the phone attached: it uninstalls the app and wipes its receipts on the emulator; an offline camera journey
   also read a synthetic QR, saved a photo and completed automatically (see capture-validation.md).
   Debug build and lint pass. PocketBase's 100-photo migration and rollback were validated in an isolated database;
   the migration was applied to the live server on 2026-10-15 after a backup (D36). Android also has a 100-photo technical cap.
@@ -122,7 +122,9 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
    the emulator (`tools/nfce-golden.mjs`). 3b (D49): the phone parses each saved page into its own header, lines
    and store items; the server still supplies categories by code. A reparse of the real export matched the
    server's 135 lines exactly, and so did the phone itself after installing it (2026-10-21). The list shows items
-   and amount paid per receipt. Next in stage 3: re-parse on demand and a receipt detail screen with its lines. Installing an APK older than D45 shows an empty list; restore from backup.
+   and amount paid per receipt. 3c (D50): tapping a receipt shows its lines with categories and totals, and "Read
+   page again" re-parses the saved page (no SEFAZ request). Left in stage 3: photo OCR for per-item discounts
+   (optional, discounts-and-ocr.md); then stage 4 moves categorizing onto the phone. Installing an APK older than D45 shows an empty list; restore from backup.
 0. Photos upload append-only to `receipt_photos` with masks and metadata (D42); all 51 phone photos are on the live
    server. A restore onto a new machine needs one restart after the first start (D42).
 1. **Uploads only on home Wi‑Fi with the PC on** (D18). Fine for now. Pending, by the user: reserve `192.168.4.4` for

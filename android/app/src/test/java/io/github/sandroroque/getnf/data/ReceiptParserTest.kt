@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -196,5 +197,26 @@ class ReceiptParserTest {
     assertEquals(100_000L, item.parsedSizeE6)
     val product = dao.products().single { it.id == item.productId }
     assertEquals(Triple<Long?, String?, String?>(null, null, "manual"), Triple(product.sizeE6, product.sizeUnit, product.sizeSource))
+  }
+
+  @Test fun theDetailScreenSeesLinesWithCategoriesAndTheStoreName() = runTest {
+    parser.parse(saved())
+    mirror.apply(ServerSnapshot(
+      listOf(ServerCategory("sc1", "food", "Comida", 1, null), ServerCategory("sc2", "food.produce", "Hortifrúti", 2, "sc1")), emptyList(),
+      listOf(ServerProduct("sp1", "store:$cnpj:243", "MACA NAC KG", "sc2", emptyList(), null, null, null)), emptyList(), emptyList(),
+    ))
+    val h = dao.header(chave).first()!!
+    assertEquals(listOf<Any?>("SUPERMERCADO EXEMPLO LTDA", 3064L, ReceiptParsedRow.SOURCE_PHONE), listOf(h.issuerName, h.paidCents, h.source))
+    val lines = dao.lineDetails(chave).first()
+    assertEquals((1..8).toList(), lines.map { it.lineNo })
+    assertEquals("Hortifrúti" to "Comida", lines[0].categoryLabel to lines[0].parentLabel)
+    assertNull(lines[1].categoryLabel)
+    // A line's own correction wins over its store item's product.
+    val other = dao.products().first { it.categoryId == null }
+    val apple = dao.lines(chave).first()
+    dao.deleteLines(chave)
+    dao.insertLines(listOf(apple.copy(productOverrideId = other.id)))
+    assertNull(dao.lineDetails(chave).first().single().categoryLabel)
+    assertNull(dao.header("42260611222333000181651090000099991123456780").first())
   }
 }

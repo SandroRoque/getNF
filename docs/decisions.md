@@ -1031,3 +1031,25 @@ server involved. Categorizing stays on the server until stage 4.
 
   A second start parsed nothing, and its server refresh left every table identical. The list shows items and amount
   paid per receipt.
+
+## D50. Stage 3c: a receipt detail screen, and reading a saved page again on demand (2026-10-21)
+
+- **Navigation.** Tapping a receipt that has a saved page opens `ReceiptDetail(chave)`. A receipt without a page
+  still opens the SEFAZ page, through the lookup budget check, as before.
+- **The screen** shows:
+  - the store name in the title;
+  - issue date, chave, items total, discount and amount paid;
+  - who read it (this phone or the server), and any warning or error;
+  - every line with quantity × unit price, its discount and the discount's source, and its category as
+    "Parent › Category" ("Uncategorized" when the server hasn't categorized the product yet).
+
+  A line's own product correction wins over its store item's product, as in `monthlyTotals`. Two Room flows feed it
+  (`CatalogDao.header`, `lineDetails`), so a parse or a server refresh shows up at once.
+- **"Read page again"** re-parses the saved page with ReceiptParser and says what came of it. It never contacts
+  SEFAZ; fetching the page again stays a separate, budgeted action. Useful after a parser change, or to retry an
+  error.
+- **Formats** (`ui/Format`): reais and scale-4 quantities in pt-BR ("R$ 30,64", "0,575 KG").
+- **Checked** on the emulator (fixture receipt; a dummy page showing its error and 0 lines; Read again) and on the
+  phone with a real receipt: 15 lines with the server's categories, the totals matching the list.
+- **Tests.** 99 unit tests (queries: store name, line order, category and parent labels, a line's correction
+  winning; formats).
