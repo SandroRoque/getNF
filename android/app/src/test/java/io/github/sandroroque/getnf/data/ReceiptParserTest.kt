@@ -1,11 +1,16 @@
 package io.github.sandroroque.getnf.data
 
 import io.github.sandroroque.getnf.parse.NfcePage
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -160,5 +165,36 @@ class ReceiptParserTest {
     // No page, nothing to parse.
     store.open("42260611222333000181651090000099991123456780", "qr")
     assertEquals(0, parser.parsePending(store.receipts.value))
+  }
+
+  @Test fun aCancelledParseIsNotRecordedAsAnError() = runTest {
+    val r = saved()
+    // As on the phone: the upload worker is replaced while the page is being read on the IO dispatcher.
+    val job = launch(start = CoroutineStart.UNDISPATCHED) { parser.parse(r) }
+    job.cancel()
+    job.join()
+    assertTrue(job.isCancelled)
+    assertNull(dao.parsed(chave))
+    assertTrue(parser.needsParse(r))
+  }
+
+  @Test fun startupAndTheWorkerAtOnceParseEachPageOnce() = runTest {
+    saved()
+    val logged = mutableListOf<String>()
+    val p = ReceiptParser(db, tmp.root, newId = newId, log = { m, _ -> logged += m })
+    val counts = List(3) { async { p.parsePending(store.receipts.value) } }.awaitAll()
+    assertEquals(1, counts.sum())
+    assertEquals(1, logged.count { it.startsWith("parsed") })
+  }
+
+  @Test fun aSizeRemovedByHandOnTheServerBeatsTheDescription() = runTest {
+    parser.parse(saved())
+    // POLPA BRASFRUT 100G reads as 100 g; on the server someone removed its size by hand (manual, no quantity).
+    mirror.apply(ServerSnapshot(emptyList(), emptyList(),
+      listOf(ServerProduct("sp1", "gtin:7896014400287", "POLPA BRASFRUT 100G", null, emptyList(), null, null, "manual")), emptyList(), emptyList()))
+    val item = dao.storeItems().single { it.code == "7896014400287" }
+    assertEquals(100_000L, item.parsedSizeE6)
+    val product = dao.products().single { it.id == item.productId }
+    assertEquals(Triple<Long?, String?, String?>(null, null, "manual"), Triple(product.sizeE6, product.sizeUnit, product.sizeSource))
   }
 }

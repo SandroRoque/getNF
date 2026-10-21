@@ -8,6 +8,7 @@ import io.github.sandroroque.getnf.parse.NfcePage
 import io.github.sandroroque.getnf.parse.ParsedReceipt
 import java.io.File
 import java.util.UUID
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -43,31 +44,39 @@ class ReceiptParser(
       parsed.pageFetchedAt != receipt.pageFetchedAt
   }
 
-  /** Parses every receipt that [needsParse]. Returns how many were parsed (successfully or not). */
+  /**
+   * Parses every receipt that [needsParse]. Returns how many were parsed (successfully or not). Checked under the lock,
+   * so startup and the upload worker running at once don't both read the same page.
+   */
   suspend fun parsePending(receipts: List<Receipt>): Int {
     var n = 0
-    for (r in receipts) if (needsParse(r)) { parse(r); n++ }
+    for (r in receipts) mutex.withLock { if (needsParse(r)) { parseLocked(r); n++ } }
     return n
   }
 
-  suspend fun parse(receipt: Receipt): Outcome = mutex.withLock {
+  suspend fun parse(receipt: Receipt): Outcome = mutex.withLock { parseLocked(receipt) }
+
+  private suspend fun parseLocked(receipt: Receipt): Outcome {
     val pageFile = requireNotNull(receipt.pageFile) { "no page for ${receipt.chave}" }
     val parsed = try {
       withContext(Dispatchers.IO) { NfcePage.parse(File(File(root, receipt.chave), pageFile).readText(Charsets.UTF_8)) }
+    } catch (e: CancellationException) {
+      // The caller went away (say, the upload worker was replaced): not something wrong with the page.
+      throw e
     } catch (e: Exception) {
       val error = e.message ?: e.toString()
       record(receipt, error)
       log("could not read the page of ${receipt.chave}: $error", null)
-      return@withLock Outcome.Failed(error)
+      return Outcome.Failed(error)
     }
     if (parsed.chave != null && parsed.chave != receipt.chave) {
       val error = "page is for another receipt (${parsed.chave})"
       record(receipt, error)
-      return@withLock Outcome.Failed(error)
+      return Outcome.Failed(error)
     }
     val lines = write(receipt, parsed)
     log("parsed ${receipt.chave}: $lines lines, ${parsed.warnings.size} warning(s)", null)
-    Outcome.Parsed(lines, parsed.warnings)
+    return Outcome.Parsed(lines, parsed.warnings)
   }
 
   /** The page couldn't be read: keep whatever was there (header, lines) and record why. */

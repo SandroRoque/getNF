@@ -83,7 +83,10 @@ data class ProductRow(
   /** Given by the user; null shows the latest store item description. */
   val name: String?,
   val categoryId: String?,
-  /** Set only by hand (`sizeSource = manual`); parsed sizes live on the store item. */
+  /**
+   * Set only by hand (`sizeSource = manual`); parsed sizes live on the store item. A manual source with no size means
+   * the size was removed by hand: the store item's parsed size doesn't apply.
+   */
   val sizeE6: Long?,
   val sizeUnit: String?,
   val sizeSource: String?,

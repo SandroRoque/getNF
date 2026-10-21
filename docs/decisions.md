@@ -1008,3 +1008,18 @@ server involved. Categorizing stays on the server until stage 4.
   and the mirror leaving phone parses alone while still categorizing). The 2→3 migration test passes on the emulator.
   On the emulator app, a receipt with the fixture page showed "8 item(s) · R$ 30,64", and the two with dummy pages
   showed the error.
+- **First phone run (2026-10-20), and three fixes.** Backup first: `~/getnf-backups/phone-pre-local-parse-2026-10-20.tar`
+  (105 files, matching the phone). The first start of the D49 build parsed all 9 pages, with no warnings. Compared with
+  the backup: receipts, photos, lines (135), products, categories, tags and issuers were identical. That showed:
+  - **Each page parsed twice:** startup and the upload worker both ran `parsePending` and each checked `needsParse`
+    before taking the lock. The check now happens under the lock.
+  - **A cancellation recorded as a parse error:** WorkManager replaced the running worker (REPLACE, by design), and
+    the `CancellationException` from the IO dispatcher was caught as a failure. One receipt got "Job was cancelled"
+    as its parse error and wasn't going to be retried. Cancellation now propagates and writes nothing; a test cancels
+    a parse while the page is being read.
+  - **A size removed by hand came back:** the server keeps "manual, no quantity" for a product whose size was removed
+    on purpose (a suitcase described as "10KG"). The mirror turned that into "no manual size", so the phone's reading
+    of the description (10 kg on the store item) would have counted. The mirror now keeps `sizeSource = manual` with
+    no size on the product, which overrides the store item's parsed size. A hand-set 1.25 kg was already right.
+  - The phone is otherwise as the first run left it: phone parses, with the one stuck error, to be cleared when these
+    fixes are installed.

@@ -114,10 +114,12 @@ class ServerMirror(
       val key = parseKey(p.key) ?: continue
       val existing = oldItems[key]
       val productId = existing?.productId ?: newId()
-      val manual = p.sizeSource == "manual" && p.sizeQty != null
+      // "Manual" without a quantity is a size removed by hand: no size, and the description's reading doesn't count.
+      val manual = p.sizeSource == "manual"
+      val manualSize = manual && p.sizeQty != null && p.sizeQty > 0
       val product = ProductRow(
         productId, name = null, categoryId = p.categoryId?.let { categoryIds[it] },
-        sizeE6 = if (manual) e6(p.sizeQty!!) else null, sizeUnit = if (manual) p.sizeUnit else null,
+        sizeE6 = if (manualSize) e6(p.sizeQty!!) else null, sizeUnit = if (manualSize) p.sizeUnit?.ifEmpty { null } else null,
         sizeSource = if (manual) "manual" else null, createdAt = oldProducts[productId]?.createdAt ?: now(),
       )
       if (dao.updateProduct(product) == 0) dao.insertProduct(product)
