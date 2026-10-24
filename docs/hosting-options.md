@@ -11,6 +11,8 @@ fontes públicas listadas no fim; mudam com frequência.
   (limite de ~5 consultas por hora por IP) e lendo a nota; o servidor recebe o resultado.
 - **Guardar fotos e máscaras.** Hoje 9 notas ocupam ~124 MB com fotos, máscaras e páginas (~14 MB por nota). Com ~15
   notas por mês são ~200 MB por mês por usuário.
+  Com D61 (planejado: o celular lê os descontos na foto original e envia só uma cópia recortada, em cinza, WebP),
+  isso cai para menos de ~1 MB por nota, ~10 MB por mês.
 - **Relatórios em SQL:** totais por mês e categoria, preços ao longo do tempo (IPCI).
 - **Categorização (D57–D59):** o Laya atribui (CPU basta: 200–460 ms por pergunta, ~3 perguntas por item, só para itens
   novos), o LLM revisa em lote e mantém léxico e regras. Precisa de um processo que rode modelos, e as funções

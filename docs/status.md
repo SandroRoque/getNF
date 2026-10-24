@@ -146,6 +146,9 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
    understood. Those were fixed by hand (`size_source = manual`).
 8. **Manual-chave fallback** for damaged QR codes (D3/D13): not built.
 9. **Minor:** a few details-page assets slip past the blocking before `onPageStarted` fires (D16).
+10. **Smaller photos online (D61, planned):** once the camera and ingest flow settle, upload receipt-cropped grayscale
+    WebP copies instead of full JPEGs, delete phone originals after confirmation, upload photos only when they prove
+    discounts, and remove the 55 duplicated photos on the server.
 
 ## Gotchas
 

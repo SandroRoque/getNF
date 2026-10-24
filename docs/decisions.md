@@ -1327,3 +1327,20 @@ Facts (`categorize-eval.py lookup`: barcodes only, 58 requests, cached in test-m
   needs a free account token from the user. The SEFAZ SC page we save carries no NCM (checked).
 - Not measured yet: accuracy with looked-up names. With only 14 found, mostly items already right, it would say
   little.
+
+## D61. Photos: read at full quality on the phone, upload small archive copies (planned, 2026-10-24)
+
+Hosting online (D55, [hosting-options.md](hosting-options.md)) makes photo storage the main cost: ~14 MB per receipt,
+~200 MB per month for one user, enough to fill Supabase's free 1 GB in ~5 months. The full resolution is needed only
+to read per-item discounts (D54), and that already happens on the phone before upload.
+
+- **Plan:** keep reading on the phone from the full-quality originals. Upload an archive copy cropped to the receipt
+  with the capture mask, grayscale, WebP (Android encodes it natively; AVIF would need a library for ~2× more).
+  Delete the originals on the phone once the receipt is confirmed (or after a few days). Upload photos only when they
+  prove something the SEFAZ page doesn't (per-item discounts); a receipt with no discount needs none online.
+- **Measured on one real 4096×3072 phone photo (5.7 MB):** grayscale JPEG q60 760 KB; half resolution 380 KB;
+  receipt crop as WebP q50 290 KB (q70 390 KB) or AVIF q35 140 KB. The "Desconto" lines stayed clearly legible at
+  half resolution and in AVIF. That puts a receipt under ~1 MB and one user near 10 MB per month.
+- **Also found:** the current server stores 55 photos twice (old `receipts` photo field and `receipt_photos`), half of
+  its 250 MB, apparently left by the migration to `receipt_photos`. Clean up when this is built.
+- **When:** after the camera and ingest flow settle; not built yet. Archive quality (50 vs 70) to choose then.
