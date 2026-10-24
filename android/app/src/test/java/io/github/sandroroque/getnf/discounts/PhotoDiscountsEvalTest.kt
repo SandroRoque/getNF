@@ -7,7 +7,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 /**
- * Reads discounts from real photos' recorded OCR (PhotoOcrDumpTest) and prints what was found per receipt (D51).
+ * Reads discounts from real photos' recorded OCR (PhotoOcrDumpTest) and prints what was found per receipt (D54).
  * Local only: GETNF_OCR_EXPORT = an unzipped backup whose receipt directories also hold the `*.ocr.json` dumps.
  */
 class PhotoDiscountsEvalTest {

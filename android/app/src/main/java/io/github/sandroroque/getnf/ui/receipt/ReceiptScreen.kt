@@ -140,7 +140,7 @@ private fun HeaderCard(
       }
       status?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        // Only worth it when there's a discount to split and photos to read it from (D51).
+        // Only worth it when there's a discount to split and photos to read it from (D54).
         if ((h?.discountCents ?: 0) > 0 && photos > 0)
           OutlinedButton(onClick = onReadDiscounts, enabled = !busy) { Text("Discounts from photos") }
         OutlinedButton(onClick = onReadAgain, enabled = !busy) { Text("Read page again") }

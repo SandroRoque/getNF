@@ -22,7 +22,7 @@ data class TextLine(val text: String, val left: Int, val top: Int, val right: In
 data class PhotoText(val photo: String, val width: Int, val height: Int, val lines: List<TextLine>)
 
 /**
- * On-device OCR of a saved receipt photo (D51), with ML Kit's bundled Latin model (already used for legibility, D37).
+ * On-device OCR of a saved receipt photo (D54), with ML Kit's bundled Latin model (already used for legibility, D37).
  * The photo's EXIF orientation is applied, so boxes are in the upright image.
  */
 class PhotoOcr(

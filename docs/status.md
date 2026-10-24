@@ -1,7 +1,7 @@
 # Status and next steps
 
-Last updated 2026-10-20. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D51). For the portal's behaviour, read `docs/sefaz-sc.md`.
+Last updated 2026-10-24. A handoff for picking the project up again. For *why* things are the way they are, read
+`docs/decisions.md` (D1–D54). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -51,7 +51,7 @@ categorized → reportable through the `spending_lines` view.
 - **Local data** (not in git): the receipts captured so far, every product categorized, in `server/pb_data/` plus the
   photos on the phone. **Back up `server/pb_data/`.** The categorizations exist only there.
 - **Tests:** `cd android && ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`:
-  115 unit tests and 53 instrumented vision/capture/lifecycle tests (the D37 focus benchmark and the D38 real-capture eval, which skips without local files). Never run connectedAndroidTest with the phone attached: it uninstalls the app and wipes its receipts on the emulator; an offline camera journey
+  116 unit tests and 53 instrumented vision/capture/lifecycle tests (the D37 focus benchmark and the D38 real-capture eval, which skips without local files). Never run connectedAndroidTest with the phone attached: it uninstalls the app and wipes its receipts on the emulator; an offline camera journey
   also read a synthetic QR, saved a photo and completed automatically (see capture-validation.md).
   Debug build and lint pass. PocketBase's 100-photo migration and rollback were validated in an isolated database;
   the migration was applied to the live server on 2026-10-15 after a backup (D36). Android also has a 100-photo technical cap.
@@ -123,9 +123,11 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
    and store items; the server still supplies categories by code. A reparse of the real export matched the
    server's 135 lines exactly, and so did the phone itself after installing it (2026-10-21). The list shows items
    and amount paid per receipt. 3c (D50): tapping a receipt shows its lines with categories and totals, and "Read
-   page again" re-parses the saved page (no SEFAZ request). 3d (D51): "Discounts from photos" reads per-item
+   page again" re-parses the saved page (no SEFAZ request). 3d (D54): "Discounts from photos" reads per-item
    discounts from the photos (OCR on the phone), checked against the page's total; complete on 5 of 6 real
-   discount receipts and verified on the phone. Not yet: confirming against the photo snippet, and undo. Next:
+   discount receipts and verified on the phone. Not yet: confirming against the photo snippet, and undo. Capture on a
+   dark, unevenly lit surface: the mask stops at the receipt's straight sides (D52), and a frame that fills the last
+   coverage gap is saved (D53); verified live on the phone (2026-10-24). Next:
    stage 4 moves categorizing and line editing onto the phone. Installing an APK older than D45 shows an empty list; restore from backup.
 0. Photos upload append-only to `receipt_photos` with masks and metadata (D42); all 51 phone photos are on the live
    server. A restore onto a new machine needs one restart after the first start (D42).
@@ -136,9 +138,10 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
 3. **Is the home IP shared (CGNAT)?** Check the router's WAN address: anything in 100.64.0.0/10 means yes.
    Adjust `LookupBudget.LIMIT` once more blocks (or non-blocks) tell us more.
 4. **Reports:** the monthly dashboard is implemented. Weekly/quarterly/yearly views and exports remain future work.
-5. **Photo pass for per-item discounts** (D14): read "Desconto" lines from the photos with a vision model and store them with
-   `discount_source = photo`. The re-parse logic already preserves them.
-6. **Category suggestions:** have an LLM propose categories for new products, for the user to confirm.
+5. **Photo pass for per-item discounts:** built on the phone (D54). Left: confirming each value against its photo
+   snippet, and undo back to prorated.
+6. **Category suggestions:** have an LLM propose categories for new products, for the user to confirm. Part of D51: interpreted fields (size, identity, category) become suggestions with a source and review
+   state; stage 4 builds the review screen, stage 8 plugs models in.
 7. **Size parsing gaps** (`server/pb_hooks/lib/derive.js` `parseSize`): "1K" (= 1 kg) and "1 25KG" (= 1.25 kg) aren't
    understood. Those were fixed by hand (`size_source = manual`).
 8. **Manual-chave fallback** for damaged QR codes (D3/D13): not built.

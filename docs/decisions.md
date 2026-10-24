@@ -1054,7 +1054,81 @@ server involved. Categorizing stays on the server until stage 4.
 - **Tests.** 99 unit tests (queries: store name, line order, category and parent labels, a line's correction
   winning; formats).
 
-## D51. Stage 3d: per-item discounts read from the photos, on the phone (2026-10-21)
+## D51. Interpreted fields are suggestions with a source and a review state; models propose, the user confirms (2026-10-21)
+
+Recorded after a design conversation, not code. No implementation changes with this entry.
+
+- **The split.**
+  - **Deterministic, stays in code:** reading the structured SEFAZ HTML, totals, discount prorating, GTIN check
+    digits. These are exact and proven by the parity tests (D48).
+  - **Interpretive, needs intelligence plus the user's confirmation:**
+    - pack size: "10KG" on a suitcase is capacity, "1 25KG" means 1.25 kg, "1K" means 1 kg;
+    - product identity: one item under different codes or stores, abbreviations such as "QJO MUSS";
+    - category;
+    - grouping products for price comparison (the IPCI, stage 7).
+
+  Regexes and switch cases can't settle these. They can only guess.
+- **Every interpreted field is a suggestion with a source (regex, LLM, user) and a review state**, the way
+  `discountSource` / `discountReview` already work for discounts. Today's parsed size is really an unmarked regex guess;
+  the size source on store items and products should say so. Only a value the user confirmed or entered is final.
+- **The regex stays as a free first pass.** A model proposes the unclear or new cases. The user confirms or corrects
+  them on a review list on the phone.
+- **Confirmations are remembered per store item or product**, so a code is asked about once. A later reparse or model
+  run never overwrites a confirmed value (the same rule as D49's "manual, no size" marker).
+- **Where it lands.**
+  - **Stage 4** (manual categorization on the phone) builds the review screen, the source/review-state fields and the
+    "ask once" memory, with regex as the only suggester. The manual flow must be complete first.
+  - **Stage 8** plugs models in as further suggestion sources: local first, then APIs. It adds no new storage or screens.
+  - Status open item 6 (LLM category suggestions) and item 7 (size gaps such as "1K") are the same thread.
+- **Still open:** what the objectives call "system one" and "laya" locally. They were kept as the user wrote them;
+  **ask the user what they refer to before choosing any tool** (D24 era notes, objectives.md §4).
+
+## D52. The paper mask stops at the receipt's straight sides (2026-10-21)
+
+- **Seen live:** a receipt on a dark chair, with a lit patch of the cloth beside it. The overlay and the analyzed area
+  spread over a large part of the background to the left of and below the receipt. Coverage never completed, and the
+  app kept asking to go back to the last recognized segment.
+- **Cause:** on one of that capture's saved frames (re-run with `CaptureEvidenceEvalTest`), the plain Otsu region
+  itself held the patch: it's as light as paper in shade. No receipt-only region was proposed, so choosing among
+  proposals (D40) couldn't help. `trimLeaks` (D41) only removes strands thinner than ~15 px.
+- **Fix:** `PaperRegion.straightenSides`, after `trimLeaks`. Along the receipt's axis, each row's outermost mask pixel
+  on each side is collected, and a line is fitted to each side:
+  - **The fit:** RANSAC over sampled row pairs, with inliers within 2 px, then least squares over the inliers. A
+    candidate steeper than 0.35 (across the axis) is refused, since that would be the bulge's own outline.
+  - **The cut:** whatever reaches more than 3% of the receipt's width past a side's line is cut.
+  - **Left alone:** a side is fitted only when 30% of the rows lie on one line. Rows where the mask reaches the
+    image border don't count, since the edge isn't seen there. So an irregular outline with no straight stretch
+    stays as it was.
+- **Proposal logging:** `DEBUG_PAPER` now also logs every proposal's source (otsu, otsu-inverted, canny, flattened),
+  area and score, the chosen one, and what straightening cut.
+- **Checked:**
+  - **The saved frame:** its bump of background on the left side is gone, with 9,981 px cut at analysis scale. The
+    other four frames of the capture are unchanged.
+  - **New synthetic test:** a lit irregular patch merged with the lower half of a receipt's side. Without the fix it
+    put ~40% of the paper's area of background into the mask; with it, what remains is the tolerance strip (~2%).
+  - **All 48 vision/capture instrumented tests** pass on the emulator.
+- **Not yet checked live:** the original failure (the live frames aren't saved). Per-frame cost not measured; it's two
+  line fits over at most ~720 rows.
+- **Known, separate:** a white receipt on a white table still gives a fragmented mask (frame 0 of the same capture).
+  That's low contrast, not a leak.
+
+## D53. A frame that fills the last coverage gap is always worth saving (2026-10-24)
+
+- **Seen live (screen recording):** the same receipt on the dark chair. With D52 the outline now follows the receipt.
+  One overview photo was saved, and Topo, Fundo and QR were ticked, but Cobertura never was. For 40 s of scanning
+  close up the app saved nothing more and kept asking to go toward the top.
+- **Cause:** `CapturePolicy.useful` only accepted a frame if at least 35% of its bands were new. Once the overview had
+  both ends but missed a sliver between them (a band too blurred or glared to count), every close-up was mostly
+  coverage already saved, so the sliver could never be filled. The phone's 256 KiB log buffer had already rotated, so
+  the size of the gap isn't known; the rule's dead end is shown by a unit test.
+- **Fix:** while top and bottom are saved but not connected, a frame is useful if it adds any coverage (more than half
+  a unit) between them. A close-up of only what's already saved still isn't.
+- **Diagnostics:** for the next live try, logcat is streamed to the PC during the capture instead of read afterwards.
+
+## D54. Stage 3d: per-item discounts read from the photos, on the phone (2026-10-21)
+
+*Written and committed as "D51" (7fd9e87, 2e3e8b9) on a branch while another session recorded the D51 above on
+main. Renumbered at the merge (2026-10-24); those two commit messages still say D51.*
 
 The page gives only the receipt's total discount, so lines got a prorated share of it (D14). The printed receipt says
 which items had a discount. On a real receipt, prorating had given the R$ 29,98 lombo R$ 0,79 of discount it never
@@ -1102,45 +1176,3 @@ had.
 - **Tests:** 115 unit tests (reading: assignment, partial/conflict, unrecognized and distant items, short codes,
   overlapping photos and majorities, the same product twice, from/to prices, another receipt's photo; applying:
   remainder prorated, kept across re-parse, cache, manual kept, conflict changes nothing).
-
-## D52. The paper mask stops at the receipt's straight sides (2026-10-21)
-
-- **Seen live:** a receipt on a dark chair, with a lit patch of the cloth beside it. The overlay and the analyzed area
-  spread over a large part of the background to the left of and below the receipt. Coverage never completed, and the
-  app kept asking to go back to the last recognized segment.
-- **Cause:** on one of that capture's saved frames (re-run with `CaptureEvidenceEvalTest`), the plain Otsu region
-  itself held the patch: it's as light as paper in shade. No receipt-only region was proposed, so choosing among
-  proposals (D40) couldn't help. `trimLeaks` (D41) only removes strands thinner than ~15 px.
-- **Fix:** `PaperRegion.straightenSides`, after `trimLeaks`. Along the receipt's axis, each row's outermost mask pixel
-  on each side is collected, and a line is fitted to each side:
-  - **The fit:** RANSAC over sampled row pairs, with inliers within 2 px, then least squares over the inliers. A
-    candidate steeper than 0.35 (across the axis) is refused, since that would be the bulge's own outline.
-  - **The cut:** whatever reaches more than 3% of the receipt's width past a side's line is cut.
-  - **Left alone:** a side is fitted only when 30% of the rows lie on one line. Rows where the mask reaches the
-    image border don't count, since the edge isn't seen there. So an irregular outline with no straight stretch
-    stays as it was.
-- **Proposal logging:** `DEBUG_PAPER` now also logs every proposal's source (otsu, otsu-inverted, canny, flattened),
-  area and score, the chosen one, and what straightening cut.
-- **Checked:**
-  - **The saved frame:** its bump of background on the left side is gone, with 9,981 px cut at analysis scale. The
-    other four frames of the capture are unchanged.
-  - **New synthetic test:** a lit irregular patch merged with the lower half of a receipt's side. Without the fix it
-    put ~40% of the paper's area of background into the mask; with it, what remains is the tolerance strip (~2%).
-  - **All 48 vision/capture instrumented tests** pass on the emulator.
-- **Not yet checked live:** the original failure (the live frames aren't saved). Per-frame cost not measured; it's two
-  line fits over at most ~720 rows.
-- **Known, separate:** a white receipt on a white table still gives a fragmented mask (frame 0 of the same capture).
-  That's low contrast, not a leak.
-
-## D53. A frame that fills the last coverage gap is always worth saving (2026-10-24)
-
-- **Seen live (screen recording):** the same receipt on the dark chair. With D52 the outline now follows the receipt.
-  One overview photo was saved, and Topo, Fundo and QR were ticked, but Cobertura never was. For 40 s of scanning
-  close up the app saved nothing more and kept asking to go toward the top.
-- **Cause:** `CapturePolicy.useful` only accepted a frame if at least 35% of its bands were new. Once the overview had
-  both ends but missed a sliver between them (a band too blurred or glared to count), every close-up was mostly
-  coverage already saved, so the sliver could never be filled. The phone's 256 KiB log buffer had already rotated, so
-  the size of the gap isn't known; the rule's dead end is shown by a unit test.
-- **Fix:** while top and bottom are saved but not connected, a frame is useful if it adds any coverage (more than half
-  a unit) between them. A close-up of only what's already saved still isn't.
-- **Diagnostics:** for the next live try, logcat is streamed to the PC during the capture instead of read afterwards.

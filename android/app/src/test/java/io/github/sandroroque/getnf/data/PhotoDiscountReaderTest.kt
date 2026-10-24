@@ -12,7 +12,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
-/** Applying discounts read from photos (D51), with a fake OCR, on the synthetic fixture (R$ 0,50 off, 8 lines). */
+/** Applying discounts read from photos (D54), with a fake OCR, on the synthetic fixture (R$ 0,50 off, 8 lines). */
 class PhotoDiscountReaderTest {
   @get:Rule val tmp = TemporaryFolder()
   private val db = testDatabase()

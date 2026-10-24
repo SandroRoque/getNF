@@ -6,7 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Reading per-item discounts from OCR lines (D51), on made-up lines shaped like the real receipts' OCR. */
+/** Reading per-item discounts from OCR lines (D54), on made-up lines shaped like the real receipts' OCR. */
 class PhotoDiscountsTest {
   private val items = listOf(
     Item(1, "7898541230498", "LOMBO FAZENDA 1KG DEF", 2998),

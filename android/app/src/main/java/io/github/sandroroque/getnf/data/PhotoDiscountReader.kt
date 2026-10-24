@@ -11,7 +11,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
 /**
- * Reads a receipt's per-item discounts from its photos and applies them (D51). OCR text is cached next to each photo
+ * Reads a receipt's per-item discounts from its photos and applies them (D54). OCR text is cached next to each photo
  * (`<photo>.ocr1.json`), so reading again is quick. Discounts found become `photo` (unreviewed); the rest of the
  * receipt's discount is prorated over the other lines. A discount set by hand is never replaced. On a conflict, or
  * when nothing is found, the lines stay as they were.

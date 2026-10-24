@@ -9,7 +9,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Writes what PhotoOcr reads from real photos, so the discount reading (D51) can be developed and checked on the
+ * Writes what PhotoOcr reads from real photos, so the discount reading (D54) can be developed and checked on the
  * JVM. Local only: copy receipt directories (`<chave>/<photo>.jpg`) into the app's files and pass
  * `-e ocrDir <path>`; each photo gets a `<photo>.ocr.json` next to it.
  */

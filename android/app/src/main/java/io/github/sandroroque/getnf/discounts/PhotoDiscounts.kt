@@ -1,7 +1,7 @@
 package io.github.sandroroque.getnf.discounts
 
 /**
- * Per-item discounts read from receipt photos (D51). The HTML says what the items are and the total discount; the
+ * Per-item discounts read from receipt photos (D54). The HTML says what the items are and the total discount; the
  * printed receipt (DANFE NFC-e) puts a `Desconto: 1,56` line under each discounted item. This finds those lines in
  * OCR text and ties each to the item printed just above it. Pure, so it's tested on the JVM with recorded OCR.
  *
