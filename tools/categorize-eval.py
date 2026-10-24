@@ -329,6 +329,30 @@ def trainset(args):
   print(f"{items} items, {rows} rows -> {args.out}")
 
 
+OFF_FIELDS = "product_name,product_name_pt,generic_name_pt,generic_name,brands,quantity,categories_tags"
+
+
+def lookup(args):
+  """Open Food Facts by GTIN, once per code, cached in test-media (barcodes only are sent)."""
+  path = os.path.join(OUT, "off.json")
+  cache = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
+  codes = sorted({i["gtin"] for i in load_items() if i.get("gtin")} - set(cache))
+  for n, code in enumerate(codes):
+    req = urllib.request.Request(f"https://world.openfoodfacts.org/api/v2/product/{code}.json?fields={OFF_FIELDS}",
+                                 headers={"User-Agent": "getNF-categorize-eval/0.1 (personal receipt app, research)"})
+    try:
+      with urllib.request.urlopen(req, timeout=30) as r:
+        body = json.load(r)
+    except urllib.error.HTTPError as e:
+      body = json.load(e) if e.code == 404 else {"status": 0, "error": e.code}
+    cache[code] = body.get("product") if body.get("status") == 1 else None
+    json.dump(cache, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    time.sleep(.8)  # well under OFF's 100 product reads per minute
+    print(f"{n + 1}/{len(codes)} {'found' if cache[code] else 'not found'}", file=sys.stderr)
+  found = sum(1 for c in cache.values() if c)
+  print(f"{found}/{len(cache)} barcodes known to Open Food Facts -> {path}")
+
+
 def score(results):
   exact = sum(r["predicted"] == r["category"] for r in results)
   top = sum(r["predicted"].split(".")[0] == r["category"].split(".")[0] for r in results)
@@ -380,6 +404,7 @@ def main():
   g.set_defaults(fn=synth)
   t = sub.add_parser("trainset"); t.add_argument("--items", required=True); t.add_argument("--out", required=True)
   t.add_argument("--lexicon"); t.add_argument("--descriptions"); t.set_defaults(fn=trainset)
+  o = sub.add_parser("lookup"); o.set_defaults(fn=lookup)
   r = sub.add_parser("report"); r.set_defaults(fn=report)
   args = p.parse_args()
   args.fn(args)

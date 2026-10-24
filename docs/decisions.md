@@ -1310,3 +1310,20 @@ cuts", "Ype cleaning", "frozen fruit pulp for juice"), so the parts were measure
   brands to what they make. That is the "hard-coded knowledge" of D57, and it's where most accuracy comes from.
   Coverage matters: the lexicon was written with the test items in view, so a new receipt's unknown abbreviations are
   the main risk, and finding them (tokens the lexicon doesn't know) is a cheap, precise review signal.
+
+## D60. Open Food Facts knows 14 of the user's 58 barcodes: good names, too little coverage (2026-10-24)
+
+The user's idea after D59: for items with a standard code, fetch a real product description instead of reading the
+receipt's abbreviations. With the user's go-ahead, the 58 GTINs among the 82 test items were looked up on Open Food
+Facts (`categorize-eval.py lookup`: barcodes only, 58 requests, cached in test-media).
+
+- **Coverage: 14/58 (24%).** Not found: most dairy (11), meat (6), hygiene (4), juices, coffee, cleaning, wine.
+- **Quality when found is what we want:** full Portuguese names with brand and size, which settle the cases the
+  abbreviations couldn't ("PEITO FGO EXCELSIOR" -> "Peito de frango defumado", i.e. cold cuts; "BISC BAUDUCCO 140G"
+  -> a chocolate wafer; "LEITE COND" -> "Leite condensado integral"). Its categories are sparse (half empty) and once
+  wrong ("incorrect-product-type" on a coffee filter).
+- **So:** a lookup is worth doing once per store item and caching, but Open Food Facts alone is not enough here.
+  Next candidate: Cosmos (Bluesoft), built for Brazilian retail, which also returns the NCM tax classification; it
+  needs a free account token from the user. The SEFAZ SC page we save carries no NCM (checked).
+- Not measured yet: accuracy with looked-up names. With only 14 found, mostly items already right, it would say
+  little.
