@@ -1202,3 +1202,35 @@ the stage 4 plan built on it (proposed the same day, never started).
   likely a third-party cloud provider of open-weight models.
 - **Still open:** the hosting service (the user asked for a comparison first), and which models, to be settled by an
   evaluation on the user's real, already-categorized items.
+
+## D56. First categorization eval: a local LLM categorizes well; Laya untrained does not (2026-10-24)
+
+`tools/categorize-eval.py` scores models against the user's own categories: `export` pulls the 82 hand-categorized
+products (33 categories, of the 75 in the taxonomy) from the local PocketBase into `test-media/categorize/`
+(gitignored, real purchases). Models see only the taxonomy's labels, never its comments, which name real items.
+
+| Model (all local) | exact category | 2nd level | top level | time per item |
+|---|---|---|---|---|
+| Laya, tree walk, Portuguese labels (auto-routed to multilingual) | 4% | 4% | 6% | ~25 ms |
+| Laya, top level only, English labels, `english` checkpoint | | | 60% | ~25 ms |
+| Swift-1.5 Qwen3.8 27B IQ2_S (ukisai, LM Studio), whole taxonomy in the prompt | **84%** | 88% | **94%** | ~3 s |
+
+- **Laya without training isn't usable here.** Its best top-level score (49/82) is below always answering "food"
+  (54/82): it answered food for 64 items. With Portuguese labels it mostly picked "taxes and fees" or "beverages"
+  whatever the item. This matches its README and the independent benchmark: it is a base to train, not a zero-shot
+  engine, and weak past ~20 options and outside English.
+- **The LLM is good.** 0 invalid answers. Most of its 13 misses are judgment calls the taxonomy leaves open
+  (sliced cured meats as cold cuts vs pork or poultry; canned tuna as fish vs canned goods; fruit pulp as juice vs
+  fruit; condensed milk as baking vs milk). Only a couple are plain errors (an abbreviated brand of pasta read as
+  cheese, a soap brand read as bread).
+- **Its stated confidence is useless for triage:** every answer said 0.85–0.98, and the wrong ones were as sure as the
+  right ones. Deciding what the user must review needs another signal (agreement between runs or models, a
+  calibrated System 1 model, or a trained head).
+- **So, for now:** the LLM proposes; everything stays "suggested" until the user confirms. Each confirmation is a
+  labeled example. Laya becomes worth re-testing once there are enough of them to train its head (the benchmark puts
+  break-even at 500–5,000 labels), or as the calibrated second opinion.
+- **Open:** the taxonomy's ambiguous boundaries cost more than the model does. Notes per category ("cured meats go
+  to cold cuts") would help both the user and the model; they can't come from the item examples now in the comments,
+  which are the test set.
+- **Setup:** GPU 16 GB. The 27B IQ2_S needs ~10.5 GB with one slot and 8k context, so the user's Jebadiah server
+  (8.3 GB) was stopped for the run. LM Studio's server needs its API key (`LMSTUDIO_API_KEY`, entered by the user).
