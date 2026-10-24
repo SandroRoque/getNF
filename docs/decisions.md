@@ -1176,3 +1176,29 @@ had.
 - **Tests:** 115 unit tests (reading: assignment, partial/conflict, unrecognized and distant items, short codes,
   overlapping photos and majorities, the same product twice, from/to prices, another receipt's photo; applying:
   remainder prorated, kept across re-parse, cache, manual kept, conflict changes nothing).
+
+## D55. New direction: hosted online service first, AI categorization, local-only Android after the MVP (2026-10-24)
+
+Decided by the user while planning stage 4. It supersedes D43's "phone is the source of truth, PC read-only" and
+the stage 4 plan built on it (proposed the same day, never started).
+
+- **No database on the user's computer.** The PocketBase on the PC and its dashboard are retired. The data is
+  hosted online and served from there. A web app may come later, on the same hosted data.
+- **The Android app is the main client.** A fully local Android mode stays a goal, but second class, maybe after the
+  MVP. What already runs on the phone (capture, QR, fetching and parsing the page, photo discounts, the Room
+  database) is kept: it is the base of that mode and the app's offline cache meanwhile. Fetching pages has to stay on
+  the phone anyway: SEFAZ blocks an IP after about 5 lookups per hour (docs/sefaz-sc.md).
+- **Users:** the user first, then friends and a beta. Built multi-user from the start (accounts, per-user isolation),
+  launched to one account.
+- **Categorization by AI, with the user always able to pick by hand.** Two kinds of model:
+  - **"System 1" decision models**: non-generative classifiers that answer typed choice/score/yes-no questions in
+    one forward pass, with calibrated probabilities. The user named TypeSafe's **Jev** (hosted API) and **Laya**
+    (open weights, Apache 2.0, installed on the user's PC). This resolves the open "system one" and "laya" question
+    in main's D51 and objectives.md.
+  - **An LLM** for what the decision model isn't confident about.
+  - Every AI value is a suggestion with a source and a review state (main's D51). A user's choice is final and is
+    never overwritten.
+- **Where models run:** during development, on the user's PC (local LLM and Laya side by side). For a real launch,
+  likely a third-party cloud provider of open-weight models.
+- **Still open:** the hosting service (the user asked for a comparison first), and which models, to be settled by an
+  evaluation on the user's real, already-categorized items.
