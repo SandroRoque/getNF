@@ -1287,3 +1287,26 @@ Laya in deployment, Claude reviews both in development). All runs on the user's 
   user's confirmations grow.
 - `tools/categorize-eval.py` gained `synth` (LLM-written items), `trainset` (Laya rows) and Laya options
   (`--lexicon`, `--descriptions`, `--lang en`, `--no-here`, `--clean`).
+
+## D59. Most of D58's 90% is the lexicon's translation; Laya adds about 14 points and the confidence (2026-10-24)
+
+The user asked whether the lexicon was doing the categorizing. Some D58 entries carried category words ("ham cold
+cuts", "Ype cleaning", "frozen fruit pulp for juice"), so the parts were measured apart, on the same 82 items:
+
+| Setup | exact |
+|---|---|
+| No model: the leaf whose description shares the most words with the translated item, D58 lexicon | 72% |
+| same, translation-only lexicon (40 entries stripped of category words; brands stay bare names) | 70% |
+| Laya trained on raw receipt text (no lexicon) | 48% |
+| **Laya trained and run with the translation-only lexicon** | **84%** (at confidence >= 0.3: 73 assigned, 67 right) |
+| Laya trained and run with the D58 lexicon (hints included) | 90% |
+
+- **Translation is the core.** Turning abbreviations into plain words does most of the work: a word match alone
+  reaches 70%, and Laya without it learns little from 1,082 examples (48%, unsure of almost everything).
+- **Laya on top adds about 14 points and a usable confidence** (median 0.76 on right answers, 0.20 on wrong ones).
+- **Category hints in the lexicon add about 6 points,** but they are rules, not translation. They belong in an
+  explicit, reviewable place (boundary notes, or brand -> category knowledge), not hidden in a dictionary.
+- **So the LLM's (in development, Claude's) main job is the lexicon:** abbreviations and phrases to plain words, and
+  brands to what they make. That is the "hard-coded knowledge" of D57, and it's where most accuracy comes from.
+  Coverage matters: the lexicon was written with the test items in view, so a new receipt's unknown abbreviations are
+  the main risk, and finding them (tokens the lexicon doesn't know) is a cheap, precise review signal.
