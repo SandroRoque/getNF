@@ -1131,3 +1131,16 @@ had.
   line fits over at most ~720 rows.
 - **Known, separate:** a white receipt on a white table still gives a fragmented mask (frame 0 of the same capture).
   That's low contrast, not a leak.
+
+## D53. A frame that fills the last coverage gap is always worth saving (2026-10-24)
+
+- **Seen live (screen recording):** the same receipt on the dark chair. With D52 the outline now follows the receipt.
+  One overview photo was saved, and Topo, Fundo and QR were ticked, but Cobertura never was. For 40 s of scanning
+  close up the app saved nothing more and kept asking to go toward the top.
+- **Cause:** `CapturePolicy.useful` only accepted a frame if at least 35% of its bands were new. Once the overview had
+  both ends but missed a sliver between them (a band too blurred or glared to count), every close-up was mostly
+  coverage already saved, so the sliver could never be filled. The phone's 256 KiB log buffer had already rotated, so
+  the size of the gap isn't known; the rule's dead end is shown by a unit test.
+- **Fix:** while top and bottom are saved but not connected, a frame is useful if it adds any coverage (more than half
+  a unit) between them. A close-up of only what's already saved still isn't.
+- **Diagnostics:** for the next live try, logcat is streamed to the PC during the capture instead of read afterwards.

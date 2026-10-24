@@ -114,7 +114,13 @@ internal class CapturePolicy {
       val old = qualityBands.filter { (b, _) -> b.start < band.end && b.end > band.start }.maxOfOrNull { it.second }
       old != null && old > 0 && score > old * 1.25
     }
-    return improves || bands.isEmpty() || gain(candidate) >= candidate.sumOf { it.length } * .35
+    return improves || bands.isEmpty() || gain(candidate) >= candidate.sumOf { it.length } * .35 || fillsGap(candidate)
+  }
+  /** Both ends are saved but something between them isn't: any new coverage there is what's left to do (D53). */
+  private fun fillsGap(candidate: List<CaptureBand>): Boolean {
+    val a = top ?: return false; val b = bottom ?: return false
+    if (connected || b <= a) return false
+    return gain(candidate.mapNotNull { c -> if (min(c.end, b) > max(c.start, a)) CaptureBand(max(c.start, a), min(c.end, b)) else null }) > .5
   }
   fun guidance(document: DocumentObservation, tracked: Boolean, centerY: Double?, topInView: Boolean = false, geometryKnown: Boolean = false): GuidanceState {
     val warnings = mutableListOf<CaptureHint>()

@@ -30,6 +30,15 @@ class CapturePolicyTest {
     assertTrue(policy.connected)
     assertTrue(policy.complete)
   }
+  @Test fun aCloseUpThatFillsTheLastGapIsUsefulEvenIfMostOfItIsAlreadyCovered() {
+    // One overview saved top and bottom but missed a sliver (glare); a close-up mostly repeats what's saved (D53).
+    val policy = CapturePolicy()
+    policy.credit(listOf(CaptureBand(0.0, 180.0), CaptureBand(190.0, 400.0)), 0.0, 400.0)
+    assertFalse(policy.connected)
+    assertTrue(policy.useful(listOf(CaptureBand(120.0, 260.0)), null, null))
+    // A close-up of what's already saved still isn't.
+    assertFalse(policy.useful(listOf(CaptureBand(200.0, 340.0)), null, null))
+  }
   @Test fun endpointsAreOnlyCreditedInsideValidatedBands() {
     val policy = CapturePolicy()
     policy.credit(listOf(CaptureBand(20.0, 80.0)), 0.0, 100.0)
