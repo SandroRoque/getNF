@@ -4,6 +4,8 @@
   categorize-eval.py export            # hand-categorized products from the local PocketBase -> test-media/categorize/
   categorize-eval.py laya [--model M]  # Laya (laya-serve, Jev protocol), walking the category tree level by level
   categorize-eval.py llm  [--model M]  # an LLM through LM Studio's OpenAI-compatible server (key: $LMSTUDIO_API_KEY or server/.env.local)
+  categorize-eval.py synth --model M   # LLM-written receipt-style items per category (training data)
+  categorize-eval.py trainset ...      # Laya training rows (JSONL for laya-train) from labeled items
   categorize-eval.py report            # compare the saved runs
 
 The items are real purchases, so everything this writes stays in test-media/ (gitignored). Only the taxonomy's labels
@@ -112,34 +114,71 @@ INSTRUCTIONS = ("Item de uma nota fiscal de supermercado no Brasil, com a descri
 HERE = "_here"
 
 
+def lexicon(path, lang):
+  """Phrases first (longest first), then single tokens; unknown tokens are kept (often a brand)."""
+  phrases, tokens = [], {}
+  for line in open(path, encoding="utf-8"):
+    if not line.strip() or line.startswith("#"):
+      continue
+    key, pt, en = line.rstrip("\n").split("\t")
+    (phrases.append((key, pt if lang == "pt" else en)) if " " in key else tokens.__setitem__(key, pt if lang == "pt" else en))
+  phrases.sort(key=lambda kv: -len(kv[0]))
+  def expand(text):
+    words = text.upper().split()
+    out, i = [], 0
+    while i < len(words):
+      for key, value in phrases:
+        k = key.split()
+        if words[i:i + len(k)] == k:
+          out.append(value); i += len(k); break
+      else:
+        out.append(tokens.get(words[i], words[i])); i += 1
+    return " ".join(out)
+  return expand
+
+
 def laya(args):
   """Walk the tree: choose among a node's children (plus "none of these, just <node>" below the top), until a leaf."""
   labels, children = taxonomy()
   items = load_items()
+  expand = lexicon(args.lexicon, args.lang) if args.lexicon else None
+  described = {}
+  if args.descriptions:
+    for line in open(args.descriptions, encoding="utf-8"):
+      if line.strip():
+        path, text = line.rstrip("\n").split("\t")
+        described[path] = text
+  instructions = INSTRUCTIONS if args.lang == "pt" else \
+    "What kind of product is this item from a Brazilian supermarket receipt?"
   results, started = [], time.time()
   for n, item in enumerate(items):
+    text = expand(item["description"]) if expand else item["description"]
+    if args.clean:
+      # Sizes and counts ("250G", "KG", "30UN") carry no category and seem to distract the encoder.
+      text = " ".join(w for w in text.split() if not re.fullmatch(r"\d+([.,]\d+)?[A-Z]*|KG|UN|UND|PC|L|ML|G", w.upper())) or text
     node, steps = "", []
     while children.get(node):
-      options = {p.rsplit(".", 1)[-1]: labels[p] for p in children[node]}
-      if node:
-        options[HERE] = f"Outro tipo de {labels[node]}"
-      body = {"state": {"descricao": item["description"]},
-              "questions": {"c": {"type": "choice", "instructions": INSTRUCTIONS, "criteria": options}}}
+      options = {p.rsplit(".", 1)[-1]: described.get(p, labels[p]) for p in children[node]}
+      if node and not args.no_here:
+        options[HERE] = ("Other " if args.lang == "en" else "Outro tipo de ") + described.get(node, labels[node])
+      body = {"state": {"item": text} if args.lang == "en" else {"descricao": text},
+              "questions": {"c": {"type": "choice", "instructions": instructions, "criteria": options}}}
       if args.model:
         body["model"] = args.model
       t = time.time()
       answer = post(args.url.rstrip("/") + "/v1/systemone", body)
-      a = answer["answers"]["c"] if "answers" in answer else answer["c"]
-      choice = a.get("choice") or a.get("answer") or a.get("value")
+      a = answer["answers"]["c"]
+      choice = a.get("choice")
       steps.append({"options": len(options), "choice": choice, "confidence": a.get("confidence"),
-                    "ms": round((time.time() - t) * 1000), "model": answer.get("model")})
+                    "ms": round((time.time() - t) * 1000)})
       if choice == HERE:
         break
       node = f"{node}.{choice}" if node else choice
-    results.append({**item, "predicted": node, "steps": steps})
-    if n == 0:
-      print("first answer:", json.dumps(answer, ensure_ascii=False)[:600], file=sys.stderr)
-  save(f"laya-{args.model or 'auto'}", results, started)
+    results.append({**item, "input": text, "predicted": node, "steps": steps,
+                    "confidence": min(s["confidence"] or 0 for s in steps) if steps else 0})
+  tag = "".join([f"-{args.lang}", "+lex" if args.lexicon else "", "+desc" if args.descriptions else "",
+                 "+nohere" if args.no_here else "", "+clean" if args.clean else "", f"+{args.tag}" if args.tag else ""])
+  save(f"laya-{args.model or 'auto'}{tag}", results, started)
 
 
 LLM_PROMPT = """Você categoriza itens de notas fiscais brasileiras (NFC-e) em categorias de gasto. As descrições vêm \
@@ -221,6 +260,75 @@ def llm(args):
   save(f"llm-{args.model.replace('/', '_')}{tag}", results, started)
 
 
+SYNTH_PROMPT = """Gere {n} descrições de itens diferentes como aparecem impressas numa NFC-e brasileira, todas da \
+categoria de gasto abaixo. Escreva como o sistema da loja escreve: MAIÚSCULAS, sem acentos, palavras abreviadas \
+(QJO, REQ, LTE, FGO, BISC, DET, PAP...), com marca e tamanho quando houver (200G, 1L, KG). Varie produtos, marcas e \
+abreviações; inclua casos fáceis e difíceis. Só itens desta categoria. Uma descrição por linha, sem numeração.
+
+Categoria: {path} ({label}){note}"""
+
+
+def synth(args):
+  """Receipt-style training items per leaf category, written by the LLM. Never the test items themselves."""
+  labels, children = taxonomy()
+  test = {i["description"].upper() for i in load_items()}
+  described = dict(l.rstrip("\n").split("\t") for l in open(args.descriptions, encoding="utf-8") if l.strip()) \
+    if args.descriptions else {}
+  key = lmstudio_key()
+  out_path = os.path.join(OUT, f"synth-{args.model}.jsonl")
+  done = set()
+  if os.path.exists(out_path):
+    done = {json.loads(l)["category"] for l in open(out_path, encoding="utf-8")}
+  leaves = [p for p in labels if not children.get(p) and p not in done]
+  with open(out_path, "a", encoding="utf-8") as out:
+    for n, path in enumerate(leaves):
+      note = f"\nInclui: {described[path]}" if path in described else ""
+      t = time.time()
+      r = post(args.url.rstrip("/") + "/v1/chat/completions", {
+        "model": args.model, "temperature": .8, "max_tokens": args.max_tokens,
+        "messages": [{"role": "user", "content": SYNTH_PROMPT.format(n=args.per_category, path=path, label=labels[path], note=note)}],
+      }, {"Authorization": f"Bearer {key}"} if key else None, timeout=900)
+      text = r["choices"][0]["message"].get("content") or ""
+      lines = []
+      for line in text.splitlines():
+        line = re.sub(r"^[\s\-*\d.)]+", "", line).strip().strip("`")
+        if 3 <= len(line) <= 60 and line.upper() == line and line.upper() not in test:
+          lines.append(line)
+      for line in dict.fromkeys(lines):
+        out.write(json.dumps({"description": line, "category": path}, ensure_ascii=False) + "\n")
+      out.flush()
+      print(f"{n + 1:3}/{len(leaves)} {path:40} {len(set(lines)):3} items  {time.time() - t:.0f}s", file=sys.stderr)
+
+
+def trainset(args):
+  """Laya training rows from labeled items (`path -> "A|B|C"` in a Python file's ITEMS): one choice question per tree
+  level, worded exactly as `laya --lang en --no-here` asks it. Items equal to a test item are dropped."""
+  import importlib.util as iu
+  spec = iu.spec_from_file_location("items", args.items); mod = iu.module_from_spec(spec); spec.loader.exec_module(mod)
+  labels, children = taxonomy()
+  test = {i["description"].upper() for i in load_items()}
+  expand = lexicon(args.lexicon, "en") if args.lexicon else (lambda t: t)
+  desc = dict(l.rstrip("\n").split("\t") for l in open(args.descriptions, encoding="utf-8") if l.strip()) if args.descriptions else {}
+  instructions = "What kind of product is this item from a Brazilian supermarket receipt?"
+  items = rows = 0
+  with open(args.out, "w", encoding="utf-8") as out:
+    for path, blob in mod.ITEMS.items():
+      assert path in labels and not children.get(path), f"not a leaf category: {path}"
+      for d in (x.strip() for x in blob.split("|")):
+        if not d or d.upper() in test:
+          continue
+        items += 1
+        node = ""
+        for part in path.split("."):
+          options = {c.rsplit(".", 1)[-1]: desc.get(c, labels[c]) for c in children[node]}
+          out.write(json.dumps({"state": {"item": expand(d)}, "questions": {"c": {
+            "type": "choice", "instructions": instructions, "criteria": options}}, "expected": {"c": part}},
+            ensure_ascii=False) + "\n")
+          rows += 1
+          node = f"{node}.{part}" if node else part
+  print(f"{items} items, {rows} rows -> {args.out}")
+
+
 def score(results):
   exact = sum(r["predicted"] == r["category"] for r in results)
   top = sum(r["predicted"].split(".")[0] == r["category"].split(".")[0] for r in results)
@@ -251,7 +359,14 @@ def main():
   p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
   sub = p.add_subparsers(dest="cmd", required=True)
   e = sub.add_parser("export"); e.add_argument("--server", default="http://127.0.0.1:8090"); e.set_defaults(fn=export)
-  l = sub.add_parser("laya"); l.add_argument("--url", default="http://127.0.0.1:8003"); l.add_argument("--model"); l.set_defaults(fn=laya)
+  l = sub.add_parser("laya"); l.add_argument("--url", default="http://127.0.0.1:8003"); l.add_argument("--model")
+  l.add_argument("--lang", choices=["pt", "en"], default="pt", help="language of the question and descriptions")
+  l.add_argument("--lexicon", help="token/phrase -> pt/en expansions (TSV)")
+  l.add_argument("--descriptions", help="category path -> description (TSV)")
+  l.add_argument("--no-here", action="store_true", help="always descend to a leaf")
+  l.add_argument("--clean", action="store_true", help="drop sizes and counts from the item text")
+  l.add_argument("--tag", help="extra name for the run")
+  l.set_defaults(fn=laya)
   m = sub.add_parser("llm"); m.add_argument("--url", default="http://127.0.0.1:1234"); m.add_argument("--model", required=True)
   m.add_argument("--max-tokens", type=int, default=2048)
   m.add_argument("--context", action="store_true", help="add unit, price, store and the receipt's other items")
@@ -259,6 +374,12 @@ def main():
   m.add_argument("--embed-model", default="text-embedding-nomic-embed-text-v1.5")
   m.add_argument("--notes", help="a file of boundary rules to add to the prompt")
   m.set_defaults(fn=llm)
+  g = sub.add_parser("synth"); g.add_argument("--url", default="http://127.0.0.1:1234"); g.add_argument("--model", required=True)
+  g.add_argument("--per-category", type=int, default=25); g.add_argument("--max-tokens", type=int, default=4096)
+  g.add_argument("--descriptions", help="category path -> description (TSV), as a hint")
+  g.set_defaults(fn=synth)
+  t = sub.add_parser("trainset"); t.add_argument("--items", required=True); t.add_argument("--out", required=True)
+  t.add_argument("--lexicon"); t.add_argument("--descriptions"); t.set_defaults(fn=trainset)
   r = sub.add_parser("report"); r.set_defaults(fn=report)
   args = p.parse_args()
   args.fn(args)

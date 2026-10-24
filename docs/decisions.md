@@ -1251,3 +1251,39 @@ instead of bare labels; and a head trained on LLM-produced labels (LLM-categoriz
 descriptions), never on the 82 test items.
 
 `tools/categorize-eval.py` now also reads the LM Studio key from the gitignored `server/.env.local`.
+
+## D58. Laya trained on written practice items categorizes at 90%, with a confidence worth using (2026-10-24)
+
+Following D57, with Claude standing in for the managing LLM during development (the user's call: the LLM reviews
+Laya in deployment, Claude reviews both in development). All runs on the user's 82 hand-categorized items.
+
+| Setup | exact | top level | per item |
+|---|---|---|---|
+| Laya, untrained, Portuguese (D56) | 4% | 6% | ~25 ms |
+| Laya `english`, items expanded through a lexicon to English, short English category descriptions | 61% | 79% | ~25 ms |
+| same, always descending to a leaf, sizes dropped | 63% | 80% | |
+| **Laya `english` trained on 1,082 written items, lexicon + descriptions** | **90%** | **95%** | ~70 ms (3 levels) |
+| LLM (Swift-1.5 27B IQ2_S), whole taxonomy | 84% | 94% | ~3 s |
+| LLM + unit, price, store and the receipt's other items | 87% | 94% | |
+| LLM + context + the 8 most similar confirmed items (never itself) + boundary notes | **95%** | 98% | ~5 s |
+
+- **What Laya reads:** each receipt description goes through a lexicon (abbreviations, phrases and brands to plain
+  English: "QJO MUSS FAT" -> "cheese mozzarella sliced"); the English checkpoint reads English far better than
+  Portuguese (multilingual with Portuguese labels: 16%). Each tree level is one choice question whose options are
+  short English descriptions; longer top-level descriptions hurt (49% top level), since 16 options share a ~192-token
+  budget.
+- **Training data:** 1,082 receipt-style descriptions over all 62 leaf categories, written by Claude without copying
+  the test items (exact copies are dropped; none were). `laya-train` (RLCD, 4 epochs, shuffled options) on one row per
+  tree level, 2,625 rows; a few minutes on the 5060 Ti.
+- **Its confidence is a usable review signal**, unlike the LLM's (D56): median 0.81 on right answers, 0.20 on wrong
+  ones. At a 0.3 threshold, 76 items are assigned with 73 right (96%), and the 6 left for review hold 5 of the 8
+  errors.
+- **Caveats:** the lexicon, the boundary notes and the practice items were written with the test items in view, so
+  these scores are optimistic for brand-new items. The real measure comes from new receipts, scored before the user
+  confirms them. The lexicon holds brands from the user's purchases, so it, the practice items and the checkpoint stay
+  in `test-media/categorize/` for now.
+- **So the D57 pipeline holds up:** Laya assigns, with its confidence deciding what the user reviews; the LLM (in
+  development, Claude) maintains the lexicon, the descriptions and the training items, and retrains Laya as the
+  user's confirmations grow.
+- `tools/categorize-eval.py` gained `synth` (LLM-written items), `trainset` (Laya rows) and Laya options
+  (`--lexicon`, `--descriptions`, `--lang en`, `--no-here`, `--clean`).
