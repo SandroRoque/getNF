@@ -3,7 +3,7 @@
 
   categorize-eval.py export            # hand-categorized products from the local PocketBase -> test-media/categorize/
   categorize-eval.py laya [--model M]  # Laya (laya-serve, Jev protocol), walking the category tree level by level
-  categorize-eval.py llm  [--model M]  # an LLM through LM Studio's OpenAI-compatible server (key: $LMSTUDIO_API_KEY)
+  categorize-eval.py llm  [--model M]  # an LLM through LM Studio's OpenAI-compatible server (key: $LMSTUDIO_API_KEY or server/.env.local)
   categorize-eval.py report            # compare the saved runs
 
 The items are real purchases, so everything this writes stays in test-media/ (gitignored). Only the taxonomy's labels
@@ -45,6 +45,11 @@ def taxonomy():
   return labels, children
 
 
+def lmstudio_key():
+  """$LMSTUDIO_API_KEY, else the gitignored server/.env.local (never printed)."""
+  return os.environ.get("LMSTUDIO_API_KEY") or env_local().get("LMSTUDIO_API_KEY")
+
+
 def env_local():
   values = {}
   for line in open(os.path.join(ROOT, "server", ".env.local")) if os.path.exists(os.path.join(ROOT, "server", ".env.local")) \
@@ -72,8 +77,27 @@ def export(args):
       page += 1
 
   paths = {c["id"]: c["path"] for c in all_records("categories")}
-  items = [{"description": p["description"], "key_kind": p["key"].split(":", 1)[0], "category": paths[p["category"]]}
-           for p in all_records("products") if p.get("category")]
+  receipts = {r["id"]: r for r in all_records("receipts")}
+  lines = all_records("receipt_items")
+  by_receipt, by_product = defaultdict(list), defaultdict(list)
+  for l in lines:
+    by_receipt[l["receipt"]].append(l)
+    by_product[l["product"]].append(l)
+  items = []
+  for p in all_records("products"):
+    if not p.get("category"):
+      continue
+    seen = by_product.get(p["id"], [])
+    first = seen[0] if seen else None
+    receipt = receipts.get(first["receipt"]) if first else None
+    items.append({
+      "id": p["id"], "description": p["description"], "key_kind": p["key"].split(":", 1)[0],
+      "gtin": p.get("gtin") or None, "category": paths[p["category"]],
+      "unit": first and first["unit"], "qty": first and first["qty"], "unit_price": first and first["unit_price"],
+      "store": receipt and receipt.get("store_name"),
+      "receipt_items": [l["description"] for l in sorted(by_receipt[first["receipt"]], key=lambda l: l["line"])
+                        if l["product"] != p["id"]] if first else [],
+    })
   os.makedirs(OUT, exist_ok=True)
   json.dump(items, open(ITEMS, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
   print(f"{len(items)} categorized products, {len(set(i['category'] for i in items))} categories -> {ITEMS}")
@@ -118,27 +142,69 @@ def laya(args):
   save(f"laya-{args.model or 'auto'}", results, started)
 
 
-LLM_PROMPT = """Você categoriza itens de notas fiscais de supermercado brasileiras. As descrições vêm abreviadas \
-como saem na nota (ex.: "QJO" = queijo, "REQ" = requeijão, "LTE" = leite).
+LLM_PROMPT = """Você categoriza itens de notas fiscais brasileiras (NFC-e) em categorias de gasto. As descrições vêm \
+abreviadas como saem na nota (ex.: "QJO" = queijo, "REQ" = requeijão, "LTE" = leite, "FGO" = frango, "D A" = \
+desodorante aerossol, "PAP" = papel). Use também a loja, a unidade, o preço e os outros itens da mesma nota: eles dizem \
+que tipo de loja é e o que faz sentido ali.
 
 Categorias (caminho: rótulo). Escolha sempre a mais específica que se aplica:
 {categories}
-
+{notes}
 Responda só com JSON: {{"categoria": "<caminho>", "confianca": <0 a 1>}}"""
+
+
+def brl(value):
+  return f"R$ {value:.2f}".replace(".", ",") if isinstance(value, (int, float)) else "?"
+
+
+def describe(item, context):
+  text = f"Item: {item['description']}"
+  if not context:
+    return text
+  code = f"código de barras {item['gtin']}" if item.get("gtin") else "código interno da loja"
+  text += f"\nCódigo: {code}\nUnidade: {item.get('unit') or '?'}, quantidade {item.get('qty')}, preço unitário {brl(item.get('unit_price'))}"
+  text += f"\nLoja: {item.get('store') or '?'}"
+  others = item.get("receipt_items") or []
+  if others:
+    text += "\nOutros itens da mesma nota: " + "; ".join(others[:40])
+  return text
+
+
+def embed(args, texts):
+  key = lmstudio_key()
+  r = post(args.url.rstrip("/") + "/v1/embeddings", {"model": args.embed_model, "input": texts},
+           {"Authorization": f"Bearer {key}"} if key else None)
+  return [d["embedding"] for d in r["data"]]
+
+
+def cosine(a, b):
+  dot = sum(x * y for x, y in zip(a, b))
+  na = sum(x * x for x in a) ** .5; nb = sum(y * y for y in b) ** .5
+  return dot / (na * nb or 1)
 
 
 def llm(args):
   labels, children = taxonomy()
   items = load_items()
   categories = "\n".join(f"{p}: {labels[p]}" for p in labels)
-  system = LLM_PROMPT.format(categories=categories)
+  notes = ""
+  if args.notes:
+    notes = "\nRegras desta casa para casos de fronteira:\n" + open(args.notes, encoding="utf-8").read().strip() + "\n"
+  system = LLM_PROMPT.format(categories=categories, notes=notes)
+  vectors = embed(args, [f"search_document: {i['description']}" for i in items]) if args.examples else None
+  key = lmstudio_key()
   results, started = [], time.time()
-  for item in items:
+  for n, item in enumerate(items):
+    user = describe(item, args.context)
+    if args.examples:
+      # The user's confirmed items, most similar first. Never the item itself: in the app it would be new.
+      near = sorted((j for j in range(len(items)) if j != n), key=lambda j: -cosine(vectors[n], vectors[j]))[:args.examples]
+      user = "Itens parecidos que o usuário já categorizou:\n" + "\n".join(
+        f"- {items[j]['description']} -> {items[j]['category']}" for j in near) + "\n\n" + user
     t = time.time()
-    key = os.environ.get("LMSTUDIO_API_KEY")
     r = post(args.url.rstrip("/") + "/v1/chat/completions", {
       "model": args.model, "temperature": 0, "max_tokens": args.max_tokens,
-      "messages": [{"role": "system", "content": system}, {"role": "user", "content": item["description"]}],
+      "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
     }, {"Authorization": f"Bearer {key}"} if key else None, timeout=600)
     text = r["choices"][0]["message"].get("content") or ""
     m = re.search(r"\{[^{}]*\}", text, re.S)
@@ -151,7 +217,8 @@ def llm(args):
                     "ms": round((time.time() - t) * 1000), "raw": text[-300:], "valid": predicted in labels,
                     "tokens": r.get("usage")})
     print(f"{len(results):3}/{len(items)} {item['category']:35} -> {predicted}", file=sys.stderr)
-  save(f"llm-{args.model.replace('/', '_')}", results, started)
+  tag = "".join(["+ctx" if args.context else "", f"+ex{args.examples}" if args.examples else "", "+notes" if args.notes else ""])
+  save(f"llm-{args.model.replace('/', '_')}{tag}", results, started)
 
 
 def score(results):
@@ -186,7 +253,12 @@ def main():
   e = sub.add_parser("export"); e.add_argument("--server", default="http://127.0.0.1:8090"); e.set_defaults(fn=export)
   l = sub.add_parser("laya"); l.add_argument("--url", default="http://127.0.0.1:8003"); l.add_argument("--model"); l.set_defaults(fn=laya)
   m = sub.add_parser("llm"); m.add_argument("--url", default="http://127.0.0.1:1234"); m.add_argument("--model", required=True)
-  m.add_argument("--max-tokens", type=int, default=2048); m.set_defaults(fn=llm)
+  m.add_argument("--max-tokens", type=int, default=2048)
+  m.add_argument("--context", action="store_true", help="add unit, price, store and the receipt's other items")
+  m.add_argument("--examples", type=int, default=0, help="show the N most similar categorized items (never the item itself)")
+  m.add_argument("--embed-model", default="text-embedding-nomic-embed-text-v1.5")
+  m.add_argument("--notes", help="a file of boundary rules to add to the prompt")
+  m.set_defaults(fn=llm)
   r = sub.add_parser("report"); r.set_defaults(fn=report)
   args = p.parse_args()
   args.fn(args)

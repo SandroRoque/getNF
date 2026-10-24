@@ -1234,3 +1234,20 @@ products (33 categories, of the 75 in the taxonomy) from the local PocketBase in
   which are the test set.
 - **Setup:** GPU 16 GB. The 27B IQ2_S needs ~10.5 GB with one slot and 8k context, so the user's Jebadiah server
   (8.3 GB) was stopped for the run. LM Studio's server needs its API key (`LMSTUDIO_API_KEY`, entered by the user).
+
+## D57. Roles: Laya assigns categories, an LLM manages them (2026-10-24)
+
+The user's direction after D56:
+
+- **Laya (System 1) assigns** a category to every item: local, fast, with a probability per option.
+- **The LLM manages the categories.** It maintains what Laya reads (a description per category, a dictionary of
+  receipt abbreviations, boundary rules) and every so often reviews a batch of Laya's decisions, to catch where fixed
+  knowledge is needed: a dictionary entry, a rule, or labeled examples to train Laya on.
+- **The user** confirms or corrects; their choice is final and is the best training data.
+
+Since untrained Laya was unusable (D56), the next experiments, scored on the user's 82 items, are whether it gets
+usable with: descriptions expanded through the LLM's abbreviation dictionary; LLM-written category descriptions
+instead of bare labels; and a head trained on LLM-produced labels (LLM-categorized and LLM-invented receipt-style
+descriptions), never on the 82 test items.
+
+`tools/categorize-eval.py` now also reads the LM Studio key from the gitignored `server/.env.local`.
