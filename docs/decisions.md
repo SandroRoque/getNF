@@ -1684,3 +1684,18 @@ per product plus a preliminary per-category trend.
 - **Navigation:** the tabs show only on the three top screens; switching tabs starts that tab afresh.
 - **Tested:** JVM tests for the reconciliation at every level, the caveats, the year view, the per-kg prices and the
   trend; on the emulator, the Gastos screen and the drill-down.
+
+## D78. Medicine moves to Saúde as "Remédios"; Saúde gets "Consultas, exames e planos" (2026-10-25)
+
+The user noticed there was no "Remédios" category. Medicine was split by prescription: over-the-counter under
+personal care ("Medicamentos sem receita", where Jev put both pharmacy items, D74) and prescriptions in the leaf
+"Saúde". Asked by the user, the seed now has `health.medicine` "Remédios" (with or without a prescription, vitamins)
+and `health.care` "Consultas, exames e planos" under Saúde; `personal_care.pharmacy_otc` is gone.
+
+- **Renamed in place, not replaced:** a seed path is a category's identity across taxonomy updates, so a migration
+  renames every user's `personal_care.pharmacy_otc` to `health.medicine`, keeping its id and products. Users who
+  hadn't edited it get the new label and parent; an edited one keeps the user's (the seed never overwrites a user's
+  edit). Checked online: the user's category kept its id, now Saúde › Remédios, no duplicate, and both pharmacy
+  suggestions follow it; the phone pulled the change.
+- **Lesson for later taxonomy changes:** moving a seed category needs this kind of path-rename migration;
+  `tools/taxonomy-sql.py` alone only adds and updates, so it would create a second category and leave the old one.

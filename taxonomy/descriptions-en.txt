@@ -62,13 +62,14 @@ household.home_maintenance	Bulbs, batteries, tools
 personal_care	Personal care, hygiene, cosmetics
 personal_care.hygiene	Soap, toothpaste, floss, deodorant, cotton swabs
 personal_care.cosmetics	Shampoo, hair care, makeup, skin care
-personal_care.pharmacy_otc	Over-the-counter medicine
 pets	Pet food and supplies
 baby	Diapers, baby food
 eating_out	Restaurants, delivery
 housing	Rent, utilities
 transport	Fuel, transport
-health	Prescriptions, doctors
+health	Health: medicine, doctors, tests, insurance
+health.medicine	Medicine and vitamins, with or without a prescription
+health.care	Doctor appointments, lab tests, health insurance
 education	School, courses
 leisure	Leisure, travel gear, culture
 clothing	Clothes, shoes

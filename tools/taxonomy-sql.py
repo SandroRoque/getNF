@@ -3,6 +3,9 @@
 (taxonomy_node, taxonomy_tag), then brings every user's categories up to it (sync_taxonomy_for, D70).
 
 Run after editing the taxonomy:  python3 tools/taxonomy-sql.py  (writes supabase/migrations/<now>_taxonomy.sql)
+It only adds and updates. Moving or renaming a slug changes the category's path, its identity: write a migration that
+renames the path in taxonomy_node and in every user's category first (see 20261025040000_medicine_under_health.sql),
+or users end up with a second category beside the old one (D78).
 Comments in the files are never copied: they name real items.
 """
 import datetime, os, sys

@@ -76,7 +76,6 @@ household                     Produtos para casa
 personal_care                 Cuidados pessoais
   hygiene                     Higiene  # soap, toothpaste, deodorant
   cosmetics                   Cosméticos e cabelo
-  pharmacy_otc                Medicamentos sem receita
 
 pets                          Animais de estimação
 baby                          Bebês
@@ -85,7 +84,9 @@ baby                          Bebês
 eating_out                    Alimentação fora de casa  # restaurants, bakeries' counter, delivery (NFC-e from restaurants land here)
 housing                       Moradia  # rent, condo fees, utilities
 transport                     Transporte  # fuel, ride-hailing, public transport, car upkeep
-health                        Saúde  # prescriptions, appointments, insurance
+health                        Saúde
+  medicine                    Remédios  # with or without a prescription, vitamins (D78)
+  care                        Consultas, exames e planos  # appointments, tests, insurance
 education                     Educação
 leisure                       Lazer e cultura
 clothing                      Roupas e calçados
