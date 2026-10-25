@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-25. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D71). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D72). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -151,9 +151,9 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
     WebP copies instead of full JPEGs, delete phone originals after confirmation, upload photos only when they prove
     discounts, and remove the 55 duplicated photos on the server.
 11. **Move to Supabase (D62, D63, D70, D71):** 4a is built and the schema is live online; the phone syncs with
-    Supabase and no longer talks to PocketBase. Left for 4a: move the real data (back up PocketBase and the phone,
-    install, sign in, sync, compare counts and totals with PocketBase), run the restore drill on it, install the
-    nightly backup timer (`tools/systemd/install-backup-timer.sh`), then retire PocketBase. Local Supabase for
+    Supabase and no longer talks to PocketBase. The real data is on Supabase and verified (D72), and the restore drill
+    passed on it. Left for 4a: install the nightly backup timer (`tools/systemd/install-backup-timer.sh`), retire
+    PocketBase, and deleting photo originals on the phone after confirmation (D61). Local Supabase for
     development: `npx supabase start` (Docker), tests `npx supabase test db`.
 
 ## Gotchas

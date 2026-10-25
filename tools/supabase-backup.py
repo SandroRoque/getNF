@@ -4,7 +4,8 @@
   python3 tools/supabase-backup.py            # into ~/getnf-backups/supabase/
   python3 tools/supabase-backup.py --check    # only report what's there (sizes, counts, age)
 
-- Database: `pg_dump` of the app's data (schema `public`) plus the accounts (`auth.users`, `auth.identities`), data
+- Database: `pg_dump` of the app's data (schema `public`, minus the taxonomy seed, which the migrations load) plus
+  the accounts (`auth.users`, `auth.identities`), data
   only, custom format, one file per run; the newest KEEP runs are kept. The schema itself is in supabase/migrations.
 - Files (pages, archive photos, masks in bucket `receipts`): mirrored into files/, downloading only what's new or
   changed. Files deleted online stay here.
@@ -67,7 +68,9 @@ def objects(e, prefix=""):
 def dump(e, out_dir):
   stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
   target = os.path.join(out_dir, f"db-{stamp}.dump")
-  subprocess.run(["pg_dump", "--format=custom", "--data-only", "--schema=public", "--table=auth.users",
+  # Tables only, not --schema=public: pg_dump ignores --schema when any --table is given (the first drill caught it).
+  subprocess.run(["pg_dump", "--format=custom", "--data-only", "--table=public.*", "--exclude-table=public.taxonomy_*",
+                  "--table=auth.users",
                   "--table=auth.identities", f"--file={target}.part", db_url(e)], check=True)
   os.replace(target + ".part", target)
   dumps = sorted(f for f in os.listdir(out_dir) if f.startswith("db-") and f.endswith(".dump"))

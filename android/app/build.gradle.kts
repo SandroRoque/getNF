@@ -29,9 +29,11 @@ android {
     // Level Security protects the data). Debug builds read them from server/.env.local (gitignored), and
     // -Pgetnf.supabaseUrl / -Pgetnf.supabaseKey override that, e.g. to point the emulator at a local Supabase
     // (http://10.0.2.2:54321). Release builds start empty: set them in Settings. Nobody is signed in by default.
+    // A git worktree (.claude/worktrees/<name>/) has no copy of the gitignored file: use the main checkout's.
     val devEnv = Properties().apply {
-      providers.fileContents(rootProject.layout.projectDirectory.file("../server/.env.local")).asText.orNull
-        ?.let { load(it.reader()) }
+      listOf("../server/.env.local", "../../../../server/.env.local").firstNotNullOfOrNull {
+        providers.fileContents(rootProject.layout.projectDirectory.file(it)).asText.orNull
+      }?.let { load(it.reader()) }
     }
     fun quoted(v: String?) = "\"" + (v ?: "").replace("\\", "\\\\").replace("\"", "\\\"") + "\""
     val supabaseUrl = providers.gradleProperty("getnf.supabaseUrl").orNull ?: devEnv.getProperty("SUPABASE_URL")

@@ -1548,3 +1548,24 @@ Implements the 4a part of D70 ([stage-4-plan.md](stage-4-plan.md)). Real data no
 - **Not yet:** deleting photo originals on the phone after confirmation (D61), a sign-up screen (the account is
   created in the Supabase dashboard), and store-item clashes between two devices that create the same code offline
   (one device for now).
+
+## D72. Real data moved to Supabase and verified; first restore drill caught a backup bug (2026-10-25)
+
+With the user's go-ahead. Before: the old app opened once to refresh its copy of PocketBase's catalog (84 products),
+then backups `~/getnf-backups/pre-supabase-2026-10-25.zip` (PocketBase, 260 MB) and `phone-pre-supabase-2026-10-25.tar`
+(the app's data, 133 MB). The new APK upgraded the phone's database to v4; the user signed in; the first sync sent
+everything.
+
+- **Supabase vs the phone before:** 9 receipts, 135 lines, 61 photos, 4 issuers, 84 products and store items, 75
+  categories, 7 tags, 4 product tags; net R$ 1.927,75 on both sides, and the receipts' paid totals add up to it; the
+  4 photo-read discounts kept their source. Nothing left dirty or unuploaded on the phone, no errors.
+- **Supabase vs PocketBase, item by item:** all 84 products have the same category (82 categorized, 2 not), and the
+  3 manual sizes (one of them "no size") match. Categories arrived as `import`/`automatic` (D71).
+- **Storage:** 106 objects, 11 MB (9 pages, 61 WebP copies averaging 166 KB, 36 masks), against ~250 MB of photos on
+  PocketBase (half of them duplicates, D61). The free tier's 1 GB now lasts years.
+- **Backup bug found by the drill:** `pg_dump --schema=public --table=auth.users` dumped only the accounts, since
+  `--schema` is ignored once a `--table` is given. Fixed (`--table=public.*`, minus the taxonomy seed the migrations
+  load); the drill then restored every table with matching counts and the same net total.
+- **Build fix:** a debug build inside a git worktree found no `server/.env.local` (gitignored, only in the main
+  checkout), so the first APK had no project address; the build now falls back to the main checkout's file.
+- **PocketBase** still runs, untouched, until the user retires it.
