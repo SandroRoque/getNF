@@ -1,0 +1,10 @@
+# Nightly backup of the online Supabase project to ~/getnf-backups/supabase (D65). A user unit: no sudo needed.
+# Install: tools/systemd/install-backup-timer.sh
+[Unit]
+Description=getNF: back up the Supabase project
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/Documents/Projects/getNF/tools/supabase-backup.py

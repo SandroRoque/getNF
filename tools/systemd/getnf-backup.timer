@@ -1,0 +1,11 @@
+[Unit]
+Description=getNF: nightly Supabase backup
+
+[Timer]
+OnCalendar=*-*-* 03:30
+# Runs at the next boot if the PC was off at 03:30.
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target
