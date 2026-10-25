@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-25. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D80). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D81). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -99,9 +99,9 @@ Capture is good enough to move on (short receipts complete in seconds; OCR rejec
 
 ## Open items, roughly in priority order
 
-- **UI/UX is far below acceptable** (the user, 2026-10-25). The screens of stages 4c–8 were built function-first.
-  A dedicated UI/UX pass is due: ask the user what bothers them most, plan the experience, check on the real phone
-  (both orientations, dark mode) before calling a screen done.
+- **UI/UX redesign (D81) built:** four tabs (Início, Gastos, Para você, Catálogo) with scan in the middle, one decision
+  queue, stores as a lens, the Calmo look in light and dark, Portuguese throughout. Checked on the emulator; next, the
+  user's review on the phone. Not redesigned yet: the scan and SEFAZ page screens (already Portuguese).
 
 Code review findings and the proposed reordering are in D35: per-orientation focus check, blurred text counted as
 blank paper, upload that replaces server photos, the photo-cap dead-end, then roadmap stage 1 before more geometry.

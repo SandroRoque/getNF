@@ -118,7 +118,9 @@ fun ProductScreen(productId: String, onOpenProduct: (String) -> Unit, onBack: ()
     item { PriceBlock(prices) }
     item {
       Column {
-        FactRow("Tamanho", size(p, items), mark = sizeMark(p, items), onClick = { sheet = Sheet.Size })
+        val byWeight = purchases.isNotEmpty() && purchases.all { it.unit?.uppercase() in setOf("KG", "L") }
+        if (byWeight) FactRow("Vendido", "por ${purchases.first().unit!!.lowercase()}")
+        else FactRow("Tamanho", size(p, items), mark = sizeMark(p, items), onClick = { sheet = Sheet.Size })
         FactRow("Compras", "${Format.count(purchases.size, "compra", "compras")} · ${Format.brl(purchases.sumOf { it.netCents })}")
         FactRow("Nas notas", items.joinToString(" · ") { it.description })
         FactRow("Lojas", items.mapNotNull { it.issuerName }.distinct().joinToString(" · ").ifEmpty { "qualquer loja (código de barras)" })

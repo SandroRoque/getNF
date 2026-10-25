@@ -1,5 +1,6 @@
 package io.github.sandroroque.getnf
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,6 +58,9 @@ fun MainNavigation() {
   fun tab(key: NavKey) { if (backStack.size != 1 || root != key) { backStack.clear(); backStack.add(key) } }
   fun open(key: NavKey) { backStack.add(key) }
   fun back() { backStack.removeLastOrNull() }
+
+  // NavDisplay only handles Back with more than one screen open; at a tab's root, Back goes to Início first.
+  BackHandler(enabled = backStack.size == 1 && root != Inicio) { tab(Inicio) }
 
   Scaffold(
     containerColor = Calmo.bg,
