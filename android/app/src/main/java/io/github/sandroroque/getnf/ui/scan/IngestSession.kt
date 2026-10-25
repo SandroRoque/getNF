@@ -94,7 +94,13 @@ internal class IngestSession {
         gain.size > heldGain.size -> { candidate = Held(frame.id, reads, shows, frame.atMs); hold = true }
       }
     }
-    // The frame that completes the capture is committed at once.
+    // The frame that completes the capture is committed at once; so are the held one and this one, when together
+    // they complete it.
+    candidate?.let { held ->
+      if (held.id != frame.id && joins && !completeWith(held.reads) && completeWith(held.reads + reads)) {
+        commitHeld()?.let(commits::add); candidate = Held(frame.id, reads, shows, frame.atMs); hold = true
+      }
+    }
     candidate?.let { held -> if (completeWith(held.reads)) commitHeld()?.let(commits::add) }
     if (isComplete()) done = true
 
@@ -119,7 +125,16 @@ internal class IngestSession {
 
   private fun completeWith(extra: Set<RowAssembly.Entry>): Boolean =
     assembly.topClosed && assembly.bottomClosed && assembly.rows.isNotEmpty() && required().all { it in captured || it in extra } &&
-      assembly.rows.none { it.printAfter }
+      unreadGaps().isEmpty()
+
+  /**
+   * Rows after which print lies unread, between two rows that must be captured: beside a row that needn't be (the
+   * logo's strokes read as letters), the "print" is the logo itself.
+   */
+  private fun unreadGaps(): List<Int> {
+    val required = required().toSet()
+    return assembly.rows.indices.filter { i -> assembly.rows[i].printAfter && assembly.rows[i] in required && assembly.rows.getOrNull(i + 1) in required }
+  }
 
   /**
    * The rows that must be captured: all, except one row right at a closed end that no frame read well, which is the
@@ -210,7 +225,7 @@ internal class IngestSession {
     val middle = (view.first + view.last) / 2.0
     val required = required().toSet()
     val missing = assembly.rows.indices.filter { assembly.rows[it] in required && assembly.rows[it] !in captured && candidate?.reads?.contains(assembly.rows[it]) != true }
-    val nearest = missing.minByOrNull { abs(it - middle) }
+    val nearest = (missing + unreadGaps()).minByOrNull { abs(it - middle) }
     return when {
       nearest != null -> if (nearest < middle) IngestHint.MOVE_UP else IngestHint.MOVE_DOWN
       !assembly.bottomClosed -> IngestHint.MOVE_DOWN

@@ -1963,3 +1963,37 @@ on one thread, and the next frame waited for all of it.
   while OCR runs.
 - The debug dump writes on a thread of its own.
 - Debug builds log each frame's conversion, OCR and session times (tag `ReceiptCapture`).
+
+## D89. The capture changes only through a benchmark scored against SEFAZ's pages (2026-10-25)
+
+Fixing the capture session by session had started to trade one session for another, with nothing to show it. And the
+check of what the saved photos hold was circular: it compared them with what OCR read elsewhere in the same session.
+From now on (see [capture-bench.md](capture-bench.md)):
+
+- Every recorded session (videos, and the phone's debug dumps) is replayed by `CaptureBenchTest`
+  (`tools/capture-bench.sh`) and scored against the receipt's page the app saved when it was fetched, copied from the
+  phone. The capture never sees it, and nothing in the loop makes a request to SEFAZ. An item counts when a saved photo
+  reads its printed number, code and description. Scores: completed, seconds from the first frame placed on the
+  receipt, photos, items legible, false completions.
+- Each run is compared with the accepted baseline; regressions are listed. A change is kept only without them, or
+  with them explained here.
+- New phone sessions enter as held out: scored blind once (totals only), then opened up for work. The receipts the
+  capture hasn't seen yet are kept for that.
+- Debug dumps now log each frame's camera time and the live decision (`live.tsv`). The replay uses the real timing and
+  says whether it decides as the phone did (one phone session completed live and not in the replay: frame timing).
+- Ideas not taken up yet go to [capture-backlog.md](capture-backlog.md).
+
+The first runs, one change at a time (log in capture-bench.md):
+
+- **Every OCR box inside the paper is the paper's print**, not only the column the paper was measured from. An item's
+  number sits apart in a narrow column of its own and was dropped, so repeated items (the same product twice, told
+  apart only by their numbers) were never legible: one phone session completed with 4 items missing. Fixed. No
+  regressions.
+- **Unread print counts only between rows that must be captured**, and the hint points to it instead of "hold still".
+  The logo's strokes, read as letters, had held one phone session for 10 s. 23.8 → 13.7 s, no regressions.
+- **The held frame and the current one are saved together when together they complete the receipt**, instead of
+  waiting for the held one to time out. Two more sessions complete. No regressions.
+- Dropped: grouping OCR boxes into rows along each line's own axis (5 regressions, one a false completion).
+
+All 9 development sessions now score at least as well as the D88 baseline: 8 complete with every item legible. The
+ninth is the video whose bottom is blurred throughout.

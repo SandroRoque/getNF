@@ -258,6 +258,7 @@ internal class CaptureController(
     val started = System.nanoTime()
     val step = ingest.offer(IngestFrame(id, frame.image, lines, frame.atMs))
     if (BuildConfig.DEBUG) Log.d(TAG, "frame $id: session %d ms".format((System.nanoTime() - started) / 1_000_000))
+    dump?.let { dir -> dumping.execute { logDecision(dir, id, frame.atMs, step) } }
     identify(step.paper, codes, frame)
     val score = lines.map { it.confidence }.sorted().let { if (it.isEmpty()) 0.0 else it[it.size / 2] }
     val current = step.paper?.let { Held(id, frame.pixels, it, step.view, score) }
@@ -297,6 +298,15 @@ internal class CaptureController(
         q.corners.maxOf { it.x }.toInt(), q.corners.maxOf { it.y }.toInt(), q.confidence.toFloat(), q.corners.flatMap { listOf(it.x.toInt(), it.y.toInt()) })
     })
     File(dir, "$name.ocr.json").writeText(kotlinx.serialization.json.Json.encodeToString(text))
+  }
+
+  /**
+   * Appends the session's decision on a frame to `live.tsv` (frame, its camera time, hint, held, committed, complete),
+   * so the replay can use the frames' real timing and show where it would decide differently.
+   */
+  private fun logDecision(dir: File, id: String, atMs: Long, step: IngestStep) {
+    fun name(id: String) = "f%04d".format(id.removePrefix("f").toInt() + 1)
+    File(dir, "live.tsv").appendText(listOf(name(id), atMs, step.hint, step.hold, step.commits.joinToString(",", transform = ::name), step.complete).joinToString("\t") + "\n")
   }
 
   /** The receipt's code: a QR code read inside the paper found (another receipt's code beside it doesn't count). */

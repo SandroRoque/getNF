@@ -238,7 +238,19 @@ internal object PaperFinder {
       return xy(side.first + side.second * vv, vv)
     }
     val corners = listOf(corner(leftLine, topLine), corner(rightLine, topLine), corner(rightLine, bottomLine), corner(leftLine, bottomLine))
-    return PaperOutline(corners.map { DocumentPoint(it.x / image.width, it.y / image.height) }, topSeen, bottomSeen, block)
+    // The paper's print: every box inside it, not only the column the paper was measured from (an item's number sits
+    // apart from its line, in a narrow column of its own).
+    val inside = lines.filter { l -> l.text.isNotBlank() && contains(corners, DocumentPoint(l.corners.sumOf { it.x } / 4, l.corners.sumOf { it.y } / 4)) }
+    return PaperOutline(corners.map { DocumentPoint(it.x / image.width, it.y / image.height) }, topSeen, bottomSeen, (block + inside).distinct())
+  }
+
+  private fun contains(quad: List<DocumentPoint>, c: DocumentPoint): Boolean {
+    var inside = false
+    for (i in quad.indices) {
+      val a = quad[i]; val b = quad[(i + 1) % quad.size]
+      if ((a.y > c.y) != (b.y > c.y) && c.x < (b.x - a.x) * (c.y - a.y) / (b.y - a.y) + a.x) inside = !inside
+    }
+    return inside
   }
 
   /** Signed difference between two directions, in (-π, π]. */
