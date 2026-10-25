@@ -1368,3 +1368,20 @@ The two choices D62 left open, made by the user.
   phone only). So D61 has to be built before or with the move to Supabase, not after.
 - **Free tier for now.** Limits to watch: 500 MB database, 1 GB files (years of one user's D61 photos), and the
   project pauses after a week without requests. Move to Pro (US$25/month) when friends join or a limit bites.
+
+## D64. IPCI starts from two numbers: category spending and real price change; the gap is lifestyle (2026-10-24)
+
+The user wants both: spending per category that rises when they trade up (cheap coffee to gourmet) regardless of
+prices, and the actual inflation of the products they buy. The data model already supports both without new tables:
+receipt lines point to store items, store items to products, and linked store items share one product across stores.
+
+- **Category spending:** sum of net line values per category and period. Trading up shows here by design.
+- **Real price change:** per product, price per kg/l (or per unit) over time, using the product size; combined into a
+  category index weighted by what the user spends on each product.
+- **Lifestyle (mix) effect:** spending change minus price change. A product with no earlier price (the new gourmet
+  coffee) counts entirely as mix, which is the intended reading.
+- **Accuracy depends on identity:** a repackaged product with a new GTIN starts a new history unless linked to the old
+  one (then price per kg also catches shrinkflation). Proposing such links is a job for the LLM review (D51, D57).
+  Grouping different brands ("coffee 500 g, any brand") stays out of this, as in data-model.md.
+- **Still open:** the index method (fixed basket vs chained monthly) and how to treat promotion prices. Decide when
+  stage 7 (reports) is built.
