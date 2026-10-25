@@ -1699,3 +1699,30 @@ and `health.care` "Consultas, exames e planos" under Saúde; `personal_care.phar
   suggestions follow it; the phone pulled the change.
 - **Lesson for later taxonomy changes:** moving a seed category needs this kind of path-rename migration;
   `tools/taxonomy-sql.py` alone only adds and updates, so it would create a second category and leave the old one.
+
+## D79. Stage 6 dropped for now; stage 7's IPCI follows the price paid, chained monthly (2026-10-25)
+
+*Correction to D78:* "the phone pulled the change" is wrong. The phone wasn't connected; it picks the change up on
+its next sync.
+
+- **Stage 6** ("keep the PC dashboard consistent") lost its subject with D55: the PC side is retired and the data
+  lives on Supabase. Its successor, a web app on the same data, waits until it's wanted (for the friends beta, say).
+  Chosen by the user; next is stage 7.
+- **Price:** what was actually paid, as the data model already decides (D14, D54; the user's call): each line's net
+  amount (its discount read from a photo when available, else the prorated share) over its quantity, per kg or litre
+  when sold by weight or the size is known, else per unit. A product's monthly price is its month's net over its
+  month's quantity. Each month reports how much of its matched spending rests on prorated (estimated) discounts.
+- **Method (chosen by the user):** chained monthly. Each month, every product bought is compared with its own
+  previous price, however long ago; the log changes are weighted by that month's spending on each and chained; the
+  first month is 100. New products join when bought a second time; dropped ones stop counting. A product is the
+  linked product (D44), so buying the same thing at a cheaper store lowers this index: personal by design. Each
+  product is compared only in its usual basis (kg, l or unit).
+- **D64's split:** spending change = price change (the index) × the rest ("consumo e escolhas": quantity and choice
+  of products, where trading up shows), for any two months whose chain holds.
+- **Honesty (roadmap stage 7):** a month whose matched spending is under 30% of its spending, or rests on fewer than
+  3 products, shows "dados insuficientes" instead of a number; the chain still carries it. With the user's sparse
+  receipts so far (four months in two years) most months will say so; that is the intended reading.
+- **Screens:** an IPCI card on Gastos (everything, or the category drilled into) opens "Inflação pessoal": latest
+  reading and 12-month change when the chain covers it, the index level over time, the spending split, every month
+  with its coverage and estimated share, and what moved each month (products and their percentage points). It
+  replaces stage 5's preview trend (D77).

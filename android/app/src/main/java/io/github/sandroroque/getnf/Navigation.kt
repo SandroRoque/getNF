@@ -18,6 +18,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import io.github.sandroroque.getnf.ui.home.HomeScreen
+import io.github.sandroroque.getnf.ui.spending.IpciScreen
 import io.github.sandroroque.getnf.ui.spending.SpendingScreen
 import io.github.sandroroque.getnf.ui.page.PageScreen
 import io.github.sandroroque.getnf.ui.receipt.ReceiptScreen
@@ -69,8 +70,10 @@ fun MainNavigation() {
               onOpenProduct = { backStack.add(ProductDetail(it)) },
               onCategories = { backStack.add(Categories) },
               onSettings = { backStack.add(Settings) },
+              onIpci = { backStack.add(IpciKey(it)) },
             )
           }
+          entry<IpciKey> { key -> IpciScreen(key.categoryId, onOpenProduct = { backStack.add(ProductDetail(it)) }) }
           entry<Home> {
             HomeScreen(
               onScan = { backStack.add(Scan) },

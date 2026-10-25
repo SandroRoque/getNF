@@ -162,21 +162,3 @@ fun pricePoint(line: SpendingLine): PricePoint? {
     else -> PricePoint(at, line.storeName, Math.round(perUnitCents), "un")
   }
 }
-
-/**
- * A rough price trend for a category, per month: each product with purchases in more than one month is followed
- * against its own first price in the range, and a month's value is the average of those ratios (×100). Products
- * bought once say nothing about price. Preliminary: stage 7 chooses the real method (D64); this only shows direction.
- */
-fun categoryTrend(lines: List<SpendingLine>): List<Pair<Period, Double>> {
-  val points = lines.mapNotNull { l -> pricePoint(l)?.let { l.productId to it } }
-  val byProduct = points.groupBy({ it.first }, { it.second }).filterValues { ps -> ps.map { Period.month(it.at) }.distinct().size > 1 }
-  val ratios = mutableMapOf<Period, MutableList<Double>>()
-  for ((_, ps) in byProduct) {
-    // Same basis only: a product bought once by weight and once by unit isn't comparable.
-    val basis = ps.groupBy { it.basis }.maxBy { it.value.size }.value.sortedBy { it.at }
-    val first = basis.first().cents.takeIf { it > 0 } ?: continue
-    for ((month, ms) in basis.groupBy { Period.month(it.at) }) ratios.getOrPut(month) { mutableListOf() } += ms.map { it.cents * 100.0 / first }.average()
-  }
-  return ratios.entries.sortedBy { it.key }.map { it.key to it.value.average() }
-}

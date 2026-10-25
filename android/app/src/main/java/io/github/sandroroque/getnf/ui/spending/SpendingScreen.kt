@@ -40,7 +40,8 @@ import io.github.sandroroque.getnf.GetNFApp
 import io.github.sandroroque.getnf.data.CategoryNode
 import io.github.sandroroque.getnf.data.Period
 import io.github.sandroroque.getnf.data.Spending
-import io.github.sandroroque.getnf.data.categoryTrend
+import io.github.sandroroque.getnf.data.Ipci
+import io.github.sandroroque.getnf.data.SpendingLine
 import io.github.sandroroque.getnf.data.productsIn
 import io.github.sandroroque.getnf.ui.Format
 import io.github.sandroroque.getnf.ui.catalog.flatten
@@ -52,7 +53,10 @@ import io.github.sandroroque.getnf.ui.catalog.flatten
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SpendingScreen(onScan: () -> Unit, onOpenProduct: (String) -> Unit, onCategories: () -> Unit, onSettings: () -> Unit) {
+fun SpendingScreen(
+  onScan: () -> Unit, onOpenProduct: (String) -> Unit, onCategories: () -> Unit, onSettings: () -> Unit,
+  onIpci: (String?) -> Unit = {},
+) {
   val app = LocalContext.current.applicationContext as GetNFApp
   val lines by remember { app.database.spending().lines() }.collectAsStateWithLifecycle(null)
   val waiting by remember { app.database.spending().waitingForPage() }.collectAsStateWithLifecycle(0)
@@ -111,6 +115,7 @@ fun SpendingScreen(onScan: () -> Unit, onOpenProduct: (String) -> Unit, onCatego
         Text("${spending.linesIn(selected).map { it.chave }.distinct().size} nota(s)", style = MaterialTheme.typography.bodySmall)
       }
       item { Caveats(caveats, waiting) }
+      if (node == null) item { IpciCard(lines.orEmpty(), spending, null, onIpci) }
       item {
         // Where we are in the tree: "Tudo › Alimentos › Frutas"; each step goes back up.
         Row(horizontalArrangement = Arrangement.spacedBy(0.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -146,7 +151,7 @@ fun SpendingScreen(onScan: () -> Unit, onOpenProduct: (String) -> Unit, onCatego
           }
         }
       }
-      if (node != null) item { Trend(spending, node) }
+      if (node != null) item { IpciCard(lines.orEmpty(), spending, node, onIpci) }
       item {
         HorizontalDivider()
         Text(if (node == null) "Produtos" else "Produtos em ${byId[node]?.label}", style = MaterialTheme.typography.titleSmall,
@@ -183,21 +188,19 @@ private fun Caveats(c: io.github.sandroroque.getnf.data.Caveats, waiting: Int) {
   }
 }
 
-/** A category's price direction across months: preliminary, until stage 7's method (D64). */
+/** The IPCI's latest reading for everything or a category, opening the full view (stage 7, D79). */
 @Composable
-private fun Trend(spending: Spending, categoryId: String) {
-  val all = spending.periods.flatMap { spending.linesUnder(it, categoryId) }
-  val trend = remember(all) { categoryTrend(all) }
-  if (trend.size < 2) return
-  Card(Modifier.fillMaxWidth()) {
-    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-      Text("Preços nesta categoria", style = MaterialTheme.typography.titleSmall)
-      TimeSeries(mapOf("" to trend.map { (p, v) -> java.time.YearMonth.parse(p.key).atDay(15).toEpochDay() to v }),
-        format = { "%.0f".format(it) })
-      val change = trend.last().second - 100
-      Text("${if (change >= 0) "+" else ""}${"%.1f".format(change)}% desde ${label(trend.first().first, long = true)}, " +
-        "comparando cada produto com o próprio preço. Prévia: o método do índice vem na etapa 7.",
-        style = MaterialTheme.typography.bodySmall)
+private fun IpciCard(all: List<SpendingLine>, spending: Spending, categoryId: String?, onOpen: (String?) -> Unit) {
+  val months = remember(all, categoryId) {
+    Ipci.compute(if (categoryId == null) all else all.filter { categoryId in spending.ancestry(it.categoryId) })
+  }
+  if (months.size < 2) return
+  val latest = months.lastOrNull { it.reading != null }
+  Card(Modifier.fillMaxWidth().clickable { onOpen(categoryId) }) {
+    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+      Text(if (categoryId == null) "Inflação pessoal (IPCI) ›" else "Preços nesta categoria (IPCI) ›", style = MaterialTheme.typography.titleSmall)
+      Text(latest?.let { "%+.1f%% em %s".format(it.reading, label(it.period, long = true)).replace('.', ',') } ?: "Dados insuficientes por enquanto",
+        style = MaterialTheme.typography.bodyMedium)
     }
   }
 }

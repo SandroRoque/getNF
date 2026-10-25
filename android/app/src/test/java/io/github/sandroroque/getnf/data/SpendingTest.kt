@@ -76,11 +76,4 @@ class SpendingTest {
     val pulp = pricePoint(lines.first { it.sizeE6 == 100_000L })!!
     assertEquals(2980L to "kg", pulp.cents to pulp.basis)
   }
-
-  @Test fun theCategoryTrendFollowsEachProductAgainstItsOwnFirstPrice() {
-    fun line(product: String, at: Long, priceE4: Long) = SpendingLine("k", 1, at, null, null, 100, 0, "html", product, "c", 10_000, "UN", priceE4, null, null)
-    val oct = 1_790_000_000_000L; val nov = oct + 31L * 86_400_000
-    val trend = categoryTrend(listOf(line("a", oct, 10_000), line("a", nov, 11_000), line("b", oct, 50_000), line("b", nov, 50_000), line("c", nov, 99_000)))
-    assertEquals(listOf(100.0, 105.0), trend.map { it.second }) // a +10%, b flat; c bought once says nothing
-  }
 }

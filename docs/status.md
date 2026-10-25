@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-25. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D78). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D79). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -156,7 +156,7 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
     passed on it. PocketBase is retired and the nightly backup timer runs (D73). Left for
     4a: deleting photo originals on the phone after confirmation (D61). 4b is live (D74): new items get a Jev category
     (≥ 0.9) or a suggestion online, within a minute. The phone app with Room v5 (suggestions) still has to be
-    installed on the phone. 4c is built and installed (D76). **Stage 5 built (D77):** Gastos (spending by month or year, by category, with what's estimated or missing), product price evolution and a preliminary category trend, under bottom tabs Gastos · Notas · Produtos. Local Supabase for
+    installed on the phone. 4c is built and installed (D76). **Stage 5 built (D77):** Gastos (spending by month or year, by category, with what's estimated or missing), product price evolution and a preliminary category trend, under bottom tabs Gastos · Notas · Produtos. Stage 6 dropped for now (D79). **Stage 7 built (D79):** the IPCI, chained monthly on the price paid, with coverage, "dados insuficientes" below 30% or 3 products, the spending split and per-product contributions; on the user's data only June 2026 has a reading so far (+2,3%). Local Supabase for
     development: `npx supabase start` (Docker), tests `npx supabase test db`.
 
 ## Gotchas

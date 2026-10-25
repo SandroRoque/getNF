@@ -24,5 +24,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable data class ProductDetail(val productId: String) : NavKey
 
+/** The personal price index (stage 7), for everything or a category subtree. */
+@Serializable data class IpciKey(val categoryId: String?) : NavKey
+
 /** The category tree, editable (D75). */
 @Serializable data object Categories : NavKey

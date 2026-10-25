@@ -106,6 +106,8 @@ os totais conciliam com as notas, respeitando os problemas de extração identif
 
 ## 6. Manter o dashboard no PC com dados consistentes
 
+*Deixada de lado em 2026-10-25 (D79): sem PC desde o D55; o sucessor seria um app web sobre o Supabase, quando fizer falta.*
+
 Implementar o mecanismo de compartilhamento escolhido na etapa 1, cobrindo dados estruturados, classificações,
 correções e exclusões. Adaptar o dashboard para a nova origem. Se houver edição em mais de um dispositivo,
 implementar as regras de conflito definidas para esse caso.
@@ -120,6 +122,8 @@ processamento com o existente antes de retirar responsabilidades do servidor. Ao
 etapa 4, tornar explícitas eventuais diferenças de atualização no PC até que esta etapa esteja concluída.
 
 ## 7. Definir e implementar o IPCI
+
+*Construída em 2026-10-25 (D79): preço pago, encadeado mês a mês.*
 
 Escolher metodologia, cesta de referência, pesos, períodos, tratamento de preços ausentes, substituições e
 mudanças de embalagem. Implementar o índice e explicar a contribuição dos produtos/categorias, distinguindo
