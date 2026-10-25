@@ -1569,3 +1569,14 @@ everything.
 - **Build fix:** a debug build inside a git worktree found no `server/.env.local` (gitignored, only in the main
   checkout), so the first APK had no project address; the build now falls back to the main checkout's file.
 - **PocketBase** still runs, untouched, until the user retires it.
+
+## D73. PocketBase retired; nightly Supabase backup installed (2026-10-25)
+
+Asked by the user after D72's verification. The PocketBase container is down (`docker compose -f server/compose.yaml
+down`); its data stays in `server/pb_data/` and in `~/getnf-backups/pre-supabase-2026-10-25.zip`. `server/` (hooks,
+migrations, the old dashboard) stays in the repo for reference until it's removed on purpose; nothing in the app uses
+it. Bringing it back: `docker compose -f server/compose.yaml up -d`.
+
+The nightly backup (D65) runs as a systemd user timer at 03:30 (`tools/systemd/`), from the main checkout's
+`tools/supabase-backup.py`. Check with `systemctl --user list-timers getnf-backup` and
+`python3 tools/supabase-backup.py --check`.

@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-25. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D72). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D73). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -42,7 +42,8 @@ categorized → reportable through the `spending_lines` view.
   to the existing NF. There is no post-save pruning; see [capture-retention-plan.md](capture-retention-plan.md).
   The app paces SEFAZ lookups per network and warns before a fetch would probably get the IP blocked (D17). It skips the
   portal's scripts, styles and images it doesn't need (D16), recognizes the rate-limit page, and pauses the WebView in the background.
-- **Server (`server/`):** PocketBase with hooks that parse every uploaded page (`pb_hooks/lib/`), sync `taxonomy/*.txt`
+- **Server:** retired 2026-10-25 (D73); the data lives on Supabase (D71, D72). What follows describes the old
+  `server/` PocketBase: with hooks that parse every uploaded page (`pb_hooks/lib/`), sync `taxonomy/*.txt`
   at startup, and expose `spending_lines` (D15). Prorated discounts until a photo pass exists (D14).
 - **Dashboard:** `/dashboard/` on the existing PocketBase server (D19). Monthly stacked spending bars → selected
   month's category pie → grouped products with expandable purchases. Phone app or PocketBase admin login; live reload on
@@ -152,8 +153,9 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
     discounts, and remove the 55 duplicated photos on the server.
 11. **Move to Supabase (D62, D63, D70, D71):** 4a is built and the schema is live online; the phone syncs with
     Supabase and no longer talks to PocketBase. The real data is on Supabase and verified (D72), and the restore drill
-    passed on it. Left for 4a: install the nightly backup timer (`tools/systemd/install-backup-timer.sh`), retire
-    PocketBase, and deleting photo originals on the phone after confirmation (D61). Local Supabase for
+    passed on it. PocketBase is retired and the nightly backup timer runs (D73). Left for
+    4a: deleting photo originals on the phone after confirmation (D61). Next: 4b (Jev suggestions) and 4c (review and
+    editing on the phone). Local Supabase for
     development: `npx supabase start` (Docker), tests `npx supabase test db`.
 
 ## Gotchas
