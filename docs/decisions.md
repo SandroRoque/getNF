@@ -1815,3 +1815,14 @@ Direction, chosen by the user:
 
 Plan and progress: [capture-coverage-plan.md](capture-coverage-plan.md). Supersedes "the capture front is closed for
 now" (D41). The session's frames stay in `test-media/` (real receipt, gitignored).
+
+## D83. Coverage is accepted by stretch, not line by line (2026-10-25)
+
+Refines D82 after the first replay. The user found a line-by-line capture odd: when both sides of the receipt are in
+view and the text is in focus, the whole vertical stretch between them should be accepted (green) at once.
+
+Print lines stay as the measuring tool: they give the scale (is the print large enough), the coordinate along the
+receipt (print lines from the paper's top edge) and the focus. Coverage is the stretch of the frame where both paper
+sides are in view, judged in zones a few print lines tall (±3), so a dashed rule, the logo or one odd line doesn't
+punch a hole, while a tilted view that goes soft towards one end is still marked there. The map shows solid
+stretches. The per-line resolution remains only as the map's grid.

@@ -101,14 +101,20 @@ class CaptureReplayTest {
     val xs = polygon.map { (it.x * w).toInt() }.toIntArray(); val ys = polygon.map { (it.y * h).toInt() }.toIntArray()
     g.drawPolygon(xs, ys, 4)
     if (print != null) {
-      val left = xs.min(); val right = xs.max()
-      for (line in print.lines) {
-        g.color = if (bar.readable(line)) Color(0, 170, 80, 110) else Color(230, 60, 40, 140)
-        g.fillRect(left, (line.top * scale).toInt(), right - left, maxOf(1, (line.height * scale).toInt()))
+      // The stretch where both sides of the paper are in view, green where its print is in focus (as CoverageMap
+      // judges it: zones a few lines tall), red where it isn't.
+      val sharpFrame = print.lines.count(bar::readable) >= print.lines.size / 2
+      fun side(a: Int, b: Int, y: Double) = if (ys[b] == ys[a]) xs[a].toDouble() else xs[a] + (xs[b] - xs[a]) * (y - ys[a]) / (ys[b] - ys[a])
+      for (oy in (print.visibleTop * scale).toInt() until (print.visibleBottom * scale).toInt()) {
+        val y = oy / scale
+        val near = print.lines.filter { kotlin.math.abs(it.center - y) <= 3 * print.pitch(y) }
+        val ok = if (near.size >= 2) near.count(bar::readable) >= near.size * .7 else sharpFrame
+        g.color = if (ok) Color(0, 170, 80, 90) else Color(230, 60, 40, 120)
+        val l = side(0, 3, oy.toDouble()).toInt(); val r = side(1, 2, oy.toDouble()).toInt()
+        g.fillRect(l, oy, r - l, 1)
       }
-      g.color = Color(150, 60, 200, 90)
-      for (block in print.blocks) g.fillRect(left, (block.top * scale).toInt(), right - left, (block.height * scale).toInt())
       g.stroke = BasicStroke(3f)
+      val left = xs.min(); val right = xs.max()
       print.paperTop?.let { g.color = Color.RED; g.drawLine(left, (it * scale).toInt(), right, (it * scale).toInt()) }
       print.paperBottom?.let { g.color = Color.BLUE; g.drawLine(left, (it * scale).toInt(), right, (it * scale).toInt()) }
     }
@@ -116,7 +122,7 @@ class CaptureReplayTest {
     ImageIO.write(small, "jpg", file)
   }
 
-  /** The receipt to scale, one row per print line, beside each frame's lane in capture order. */
+  /** The receipt to scale beside each frame's accepted stretch, in capture order. */
   private fun drawMap(map: CoverageMap, frames: List<Pair<String, Double>>, chosen: Set<String>, file: File) {
     val cell = 9
     val total = map.cells.last + 1
@@ -132,19 +138,17 @@ class CaptureReplayTest {
     g.color = Color.WHITE; g.fillRect(0, 0, width, height)
     g.font = Font(Font.SANS_SERIF, Font.PLAIN, 13)
     g.color = Color(40, 40, 40)
-    g.drawString("Receipt to scale (${total} print lines)", left, 22)
+    g.drawString("Receipt to scale (%.0f print lines long)".format(map.length ?: total.toDouble()), left, 22)
     g.drawString("Frames in capture order (chosen outlined)", lanesX, 22)
     val captured = Color(46, 160, 100); val seen = Color(235, 170, 40); val unseen = Color(225, 225, 225)
     g.font = Font(Font.SANS_SERIF, Font.PLAIN, 11)
     listOf("captured" to captured, "needs a closer look" to seen, "unseen" to unseen).forEachIndexed { i, (label, c) ->
       g.color = c; g.fillRect(left + i * 150, 34, 12, 12); g.color = Color(60, 60, 60); g.drawString(label, left + i * 150 + 16, 45)
     }
-    val text = map.frames.flatMap { it.text }.toSet()
     for (k in 0 until total) {
       val y = top + k * cell
       g.color = when (map.state(k)) { LineState.CAPTURED -> captured; LineState.SEEN -> seen; LineState.UNSEEN -> unseen }
       g.fillRect(left, y, receiptWidth, cell)
-      if (k in text) { g.color = Color(255, 255, 255, 150); g.fillRect(left + 6, y + 3, receiptWidth - 12, cell - 6) }
     }
     g.color = Color(90, 90, 90); g.drawRect(left, top, receiptWidth, total * cell)
     frames.forEachIndexed { i, (id, seconds) ->

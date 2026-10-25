@@ -16,13 +16,14 @@ internal data class ReadabilityBar(
 internal enum class LineState { UNSEEN, SEEN, CAPTURED }
 
 /**
- * A frame placed on the receipt. Cells are one print line tall, counted from the paper's top edge; a cell maps to
- * readable or not, and [text] holds the cells where this frame found a text line (the rest are blank or graphics).
+ * A frame placed on the receipt: the stretch [from]–[to], in print lines from the paper's top edge, where both sides
+ * of the paper are in view. The stretch is accepted as a whole where its print is in focus and large enough; [cells]
+ * says so for each print line's height along it (the map's resolution, not a line-by-line test).
  */
-internal data class PlacedFrame(val id: String, val from: Double, val to: Double, val cells: Map<Int, Boolean>, val text: Set<Int>)
+internal data class PlacedFrame(val id: String, val from: Double, val to: Double, val cells: Map<Int, Boolean>)
 
 /**
- * The receipt as a column of print lines and the best any frame did on each (D82). Frames are placed from the paper's
+ * The receipt along its length, at the resolution of one print line, and the best any frame did on each stretch (D82). Frames are placed from the paper's
  * top edge, or from its bottom edge once some frame has shown both and so the length is known.
  */
 internal class CoverageMap(private val bar: ReadabilityBar = ReadabilityBar()) {
@@ -61,24 +62,22 @@ internal class CoverageMap(private val bar: ReadabilityBar = ReadabilityBar()) {
     val from = if (top != null && u(print.visibleTop) < 1) 0.0 else max(0.0, u(print.visibleTop))
     val to = u(print.visibleBottom).let { if (total != null && (bottom != null && total - it < 1 || it > total)) total else it }
     if (to <= from) return null
+    // Focus and scale are judged over zones a few print lines tall, so a dashed rule, the logo or one odd line doesn't
+    // punch a hole in an accepted stretch, while a frame that goes soft towards one end (a tilted view) still does.
     val heightShare = print.lines.map { it.height / print.pitch(it.center) }.sorted().let { if (it.isEmpty()) .7 else it[it.size / 2] }
-    val sharpLines = print.lines.filter { bar.readable(it) }.size >= print.lines.size / 2
-    val cells = mutableMapOf<Int, Boolean>(); val text = mutableSetOf<Int>()
-    val byCell = print.lines.groupBy { floor(u(it.center)).toInt() }
+    val sharpFrame = print.lines.count { bar.readable(it) } >= print.lines.size / 2
+    val positions = print.lines.map { u(it.center) to bar.readable(it) }
+    val cells = mutableMapOf<Int, Boolean>()
     // A cell counts as in view when at least 40% of it is (the paper's torn ends are fractions of a line).
     for (k in ceil(from - .6).toInt() until floor(to + .6).toInt()) {
-      val lines = byCell[k]
-      cells[k] = if (lines != null) {
-        text += k
-        lines.all { bar.readable(it) }
-      } else {
-        // Blank paper or a graphic: readable if a text line here would have been, at this frame's scale and focus.
-        val y = row(k + .5)
-        sharpLines && print.pitch(y) * heightShare >= bar.minHeight
-      }
+      val near = positions.filter { abs(it.first - (k + .5)) <= ZONE }
+      cells[k] = if (near.size >= 2) near.count { it.second } >= near.size * .7
+      else sharpFrame && print.pitch(row(k + .5)) * heightShare >= bar.minHeight
     }
-    return PlacedFrame(id, from, to, cells, text).also { placed += it }
+    return PlacedFrame(id, from, to, cells).also { placed += it }
   }
+
+  private companion object { const val ZONE = 3.0 }
 
   fun state(cell: Int): LineState = when {
     placed.any { it.cells[cell] == true } -> LineState.CAPTURED

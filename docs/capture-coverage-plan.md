@@ -13,9 +13,12 @@ the person a map of the receipt saying which height bands are captured, need a c
   `pitch(y)` fitted over the frame's lines (linear in `y` under perspective). A frame that sees the bottom edge but
   not the top is placed from the bottom once the total length is known. A frame with neither end needs content
   registration (later step).
-- **Readability per line:** height in pixels, edge width (blur), contrast, saturated pixels (glare), and the paper
-  spanning the frame horizontally at that row. Thresholds calibrated on real frames, cross-checked with OCR.
-- **Coverage map:** for each line index, the best frame and its state: captured, seen but not readable, unseen.
+- **Accepted stretch (D83):** the rows where both sides of the paper are in view, accepted as a whole where the print
+  is in focus and large enough. Focus and scale come from the lines' height, edge width (blur), contrast and glare,
+  judged in zones of about ±3 print lines, so single odd lines don't punch holes. Thresholds calibrated on real
+  frames, cross-checked with OCR.
+- **Coverage map:** along the receipt at one print line's resolution, the best frame and its state: captured, needs
+  a closer look, unseen. Drawn as solid stretches.
 
 ## Steps
 
@@ -47,4 +50,5 @@ the person a map of the receipt saying which height bands are captured, need a c
   Not yet handled: 9 of 26 frames are skipped because the paper leans 18–31° (tilted close-ups and the shot at 30 s),
   and 7 are not placed because neither end is in view. Next: rectify each frame's paper quad to an upright strip before
   reading lines; then content registration (match line sequences between frames); then calibrate the bar.
-
+- 2026-10-25: D83: stretches are accepted as a whole (zones of ±3 print lines), not line by line; the map and the
+  frame overlays show solid stretches. The reference session still resolves to frame 1 alone.
