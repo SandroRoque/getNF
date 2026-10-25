@@ -1780,3 +1780,38 @@ three published pages (private artifacts): an inventory and ontology of everythi
   detail one tap away; every empty state says what will appear and how; portrait first.
 - **Not decided here:** friendly product names written by the LLM ("Requeijão Vigor 400 g" instead of the receipt's
   wording) appear in the mockups as illustration only.
+
+## D82. Capture is planned live from a model of the receipt's print lines (2026-10-25)
+
+A capture on the phone that tried to join photos covering different parts of the receipt saved 26 frames in 73 s. The
+second frame, taken at 6 s, already held the whole receipt legibly at native resolution, both ends included (item
+lines about 22 px apart); the first, at 0 s, missed only the last four footer lines. The other 24 frames added
+nothing. The user's
+judgement: redundant photos are the algorithm's failure, not the person's technique. Capture has made real progress
+but is still far from where it needs to be.
+
+Why the current capture (D28–D41) couldn't stop: it credits sharp, OCR-confirmed height bands but has no absolute
+bar for "this line is readable", so any closer view of a band scoring 25% more counts as an improvement. It records
+what it got, with no target to plan toward or to say it is done. And it saves 1440×1920 analysis frames instead of a
+full-resolution still (D29's approach 4, never built).
+
+Direction, chosen by the user:
+
+- **A model of the receipt, built live.** From the first view of the paper: its width (thermal paper has a fixed
+  width, so it also gives the scale) and, once both ends are seen, its height. An NFC-e prints fixed-width characters
+  on a fixed line pitch, so the receipt is a grid of print lines. Coordinates along the receipt are measured in print
+  lines from the top edge, which also absorbs perspective (the local pitch is the local scale).
+- **An absolute readability bar per line** (scale, sharpness, contrast, glare; calibrated on real photos and checked
+  by OCR), not a score relative to earlier photos. A line is unseen, seen but not readable, or captured, and keeps
+  which photo holds it.
+- **Few strategic shots.** Plan the fewest photos that clear the bar on every line, with only the overlap needed to
+  place them; guide toward the next unmet stretch; take a still only when it captures new lines. Done means every
+  line is captured.
+- **A rendered map** of the receipt to scale (width and height), with each height band captured, needing a closer
+  look, or unseen, live during capture and later on the receipt's screen.
+- **Proven offline first:** replay saved sessions (frames, masks, segment metadata) through the line model. On the
+  26-frame session it must conclude that frame 1 alone covers the receipt. Then live, then full-resolution stills,
+  then the phone.
+
+Plan and progress: [capture-coverage-plan.md](capture-coverage-plan.md). Supersedes "the capture front is closed for
+now" (D41). The session's frames stay in `test-media/` (real receipt, gitignored).

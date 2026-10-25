@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-25. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D81). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D82). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -86,7 +86,7 @@ and apply it through the API (as was done for the first 75 products).
 
 ## Known capture limits (D41)
 
-Capture is good enough to move on (short receipts complete in seconds; OCR rejects blur). Not done or not proven:
+Superseded in direction by D82 (capture far from good enough: 26 frames where one sufficed). Not done or not proven:
 
 - **Long receipts were never tested on the phone.** Every live capture fitted one or two frames; coverage built from
   several overlapping photos (content registration between segments) has only synthetic tests.
@@ -99,6 +99,9 @@ Capture is good enough to move on (short receipts complete in seconds; OCR rejec
 
 ## Open items, roughly in priority order
 
+- **Capture planned from print lines (D82):** a live model of the receipt's lines, an absolute readability bar, few
+  strategic shots and a rendered coverage map. Starting with an offline replay of saved sessions; see
+  [capture-coverage-plan.md](capture-coverage-plan.md).
 - **UI/UX redesign (D81) built:** four tabs (Início, Gastos, Para você, Catálogo) with scan in the middle, one decision
   queue, stores as a lens, the Calmo look in light and dark, Portuguese throughout. Checked on the emulator; next, the
   user's review on the phone. Not redesigned yet: the scan and SEFAZ page screens (already Portuguese).
