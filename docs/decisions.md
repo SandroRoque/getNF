@@ -1464,3 +1464,32 @@ barcode is known (14 of the 82 items). Same Jev setup as D67, flat question.
 - **So:** lookup names help exactly where the receipt text is unreadable and the barcode is known; coverage is the
   limit. 11 of the 12 raw-text misses have barcodes, only 3 of them in Open Food Facts; the rest are mainstream
   Brazilian brands (Tirol, Carolina, Duetto), so Cosmos (needs the user's token) is the next test.
+
+## D69. A standing data-cleanliness routine for category assignments (planned, 2026-10-25)
+
+The user's goal: bad assignments must not stay around long. Paid barcode lookups are not the answer (Cosmos starts at
+R$ 499,99/month for 100 lookups a day); user corrections are the data to learn from, and with enough of them we become
+the authority ourselves. Builds on D51 (suggestions with source and review state), D57 (Laya or Jev assigns, the LLM
+reviews), D65 (worker health report) and D67 (Jev's usable confidence).
+
+1. **Provenance on every assignment:** source (Jev, Laya, LLM, rule, user), model version, confidence, time and
+   review state (automatic, confirmed, corrected). Any assignment can be traced and redone.
+2. **New items:** above a confidence threshold, accepted as "automatic, not confirmed"; below, the review list. (D67:
+   at ≥0.9, 71 of 82 accepted with one wrong.)
+3. **Weekly audit by the worker:** the LLM rechecks automatic assignments, highest spending first (a wrong category on
+   an expensive item distorts reports most), then oldest unaudited, plus a small random sample that measures the true
+   error rate. A disagreement goes to the review list; nothing changes silently.
+4. **Learning from corrections:** each correction becomes a labeled example; the LLM proposes the rule or lexicon entry
+   it implies ("sliced cured meats are cold cuts", "IOG = iogurte") and sends other items with the same pattern to
+   review. Across users, many corrections of the same barcode make that answer authoritative.
+5. **Regression gate:** confirmed items form a growing test set. A new model, lexicon, rule or taxonomy change must
+   score at least as well on it before it goes live (the guard against conflicting abbreviations).
+6. **Re-runs on change:** a model, lexicon or taxonomy change re-runs automatic assignments; differences go to review.
+7. **Metrics in the health report (D65):** share accepted automatically, review backlog, sampled error rate, age of
+   the oldest unaudited assignment. A rising error rate raises the acceptance threshold.
+8. **User confirmations are never overwritten** (D51); confirmations that contradict each other are flagged.
+
+History heals itself: lines point to products and reports compute categories at query time, so fixing a product's
+category fixes every past month. The routine only has to keep errors from going unnoticed.
+
+- **When:** with stage 4's review screen (provenance, review states) and the worker (audit, gate, metrics).
