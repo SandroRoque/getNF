@@ -89,10 +89,9 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 }
 
-/** The user's categories that have no children: what an item can be assigned to. Seeded ones use their English
- *  description and path (as in D67's eval); ones the user created use their label. */
+/** The user's categories that have no children: what an item can be assigned to, described as in D67's eval. */
 async function leafCategories(userId: string): Promise<Option[]> {
-  const { data: cats, error } = await db.from("category").select("id, seed_path, label, parent_id")
+  const { data: cats, error } = await db.from("category").select("id, seed_path, label, description, parent_id")
     .eq("user_id", userId).eq("deleted", false);
   if (error) throw new Error(error.message);
   const { data: seed } = await db.from("taxonomy_node").select("path, description_en");
@@ -100,7 +99,9 @@ async function leafCategories(userId: string): Promise<Option[]> {
   const parents = new Set(cats!.map((c) => c.parent_id).filter(Boolean));
   return cats!.filter((c) => !parents.has(c.id)).map((c) => {
     const name = c.seed_path ?? `user.${c.id.slice(0, 8)}`;
-    return { key: name.replaceAll(".", "__"), id: c.id, text: `${described.get(c.seed_path) ?? c.label} (${name})` };
+    // The user's own description first (D75), then the seed's, then the label.
+    const text = c.description || described.get(c.seed_path) || c.label;
+    return { key: name.replaceAll(".", "__"), id: c.id, text: `${text} (${name})` };
   });
 }
 

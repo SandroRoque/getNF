@@ -53,12 +53,16 @@ class SupabaseClient(val url: String, private val key: String, private val http:
     )
   }
 
-  /** Inserts or updates [rows] by the [onConflict] key; columns left out of a row keep their value. */
-  fun upsert(session: SupabaseSession, table: String, rows: List<JsonObject>, onConflict: String) {
+  /**
+   * Inserts or updates [rows] by the [onConflict] key; columns left out of a row keep their value. With
+   * [ignoreDuplicates] an existing row is left as it is (for append-only tables, where users may not update).
+   */
+  fun upsert(session: SupabaseSession, table: String, rows: List<JsonObject>, onConflict: String, ignoreDuplicates: Boolean = false) {
     if (rows.isEmpty()) return
     for (chunk in rows.chunked(500)) {
       val target = rest(table).addQueryParameter("on_conflict", onConflict).build()
-      call(authorized(session, target).header("Prefer", "resolution=merge-duplicates,return=minimal")
+      val resolution = if (ignoreDuplicates) "ignore-duplicates" else "merge-duplicates"
+      call(authorized(session, target).header("Prefer", "resolution=$resolution,return=minimal")
         .post(JsonArray(chunk).toString().toRequestBody(JSON)).build())
     }
   }

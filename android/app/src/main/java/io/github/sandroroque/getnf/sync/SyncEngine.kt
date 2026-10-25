@@ -38,7 +38,7 @@ import kotlinx.serialization.json.put
 interface SyncRemote {
   val userId: String
   fun rpc(function: String)
-  fun upsert(table: String, rows: List<JsonObject>, onConflict: String)
+  fun upsert(table: String, rows: List<JsonObject>, onConflict: String, ignoreDuplicates: Boolean = false)
   fun delete(table: String, filters: List<Pair<String, String>>)
   fun select(table: String, filters: List<Pair<String, String>>): List<JsonObject>
   fun upload(path: String, bytes: ByteArray, type: String)
@@ -96,6 +96,7 @@ class SyncEngine(
     n += pushRows(remote, "product_tag", "user_id,product_id,tag_id", dao.dirtyProductTags(), ::productTagJson,
       { dao.productTag(it.productId, it.tagId) }) { dao.upsertProductTag(it.copy(dirty = false)) }
     n += pushLines(remote, errors)
+    n += pushEvents(remote)
     return n to pushPhotos(remote, errors)
   }
 
@@ -154,6 +155,15 @@ class SyncEngine(
       }
     }
     return n
+  }
+
+  /** Tree edits (D75), after the categories they name. Append-only on the server: a resend changes nothing. */
+  private suspend fun pushEvents(remote: SyncRemote): Int {
+    val events = database.categoryEvents().dirty()
+    if (events.isEmpty()) return 0
+    io { remote.upsert("category_event", events.map(::eventJson), "id", ignoreDuplicates = true) }
+    database.categoryEvents().pushed(events.map { it.id })
+    return events.size
   }
 
   /** Each photo's archive copy (D61) and mask, then its row; confirmed one by one, so a run resumes where it stopped. */
@@ -312,12 +322,19 @@ class SyncEngine(
 
   private fun categoryJson(c: CategoryRow) = buildJsonObject {
     put("id", c.id); put("seed_path", c.seedPath); put("label", c.label); put("parent_id", c.parentId); put("sort", c.sort)
-    put("user_modified", c.userModified); put("deleted", c.deleted)
+    put("user_modified", c.userModified); put("deleted", c.deleted); put("description", c.description)
+  }
+
+  private fun eventJson(e: io.github.sandroroque.getnf.data.CategoryEventRow) = buildJsonObject {
+    put("id", e.id); put("op", e.op); put("category_id", e.categoryId)
+    put("target_ids", kotlinx.serialization.json.JsonArray(e.targetIds.split(",").filter { it.isNotEmpty() }.map(::JsonPrimitive)))
+    put("old_label", e.oldLabel); put("new_label", e.newLabel); put("old_parent_id", e.oldParentId)
+    put("new_parent_id", e.newParentId); put("products", e.products); put("at", iso(e.at))
   }
 
   private fun category(o: JsonObject) = CategoryRow(
     o.string("id")!!, o.string("seed_path"), o.string("label")!!, o.string("parent_id"), o.long("sort")!!.toInt(),
-    o.bool("user_modified") ?: false, o.bool("deleted") ?: false,
+    o.bool("user_modified") ?: false, o.bool("deleted") ?: false, description = o.string("description"),
   )
 
   private fun tagJson(t: TagRow) = buildJsonObject {

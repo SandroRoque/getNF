@@ -125,6 +125,22 @@ class SyncEngineTest {
     assertTrue(server.pushed.none { "suggestion_category_id" in it })
   }
 
+  @Test fun treeEditsGoUpWithTheirLogOnce() = runTest {
+    receiptWithPage()
+    engine.sync(server)
+    val editor = io.github.sandroroque.getnf.data.CatalogEditor(db)
+    val dried = editor.createCategory(server.id("food.produce"), "Frutas secas", "Dried fruit, nuts")
+    editor.splitCategory(server.id("food.produce.fruit"), listOf("Frescas", "Secas"))
+    engine.sync(server)
+    assertEquals("Dried fruit, nuts", server.rows("category").single { it.str("id") == dried }.str("description"))
+    assertEquals(2, server.rows("category_event").size)
+    assertEquals(setOf("create", "split"), server.rows("category_event").map { it.str("op") }.toSet())
+    assertTrue(db.categoryEvents().dirty().isEmpty())
+    val writes = server.writes
+    engine.sync(server)
+    assertEquals(writes, server.writes)
+  }
+
   @Test fun aLineThePageNoLongerHasIsRemovedFromTheServer() = runTest {
     receiptWithPage()
     engine.sync(server)
@@ -195,7 +211,7 @@ class SyncEngineTest {
       put(table, "id", JsonObject(row + buildJsonObject(change)))
     }
 
-    override fun upsert(table: String, rows: List<JsonObject>, onConflict: String) {
+    override fun upsert(table: String, rows: List<JsonObject>, onConflict: String, ignoreDuplicates: Boolean) {
       if (failUpserts) throw java.io.IOException("offline")
       pushed += rows
       rows.forEach { put(table, keys[table] ?: onConflict, it) }

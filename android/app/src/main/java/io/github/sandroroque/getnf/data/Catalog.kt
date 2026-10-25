@@ -101,6 +101,8 @@ data class CategoryRow(
   /** Tombstone: the seed doesn't recreate it. */
   val deleted: Boolean = false,
   @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
+  /** What the category is for, in a line (D75); models read it instead of the label. */
+  val description: String? = null,
 )
 
 @Entity(tableName = "tag", indices = [Index("slug", unique = true)])
@@ -223,6 +225,28 @@ data class ReceiptLineRow(
   val discountReview: String = "unreviewed",
   val orphaned: Boolean = false,
   @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
+)
+
+/**
+ * One edit of the category tree (D75), written with the edit and never changed: the history merges, splits and
+ * deletions are learned from. [targetIds]: merge → the category it went into; split → the new subcategories;
+ * delete → where its products went (comma-separated ids).
+ */
+@Entity(tableName = "category_event")
+data class CategoryEventRow(
+  @PrimaryKey val id: String,
+  /** `create`, `rename`, `move`, `merge`, `split` or `delete`. */
+  val op: String,
+  val categoryId: String,
+  val targetIds: String = "",
+  val oldLabel: String? = null,
+  val newLabel: String? = null,
+  val oldParentId: String? = null,
+  val newParentId: String? = null,
+  /** Products the edit moved or sent to review. */
+  val products: Int = 0,
+  val at: Long,
+  @ColumnInfo(defaultValue = "1") val dirty: Boolean = true,
 )
 
 /** Sync bookkeeping that must travel with the database (a restore brings its own): pull cursors per table. */

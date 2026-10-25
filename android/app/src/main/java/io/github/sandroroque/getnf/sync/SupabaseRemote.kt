@@ -9,7 +9,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 class SupabaseRemote(private val client: SupabaseClient, private val session: SupabaseSession) : SyncRemote {
   override val userId: String get() = session.userId
   override fun rpc(function: String) = client.rpc(session, function)
-  override fun upsert(table: String, rows: List<JsonObject>, onConflict: String) = client.upsert(session, table, rows, onConflict)
+  override fun upsert(table: String, rows: List<JsonObject>, onConflict: String, ignoreDuplicates: Boolean) =
+    client.upsert(session, table, rows, onConflict, ignoreDuplicates)
   override fun delete(table: String, filters: List<Pair<String, String>>) = client.delete(session, table, filters)
   override fun select(table: String, filters: List<Pair<String, String>>) = client.select(session, table, filters)
   override fun upload(path: String, bytes: ByteArray, type: String) = client.upload(session, path, bytes.toRequestBody(type.toMediaType()))
