@@ -44,6 +44,7 @@ class VideoIngestTest {
     val hints = mutableListOf<Pair<Long, IngestHint>>()
     val texts = mutableMapOf<String, List<String>>() // frame id → its confidently read lines, normalized
     var completeAt: Long? = null
+    var offerMs = 0.0
     // The whole video's content, read before playing (the session may finish early).
     for (file in frames) File(file.path + ".ocr.json").takeIf { it.exists() }?.let { json.decodeFromString<PhotoText>(it.readText()) }?.let { o ->
       texts[file.nameWithoutExtension] = o.lines.filter { it.confidence >= .7 }.map { RowAssembly.normalize(it.text) }.filter { it.length >= 10 }
@@ -59,7 +60,9 @@ class VideoIngestTest {
       }
       val grayImage = GrayImage(gray.width, gray.height, (gray.raster.dataBuffer as DataBufferByte).data, chroma(image))
       val closedBefore = session.topClosed to session.bottomClosed
+      val started = System.nanoTime()
       val step = session.offer(IngestFrame(id, grayImage, lines, at))
+      offerMs += (System.nanoTime() - started) / 1e6
       if ((session.topClosed to session.bottomClosed) != closedBefore) log.appendLine("        ends ${closedBefore} → ${session.topClosed to session.bottomClosed} at $id, ${session.rows.size} rows")
       val why = if (step.paper == null) PaperTrace().also { PaperFinder.find(grayImage, lines, it) }.stopped else null
       if (System.getenv("GETNF_INGEST_ENDS") != null) ends(image, step.paper, File(out, "ends").apply { mkdirs() }, id)
@@ -102,6 +105,7 @@ class VideoIngestTest {
       content.size - missing.size, content.size,
       if (missing.isEmpty()) "" else ", missing: " + missing.take(6).joinToString(" | "))
     println(summary)
+    println("  session time per frame: %.0f ms (excluding OCR)".format(offerMs / frames.size))
     println("  print unread after: " + session.rows.withIndex().filter { it.value.printAfter }.joinToString(" | ") { (i, r) -> "$i:${r.text.take(20)} → ${session.rows.getOrNull(i + 1)?.text?.take(20)}" })
     println("  not captured: " + session.rows.withIndex().filter { !session.isCaptured(it.value) }.joinToString(" | ") { (i, r) -> "$i:${r.text.take(24)}@%.2f".format(r.confidence) })
     File(out, "log.txt").writeText(summary + "\n" + log)
