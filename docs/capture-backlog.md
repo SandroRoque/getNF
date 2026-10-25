@@ -19,7 +19,7 @@ kept only without regressions.
   the top) is lost until a frame joins them. Keep separate stretches and join them when a frame overlaps both.
 - **Full-resolution photos.** Saved photos are analysis frames (1440×1920). A still from ImageCapture at the moment of
   commit would give the OCR afterwards more to work with.
-- **Answer key for the receipt without a page**: one of the three receipts in the corpus has no saved page was never fetched, so its sessions are
-  scored against their own reads (`*`). Fetching it is one SEFAZ lookup, only with the user's go-ahead.
+- **Answer key for the receipt without a page.** One of the three receipts in the corpus was never fetched, so its
+  sessions are scored against their own reads (`*`). Fetching it is one SEFAZ lookup, only with the user's go-ahead.
 - **Footer line at the bottom edge.** The software line under the last row is required like any row. A
   session that never shows it again stays incomplete. Decide whether it matters.
