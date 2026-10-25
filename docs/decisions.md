@@ -1756,3 +1756,27 @@ Chosen by the user: all four parts of [stage-8-plan.md](stage-8-plan.md), with t
 - **Tested:** the phone's new edits in unit tests; the whole worker on the local Supabase with the real local LLM
   and the stand-in Jev (an audit agreeing, an abbreviation correctly refused by the gate, a description drafted, the
   report). Room v7.
+
+## D81. UI/UX redesign: four tabs around one decision queue, in the "Calmo" direction (2026-10-25)
+
+The user judged the UI far below acceptable: no structure, too much text, "hacked together data dumps". Planned in
+three published pages (private artifacts): an inventory and ontology of everything the app shows or asks
+("Mapa do getNF"), three visual directions for Início ("Direções do getNF"), and every main screen in the chosen one
+("Telas do getNF"). Approved by the user.
+
+- **Structure:** four tabs, each answering one question, with the scan button in the middle of the bar:
+  **Início** (how am I doing this month), **Gastos** (where did the money go: period › category › product › purchase
+  › receipt, with **Lojas** as a second lens), **Para você** (every decision as a card, ordered by the money involved),
+  **Catálogo** (Produtos, Categorias, Lojas, Notas; all editing starts here). Notas stop being a tab; Ajustes sits
+  behind the account icon on Início.
+- **Para você** gathers what was spread over six places: SEFAZ pages to fetch, categories to pick, disputes between
+  Jev and the LLM, parts to pick after a split, same-product matches, sizes, photo discounts to check, drafted
+  descriptions. One card per decision; its answers are its buttons.
+- **Look ("Calmo"):** quiet and typographic. A serif (Newsreader) for the one large number or title per screen,
+  Figtree for everything else; neutral surfaces with a slight cool bias, color only as small category dots; hairlines
+  instead of cards except for decisions; light and dark. Who set a value is a small mark ("você", "Jev", "LLM", "da
+  foto"), never a sentence. Corrections open a sheet from the bottom, never a dialog inside a dialog.
+- **Rules for every screen:** one job and one primary action; numbers large and few; lists are name and amount with
+  detail one tap away; every empty state says what will appear and how; portrait first.
+- **Not decided here:** friendly product names written by the LLM ("Requeijão Vigor 400 g" instead of the receipt's
+  wording) appear in the mockups as illustration only.
