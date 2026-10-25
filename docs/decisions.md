@@ -1511,3 +1511,40 @@ manual-only stage 4 with PocketBase as the catalog's owner.
 - **Edit scope (4c):** category, product identity (rename, link and unlink store items across stores), size and
   discounts (manual correction, back to prorated), and the category tree itself (create, rename, move, delete).
 - **Unchanged:** Portuguese UI; the review list comes first in the phone's work.
+
+## D71. Stage 4a built: Supabase schema online, the phone syncs, PocketBase is out of the app (2026-10-25)
+
+Implements the 4a part of D70 ([stage-4-plan.md](stage-4-plan.md)). Real data not moved yet.
+
+- **Schema** (`supabase/migrations/`, applied to the online project in São Paulo): the phone's tables with `user_id` in
+  every key, composite foreign keys that include it (a row can't point at another user's row even without RLS), Row
+  Level Security on everything, explicit grants (the project doesn't expose new tables automatically), tombstones
+  and a clock-stamped `updated_at` for pulls. Provenance columns per D51/D69 (`value_source`, `review_state`). A
+  trigger keeps a user's category, manual size and store-item link from being replaced by any non-user write. New
+  accounts get the taxonomy (`taxonomy_node`, regenerated as a migration by `tools/taxonomy-sql.py`); the phone
+  calls `sync_taxonomy()` to pick up later changes. Pages, archive photos and masks go to a private bucket, one
+  folder per user. pgTAP tests (`npx supabase test db`) cover isolation and the user-choice rule. Checked online: the
+  publishable key alone reads nothing.
+- **Phone (Room v4):** `dirty` flags, tombstones, provenance columns, pull cursors in the database (they travel with
+  a backup). The 3→4 migration marks everything for upload to the new server and labels PocketBase's categories
+  `import`/`automatic` (set by an agent or by hand outside the app, not confirmed in it).
+- **Sync** (`sync/SyncEngine`): pull the seeded categories and tags first, adopting the server's ids for ones the
+  phone knew under its own (by path or slug); push dirty rows parents first, receipts with their page when their
+  version changed, lines with removal of lines the page no longer has, and photos one by one as D61 archive copies
+  (receipt crop from the capture outline, grey, WebP quality 70, `WebpArchiver`); then pull changes since the
+  cursor, minus a minute of overlap, never over a row still dirty. A pushed row is cleaned only if it's still what
+  was pushed. Plain OkHttp against Auth, PostgREST and Storage (`SupabaseClient`), no SDK.
+- **Account:** Settings signs in with e-mail and password and keeps only the refresh token (rotated on every sync).
+  Without an account the phone works alone. Debug builds carry the project URL and publishable key from
+  `server/.env.local`; `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` point the emulator at a local Supabase.
+- **Removed:** `PocketBaseClient`, `ServerMirror`, `UploadWorker`, `ServerSettings` (`SyncWorker` replaces the
+  worker). The PocketBase server keeps running until the real data is verified on Supabase.
+- **Backups (D65):** `tools/supabase-backup.py` (data-only `pg_dump` of the app and accounts, 14 generations, plus an
+  incremental mirror of the bucket) and `tools/supabase-restore-drill.sh` (into the local Supabase, compares counts
+  with the live project); a systemd user timer for 03:30 in `tools/systemd/`.
+- **Tested:** a fake-server suite for the sync rules; one test against a real local Supabase (two "phones" on one
+  account: push, line removal, adoption with the page); the 3→4 migration, the backup round trip and the WebP copy on
+  the emulator; sign-in and a first sync from the emulator to the local Supabase.
+- **Not yet:** deleting photo originals on the phone after confirmation (D61), a sign-up screen (the account is
+  created in the Supabase dashboard), and store-item clashes between two devices that create the same code offline
+  (one device for now).
