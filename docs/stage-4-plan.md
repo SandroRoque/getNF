@@ -52,7 +52,15 @@ direto para o Supabase, sem gastar trabalho de sincronização com o PocketBase,
 - **Produto:** renomear, categoria, tamanho (com a origem visível), tags; vincular um item da loja a um produto
   existente (banana em dois mercados) e desvincular, com aviso de unidades incompatíveis (kg com unidade).
 - **Linha:** corrigir o desconto, voltar ao rateado, ver a origem (página rateada, foto, manual): o que faltou do D54.
-- **Árvore de categorias:** criar, renomear, mover e excluir. Excluir com produtos pede para onde eles vão.
+- **Árvore de categorias:** criar, renomear, mover, excluir, juntar e dividir. Excluir com produtos pede para onde
+  eles vão, sugerindo a categoria-mãe. Cada edição grava um evento num registro só de inclusão (D75), que é
+  construído primeiro, antes do editor:
+  - **Juntar:** os produtos confirmados seguem para a categoria resultante e continuam confirmados.
+  - **Dividir:** os produtos da categoria antiga vão para a lista de revisão ("escolha uma das novas"), e as
+    confirmações antigas saem do conjunto de teste do D69 até a escolha.
+  - **Qualquer mudança na árvore** dispara a nova verificação das atribuições automáticas (D69).
+  - **Descrição:** cada categoria tem uma descrição de uma linha, separada do rótulo; ao criar uma, o LLM propõe a
+    descrição e o usuário aceita ou edita. O Jev lê a descrição em vez do rótulo.
 - **Toda ação do usuário** grava origem "usuário" e não é sobrescrita por reprocessamento nem por modelo.
 - **Conclusão:** o usuário mantém o catálogo só pelo celular, sem administração de servidor; as edições sobrevivem a
   reprocessamento e sincronização; o fluxo manual funciona sem o Jev.

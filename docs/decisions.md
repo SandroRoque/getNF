@@ -1609,3 +1609,24 @@ Implements 4b of D70. Live Jev calls with the user's go-ahead.
 - **Costs:** Jev ~US$0.0001 per item; the cron job runs SQL only, and calls the function only when there is work.
 - **Data to TypeSafe:** the translated description and Open Food Facts' name and categories. Not the store, prices
   or chave.
+
+## D75. Category tree edits are recorded as events; merge and split join the editor; categories get descriptions (2026-10-25)
+
+Proposed in a review of how users edit their tree, accepted by the user. Until now a category carried only
+`user_modified` and `deleted`, with no record of what changed, so tree edits taught nothing.
+
+- **An append-only `category_event` log:** one row per edit (create, rename, move, merge, split, delete) with the
+  category before and after (several "after" for a split), the old and new label or parent, the time and the user.
+  The phone writes it in the same transaction as the edit and pushes it like other rows; nothing rewrites it.
+- **Merge and split** join stage 4c's tree editor (D70 had create, rename, move, delete).
+  - **Merge:** confirmed products follow to the resulting category and stay confirmed.
+  - **Split:** the old category's products go to the review list to pick one of the new ones; their earlier
+    confirmations leave D69's test set until picked.
+  - **Any tree change** triggers D69's re-run of automatic assignments.
+- **Descriptions:** each category gets a one-line description apart from its label. For a new category the LLM
+  drafts it and the user accepts or edits it. Jev reads the description instead of the label (today a user-created
+  category is described to Jev by its label only, D74).
+- **Later:** the same log feeds learning a user's preferences from their restructurings, and, across users (stages
+  9–10), shows which seed categories people keep splitting or merging: the signal to improve the shared taxonomy.
+- **When:** at the start of 4c, before the tree editor, so the first edit is already logged. Needs a migration and
+  a Room version.

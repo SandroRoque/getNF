@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-25. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D74). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D75). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -156,7 +156,7 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
     passed on it. PocketBase is retired and the nightly backup timer runs (D73). Left for
     4a: deleting photo originals on the phone after confirmation (D61). 4b is live (D74): new items get a Jev category
     (≥ 0.9) or a suggestion online, within a minute. The phone app with Room v5 (suggestions) still has to be
-    installed on the phone. Next: 4c (review and editing on the phone). Local Supabase for
+    installed on the phone. Next: 4c (review and editing on the phone), starting with the category change log (D75). Local Supabase for
     development: `npx supabase start` (Docker), tests `npx supabase test db`.
 
 ## Gotchas
