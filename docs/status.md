@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-25. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D88). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D89). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -102,9 +102,10 @@ Superseded in direction by D82 (capture far from good enough: 26 frames where on
 - **Capture planned live (D82–D88):** the receipt is assembled from its OCR rows as the camera moves; only frames that
   add rows are saved; the screen shows the receipt's map. First phone sessions (D87) completed in 42 s and 16 s;
   replayed with the fixes they showed, 22 s (6 photos) and 11 s (2). D88 overlaps OCR with the session (the phone ran
-  1.4 frames a second). Next: more phone sessions, long receipts; the dumps are in `test-media/live-dumps/phone/`
-  (replay with `VideoIngestTest`, `GETNF_INGEST_STEP_MS` = the phone's frame interval); see
-  [capture-coverage-plan.md](capture-coverage-plan.md).
+  1.4 frames a second). Since D89 every change goes through the benchmark
+  ([capture-bench.md](capture-bench.md): `tools/pull-capture-dumps.sh`, `tools/capture-bench.sh`), scored against
+  the receipts' saved pages; ideas wait in [capture-backlog.md](capture-backlog.md). Next: held-out sessions of
+  receipts the capture hasn't seen.
 - **UI/UX redesign (D81) built:** four tabs (Início, Gastos, Para você, Catálogo) with scan in the middle, one decision
   queue, stores as a lens, the Calmo look in light and dark, Portuguese throughout. Checked on the emulator; next, the
   user's review on the phone. Not redesigned yet: the scan and SEFAZ page screens (already Portuguese).
