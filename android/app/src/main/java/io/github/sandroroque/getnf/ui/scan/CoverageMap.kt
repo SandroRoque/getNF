@@ -9,7 +9,7 @@ internal data class ReadabilityBar(
   val minContrast: Double = 60.0,
   val maxGlare: Double = .05,
 ) {
-  fun readable(line: PrintLine): Boolean = line.height >= minHeight && line.edgeWidth / line.height <= maxBlur &&
+  fun readable(line: PrintLine): Boolean = line.sourceHeight >= minHeight && line.edgeWidth / line.height <= maxBlur &&
     line.contrast >= minContrast && line.glare <= maxGlare
 }
 
@@ -72,7 +72,7 @@ internal class CoverageMap(private val bar: ReadabilityBar = ReadabilityBar()) {
     for (k in ceil(from - .6).toInt() until floor(to + .6).toInt()) {
       val near = positions.filter { abs(it.first - (k + .5)) <= ZONE }
       cells[k] = if (near.size >= 2) near.count { it.second } >= near.size * .7
-      else sharpFrame && print.pitch(row(k + .5)) * heightShare >= bar.minHeight
+      else sharpFrame && row(k + .5).let { print.pitch(it) * heightShare * print.scaleAt(it) } >= bar.minHeight
     }
     return PlacedFrame(id, from, to, cells).also { placed += it }
   }

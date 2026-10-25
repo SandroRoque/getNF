@@ -52,3 +52,14 @@ the person a map of the receipt saying which height bands are captured, need a c
   reading lines; then content registration (match line sequences between frames); then calibrate the bar.
 - 2026-10-25: D83: stretches are accepted as a whole (zones of ±3 print lines), not line by line; the map and the
   frame overlays show solid stretches. The reference session still resolves to frame 1 alone.
+- 2026-10-25: Step 1, straightening. Each frame's paper outline is mapped onto an upright rectangle (a homography)
+  before reading; readability uses the line's height in camera pixels, so the stretched far end of a tilted view
+  isn't overrated. An outline edge along the frame's border is a cut, not the paper's end; an edge where the paper's
+  sides carry on past it is the mask stopping at a shadow (D41), not the end either. Blur takes the worse of the
+  edges across and along the line, which catches motion blur. The pitch comes from the ink profile's periodicity in
+  windows (no need to separate lines), with spacing between lines as the fallback.
+  Reference session: 19 of 26 frames read and placed (was 10); the tilted shot at 30 s and two smeared close-ups
+  are now judged unreadable, as they are. Length 84.5 print lines; Tesseract's line positions on frame 1 suggest
+  about 82, and a line seen at the edge of two different views is placed within 1.5 lines in both. Still frame 1
+  alone. Not placed: 6 frames that show neither end (content registration), 1 with too little regular print.
+

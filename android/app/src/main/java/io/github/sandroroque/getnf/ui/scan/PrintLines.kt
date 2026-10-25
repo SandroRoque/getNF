@@ -8,7 +8,7 @@ internal class GrayImage(val width: Int, val height: Int, val pixels: ByteArray)
   operator fun get(x: Int, y: Int): Int = pixels[y * width + x].toInt() and 0xff
 }
 
-/** One printed row, in frame pixels measured at the paper's centre column (after deskew). */
+/** One printed row, in rows of the upright paper (see [PrintLines.read]) at its centre column, after deskew. */
 internal data class PrintLine(
   val top: Double,
   val bottom: Double,
@@ -18,15 +18,21 @@ internal data class PrintLine(
   val contrast: Double,
   /** Share of the paper on these rows that is saturated (glare). */
   val glare: Double,
+  /** Camera pixels per upright row here: straightening a tilted view stretches its far end. */
+  val scale: Double = 1.0,
 ) {
   val height: Double get() = bottom - top
   val center: Double get() = (top + bottom) / 2
+  /** The line's height as the camera saw it, which is what decides whether it can be read. */
+  val sourceHeight: Double get() = height * scale
 }
 
 /**
- * What one frame shows of the receipt's print (D82). Thermal printers use one font on a fixed pitch, so text lines are
- * evenly spaced; `pitch(y)` is linear in `y` under perspective, and integrating `1 / pitch` turns frame rows into
- * print lines, the receipt's own coordinate.
+ * What one frame shows of the receipt's print (D82), in the upright paper: the frame's paper outline straightened into
+ * a rectangle, so rows run along the print however the phone was held. Thermal printers use one font on a fixed
+ * pitch, so text lines are evenly spaced; `pitch(y)` is close to linear in `y` (what perspective is left after
+ * straightening an imperfect outline), and integrating `1 / pitch` turns rows into print lines, the receipt's own
+ * coordinate.
  */
 internal data class FramePrint(
   val width: Int,
@@ -45,7 +51,12 @@ internal data class FramePrint(
   val visibleBottom: Double,
   /** Paper width in pixels at the centre of the visible rows, to relate width to pitch. */
   val paperWidth: Double,
+  /** Camera pixels per upright row, per row. */
+  val rowScale: DoubleArray = DoubleArray(0),
+  /** From the upright paper back to the camera frame, in pixels. */
+  val toFrame: (Double, Double) -> DocumentPoint = { x, y -> DocumentPoint(x, y) },
 ) {
+  fun scaleAt(y: Double): Double = if (rowScale.isEmpty()) 1.0 else rowScale[y.toInt().coerceIn(0, rowScale.lastIndex)]
   fun pitch(y: Double): Double = pitchA + pitchB * y
   /** Print lines between rows [y0] and [y1]. */
   fun linesBetween(y0: Double, y1: Double): Double =
@@ -59,24 +70,79 @@ internal object PrintLines {
   private const val INK = .6          // a pixel darker than this share of its row's paper is ink
   private const val ROW_INK = .015    // a row with this share of ink pixels is printed
   private const val MAX_SKEW_DEG = 4.0
-  private const val MAX_AXIS_DEG = 12.0  // the sides of a receipt seen in perspective lean, but not this much
 
   /**
    * Reads the print inside [polygon] (normalized, top-left, top-right, bottom-right, bottom-left, as in the capture's
-   * segment metadata). Null when the frame shows too few text lines to measure a pitch.
+   * segment metadata). The outline is first straightened into an upright rectangle as large as its longest edges, so
+   * a tilted or turned view reads like a flat one. An edge lying along the frame's border is where the frame cuts the
+   * paper, not the paper's end. Null when a side is cut (no stretch shows the paper's full width) or the frame shows
+   * too few text lines to measure a pitch.
    */
   fun read(image: GrayImage, polygon: List<DocumentPoint>): FramePrint? {
     require(polygon.size == 4)
+    val p = polygon.map { DocumentPoint(it.x * image.width, it.y * image.height) }
+    fun cut(a: DocumentPoint, b: DocumentPoint) = (a.x <= 2 && b.x <= 2) || (a.x >= image.width - 3 && b.x >= image.width - 3) ||
+      (a.y <= 2 && b.y <= 2) || (a.y >= image.height - 3 && b.y >= image.height - 3)
+    if (cut(p[0], p[3]) || cut(p[1], p[2])) return null
+    val w = max(ReceiptGeometry.distance(p[0], p[1]), ReceiptGeometry.distance(p[3], p[2])).roundToInt()
+    val h = max(ReceiptGeometry.distance(p[0], p[3]), ReceiptGeometry.distance(p[1], p[2])).roundToInt()
+    if (w < 40 || h < 40) return null
+    val toFrame = homography(listOf(DocumentPoint(0.0, 0.0), DocumentPoint(w.toDouble(), 0.0), DocumentPoint(w.toDouble(), h.toDouble()), DocumentPoint(0.0, h.toDouble())), p)
+    val pixels = ByteArray(w * h)
+    for (y in 0 until h) for (x in 0 until w) {
+      val s = toFrame(x + .5, y + .5)
+      pixels[y * w + x] = bilinear(image, s.x - .5, s.y - .5).toByte()
+    }
+    val rowScale = DoubleArray(h) { ReceiptGeometry.distance(toFrame(w / 2.0, it.toDouble()), toFrame(w / 2.0, it + 1.0)) }
+    val topSeen = !cut(p[0], p[1]) && !continuesPast(image, p[3], p[0], p[2], p[1])
+    val bottomSeen = !cut(p[3], p[2]) && !continuesPast(image, p[0], p[3], p[1], p[2])
+    val print = readUpright(GrayImage(w, h, pixels), topSeen, bottomSeen) ?: return null
+    fun scaled(line: PrintLine) = line.copy(scale = rowScale[line.center.toInt().coerceIn(0, h - 1)])
+    return print.copy(lines = print.lines.map(::scaled), blocks = print.blocks.map(::scaled), rowScale = rowScale, toFrame = toFrame)
+  }
+
+  /**
+   * Whether the paper carries on past the outline's edge from [a] to [b], whose sides run from [sideA] to [a] and from
+   * [sideB] to [b]: the capture's mask stops at a strong shadow (D41), and there the paper's sides go on, while at the
+   * paper's real end they stop. Compares the step across each side just past the edge with the step just before it.
+   */
+  private fun continuesPast(image: GrayImage, sideA: DocumentPoint, a: DocumentPoint, sideB: DocumentPoint, b: DocumentPoint): Boolean {
+    fun step(from: DocumentPoint, to: DocumentPoint, start: Double, end: Double): Double? {
+      val length = ReceiptGeometry.distance(from, to); if (length < 1) return null
+      val dx = (to.x - from.x) / length; val dy = (to.y - from.y) / length
+      val values = mutableListOf<Double>()
+      var t = start * length
+      while (t <= end * length) {
+        val x = to.x + dx * (t - length); val y = to.y + dy * (t - length)
+        // The outline comes from a coarse mask and can sit some pixels off the border: take the strongest step near it.
+        var best = -1
+        for (o in -14..14 step 2) {
+          val cx = x - dy * o; val cy = y + dx * o
+          val (ax, ay) = cx - dy * 5 to cy + dx * 5; val (bx, by) = cx + dy * 5 to cy - dx * 5
+          if (listOf(ax, bx).all { it in 0.0..image.width - 1.0 } && listOf(ay, by).all { it in 0.0..image.height - 1.0 }) {
+            best = max(best, abs(bilinear(image, ax, ay) - bilinear(image, bx, by)))
+          }
+        }
+        if (best >= 0) values += best.toDouble()
+        t += 2.0
+      }
+      return if (values.size < 8) null else values.sorted()[values.size / 2]
+    }
+    val sides = listOf(sideA to a, sideB to b).map { (s, e) -> step(s, e, .85, 1.0) to step(s, e, 1.03, 1.15) }
+    // Past the frame's border or too short to tell: the outline is trusted.
+    if (sides.any { it.first == null || it.second == null }) return false
+    return sides.all { (inside, past) -> inside!! > 15 && past!! >= inside * .35 }
+  }
+
+  /** The print of an upright paper filling [image]; [topSeen] and [bottomSeen] say whether its ends are the paper's. */
+  private fun readUpright(image: GrayImage, topSeen: Boolean, bottomSeen: Boolean): FramePrint? {
     val w = image.width; val h = image.height
-    val p = polygon.map { DocumentPoint(it.x * w, it.y * h) }
+    val p = listOf(DocumentPoint(0.0, 0.0), DocumentPoint(w - 1.0, 0.0), DocumentPoint(w - 1.0, h - 1.0), DocumentPoint(0.0, h - 1.0))
     fun along(a: DocumentPoint, b: DocumentPoint, y: Double) = if (abs(b.y - a.y) < 1e-6) a.x else a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y)
     fun left(y: Double) = along(p[0], p[3], y)
     fun right(y: Double) = along(p[1], p[2], y)
     val cx = (p.sumOf { it.x }) / 4
     fun edgeAt(a: DocumentPoint, b: DocumentPoint) = if (abs(b.x - a.x) < 1e-6) a.y else a.y + (b.y - a.y) * (cx - a.x) / (b.x - a.x)
-    // The paper must run up the frame: a receipt turned further than the deskew search needs rectifying first.
-    val axis = listOf(p[0] to p[3], p[1] to p[2]).maxOf { (a, b) -> abs(atan2(b.x - a.x, b.y - a.y)) }
-    if (axis > Math.toRadians(MAX_AXIS_DEG)) return null
     val paperTopRow = edgeAt(p[0], p[1]); val paperBottomRow = edgeAt(p[3], p[2])
     val y0 = max(0, ceil(paperTopRow).toInt()); val y1 = min(h - 1, floor(paperBottomRow).toInt())
     if (y1 - y0 < 20) return null
@@ -136,7 +202,8 @@ internal object PrintLines {
     if (runs.size < 2) return null
     // Closely spaced lines touch at the threshold (small print, a slight curl): split runs about two lines tall at
     // clear valleys. The local period keeps a single line, whose own profile dips between letters' bars, whole.
-    val period = periods(profile, y0, y1)
+    val windows = periods(profile, y0, y1)
+    fun period(y: Int) = windows.minByOrNull { abs(it.first - y) }?.second
     val split = runs.flatMap { run -> period((run.first + run.last) / 2)?.let { split(profile, run, it) } ?: listOf(run) }
     runs.clear(); runs += split
     if (runs.size < 4) return null
@@ -147,17 +214,20 @@ internal object PrintLines {
     val lines = text.map(::measure)
     val blockLines = blocks.map(::measure)
 
-    // Pitch: spacing between neighbouring text lines, fitted against row.
-    val spacings = lines.zipWithNext().map { (a, b) -> (a.center + b.center) / 2 to b.center - a.center }
-      .filter { it.second <= typical * 2.6 }
-    if (spacings.size < 3) return null
-    val median = spacings.map { it.second }.sorted()[spacings.size / 2]
-    val kept = spacings.filter { it.second in median * .75..median * 1.3 }
-    if (kept.size < 3) return null
-    val (a, b) = fit(kept)
+    // Pitch against row: from the windows' periods, which don't need the lines to be told apart; outliers (a window
+    // over the QR code or the logo) dropped. Spacing between neighbouring lines when too few windows show print.
+    val (a, b) = pitchFit(windows) ?: run {
+      val spacings = lines.zipWithNext().map { (a, b) -> (a.center + b.center) / 2 to b.center - a.center }
+        .filter { it.second <= typical * 2.6 }
+      if (spacings.size < 3) return null
+      val median = spacings.map { it.second }.sorted()[spacings.size / 2]
+      val kept = spacings.filter { it.second in median * .75..median * 1.3 }
+      if (kept.size < 3) return null
+      fit(kept)
+    }
 
-    val bottomVisible = (y0..y1).lastOrNull { to[it] >= from[it] && left(it.toDouble()) >= 1 && right(it.toDouble()) <= w - 2 }
-    val topVisible = (y0..y1).firstOrNull { to[it] >= from[it] && left(it.toDouble()) >= 1 && right(it.toDouble()) <= w - 2 }
+    val bottomVisible = (y0..y1).lastOrNull { to[it] >= from[it] }
+    val topVisible = (y0..y1).firstOrNull { to[it] >= from[it] }
     if (topVisible == null || bottomVisible == null) return null
     // A fit that collapses or more than doubles across the frame isn't perspective; the lines weren't found right.
     val ends = listOf(a + b * topVisible, a + b * bottomVisible)
@@ -165,8 +235,8 @@ internal object PrintLines {
     val middle = (topVisible + bottomVisible) / 2.0
     return FramePrint(
       w, h, lines, blockLines, atan(bestSkew), a, b,
-      paperTopRow.takeIf { it > 2 }, paperBottomRow.takeIf { it < h - 3 },
-      topVisible.toDouble(), bottomVisible.toDouble(), right(middle) - left(middle),
+      paperTopRow.takeIf { topSeen }, paperBottomRow.takeIf { bottomSeen },
+      if (topSeen) 0.0 else topVisible.toDouble(), if (bottomSeen) h - 1.0 else bottomVisible.toDouble(), right(middle) - left(middle),
     )
   }
 
@@ -174,8 +244,8 @@ internal object PrintLines {
    * The print's period around each row, from the autocorrelation of the ink profile in overlapping windows (perspective
    * changes it along a tilted frame). Null where the rows show no regular print.
    */
-  private fun periods(profile: DoubleArray, y0: Int, y1: Int): (Int) -> Double? {
-    val size = max(160, (y1 - y0 + 1) / 3)
+  private fun periods(profile: DoubleArray, y0: Int, y1: Int): List<Pair<Int, Double>> {
+    val size = max(160, (y1 - y0 + 1) / 4)
     val found = mutableListOf<Pair<Int, Double>>()
     var start = y0
     while (true) {
@@ -184,7 +254,14 @@ internal object PrintLines {
       if (end >= y1) break
       start += size / 2
     }
-    return { y -> found.minByOrNull { abs(it.first - y) }?.second }
+    return found
+  }
+
+  private fun pitchFit(windows: List<Pair<Int, Double>>): Pair<Double, Double>? {
+    if (windows.size < 2) return null
+    val median = windows.map { it.second }.sorted()[windows.size / 2]
+    val kept = windows.filter { it.second in median * .8..median * 1.25 }
+    return if (kept.size < 2) null else fit(kept.map { it.first.toDouble() to it.second })
   }
 
   private fun period(profile: DoubleArray, from: Int, to: Int): Double? {
@@ -202,8 +279,10 @@ internal object PrintLines {
     }
     val peaks = (5 until maxLag).filter { r[it] > r[it - 1] && r[it] >= r[it + 1] && r[it] > .15 }
     val strongest = peaks.maxOfOrNull { r[it] } ?: return null
-    // The shortest strong period, not one of its multiples.
-    return peaks.first { r[it] >= strongest * .8 }.toDouble()
+    // The shortest strong period, not one of its multiples, refined between lags by a parabola through its neighbours.
+    val lag = peaks.first { r[it] >= strongest * .5 }
+    val curve = r[lag - 1] - 2 * r[lag] + r[lag + 1]
+    return lag + if (curve < 0) .5 * (r[lag - 1] - r[lag + 1]) / curve else 0.0
   }
 
   /**
@@ -280,8 +359,10 @@ internal object PrintLines {
     image: GrayImage, ink: BooleanArray, glare: BooleanArray, paper: DoubleArray, from: IntArray, to: IntArray,
     w: Int, run: IntRange, cx: Double, t: Double,
   ): PrintLine {
-    val values = IntArray(256); val gradients = IntArray(256)
-    var n = 0; var inked = 0; var g = 0; var saturated = 0; var paperSum = 0.0
+    // Edges are measured across and along the line separately: motion blur smears one direction and leaves the other
+    // steep, so the worse of the two decides.
+    val values = IntArray(256); val across = IntArray(256); val along = IntArray(256)
+    var n = 0; var inked = 0; var gx = 0; var gy = 0; var saturated = 0; var paperSum = 0.0
     for (r in run) {
       paperSum += paper[r]
       for (x in from[r]..to[r]) {
@@ -291,14 +372,15 @@ internal object PrintLines {
         n++
         if (ink[y * w + x]) { values[v]++; inked++ }
         if (glare[y * w + x]) saturated++
-        if (ink[y * w + x] || ink[y * w + x + 1]) { gradients[abs(image[x + 1, y] - v)]++; g++ }
+        if (ink[y * w + x] || ink[y * w + x + 1]) { across[abs(image[x + 1, y] - v)]++; gx++ }
+        if (y + 1 < image.height && (ink[y * w + x] || ink[(y + 1) * w + x])) { along[abs(image[x, y + 1] - v)]++; gy++ }
       }
     }
     val paperLevel = paperSum / run.count()
     // The ink's own darkness: sparse print (a dashed rule) is as dark as dense print.
     val inkLevel = if (inked == 0) paperLevel else percentile(values, inked, .5).toDouble()
     val contrast = max(0.0, paperLevel - inkLevel)
-    val steepest = if (g == 0) 0 else percentile(gradients, g, .95)
+    val steepest = if (gx == 0 || gy == 0) 0 else min(percentile(across, gx, .95), percentile(along, gy, .95))
     return PrintLine(
       run.first.toDouble(), run.last + 1.0,
       if (steepest == 0) Double.POSITIVE_INFINITY else contrast / steepest,
@@ -311,6 +393,37 @@ internal object PrintLines {
     var seen = 0
     for (v in histogram.indices) { seen += histogram[v]; if (seen > target) return v }
     return histogram.lastIndex
+  }
+
+  /** The projective map taking the four points [from] to [to]. */
+  private fun homography(from: List<DocumentPoint>, to: List<DocumentPoint>): (Double, Double) -> DocumentPoint {
+    val a = Array(8) { DoubleArray(9) }
+    for (i in 0 until 4) {
+      val (x, y) = from[i].x to from[i].y; val (u, v) = to[i].x to to[i].y
+      a[2 * i] = doubleArrayOf(x, y, 1.0, 0.0, 0.0, 0.0, -x * u, -y * u, u)
+      a[2 * i + 1] = doubleArrayOf(0.0, 0.0, 0.0, x, y, 1.0, -x * v, -y * v, v)
+    }
+    for (c in 0 until 8) {
+      val pivot = (c until 8).maxBy { abs(a[it][c]) }
+      val t = a[c]; a[c] = a[pivot]; a[pivot] = t
+      for (r in 0 until 8) if (r != c) {
+        val f = a[r][c] / a[c][c]
+        for (k in c..8) a[r][k] -= f * a[c][k]
+      }
+    }
+    val m = DoubleArray(8) { a[it][8] / a[it][it] }
+    return { x, y ->
+      val d = m[6] * x + m[7] * y + 1
+      DocumentPoint((m[0] * x + m[1] * y + m[2]) / d, (m[3] * x + m[4] * y + m[5]) / d)
+    }
+  }
+
+  private fun bilinear(image: GrayImage, x: Double, y: Double): Int {
+    val fx = x.coerceIn(0.0, image.width - 1.0); val fy = y.coerceIn(0.0, image.height - 1.0)
+    val x0 = min(fx.toInt(), image.width - 2).coerceAtLeast(0); val y0 = min(fy.toInt(), image.height - 2).coerceAtLeast(0)
+    val tx = fx - x0; val ty = fy - y0
+    val x1 = min(x0 + 1, image.width - 1); val y1 = min(y0 + 1, image.height - 1)
+    return ((image[x0, y0] * (1 - tx) + image[x1, y0] * tx) * (1 - ty) + (image[x0, y1] * (1 - tx) + image[x1, y1] * tx) * ty).roundToInt()
   }
 
   /** Least squares `spacing = a + b·row`. */

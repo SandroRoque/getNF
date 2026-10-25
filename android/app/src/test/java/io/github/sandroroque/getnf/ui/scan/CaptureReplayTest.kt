@@ -57,7 +57,7 @@ class CaptureReplayTest {
       val placed = p?.let { map.place(name(s), it) }
       report.appendLine(
         "frame %3s %5.1fs ".format(name(s), (s.capturedAt - t0) / 1000.0) + when {
-          p == null -> lean(s).let { if (it > 12) "not read: paper leans %.0f°, needs rectifying".format(it) else "not read: too little regular print" }
+          p == null -> if (sideCut(s)) "not read: the frame cuts the paper along its side" else "not read: too little regular print"
           else -> "%2d lines, pitch %5.1f→%5.1f px, height %4.1f px, blur %.2f, contrast %3.0f, ends %s%s, ".format(
             p.lines.size, p.pitch(p.visibleTop), p.pitch(p.visibleBottom),
             p.lines.map { it.height }.sorted().getOrElse(p.lines.size / 2) { 0.0 },
@@ -81,13 +81,10 @@ class CaptureReplayTest {
     drawMap(map, prints.map { (s, _) -> name(s) to (s.capturedAt - t0) / 1000.0 }, fewest.map { it.id }.toSet(), File(out, "map.png"))
   }
 
-  /** How far the paper's sides lean from the frame's vertical, in degrees (the larger side). */
-  private fun lean(s: Segment): Double {
-    val image = ImageIO.createImageInputStream(File(File(System.getenv("GETNF_CAPTURE_REPLAY")), s.photo)).use { input ->
-      ImageIO.getImageReaders(input).next().run { setInput(input); getWidth(0) to getHeight(0) }
-    }
-    val p = s.polygon.map { DocumentPoint(it[0] * image.first, it[1] * image.second) }
-    return listOf(p[0] to p[3], p[1] to p[2]).maxOf { (a, b) -> Math.toDegrees(kotlin.math.abs(kotlin.math.atan2(b.x - a.x, b.y - a.y))) }
+  /** Whether a side of the paper's outline lies along the frame's border: the frame cuts the paper lengthwise. */
+  private fun sideCut(s: Segment): Boolean {
+    fun cut(a: List<Double>, b: List<Double>) = (a[0] <= .002 && b[0] <= .002) || (a[0] >= .998 && b[0] >= .998)
+    return cut(s.polygon[0], s.polygon[3]) || cut(s.polygon[1], s.polygon[2])
   }
 
   private fun overlay(image: BufferedImage, polygon: List<DocumentPoint>, print: FramePrint?, bar: ReadabilityBar, file: File) {
@@ -102,21 +99,24 @@ class CaptureReplayTest {
     g.drawPolygon(xs, ys, 4)
     if (print != null) {
       // The stretch where both sides of the paper are in view, green where its print is in focus (as CoverageMap
-      // judges it: zones a few lines tall), red where it isn't.
+      // judges it: zones a few lines tall), red where it isn't; drawn through the straightening back onto the frame.
       val sharpFrame = print.lines.count(bar::readable) >= print.lines.size / 2
-      fun side(a: Int, b: Int, y: Double) = if (ys[b] == ys[a]) xs[a].toDouble() else xs[a] + (xs[b] - xs[a]) * (y - ys[a]) / (ys[b] - ys[a])
-      for (oy in (print.visibleTop * scale).toInt() until (print.visibleBottom * scale).toInt()) {
-        val y = oy / scale
+      fun at(x: Double, y: Double) = print.toFrame(x, y).let { (it.x * scale).toInt() to (it.y * scale).toInt() }
+      g.stroke = BasicStroke(2.5f)
+      var y = print.visibleTop
+      while (y <= print.visibleBottom) {
         val near = print.lines.filter { kotlin.math.abs(it.center - y) <= 3 * print.pitch(y) }
         val ok = if (near.size >= 2) near.count(bar::readable) >= near.size * .7 else sharpFrame
-        g.color = if (ok) Color(0, 170, 80, 90) else Color(230, 60, 40, 120)
-        val l = side(0, 3, oy.toDouble()).toInt(); val r = side(1, 2, oy.toDouble()).toInt()
-        g.fillRect(l, oy, r - l, 1)
+        g.color = if (ok) Color(0, 170, 80, 60) else Color(230, 60, 40, 90)
+        val (lx, ly) = at(0.0, y); val (rx, ry) = at(print.width.toDouble(), y)
+        g.drawLine(lx, ly, rx, ry)
+        y += 1.5 / scale / print.scaleAt(y)
       }
       g.stroke = BasicStroke(3f)
-      val left = xs.min(); val right = xs.max()
-      print.paperTop?.let { g.color = Color.RED; g.drawLine(left, (it * scale).toInt(), right, (it * scale).toInt()) }
-      print.paperBottom?.let { g.color = Color.BLUE; g.drawLine(left, (it * scale).toInt(), right, (it * scale).toInt()) }
+      for ((end, color) in listOf(print.paperTop to Color.RED, print.paperBottom to Color.BLUE)) end?.let {
+        val (lx, ly) = at(0.0, it); val (rx, ry) = at(print.width.toDouble(), it)
+        g.color = color; g.drawLine(lx, ly, rx, ry)
+      }
     }
     g.dispose()
     ImageIO.write(small, "jpg", file)
