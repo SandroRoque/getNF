@@ -62,4 +62,15 @@ the person a map of the receipt saying which height bands are captured, need a c
   are now judged unreadable, as they are. Length 84.5 print lines; Tesseract's line positions on frame 1 suggest
   about 82, and a line seen at the edge of two different views is placed within 1.5 lines in both. Still frame 1
   alone. Not placed: 6 frames that show neither end (content registration), 1 with too little regular print.
+- 2026-10-25: Step 2, replay of the other 9 sessions on the phone (36 frames: 8 sessions of 2026-10-15 on one
+  pharmacy receipt, over a red patterned board and in shadow; one of 2026-10-24 on the reference receipt).
+  2026-10-24: length 82.6 print lines (84.5 from the reference session), consistent. 2026-10-15: the same receipt
+  measures 20 to 82 lines from session to session. The cause is the paper outline recorded with each photo (the
+  capture's mask, D39–D41), not the line model: on several frames it outlines the red board instead of the receipt,
+  stops at a shadow without the paper's sides showing past it, or covers a sideways receipt without its orientation.
+  Length, placement and readability all inherit that. Calibrating the bar on these frames isn't meaningful until the
+  outline is right.
+  Next: let the print find the paper. The print block's rows give the receipt's orientation (the ink profile is
+  periodic along the receipt, not across it), and its extent and the paper's brightness around it bound the outline;
+  the capture's outline becomes a hint to check rather than the truth.
 
