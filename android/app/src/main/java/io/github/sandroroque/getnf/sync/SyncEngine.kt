@@ -327,6 +327,7 @@ class SyncEngine(
   private fun tag(o: JsonObject) =
     TagRow(o.string("id")!!, o.string("slug")!!, o.string("description")!!, o.bool("seed") ?: true, o.bool("deleted") ?: false)
 
+  /** Suggestions are left out: only the server writes them (4b). */
   private fun productJson(p: ProductRow) = buildJsonObject {
     put("id", p.id); put("name", p.name); put("category_id", p.categoryId); put("category_source", p.categorySource)
     put("category_review", p.categoryReview); put("category_model", p.categoryModel); put("category_confidence", p.categoryConfidence)
@@ -338,6 +339,8 @@ class SyncEngine(
     o.string("id")!!, o.string("name"), o.string("category_id"), o.long("size_e6"), o.string("size_unit"), o.string("size_source"),
     o.bool("archived") ?: false, o.millis("created_at") ?: 0, o.string("category_source"), o.string("category_review"),
     o.string("category_model"), o.double("category_confidence"), o.millis("category_at"), o.bool("deleted") ?: false,
+    suggestionCategoryId = o.string("suggestion_category_id"), suggestionConfidence = o.double("suggestion_confidence"),
+    suggestionModel = o.string("suggestion_model"), suggestionAt = o.millis("suggestion_at"),
   )
 
   private fun storeItemJson(s: StoreItemRow) = buildJsonObject {

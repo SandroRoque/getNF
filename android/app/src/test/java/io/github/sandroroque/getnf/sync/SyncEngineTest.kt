@@ -114,6 +114,15 @@ class SyncEngineTest {
     assertEquals(veg, now.categoryId)
     assertEquals("jev", now.categorySource)
     assertFalse(now.dirty)
+
+    // A suggestion (4b) comes down too, and the phone never sends it back.
+    val other = dao.products().first { it.id != product.id }
+    server.patch("product", other.id) { put("suggestion_category_id", veg); put("suggestion_confidence", .4) }
+    engine.sync(server)
+    assertEquals(veg, dao.products().single { it.id == other.id }.suggestionCategoryId)
+    dao.updateProduct(dao.products().single { it.id == other.id }.copy(name = "x", dirty = true))
+    engine.sync(server)
+    assertTrue(server.pushed.none { "suggestion_category_id" in it })
   }
 
   @Test fun aLineThePageNoLongerHasIsRemovedFromTheServer() = runTest {
@@ -152,6 +161,8 @@ class SyncEngineTest {
     val tables = mutableMapOf<String, MutableMap<String, JsonObject>>()
     val objects = mutableMapOf<String, ByteArray>()
     var writes = 0
+    /** Every row the phone sent, as it sent it. */
+    val pushed = mutableListOf<JsonObject>()
     var failUpserts = false
     private var clock = Instant.parse("2026-10-25T12:00:00Z")
     private val seed = listOf("food" to null, "food.produce" to "food", "food.produce.fruit" to "food.produce", "food.produce.vegetables" to "food.produce")
@@ -186,6 +197,7 @@ class SyncEngineTest {
 
     override fun upsert(table: String, rows: List<JsonObject>, onConflict: String) {
       if (failUpserts) throw java.io.IOException("offline")
+      pushed += rows
       rows.forEach { put(table, keys[table] ?: onConflict, it) }
     }
 

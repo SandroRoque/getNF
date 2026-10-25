@@ -1,0 +1,77 @@
+# English descriptions of the categories, by path: what a decision model (Jev, D67) reads as each option.
+# Written for the model, not shown in the app. Format: path<TAB>description. Generic: never name real items.
+food	Groceries: food to cook or eat at home
+food.produce	Fresh fruit, vegetables and herbs
+food.produce.fruit	Fresh fruit
+food.produce.vegetables	Fresh vegetables
+food.produce.greens_herbs	Lettuce, leafy greens, herbs
+food.meat_fish	Meat, fish, deli
+food.meat_fish.beef	Beef cuts, ground beef, beef burgers
+food.meat_fish.pork	Fresh pork cuts
+food.meat_fish.poultry	Fresh or frozen chicken, turkey
+food.meat_fish.fish_seafood	Fish, seafood, canned tuna
+food.meat_fish.sausages	Sausages, linguiça
+food.meat_fish.cold_cuts	Deli: ham, sliced or smoked meats
+food.dairy_eggs	Dairy and eggs
+food.dairy_eggs.milk	Milk
+food.dairy_eggs.cheese	Cheese, cream cheese
+food.dairy_eggs.yogurt	Yogurt
+food.dairy_eggs.butter_cream	Butter, cream
+food.dairy_eggs.eggs	Eggs
+food.bakery	Bread, cakes
+food.bakery.bread	Bread, buns, rolls
+food.bakery.cakes_pastries	Cakes, pastries
+food.grains	Rice, beans, pasta, flour
+food.grains.rice	Rice
+food.grains.beans_legumes	Beans, lentils
+food.grains.pasta	Dry or fresh pasta
+food.grains.flour_cereals	Flour, oats, cereal
+food.pantry	Pantry staples
+food.pantry.oils_fats	Oil, olive oil
+food.pantry.sugar_sweeteners	Sugar, sweetener
+food.pantry.spreads	Sweet spreads, jam, honey
+food.pantry.sauces_condiments	Sauces, mayonnaise, ketchup
+food.pantry.spices_seasonings	Spices, seasoning
+food.pantry.canned_preserved	Canned vegetables, preserves
+food.pantry.baking	Baking: condensed milk, yeast
+food.ready_meals	Ready and instant meals
+food.ready_meals.instant_noodles	Instant noodles
+food.ready_meals.frozen_meals	Frozen meals, lasagna, pizza
+food.ready_meals.other	Other ready meals
+food.snacks_sweets	Snacks, sweets
+food.snacks_sweets.chocolate_candy	Chocolate, candy
+food.snacks_sweets.biscuits	Biscuits, cookies, crackers
+food.snacks_sweets.salty_snacks	Chips, salty snacks
+food.snacks_sweets.ice_cream	Ice cream, desserts
+beverages	Drinks
+beverages.coffee	Coffee
+beverages.tea_mate	Tea, mate
+beverages.juice	Juice, fruit pulp
+beverages.soft_drinks	Soda, soft drinks
+beverages.water	Bottled water
+beverages.alcoholic	Alcoholic drinks
+beverages.alcoholic.beer	Beer
+beverages.alcoholic.wine	Wine
+beverages.alcoholic.spirits	Spirits, liquor
+household	Home products: cleaning, laundry, paper
+household.cleaning	Cleaning: bleach, disinfectant, dish soap
+household.laundry	Laundry detergent, softener
+household.kitchen_disposables	Paper towel, coffee filters, foil, bags
+household.paper_goods	Toilet paper, tissues
+household.home_maintenance	Bulbs, batteries, tools
+personal_care	Personal care, hygiene, cosmetics
+personal_care.hygiene	Soap, toothpaste, floss, deodorant, cotton swabs
+personal_care.cosmetics	Shampoo, hair care, makeup, skin care
+personal_care.pharmacy_otc	Over-the-counter medicine
+pets	Pet food and supplies
+baby	Diapers, baby food
+eating_out	Restaurants, delivery
+housing	Rent, utilities
+transport	Fuel, transport
+health	Prescriptions, doctors
+education	School, courses
+leisure	Leisure, travel gear, culture
+clothing	Clothes, shoes
+services	Services, subscriptions
+taxes_fees	Taxes, fees
+other	Anything else

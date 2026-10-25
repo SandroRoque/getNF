@@ -142,6 +142,14 @@ data class ProductRow(
   val categoryAt: Long? = null,
   @ColumnInfo(defaultValue = "0") val deleted: Boolean = false,
   @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
+  /**
+   * A model's answer below the confidence threshold (stage 4b): waits on the review list and counts nowhere. Written
+   * by the server only; the phone never pushes it.
+   */
+  val suggestionCategoryId: String? = null,
+  val suggestionConfidence: Double? = null,
+  val suggestionModel: String? = null,
+  val suggestionAt: Long? = null,
 )
 
 /** One per code as receipts show it: a GTIN anywhere, or a store code together with its store's CNPJ. */
