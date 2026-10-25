@@ -1,10 +1,11 @@
 package io.github.sandroroque.getnf.data
 
 import io.github.sandroroque.getnf.parse.NfcePage
-import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -154,13 +155,17 @@ class ReceiptParserTest {
 
   @Test fun aCancelledParseIsNotRecordedAsAnError() = runTest {
     val r = saved()
-    // As on the phone: the upload worker is replaced while the page is being read on the IO dispatcher.
-    val job = launch(start = CoroutineStart.UNDISPATCHED) { parser.parse(r) }
+    // As on the phone: the upload worker is replaced while the page is being read on the IO dispatcher. The read waits
+    // for the cancel, so the outcome doesn't depend on which finishes first.
+    val reading = CompletableDeferred<Unit>()
+    val p = ReceiptParser(db, tmp.root, newId = newId, log = { _, _ -> }, readPage = { reading.complete(Unit); awaitCancellation() })
+    val job = launch { p.parse(r) }
+    reading.await()
     job.cancel()
     job.join()
     assertTrue(job.isCancelled)
     assertNull(dao.parsed(chave))
-    assertTrue(parser.needsParse(r))
+    assertTrue(p.needsParse(r))
   }
 
   @Test fun startupAndTheWorkerAtOnceParseEachPageOnce() = runTest {

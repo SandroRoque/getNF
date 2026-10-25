@@ -27,6 +27,8 @@ class ReceiptParser(
   private val now: () -> Long = System::currentTimeMillis,
   private val newId: () -> String = { UUID.randomUUID().toString() },
   private val log: (String, Throwable?) -> Unit = { message, error -> Log.i(TAG, message, error) },
+  // Run on the IO dispatcher. A test swaps it to hold the read open.
+  private val readPage: suspend (File) -> String = { it.readText(Charsets.UTF_8) },
 ) {
   private val dao = database.catalog()
   // One parse at a time: startup, a saved page and the upload worker can all ask at once.
@@ -60,7 +62,7 @@ class ReceiptParser(
   private suspend fun parseLocked(receipt: Receipt): Outcome {
     val pageFile = requireNotNull(receipt.pageFile) { "no page for ${receipt.chave}" }
     val parsed = try {
-      withContext(Dispatchers.IO) { NfcePage.parse(File(File(root, receipt.chave), pageFile).readText(Charsets.UTF_8)) }
+      withContext(Dispatchers.IO) { NfcePage.parse(readPage(File(File(root, receipt.chave), pageFile))) }
     } catch (e: CancellationException) {
       // The caller went away (say, the upload worker was replaced): not something wrong with the page.
       throw e
