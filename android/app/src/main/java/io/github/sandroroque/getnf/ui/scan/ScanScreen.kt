@@ -19,6 +19,10 @@ import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import io.github.sandroroque.getnf.BuildConfig
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -52,10 +56,13 @@ fun ScanScreen(onCaptured: () -> Unit, onCancel: () -> Unit) {
   val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
   LaunchedEffect(Unit) { if (!granted) permission.launch(Manifest.permission.CAMERA) }
   if (granted) ContinuousCapture(onCaptured, onCancel)
-  else Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
-    Text("Permita o uso da câmera para capturar a nota.")
-    Button(onClick = { permission.launch(Manifest.permission.CAMERA) }) { Text("Permitir câmera") }
-    OutlinedButton(onClick = onCancel) { Text("Cancelar") }
+  else Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
+    io.github.sandroroque.getnf.ui.calmo.ScreenTitle("A câmera lê a nota")
+    io.github.sandroroque.getnf.ui.calmo.Sub("O getNF usa a câmera para ler o QR Code e fotografar a nota. As fotos ficam no celular e, se você entrar numa conta, numa cópia pequena no servidor.")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      io.github.sandroroque.getnf.ui.calmo.Pill("Permitir a câmera", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Solid) { permission.launch(Manifest.permission.CAMERA) }
+      io.github.sandroroque.getnf.ui.calmo.Pill("Agora não", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Ghost, onClick = onCancel)
+    }
   }
 }
 
@@ -71,6 +78,7 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
   var showMask by rememberSaveable { mutableStateOf(false) }
   var showExit by remember { mutableStateOf(false) }
   var torch by remember { mutableStateOf(false) }
+  var showMore by remember { mutableStateOf(false) }
   val currentState by rememberUpdatedState(state)
   val exitDialogVisible by rememberUpdatedState(showExit || inspection != null)
   val controller = remember {
@@ -136,73 +144,102 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
   }
   BackHandler { exit() }
 
+  // The capture screen in the Calmo look (D81): the camera full-bleed, a thin four-step progress bar, one hint at a
+  // time, round controls. Everything drawn on the camera sits on soft scrims so it reads over any background.
+  val onCamera = Color.White
+  val hint = primaryHint(state.guidance.warnings)
   Box(Modifier.fillMaxSize().background(Color.Black)) {
-    Box(Modifier.fillMaxSize().then(if (landscape) Modifier.padding(horizontal = 216.dp) else Modifier)) {
-    AndroidView(factory = { preview }, modifier = Modifier.fillMaxSize())
-    Canvas(Modifier.fillMaxSize()) {
-      if (showMask) {
-        val path = Path().apply { fillType = PathFillType.EvenOdd }
-        state.maskPaths.forEach { ring ->
-          ring.forEachIndexed { i, p -> if (i == 0) path.moveTo(p.x.toFloat(), p.y.toFloat()) else path.lineTo(p.x.toFloat(), p.y.toFloat()) }
-          path.close()
+    Box(Modifier.fillMaxSize().then(if (landscape) Modifier.padding(horizontal = 196.dp) else Modifier)) {
+      AndroidView(factory = { preview }, modifier = Modifier.fillMaxSize())
+      Canvas(Modifier.fillMaxSize()) {
+        if (showMask) {
+          val path = Path().apply { fillType = PathFillType.EvenOdd }
+          state.maskPaths.forEach { ring ->
+            ring.forEachIndexed { i, p -> if (i == 0) path.moveTo(p.x.toFloat(), p.y.toFloat()) else path.lineTo(p.x.toFloat(), p.y.toFloat()) }
+            path.close()
+          }
+          drawPath(path, Color(0x3393B2DA))
         }
-        drawPath(path, Color(0x4400C8FF))
-      }
-      state.edges.forEach { edge ->
-        drawLine(if (edge.good) Color(0xFF56E28C) else Color(0xFFFFD166),
-          Offset(edge.start.x.toFloat(), edge.start.y.toFloat()), Offset(edge.end.x.toFloat(), edge.end.y.toFloat()), 3.dp.toPx())
-      }
-    }
-    }
-    Column((if (landscape) Modifier.width(216.dp).align(Alignment.TopStart) else Modifier.fillMaxWidth().align(Alignment.TopCenter)).safeDrawingPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-      Text("${state.segmentCount} trecho(s) desta captura", color = Color.White, modifier = Modifier.background(Color.Black.copy(alpha = .75f)).padding(8.dp))
-      FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), maxItemsInEachRow = if (landscape) 2 else 4) {
-        listOf("Topo" to state.top, "Fundo" to state.bottom, "Cobertura" to state.connected, "QR" to state.qr).forEach { (label, present) ->
-          Text("${if (present) "✓" else "○"} $label", color = if (present) Color(0xFF56E28C) else Color.White,
-            style = MaterialTheme.typography.labelMedium, modifier = Modifier.background(Color.Black.copy(alpha = .75f)).padding(4.dp))
+        state.edges.forEach { edge ->
+          drawLine(if (edge.good) GOOD else PENDING,
+            Offset(edge.start.x.toFloat(), edge.start.y.toFloat()), Offset(edge.end.x.toFloat(), edge.end.y.toFloat()), 3.dp.toPx(),
+            cap = androidx.compose.ui.graphics.StrokeCap.Round)
         }
       }
-      if (state.geometryKnown) Text("Formato da nota reconhecido", color = Color.White,
-        style = MaterialTheme.typography.labelMedium, modifier = Modifier.background(Color.Black.copy(alpha = .75f)).padding(8.dp))
-      if (state.error != null) Text(state.error!!, color = Color(0xFFFFD166), modifier = Modifier.background(Color.Black.copy(alpha = .8f)).padding(8.dp))
-      if (state.saving) Text("Salvando captura completa…", color = Color.White, modifier = Modifier.background(Color.Black.copy(alpha = .8f)).padding(8.dp))
-      else state.guidance.warnings.forEach { hint ->
-        Text(hint.label, color = Color.White, style = MaterialTheme.typography.titleSmall,
-          modifier = Modifier.background(Color.Black.copy(alpha = .75f)).padding(8.dp))
-      }
     }
-    Column((if (landscape) Modifier.width(216.dp).align(Alignment.CenterEnd) else Modifier.fillMaxWidth().align(Alignment.BottomCenter)).safeDrawingPadding().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(if (landscape) 4.dp else 8.dp)) {
-      val controlPadding = PaddingValues(horizontal = if (landscape) 4.dp else 12.dp, vertical = 8.dp)
-      val arrow = when (state.guidance.destination) {
-        MovementTarget.TOP -> "↑"
-        MovementTarget.BOTTOM -> "↓"
-        MovementTarget.QR -> "⊕"
-        null -> if (state.completed) "✓" else ""
-      }
-      if (arrow.isNotEmpty()) Text(arrow, color = Color.White, style = MaterialTheme.typography.headlineLarge,
-        modifier = Modifier.rotate(if (state.guidance.destination == MovementTarget.QR) 0f else state.axisAngle).background(Color.Black.copy(alpha = .7f)).padding(horizontal = 16.dp, vertical = 4.dp))
-      if (!landscape) Text("Percorra a nota devagar, mantendo as laterais visíveis.", color = Color.White, style = MaterialTheme.typography.bodySmall,
-        modifier = Modifier.background(Color.Black.copy(alpha = .75f)).padding(8.dp))
-      FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), maxItemsInEachRow = if (landscape) 2 else 4) {
-        TextButton(contentPadding = controlPadding, onClick = { focusOnReceipt() }) { Text("Focar", color = Color.White) }
-        TextButton(contentPadding = controlPadding, onClick = {
+
+    // Top: close, the progress, the flashlight.
+    Column(
+      (if (landscape) Modifier.width(196.dp).fillMaxHeight().align(Alignment.TopStart) else Modifier.fillMaxWidth().align(Alignment.TopCenter))
+        .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Black.copy(alpha = .65f), Color.Transparent)))
+        .safeDrawingPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        RoundButton(io.github.sandroroque.getnf.ui.calmo.Icons.Close, "Sair da captura", enabled = !state.saving) { exit() }
+        Spacer(Modifier.weight(1f))
+        if (!landscape) Text("Escaneando nota", color = onCamera, style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.weight(1f))
+        RoundButton(io.github.sandroroque.getnf.ui.calmo.Icons.Torch, if (torch) "Apagar a lanterna" else "Acender a lanterna", selected = torch) {
           if (controller.cameraInfo?.hasFlashUnit() == true) {
             val next = !torch
             val result = controller.enableTorch(next)
             result.addListener({ if (runCatching { result.get() }.isSuccess) torch = next }, ContextCompat.getMainExecutor(context))
           }
-        }) { Text(if (torch) "Apagar luz" else "Lanterna", color = Color.White) }
-        for (zoom in listOf(1f, 2f)) TextButton(contentPadding = controlPadding, onClick = {
-          controller.zoomState.value?.let { range -> controller.setZoomRatio(zoom.coerceIn(range.minZoomRatio, range.maxZoomRatio)) }
-        }) { Text("${zoom.toInt()}×", color = Color.White) }
+        }
       }
-      FlowRow(maxItemsInEachRow = if (landscape) 1 else 2) {
-        TextButton(onClick = { showMask = !showMask }) { Text(if (showMask) "Ocultar área analisada" else "Mostrar área analisada", color = Color.White) }
-        if (BuildConfig.DEBUG) TextButton(onClick = { model.inspectFrame() }) { Text("Inspecionar frame", color = Color.White) }
-      }
-      if (!landscape) Text("Toque para focar · Pinça para zoom", color = Color.White, style = MaterialTheme.typography.labelSmall)
-      FilledTonalButton(onClick = { exit() }, enabled = !state.saving) { Text("Sair da captura") }
+      Progress(listOf("Topo" to state.top, "Fundo" to state.bottom, "Tudo coberto" to state.connected, "QR Code" to state.qr), vertical = landscape)
+      if (state.segmentCount > 0) Text("${state.segmentCount} ${if (state.segmentCount == 1) "trecho salvo" else "trechos salvos"}" +
+        if (state.geometryKnown) " · formato reconhecido" else "", color = onCamera.copy(alpha = .75f), style = MaterialTheme.typography.labelMedium)
     }
+
+    // Bottom: the one thing to do now, then the controls.
+    Column(
+      (if (landscape) Modifier.width(196.dp).fillMaxHeight().align(Alignment.CenterEnd) else Modifier.fillMaxWidth().align(Alignment.BottomCenter))
+        .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .7f))))
+        .safeDrawingPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.Bottom),
+    ) {
+      val message = when {
+        state.saving -> "Salvando a captura…"
+        state.error != null -> state.error!!
+        hint != null -> hint.label
+        state.completed -> "Pronto"
+        else -> null
+      }
+      if (message != null) Row(
+        Modifier.clip(RoundedCornerShape(999.dp)).background(Color.Black.copy(alpha = .55f)).padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+      ) {
+        val destination = state.guidance.destination
+        // The arrow only when the hint itself is "go up/down": next to "centralize" it would contradict it.
+        if (!state.saving && state.error == null && (hint == CaptureHint.TOP || hint == CaptureHint.BOTTOM) && destination != null) Icon(
+          io.github.sandroroque.getnf.ui.calmo.Icons.Arrow, null, tint = onCamera,
+          modifier = Modifier.size(22.dp).rotate(state.axisAngle + if (destination == MovementTarget.BOTTOM) 180f else 0f),
+        )
+        Text(message, color = if (state.error != null) PENDING else onCamera,
+          style = if (landscape) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
+      }
+      val others = state.guidance.warnings.filter { it != hint && it !in DIRECTIONS }.take(1)
+      if (!state.saving) others.forEach { Text(it.label, color = onCamera.copy(alpha = .8f), style = MaterialTheme.typography.bodySmall) }
+      if (!landscape && !state.saving) Text("Percorra a nota devagar, com as laterais à vista.", color = onCamera.copy(alpha = .7f),
+        style = MaterialTheme.typography.bodySmall)
+      // Four in a row in portrait; two by two in landscape's narrower side column.
+      FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(10.dp),
+        maxItemsInEachRow = if (landscape) 2 else 4) {
+        RoundButton(io.github.sandroroque.getnf.ui.calmo.Icons.Focus, "Focar na nota") { focusOnReceipt() }
+        for (zoom in listOf(1f, 2f)) RoundLabel("${zoom.toInt()}×") {
+          controller.zoomState.value?.let { range -> controller.setZoomRatio(zoom.coerceIn(range.minZoomRatio, range.maxZoomRatio)) }
+        }
+        RoundButton(io.github.sandroroque.getnf.ui.calmo.Icons.More, "Mais opções") { showMore = true }
+      }
+    }
+  }
+  if (showMore) io.github.sandroroque.getnf.ui.catalog.CalmoSheet("Câmera", onDismiss = { showMore = false }) {
+    io.github.sandroroque.getnf.ui.calmo.FactRow("Área analisada", if (showMask) "ocultar" else "mostrar", onClick = { showMask = !showMask; showMore = false })
+    if (BuildConfig.DEBUG) io.github.sandroroque.getnf.ui.calmo.FactRow("Depuração", "inspecionar este frame", onClick = { showMore = false; model.inspectFrame() })
+    io.github.sandroroque.getnf.ui.calmo.Sub("Toque na tela para focar; pinça para zoom.")
   }
   inspection?.let { bitmap ->
     Dialog(onDismissRequest = { model.closeInspection() }) {
@@ -213,16 +250,67 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
       }
     }
   }
-  if (showExit) AlertDialog(
-    onDismissRequest = { showExit = false; model.setAttached(true) },
-    title = { Text("Captura incompleta") },
-    text = { Text("O QR foi identificado. As imagens desta tentativa serão descartadas ao sair. Fotos anteriores desta nota serão preservadas.") },
-    confirmButton = { TextButton(onClick = { showExit = false; model.exit(ExitChoice.KEEP_CODE) }) { Text("Sair guardando só o código") } },
-    dismissButton = {
-      Column {
-        TextButton(onClick = { showExit = false; model.exit(ExitChoice.DISCARD) }) { Text("Descartar tentativa") }
-        TextButton(onClick = { showExit = false; model.setAttached(true) }) { Text("Continuar capturando") }
+  if (showExit) io.github.sandroroque.getnf.ui.catalog.CalmoSheet("Sair sem terminar?", onDismiss = { showExit = false; model.setAttached(true) }) {
+    io.github.sandroroque.getnf.ui.calmo.Sub("O QR Code já foi lido. As imagens desta tentativa são descartadas ao sair; as fotos anteriores desta nota ficam.")
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      io.github.sandroroque.getnf.ui.calmo.Pill("Continuar escaneando", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Solid) { showExit = false; model.setAttached(true) }
+      io.github.sandroroque.getnf.ui.calmo.Pill("Sair guardando só o código", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Outline) { showExit = false; model.exit(ExitChoice.KEEP_CODE) }
+      io.github.sandroroque.getnf.ui.calmo.Pill("Descartar a tentativa", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Ghost) { showExit = false; model.exit(ExitChoice.DISCARD) }
+    }
+  }
+}
+
+private val GOOD = Color(0xFF7CC29A)
+private val PENDING = Color(0xFFE8C46A)
+private val DIRECTIONS = setOf(CaptureHint.TOP, CaptureHint.BOTTOM, CaptureHint.QR)
+
+/**
+ * The one hint to show large: what blocks the capture first (another receipt, lost tracking, the receipt off-centre,
+ * blur, light), then where to move. The others wait; at most one shows small under it.
+ */
+internal fun primaryHint(warnings: List<CaptureHint>): CaptureHint? {
+  val order = listOf(CaptureHint.OTHER_RECEIPT, CaptureHint.TRACKING, CaptureHint.CENTER, CaptureHint.FOCUS, CaptureHint.LIGHT,
+    CaptureHint.HOLD, CaptureHint.TOP, CaptureHint.BOTTOM, CaptureHint.QR)
+  return order.firstOrNull { it in warnings }
+}
+
+/** Four steps as one thin bar: filled when done, with the names small under it; a short list in landscape. */
+@Composable
+private fun Progress(steps: List<Pair<String, Boolean>>, vertical: Boolean = false) {
+  if (vertical) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+      for ((label, done) in steps) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.width(18.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(if (done) GOOD else Color.White.copy(alpha = .28f)))
+        Text(label, style = MaterialTheme.typography.labelMedium, color = if (done) GOOD else Color.White.copy(alpha = .8f))
       }
-    },
-  )
+    }
+    return
+  }
+  Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+      for ((_, done) in steps) Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp))
+        .background(if (done) GOOD else Color.White.copy(alpha = .28f)))
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+      for ((label, done) in steps) Text((if (done) "✓ " else "") + label, Modifier.weight(1f), style = MaterialTheme.typography.labelSmall,
+        color = if (done) GOOD else Color.White.copy(alpha = .75f), maxLines = 1)
+    }
+  }
+}
+
+/** A round icon button on the camera. */
+@Composable
+private fun RoundButton(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, selected: Boolean = false,
+                        enabled: Boolean = true, onClick: () -> Unit) {
+  Box(Modifier.size(48.dp).clip(CircleShape).background(if (selected) Color.White else Color.Black.copy(alpha = .45f))
+    .clickable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
+    Icon(icon, description, Modifier.size(22.dp), tint = if (selected) Color.Black else Color.White)
+  }
+}
+
+@Composable
+private fun RoundLabel(text: String, onClick: () -> Unit) {
+  Box(Modifier.size(48.dp).clip(CircleShape).background(Color.Black.copy(alpha = .45f)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+    Text(text, color = Color.White, style = MaterialTheme.typography.labelLarge)
+  }
 }

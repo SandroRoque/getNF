@@ -67,6 +67,11 @@ object Icons {
   val Back = line("back", "M15 5l-7 7 7 7")
   val Search = line("search", "M17.5 11a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0zM16 16l4.5 4.5")
   val Chevron = line("chevron", "M9 5l7 7-7 7")
+  val Close = line("close", "M6 6l12 12M18 6L6 18")
+  val Torch = line("torch", "M13 3L5 13h6l-1 8 8-10h-6l1-8z")
+  val More = line("more", "M5 11.2a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM12 11.2a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM19 11.2a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z")
+  val Focus = line("focus", "M12 3v4M12 17v4M3 12h4M17 12h4M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z")
+  val Arrow = line("arrow", "M12 19V5M5.5 11.5 12 5l6.5 6.5")
 }
 
 // ---- type helpers ----
