@@ -1726,3 +1726,33 @@ its next sync.
   reading and 12-month change when the chain covers it, the index level over time, the spending split, every month
   with its coverage and estimated share, and what moved each month (products and their percentage points). It
   replaces stage 5's preview trend (D77).
+
+## D80. Stage 8: an LLM worker on the PC suggests; the user decides on the phone (2026-10-25)
+
+Chosen by the user: all four parts of [stage-8-plan.md](stage-8-plan.md), with the local LLM (LM Studio, Swift).
+
+- **`tools/llm-worker.py`** runs nightly on the PC (systemd user timer, 04:00, after the 03:30 backup), loads the
+  model for the run and unloads it after. It talks to the user's Supabase as the service role and to Jev only through
+  the categorize function's check mode. Everything it produces is a suggestion; the only thing it changes on its own
+  is the shared lexicon, and only through the regression gate.
+- **Audit (D69):** automatic categories, never-checked first, then by spending, plus a random sample of the rest whose
+  disagreements measure the real error rate (`audit_log`). A disagreement is written as the product's suggestion, so
+  the phone shows it in "Para escolher" as "Jev: X · o LLM acha: Y" with Manter / Usar a do LLM / Outra.
+- **Learning from corrections:** for each new correction the LLM proposes a house rule ("frios fatiados são frios"),
+  kept in `category_rule` and given to later audits, and abbreviations. An abbreviation joins the lexicon (source
+  `llm`) only if Jev, re-run on the user's confirmed and imported items with it, gets at least as many right and the
+  corrected item comes out right. First version of the prompt produced a rule restating the obvious ("broccoli is a
+  vegetable"); it now asks only for preferences the category name doesn't make obvious.
+- **Same product in other stores (D44, D66):** candidates are store items from different stores, sold the same way
+  (by weight or by unit), not two barcodes, with overlapping words; the LLM decides (same variety and form of sale,
+  brands differ = different products). Proposals (`link_suggestion`, synced) show under a new "Sugestões" filter:
+  "É o mesmo" links the store item, "Não é" refuses for good.
+- **Sizes:** products with digits in the description, no parsed size and not sold by weight; the LLM reads the size or
+  says it isn't one. Shown under "Sugestões" with Aceitar (becomes a manual size) or Outro tamanho.
+- **Descriptions (D75):** categories the user created without one get a draft (`description_suggestion`), shown in
+  Categorias with "Usar a descrição sugerida". Not a tree edit, so no event.
+- **Health report** (`worker_report`, readable by the user, synced): automatic and never-checked counts, the sample
+  error rate, what was proposed and learned, the backup's age. Shown in Ajustes as "Saúde dos dados".
+- **Tested:** the phone's new edits in unit tests; the whole worker on the local Supabase with the real local LLM
+  and the stand-in Jev (an audit agreeing, an abbreviation correctly refused by the gate, a description drafted, the
+  report). Room v7.

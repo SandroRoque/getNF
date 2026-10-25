@@ -1,0 +1,12 @@
+# The LLM worker (stage 8, D80): suggestions and the health report, with the local LM Studio. A user unit: no sudo.
+# Install: tools/systemd/install-llm-worker-timer.sh
+[Unit]
+Description=getNF: LLM review worker
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/Documents/Projects/getNF/tools/llm-worker.py
+# A night's batch on a 27B model takes a while; never more than two hours.
+TimeoutStartSec=2h
