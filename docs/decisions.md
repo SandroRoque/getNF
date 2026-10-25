@@ -1630,3 +1630,33 @@ Proposed in a review of how users edit their tree, accepted by the user. Until n
   9–10), shows which seed categories people keep splitting or merging: the signal to improve the shared taxonomy.
 - **When:** at the start of 4c, before the tree editor, so the first edit is already logged. Needs a migration and
   a Room version.
+
+## D76. Stage 4c built: review list, product and line editing, and the category tree editor on the phone (2026-10-25)
+
+Implements 4c of D70 with D75. Portuguese UI on every new screen; Home, receipt detail and Settings translated too.
+
+- **Data (`CatalogEditor`):** every hand edit in one place, in a transaction, marking rows dirty with the user as
+  the source: confirm a model's category or suggestion (`user`/`confirmed`, the model kept for provenance), pick
+  another (`corrected` when it disagrees with what a model said), rename, size by hand / "no size" / back to the
+  description's, tags, link a store item to another product (the emptied product is tombstoned unless something
+  about it was set by hand) and unlink, line discount by hand with the rest of the receipt's discount spread again,
+  back to prorated, confirm a photo-read discount, and "this line only is another product".
+- **Tree (D75):** create, rename and describe, move (not into itself), merge (products keep their review state,
+  subcategories follow), split (new subcategories under it; its products stay there, so reports still add up, and
+  go to the review list as "pick a part"), delete (only without subcategories; products go to a chosen destination,
+  the parent suggested). Each edit writes a `category_event` in the same transaction, pushed append-only
+  (`ignore-duplicates`; users can't update or delete events online). Categories carry a description the user writes
+  (`category.description`); the categorize function prefers it to the seed's and to the label. The LLM drafting
+  descriptions waits for the LLM worker (D69).
+- **Screens:** Home shows "Produtos · N para escolher" and "Categorias". Produtos: "Para escolher" (no category,
+  only a suggestion, or a split category), "Automáticas" (model-set, unconfirmed), "Todos", by amount spent, with
+  search, one-tap Confirmar and a searchable category picker. Produto: name, category with its origin, size, tags,
+  its store items (Separar) and "Juntar outro produto a este" (warns when one is sold by weight and the other by
+  unit), purchases. Receipt lines open a dialog for discount and product. Categorias: the tree with product counts
+  and the edit actions.
+- **Tested:** unit tests for every edit and for pushing the log once; on the emulator against the local Supabase
+  with the stand-in Jev: sign-in adopted a receipt and its suggestions, a correction arrived online as
+  `user`/`corrected`, a split logged its event (2 parts, 1 product) and sent the apple to "Para escolher", and a
+  hand discount kept the receipt's total. Server side deployed online (category events, descriptions, function).
+- **Not yet:** installing this build on the user's phone; D69's re-run of automatic assignments after a tree change;
+  the LLM's description drafts; undo.

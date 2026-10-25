@@ -14,3 +14,11 @@ import kotlinx.serialization.Serializable
 @Serializable data class ReceiptDetail(val chave: String) : NavKey
 
 @Serializable data object Settings : NavKey
+
+/** Products: what needs a decision first, then everything (stage 4c). */
+@Serializable data object Products : NavKey
+
+@Serializable data class ProductDetail(val productId: String) : NavKey
+
+/** The category tree, editable (D75). */
+@Serializable data object Categories : NavKey

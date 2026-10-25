@@ -49,11 +49,15 @@ import java.text.DateFormat
 import java.util.Date
 
 @Composable
-fun HomeScreen(onScan: () -> Unit, onOpenPage: (String) -> Unit, onOpenReceipt: (String) -> Unit, onSettings: () -> Unit) {
+fun HomeScreen(
+  onScan: () -> Unit, onOpenPage: (String) -> Unit, onOpenReceipt: (String) -> Unit, onSettings: () -> Unit,
+  onProducts: () -> Unit = {}, onCategories: () -> Unit = {},
+) {
   val context = LocalContext.current
   val app = context.applicationContext as GetNFApp
   val receipts by app.receiptStore.receipts.collectAsStateWithLifecycle()
   val parsed by remember { app.database.catalog().summaries() }.collectAsStateWithLifecycle(emptyList())
+  val products by remember { app.database.edit().products() }.collectAsStateWithLifecycle(emptyList())
   val budgetCheck = rememberBudgetCheck()
   // Re-read the budget every 30 s (slots free up over time; the network may change).
   var budgetLine by remember { mutableStateOf("") }
@@ -73,6 +77,9 @@ fun HomeScreen(onScan: () -> Unit, onOpenPage: (String) -> Unit, onOpenReceipt: 
     onOpenReceipt = onOpenReceipt,
     onSettings = onSettings,
     onUpload = { SyncWorker.enqueue(context) },
+    toPick = products.count { it.toPick },
+    onProducts = onProducts,
+    onCategories = onCategories,
   )
   budgetCheck.Dialog()
 }
@@ -91,22 +98,25 @@ internal fun HomeScreen(
   onOpenReceipt: (String) -> Unit,
   onSettings: () -> Unit,
   onUpload: () -> Unit,
+  toPick: Int = 0,
+  onProducts: () -> Unit = {},
+  onCategories: () -> Unit = {},
 ) {
   Scaffold(
     topBar = {
       TopAppBar(
         title = { Text("getNF") },
         actions = {
-          if (receipts.any { it.needsUpload }) TextButton(onClick = onUpload) { Text("Upload") }
-          TextButton(onClick = onSettings) { Text("Settings") }
+          if (receipts.any { it.needsUpload }) TextButton(onClick = onUpload) { Text("Enviar") }
+          TextButton(onClick = onSettings) { Text("Ajustes") }
         },
       )
     },
-    floatingActionButton = { ExtendedFloatingActionButton(onClick = onScan) { Text("Scan receipt") } },
+    floatingActionButton = { ExtendedFloatingActionButton(onClick = onScan) { Text("Escanear nota") } },
   ) { padding ->
     if (receipts.isEmpty()) {
       Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-        Text("No receipts yet.\nTap “Scan receipt” and point at the QR code.", style = MaterialTheme.typography.bodyLarge)
+        Text("Nenhuma nota ainda.\nToque em “Escanear nota” e aponte para o QR Code.", style = MaterialTheme.typography.bodyLarge)
       }
     } else {
       LazyColumn(
@@ -114,6 +124,12 @@ internal fun HomeScreen(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
+        item(key = "catalog") {
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = onProducts) { Text(if (toPick > 0) "Produtos · $toPick para escolher" else "Produtos") }
+            TextButton(onClick = onCategories) { Text("Categorias") }
+          }
+        }
         val waiting = waitingForPage(receipts)
         if (waiting.isNotEmpty()) {
           item(key = "waiting") { WaitingBar(waiting.size, budgetLine, onFetchNext = { onOpenPage(waiting.first().chave) }) }
@@ -134,10 +150,10 @@ private fun WaitingBar(count: Int, budgetLine: String, onFetchNext: () -> Unit) 
   Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
       Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("$count receipt(s) waiting for their SEFAZ page", style = MaterialTheme.typography.titleSmall)
+        Text("$count nota(s) esperando a página da SEFAZ", style = MaterialTheme.typography.titleSmall)
         Text(budgetLine, style = MaterialTheme.typography.bodySmall)
       }
-      Button(onClick = onFetchNext) { Text("Fetch next") }
+      Button(onClick = onFetchNext) { Text("Buscar a próxima") }
     }
   }
 }
@@ -151,14 +167,14 @@ private fun ReceiptCard(receipt: Receipt, parsed: ParsedSummary?, onClick: (() -
         style = MaterialTheme.typography.titleSmall,
       )
       Text(Chave.pretty(receipt.chave), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-      val page = if (receipt.pageFile != null) "page saved" else "no page yet: tap to open"
+      val page = if (receipt.pageFile != null) "página salva" else "sem página: toque para abrir"
       val upload =
         when {
-          !receipt.needsUpload -> "uploaded"
+          !receipt.needsUpload -> "enviada"
           receipt.uploadError != null -> receipt.uploadError
-          else -> "upload pending"
+          else -> "envio pendente"
         }
-      Text("${receipt.photos.size} photo(s) · $page · $upload", style = MaterialTheme.typography.bodyMedium)
+      Text("${receipt.photos.size} foto(s) · $page · $upload", style = MaterialTheme.typography.bodyMedium)
       parsed?.let { ParsedLine(it) }
     }
   }
@@ -169,11 +185,11 @@ private fun ReceiptCard(receipt: Receipt, parsed: ParsedSummary?, onClick: (() -
 private fun ParsedLine(p: ParsedSummary) {
   // Warnings come with lines; an error without lines means the page couldn't be read at all.
   if (p.lines == 0 && p.parseError != null) {
-    Text("Couldn't read the page: ${p.parseError}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+    Text("Não deu para ler a página: ${p.parseError}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
     return
   }
   val paid = p.paidCents?.let { " · " + Format.brl(it) } ?: ""
-  Text("${p.lines} item(s)$paid", style = MaterialTheme.typography.bodyMedium)
+  Text("${p.lines} item(ns)$paid", style = MaterialTheme.typography.bodyMedium)
   p.parseError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
 }
 

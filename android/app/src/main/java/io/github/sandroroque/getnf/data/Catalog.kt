@@ -62,6 +62,11 @@ data class LineDetail(
   val productName: String?,
   val categoryLabel: String?,
   val parentLabel: String?,
+  val productId: String = "",
+  /** This line only counts as another product (a correction, stage 4c). */
+  val override: Boolean = false,
+  val discountReview: String = "unreviewed",
+  val storeDescription: String = description,
 )
 
 /** A receipt's parsed header with its store's name. */
@@ -295,7 +300,8 @@ abstract class CatalogDao {
   @Query(
     """
     SELECT l.lineNo, l.description, l.code, l.qtyE4, l.unit, l.unitPriceE4, l.grossCents, l.discountCents,
-           l.discountSource, p.name AS productName, c.label AS categoryLabel, pc.label AS parentLabel
+           l.discountSource, p.name AS productName, c.label AS categoryLabel, pc.label AS parentLabel,
+           p.id AS productId, l.productOverrideId IS NOT NULL AS override, l.discountReview, s.description AS storeDescription
     FROM receipt_line l
     JOIN store_item s ON s.id = l.storeItemId
     JOIN product p ON p.id = COALESCE(l.productOverrideId, s.productId)

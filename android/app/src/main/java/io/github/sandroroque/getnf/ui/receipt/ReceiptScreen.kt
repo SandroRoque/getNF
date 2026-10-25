@@ -44,10 +44,22 @@ import io.github.sandroroque.getnf.ui.Format
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.KeyboardType
+import io.github.sandroroque.getnf.sync.SyncWorker
+import io.github.sandroroque.getnf.ui.catalog.ProductPickerDialog
+import io.github.sandroroque.getnf.ui.catalog.rememberEdit
 
-/** What was read from one receipt's saved page: header, totals and lines with their categories (D50). */
+/**
+ * What was read from one receipt's saved page: header, totals and lines with their categories (D50). Tapping a line
+ * edits it (stage 4c): its discount, or which product it counts as.
+ */
 @Composable
-fun ReceiptScreen(chave: String) {
+fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit) {
   val app = LocalContext.current.applicationContext as GetNFApp
   val header by remember(chave) { app.database.catalog().header(chave) }.collectAsStateWithLifecycle(null)
   val lines by remember(chave) { app.database.catalog().lineDetails(chave) }.collectAsStateWithLifecycle(emptyList())
@@ -56,6 +68,7 @@ fun ReceiptScreen(chave: String) {
   val scope = rememberCoroutineScope()
   var status by remember { mutableStateOf<String?>(null) }
   var busy by remember { mutableStateOf(false) }
+  var editing by remember { mutableStateOf<LineDetail?>(null) }
   ReceiptScreen(
     chave = chave,
     header = header,
@@ -64,11 +77,11 @@ fun ReceiptScreen(chave: String) {
     busy = busy,
     photos = photos,
     onReadDiscounts = {
-      busy = true; status = "Reading $photos photo(s)…"
+      busy = true; status = "Lendo $photos foto(s)…"
       scope.launch {
         status = runCatching { app.receiptStore.get(chave)?.let { app.photoDiscounts.read(it) } }.fold(
-          onSuccess = { it?.let(::discountMessage) ?: "No receipt" },
-          onFailure = { "Couldn't read the photos: ${it.message}" },
+          onSuccess = { it?.let(::discountMessage) ?: "Nota não encontrada" },
+          onFailure = { "Não deu para ler as fotos: ${it.message}" },
         )
         busy = false
       }
@@ -78,14 +91,16 @@ fun ReceiptScreen(chave: String) {
       scope.launch {
         // Only the saved page is read: SEFAZ isn't contacted.
         status = when (val r = app.receiptStore.get(chave)?.let { app.receiptParser.parse(it) }) {
-          is ReceiptParser.Outcome.Parsed -> "Read again: ${r.lines} line(s)" + if (r.warnings.isEmpty()) "" else ", ${r.warnings.size} warning(s)"
-          is ReceiptParser.Outcome.Failed -> "Couldn't read the page: ${r.error}"
-          null -> "No saved page"
+          is ReceiptParser.Outcome.Parsed -> "Lida de novo: ${r.lines} linha(s)" + if (r.warnings.isEmpty()) "" else ", ${r.warnings.size} aviso(s)"
+          is ReceiptParser.Outcome.Failed -> "Não deu para ler a página: ${r.error}"
+          null -> "Sem página salva"
         }
         busy = false
       }
     },
+    onLine = { editing = it },
   )
+  editing?.let { line -> LineDialog(chave, line, onOpenProduct = { editing = null; onOpenProduct(it) }, onDismiss = { editing = null }) }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,9 +114,10 @@ internal fun ReceiptScreen(
   photos: Int,
   onReadDiscounts: () -> Unit,
   onReadAgain: () -> Unit,
+  onLine: (LineDetail) -> Unit = {},
 ) {
   Scaffold(
-    topBar = { TopAppBar(title = { Text(header?.issuerName ?: "Receipt", maxLines = 1, overflow = TextOverflow.Ellipsis) }) },
+    topBar = { TopAppBar(title = { Text(header?.issuerName ?: "Nota", maxLines = 1, overflow = TextOverflow.Ellipsis) }) },
   ) { padding ->
     LazyColumn(
       modifier = Modifier.fillMaxSize().padding(padding),
@@ -110,7 +126,7 @@ internal fun ReceiptScreen(
     ) {
       item(key = "header") { HeaderCard(chave, header, lines.size, status, busy, photos, onReadDiscounts, onReadAgain) }
       items(lines, key = { it.lineNo }) { line ->
-        LineRow(line)
+        LineRow(line, Modifier.clickable { onLine(line) })
         HorizontalDivider()
       }
     }
@@ -129,21 +145,21 @@ private fun HeaderCard(
       }
       Text(Chave.pretty(chave), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
       if (h == null) {
-        Text("Not read yet.", style = MaterialTheme.typography.bodyMedium)
+        Text("Ainda não lida.", style = MaterialTheme.typography.bodyMedium)
       } else {
-        h.grossCents?.let { Amount("Items", it) }
-        h.discountCents?.takeIf { it != 0L }?.let { Amount("Discount", it, minus = true) }
-        h.paidCents?.let { Amount("Paid", it, strong = true) }
-        val by = if (h.source == ReceiptParsedRow.SOURCE_PHONE) "on this phone" else "by the server"
-        Text("$lineCount line(s), read $by", style = MaterialTheme.typography.bodySmall)
+        h.grossCents?.let { Amount("Itens", it) }
+        h.discountCents?.takeIf { it != 0L }?.let { Amount("Desconto", it, minus = true) }
+        h.paidCents?.let { Amount("Pago", it, strong = true) }
+        val by = if (h.source == ReceiptParsedRow.SOURCE_PHONE) "neste celular" else "pelo servidor"
+        Text("$lineCount linha(s), lidas $by. Toque numa linha para editar.", style = MaterialTheme.typography.bodySmall)
         h.parseError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
       }
       status?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         // Only worth it when there's a discount to split and photos to read it from (D54).
         if ((h?.discountCents ?: 0) > 0 && photos > 0)
-          OutlinedButton(onClick = onReadDiscounts, enabled = !busy) { Text("Discounts from photos") }
-        OutlinedButton(onClick = onReadAgain, enabled = !busy) { Text("Read page again") }
+          OutlinedButton(onClick = onReadDiscounts, enabled = !busy) { Text("Descontos das fotos") }
+        OutlinedButton(onClick = onReadAgain, enabled = !busy) { Text("Ler página de novo") }
       }
     }
   }
@@ -152,12 +168,12 @@ private fun HeaderCard(
 /** What came of reading the photos, in a sentence. */
 private fun discountMessage(o: PhotoDiscountReader.Outcome): String {
   val r = o.result
-  val found = "${r.discounts.size} discount(s), ${Format.brl(r.foundCents)} of ${Format.brl(r.totalCents)}"
+  val found = "${r.discounts.size} desconto(s), ${Format.brl(r.foundCents)} de ${Format.brl(r.totalCents)}"
   return when (r.verdict) {
-    PhotoDiscounts.Verdict.COMPLETE -> "From ${o.photos} photo(s): $found. All found."
-    PhotoDiscounts.Verdict.PARTIAL -> "From ${o.photos} photo(s): $found. The rest stays prorated."
-    PhotoDiscounts.Verdict.NONE -> "No discount found in ${o.photos} photo(s). Nothing changed."
-    PhotoDiscounts.Verdict.CONFLICT -> "The photos don't add up (${r.problems.first()}). Nothing changed."
+    PhotoDiscounts.Verdict.COMPLETE -> "De ${o.photos} foto(s): $found. Todos encontrados."
+    PhotoDiscounts.Verdict.PARTIAL -> "De ${o.photos} foto(s): $found. O resto continua rateado."
+    PhotoDiscounts.Verdict.NONE -> "Nenhum desconto nas ${o.photos} foto(s). Nada mudou."
+    PhotoDiscounts.Verdict.CONFLICT -> "As fotos não fecham (${r.problems.first()}). Nada mudou."
   }
 }
 
@@ -171,18 +187,18 @@ private fun Amount(label: String, cents: Long, strong: Boolean = false, minus: B
 }
 
 @Composable
-private fun LineRow(l: LineDetail) {
-  Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+private fun LineRow(l: LineDetail, modifier: Modifier = Modifier) {
+  Column(modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
     Row(verticalAlignment = Alignment.Top) {
       Text(l.productName ?: l.description, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
       Text(Format.brl(l.grossCents - l.discountCents), style = MaterialTheme.typography.bodyLarge)
     }
     val qty = "${Format.e4(l.qtyE4)} ${l.unit.orEmpty()} × ${Format.brl(Math.round(l.unitPriceE4 / 100.0))}".trim()
-    val discount = if (l.discountCents != 0L) " · −${Format.brl(l.discountCents)} (${l.discountSource})" else ""
+    val discount = if (l.discountCents != 0L) " · −${Format.brl(l.discountCents)} (${discountSource(l.discountSource)})" else ""
     Text(qty + discount, style = MaterialTheme.typography.bodySmall)
     val category = l.categoryLabel?.let { c -> l.parentLabel?.let { "$it › $c" } ?: c }
     Text(
-      category ?: "Uncategorized",
+      (category ?: "Sem categoria") + if (l.override) " · só nesta linha" else "",
       style = MaterialTheme.typography.bodySmall,
       color = if (category == null) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -207,4 +223,55 @@ private fun ReceiptScreenPreview() {
       onReadAgain = {},
     )
   }
+}
+
+private fun discountSource(source: String) = when (source) {
+  "prorated" -> "rateado"; "photo" -> "da foto"; "manual" -> "à mão"; "html" -> "da página"; else -> source
+}
+
+/**
+ * One line's edits: its discount by hand, back to a share of the receipt's discount, a photo-read discount confirmed;
+ * or, for this line only, another product (a code read wrong, say).
+ */
+@Composable
+private fun LineDialog(chave: String, l: LineDetail, onOpenProduct: (String) -> Unit, onDismiss: () -> Unit) {
+  val context = LocalContext.current
+  val app = context.applicationContext as GetNFApp
+  val edit = rememberEdit()
+  val products by remember { app.database.edit().products() }.collectAsStateWithLifecycle(emptyList())
+  var amount by remember { mutableStateOf(Format.brl(l.discountCents).replace("R$", "").trim()) }
+  var pickProduct by remember { mutableStateOf(false) }
+  val cents = amount.replace(".", "").replace(",", ".").trim().toBigDecimalOrNull()?.movePointRight(2)?.toLong()
+  val done = { SyncWorker.enqueue(context); onDismiss() }
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(l.productName ?: l.description) },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("${Format.brl(l.grossCents)} na nota · desconto ${discountSource(l.discountSource)}", style = MaterialTheme.typography.bodySmall)
+        OutlinedTextField(amount, { amount = it }, label = { Text("Desconto (R$)") }, singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          if (l.discountSource == "manual" || l.discountSource == "photo")
+            TextButton(onClick = { edit { app.catalogEditor.prorateAgain(chave, l.lineNo); done() } }) { Text("Voltar ao rateio") }
+          if (l.discountSource == "photo" && l.discountReview != "confirmed")
+            TextButton(onClick = { edit { app.catalogEditor.confirmDiscount(chave, l.lineNo); done() } }) { Text("Confirmar o da foto") }
+        }
+        HorizontalDivider()
+        TextButton(onClick = { onOpenProduct(l.productId) }) { Text("Abrir o produto") }
+        TextButton(onClick = { pickProduct = true }) { Text("Só nesta linha: é outro produto…") }
+        if (l.override) TextButton(onClick = { edit { app.catalogEditor.overrideProduct(chave, l.lineNo, null); done() } }) {
+          Text("Voltar ao produto do código")
+        }
+      }
+    },
+    confirmButton = {
+      TextButton(enabled = cents != null && cents >= 0 && cents <= l.grossCents && cents != l.discountCents,
+        onClick = { edit { app.catalogEditor.setDiscount(chave, l.lineNo, cents!!); done() } }) { Text("Salvar desconto") }
+    },
+    dismissButton = { TextButton(onClick = onDismiss) { Text("Fechar") } },
+  )
+  if (pickProduct) ProductPickerDialog("Esta linha é…", products.filter { it.productId != l.productId },
+    onPick = { id -> pickProduct = false; edit { app.catalogEditor.overrideProduct(chave, l.lineNo, id); done() } },
+    onDismiss = { pickProduct = false })
 }

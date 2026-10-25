@@ -6,6 +6,9 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import io.github.sandroroque.getnf.ui.catalog.CategoriesScreen
+import io.github.sandroroque.getnf.ui.catalog.ProductScreen
+import io.github.sandroroque.getnf.ui.catalog.ProductsScreen
 import io.github.sandroroque.getnf.ui.home.HomeScreen
 import io.github.sandroroque.getnf.ui.page.PageScreen
 import io.github.sandroroque.getnf.ui.receipt.ReceiptScreen
@@ -15,7 +18,8 @@ import io.github.sandroroque.getnf.ui.settings.SettingsScreen
 /**
  * Navigation 3: the back stack is a plain list of keys; the last one is on screen.
  * Flow: Home → Scan → Home after automatic capture; portal lookup is explicitly started from Home.
- * Home → ReceiptDetail shows what was read from a saved page.
+ * Home → ReceiptDetail shows what was read from a saved page; its lines open their product.
+ * Home → Products (the review list, stage 4c) → ProductDetail; Home → Categories edits the tree.
  * Page → Page for "Next" replaces the page so Back still returns Home.
  */
 @Composable
@@ -37,6 +41,8 @@ fun MainNavigation() {
             onOpenPage = { chave -> backStack.add(Page(chave)) },
             onOpenReceipt = { chave -> backStack.add(ReceiptDetail(chave)) },
             onSettings = { backStack.add(Settings) },
+            onProducts = { backStack.add(Products) },
+            onCategories = { backStack.add(Categories) },
           )
         }
         entry<Scan> {
@@ -56,7 +62,13 @@ fun MainNavigation() {
             },
           )
         }
-        entry<ReceiptDetail> { key -> ReceiptScreen(chave = key.chave) }
+        entry<ReceiptDetail> { key -> ReceiptScreen(chave = key.chave, onOpenProduct = { backStack.add(ProductDetail(it)) }) }
+        entry<Products> { ProductsScreen(onOpenProduct = { backStack.add(ProductDetail(it)) }) }
+        entry<ProductDetail> { key ->
+          // "Separar" opens the new product in place of this one, so Back returns to where the user came from.
+          ProductScreen(key.productId, onOpenProduct = { backStack.removeLastOrNull(); backStack.add(ProductDetail(it)) })
+        }
+        entry<Categories> { CategoriesScreen() }
         entry<Settings> { SettingsScreen(onDone = { backStack.removeLastOrNull() }) }
       },
   )

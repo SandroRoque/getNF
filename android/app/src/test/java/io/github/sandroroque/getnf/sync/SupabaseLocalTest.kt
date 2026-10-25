@@ -33,6 +33,8 @@ class SupabaseLocalTest {
   private val html = javaClass.classLoader!!.getResource("sc-detalhes-server-html.html")!!.readText()
 
   private fun newUser(): Pair<String, String> {
+    // A fixed account instead (to look at the result in the app): GETNF_SUPABASE_USER=email,password, created beforehand.
+    System.getenv("GETNF_SUPABASE_USER")?.split(",", limit = 2)?.let { return it[0] to it[1] }
     val email = "sync-${UUID.randomUUID()}@example.test"; val password = UUID.randomUUID().toString()
     val body = buildJsonObject { put("email", email); put("password", password); put("email_confirm", true) }
     val request = Request.Builder().url("$url/auth/v1/admin/users").header("apikey", keys!![1])

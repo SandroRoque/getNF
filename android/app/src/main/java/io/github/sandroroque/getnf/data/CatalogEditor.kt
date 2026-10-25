@@ -112,6 +112,15 @@ abstract class EditDao {
   )
   abstract fun purchases(id: String): Flow<List<Purchase>>
 
+  /** The units a product was bought in (KG, UN...), for the warning when joining products (data-model.md). */
+  @Query(
+    """
+    SELECT DISTINCT UPPER(COALESCE(l.unit, '')) FROM receipt_line l JOIN store_item s ON s.id = l.storeItemId
+    WHERE COALESCE(l.productOverrideId, s.productId) = :id AND l.unit IS NOT NULL
+    """,
+  )
+  abstract suspend fun lineUnits(id: String): List<String>
+
   @Query("SELECT * FROM product WHERE id = :id") abstract suspend fun productNow(id: String): ProductRow?
   @Query("SELECT * FROM category WHERE id = :id") abstract suspend fun categoryNow(id: String): CategoryRow?
   @Query("SELECT * FROM category WHERE deleted = 0") abstract suspend fun categoriesNow(): List<CategoryRow>
@@ -128,7 +137,8 @@ abstract class EditDao {
 /**
  * Every hand edit of the catalog (stage 4c): products, store-item links, line discounts and the category tree. Each
  * write marks its rows dirty for the next sync and records the user as the source (D51), so no parse or model replaces
- * it. Tree edits also write a [CategoryEventRow] in the same transaction (D75).
+ * it. Tree edits also write a [CategoryEventRow] in the same transaction (D75). A refused edit throws
+ * IllegalArgumentException with a message for the user, in Portuguese.
  */
 class CatalogEditor(
   private val database: ReceiptDatabase,
@@ -261,14 +271,14 @@ class CatalogEditor(
 
   suspend fun moveCategory(id: String, parentId: String?) = write {
     val c = category(id)
-    require(parentId == null || id !in ancestors(parentId) + parentId) { "a category can't go inside itself" }
+    require(parentId == null || id !in ancestors(parentId) + parentId) { "Uma categoria não pode ir para dentro dela mesma." }
     sync.upsertCategory(c.copy(parentId = parentId, userModified = true, dirty = true))
     event("move", id, oldParentId = c.parentId, newParentId = parentId)
   }
 
   /** [id] goes into [intoId]: its products follow and keep their review state; its subcategories move there too. */
   suspend fun mergeCategory(id: String, intoId: String) = write {
-    require(id != intoId && id !in ancestors(intoId)) { "can't merge a category into itself or into one inside it" }
+    require(id != intoId && id !in ancestors(intoId)) { "Não dá para juntar uma categoria com ela mesma ou com uma de dentro dela." }
     val moved = moveContents(id, intoId)
     sync.upsertCategory(category(id).copy(deleted = true, dirty = true))
     event("merge", id, targets = listOf(intoId), products = moved)
@@ -279,7 +289,7 @@ class CatalogEditor(
    * keeping their review state.
    */
   suspend fun deleteCategory(id: String, destinationId: String?) = write {
-    require(dao.categoriesNow().none { it.parentId == id }) { "move or delete its subcategories first" }
+    require(dao.categoriesNow().none { it.parentId == id }) { "Primeiro mova ou exclua as subcategorias." }
     val moved = if (destinationId != null) moveContents(id, destinationId)
       else dao.productsIn(id).onEach { save(it.copy(categoryId = it.categoryId.takeIf { c -> c != id },
         suggestionCategoryId = it.suggestionCategoryId.takeIf { c -> c != id })) }.size
@@ -295,7 +305,7 @@ class CatalogEditor(
   suspend fun splitCategory(id: String, labels: List<String>): List<String> = write {
     val c = category(id)
     val children = labels.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
-    require(children.size >= 2) { "a split needs at least two parts" }
+    require(children.size >= 2) { "Dividir pede pelo menos duas partes." }
     val ids = children.mapIndexed { i, label ->
       CategoryRow(newId(), seedPath = null, label = label, parentId = id, sort = i + 1, userModified = true, dirty = true)
         .also { sync.upsertCategory(it) }.id

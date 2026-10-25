@@ -28,6 +28,7 @@ class GetNFApp : Application() {
   val photoDiscounts by lazy { PhotoDiscountReader(database, File(filesDir, "receipts")) { photoOcr.read(it) } }
   val captureSessions by lazy { CaptureSessionStore(File(filesDir, "capture-sessions")) }
   val accountSettings by lazy { AccountSettings(this) }
+  val catalogEditor by lazy { io.github.sandroroque.getnf.data.CatalogEditor(database) }
   val syncEngine by lazy { SyncEngine(database, receiptStore, WebpArchiver()) }
   val lookupBudget by lazy {
     val prefs = getSharedPreferences("sefaz", MODE_PRIVATE)
