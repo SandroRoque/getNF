@@ -1419,3 +1419,34 @@ suitcase, which Open Food Facts doesn't cover. The 16 food descriptions went to 
   different stores that land on the same generic item become one product (data-model.md, flow 2). A candidate seed
   for the list is the subitem list of the official IPCA, which would also let the IPCI (D64) be compared with official
   inflation item by item; to verify when built.
+
+## D67. Jev (TypeSafe, hosted) benchmark: 96% untrained with one flat question, calibrated confidence (2026-10-25)
+
+The user got a Jev API key with US$5 to try it. Jev speaks the same `/v1/systemone` protocol as Laya, so
+`tools/categorize-eval.py laya` gained `--key-env` (bearer key from the environment or `server/.env.local`, never
+printed), `--flat` (one choice question over all 62 leaf categories; Jev takes up to 255 options, Laya's head ~20) and
+`--context` (unit, price, store and the receipt's other items in the state). Model `jev-latest`, the user's 82 items,
+English descriptions of the categories (`descriptions-en.tsv`).
+
+| Run | Exact | Top level |
+|---|---|---|
+| Tree walk, hint lexicon (Laya's best untrained setup: 61–63%) | 90% | 95% |
+| Flat, hint lexicon | 96% | 99% |
+| Flat, hint lexicon, context | 96% | 99% |
+| Flat, translation-only lexicon (`lexicon-pure.tsv`) | 96% | 99% |
+| Flat, raw receipt text | 70% | 90% |
+| Flat, raw receipt text, context | 85% | 96% |
+
+For comparison: trained Laya 90% (D58), local LLM with context, examples and notes 95% (D58).
+
+- **Confidence is usable** (translation-only flat run): median 1.0 when right, 0.87 when wrong; at ≥0.9, 71 of 82
+  assigned with 70 right. The unknown brand (ST FRANCIS) came out at 0.14, so it would go to review. The other two
+  misses are boundary calls (chicken breast and smoked loin as cold cuts), the kind D57 leaves to the LLM's rules.
+- **Caveat:** the lexicons were written while looking at these same 82 items, so 96% is an upper bound. The honest
+  no-help number is raw text: 85% with context, about what the plain local LLM reached (84–87%).
+- **Cost and speed:** ~1.06 M input tokens for all six runs, about US$0.045 at US$0.042 per million; ~240 ms per
+  item. One item with context is ~2,500 tokens, so 1,000 items cost about US$0.10.
+- **So:** Jev is a strong candidate for the "system one" role (D57): untrained, it matches the LLM and beats trained
+  Laya, its confidence can route items to review, and it is cheap and fast. Data leaves to TypeSafe: item
+  descriptions, and with context the store name, prices and the receipt's other items. Not decided: Jev vs Laya;
+  next would be a lexicon kept by the LLM instead of by hand, measured on items not seen when writing it.

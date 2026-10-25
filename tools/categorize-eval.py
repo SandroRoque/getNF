@@ -150,23 +150,46 @@ def laya(args):
         described[path] = text
   instructions = INSTRUCTIONS if args.lang == "pt" else \
     "What kind of product is this item from a Brazilian supermarket receipt?"
-  results, started = [], time.time()
+  # A hosted Jev-protocol service (TypeSafe's Jev) takes a bearer key, read like lmstudio_key() and never printed.
+  key = (os.environ.get(args.key_env) or env_local().get(args.key_env)) if args.key_env else None
+  if args.key_env and not key:
+    sys.exit(f"{args.key_env} is not set (environment or server/.env.local)")
+  headers = {"Authorization": f"Bearer {key}"} if key else None
+  leaves = [p for p in labels if not children.get(p)]
+  results, started, tokens = [], time.time(), 0
   for n, item in enumerate(items):
     text = expand(item["description"]) if expand else item["description"]
     if args.clean:
       # Sizes and counts ("250G", "KG", "30UN") carry no category and seem to distract the encoder.
       text = " ".join(w for w in text.split() if not re.fullmatch(r"\d+([.,]\d+)?[A-Z]*|KG|UN|UND|PC|L|ML|G", w.upper())) or text
+    state = ({"item": text} if args.lang == "en" else {"descricao": text})
+    if args.context:
+      state["contexto"] = describe(item, True)
     node, steps = "", []
-    while children.get(node):
+    if args.flat:
+      # One question over every leaf: the hosted model takes up to 255 options (Laya's head budget is ~20).
+      options = {p.replace(".", "__"): f"{described.get(p, labels[p])} ({p})" for p in leaves}
+      body = {"state": state, "questions": {"c": {"type": "choice", "instructions": instructions, "criteria": options}}}
+      if args.model:
+        body["model"] = args.model
+      t = time.time()
+      answer = post(args.url.rstrip("/") + "/v1/systemone", body, headers)
+      tokens += (answer.get("usage") or {}).get("input_tokens") or 0
+      a = answer["answers"]["c"]
+      node = (a.get("choice") or "").replace("__", ".")
+      steps.append({"options": len(options), "choice": node, "confidence": a.get("confidence"),
+                    "ms": round((time.time() - t) * 1000)})
+    while not args.flat and children.get(node):
       options = {p.rsplit(".", 1)[-1]: described.get(p, labels[p]) for p in children[node]}
       if node and not args.no_here:
         options[HERE] = ("Other " if args.lang == "en" else "Outro tipo de ") + described.get(node, labels[node])
-      body = {"state": {"item": text} if args.lang == "en" else {"descricao": text},
+      body = {"state": state,
               "questions": {"c": {"type": "choice", "instructions": instructions, "criteria": options}}}
       if args.model:
         body["model"] = args.model
       t = time.time()
-      answer = post(args.url.rstrip("/") + "/v1/systemone", body)
+      answer = post(args.url.rstrip("/") + "/v1/systemone", body, headers)
+      tokens += (answer.get("usage") or {}).get("input_tokens") or 0
       a = answer["answers"]["c"]
       choice = a.get("choice")
       steps.append({"options": len(options), "choice": choice, "confidence": a.get("confidence"),
@@ -177,7 +200,10 @@ def laya(args):
     results.append({**item, "input": text, "predicted": node, "steps": steps,
                     "confidence": min(s["confidence"] or 0 for s in steps) if steps else 0})
   tag = "".join([f"-{args.lang}", "+lex" if args.lexicon else "", "+desc" if args.descriptions else "",
-                 "+nohere" if args.no_here else "", "+clean" if args.clean else "", f"+{args.tag}" if args.tag else ""])
+                 "+nohere" if args.no_here else "", "+clean" if args.clean else "",
+                 "+flat" if args.flat else "", "+ctx" if args.context else "", f"+{args.tag}" if args.tag else ""])
+  if tokens:
+    print(f"{tokens} input tokens reported")
   save(f"laya-{args.model or 'auto'}{tag}", results, started)
 
 
@@ -390,6 +416,9 @@ def main():
   l.add_argument("--no-here", action="store_true", help="always descend to a leaf")
   l.add_argument("--clean", action="store_true", help="drop sizes and counts from the item text")
   l.add_argument("--tag", help="extra name for the run")
+  l.add_argument("--key-env", help="name of the variable holding a bearer key (e.g. TYPESAFE_API_KEY)")
+  l.add_argument("--flat", action="store_true", help="one question over all leaf categories instead of the tree walk")
+  l.add_argument("--context", action="store_true", help="add unit, price, store and the receipt's other items to the state")
   l.set_defaults(fn=laya)
   m = sub.add_parser("llm"); m.add_argument("--url", default="http://127.0.0.1:1234"); m.add_argument("--model", required=True)
   m.add_argument("--max-tokens", type=int, default=2048)
