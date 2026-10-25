@@ -5,8 +5,9 @@
 // shared lexicon and, for a barcode, Open Food Facts' name. Confidence at or above THRESHOLD becomes the category
 // ("automatic", not confirmed); below, a suggestion for the review list. A failure retries with backoff.
 //
-// A POST with {"check": {"user_id", "items": [{description, code_kind, code}]}} answers those items with the same
-// code and writes nothing: the regression check (D69) runs through exactly what production runs.
+// A POST with {"check": {"user_id", "items": [{description, code_kind, code}], "lexicon"?: [{key, en}]}} answers
+// those items with the same code and writes nothing: the regression check (D69) runs through exactly what
+// production runs. Extra lexicon entries are tried on top of the table, to test a proposed one before it goes live.
 //
 // Sent to TypeSafe: the translated item description and Open Food Facts' name and categories. Nothing else.
 // Secrets (supabase secrets set): JEV_API_KEY, CATEGORIZE_SECRET. Optional: JEV_URL, JEV_MODEL, THRESHOLD, BATCH.
@@ -31,7 +32,7 @@ Deno.serve(async (req) => {
     return new Response("forbidden", { status: 403 });
   }
   const body = await req.json().catch(() => ({}));
-  if (body.check) return json(await check(body.check.user_id, body.check.items));
+  if (body.check) return json(await check(body.check.user_id, body.check.items, body.check.lexicon ?? []));
 
   const { data: jobs, error } = await db.rpc("claim_categorize_jobs", { batch: BATCH });
   if (error) return json({ error: error.message }, 500);
@@ -71,8 +72,8 @@ async function answer(item: Item, choices: Option[], expand: (t: string) => stri
   return { chosen, confidence: a.confidence };
 }
 
-async function check(userId: string, items: Item[]) {
-  const [expand, choices] = await Promise.all([lexicon(), leafCategories(userId)]);
+async function check(userId: string, items: Item[], extra: { key: string; en: string }[]) {
+  const [expand, choices] = await Promise.all([lexicon(extra), leafCategories(userId)]);
   const out = [];
   for (const item of items) {
     try {
@@ -106,12 +107,14 @@ async function leafCategories(userId: string): Promise<Option[]> {
 }
 
 /** Phrases (longest first), then single words; unknown words are kept (often a brand). As tools/categorize-eval.py. */
-async function lexicon(): Promise<(text: string) => string> {
-  const { data, error } = await db.from("lexicon").select("key, en");
+async function lexicon(extra: { key: string; en: string }[] = []): Promise<(text: string) => string> {
+  const { data: rows, error } = await db.from("lexicon").select("key, en");
   if (error) throw new Error(error.message);
-  const phrases = data!.filter((r) => r.key.includes(" ")).map((r) => ({ words: r.key.split(" "), en: r.en }))
+  const overridden = new Set(extra.map((e) => e.key.toUpperCase()));
+  const data = [...rows!.filter((r) => !overridden.has(r.key)), ...extra.map((e) => ({ key: e.key.toUpperCase(), en: e.en }))];
+  const phrases = data.filter((r) => r.key.includes(" ")).map((r) => ({ words: r.key.split(" "), en: r.en }))
     .sort((a, b) => b.words.join(" ").length - a.words.join(" ").length);
-  const tokens = new Map(data!.filter((r) => !r.key.includes(" ")).map((r) => [r.key, r.en]));
+  const tokens = new Map(data.filter((r) => !r.key.includes(" ")).map((r) => [r.key, r.en]));
   return (text) => {
     const words = text.toUpperCase().split(/\s+/).filter(Boolean);
     const out: string[] = [];

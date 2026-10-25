@@ -6,6 +6,8 @@ import androidx.room.useWriterConnection
 import io.github.sandroroque.getnf.data.CaptureSegment
 import io.github.sandroroque.getnf.data.CategoryRow
 import io.github.sandroroque.getnf.data.IssuerRow
+import io.github.sandroroque.getnf.data.LinkSuggestionRow
+import io.github.sandroroque.getnf.data.WorkerReportRow
 import io.github.sandroroque.getnf.data.ProductRow
 import io.github.sandroroque.getnf.data.ProductTagRow
 import io.github.sandroroque.getnf.data.Receipt
@@ -97,6 +99,9 @@ class SyncEngine(
       { dao.productTag(it.productId, it.tagId) }) { dao.upsertProductTag(it.copy(dirty = false)) }
     n += pushLines(remote, errors)
     n += pushEvents(remote)
+    n += pushRows(remote, "link_suggestion", "id", dao.dirtyLinkSuggestions(), ::linkJson, { dao.linkSuggestion(it.id) }) {
+      dao.putLinkSuggestion(it.copy(dirty = false))
+    }
     return n to pushPhotos(remote, errors)
   }
 
@@ -242,6 +247,16 @@ class SyncEngine(
         if (dao.line(l.receipt, l.lineNo)?.dirty != true) dao.upsertLine(l)
       }
     }
+    "link_suggestion" -> transaction {
+      for (o in rows) {
+        val id = o.string("id")!!
+        if (dao.linkSuggestion(id)?.dirty != true) dao.putLinkSuggestion(LinkSuggestionRow(id, o.string("store_item_id")!!,
+          o.string("product_id")!!, o.double("confidence"), o.string("reason"), o.string("status") ?: "pending"))
+      }
+    }
+    "worker_report" -> transaction {
+      for (o in rows) dao.putWorkerReport(WorkerReportRow(o.long("id")!!, o.millis("at") ?: 0, o["report"].toString()))
+    }
     else -> error("no puller for $table")
   }
 
@@ -325,6 +340,11 @@ class SyncEngine(
     put("user_modified", c.userModified); put("deleted", c.deleted); put("description", c.description)
   }
 
+  /** Only the user's answer goes up: the suggestion itself is the worker's. */
+  private fun linkJson(l: LinkSuggestionRow) = buildJsonObject {
+    put("id", l.id); put("store_item_id", l.storeItemId); put("product_id", l.productId); put("status", l.status)
+  }
+
   private fun eventJson(e: io.github.sandroroque.getnf.data.CategoryEventRow) = buildJsonObject {
     put("id", e.id); put("op", e.op); put("category_id", e.categoryId)
     put("target_ids", kotlinx.serialization.json.JsonArray(e.targetIds.split(",").filter { it.isNotEmpty() }.map(::JsonPrimitive)))
@@ -335,6 +355,7 @@ class SyncEngine(
   private fun category(o: JsonObject) = CategoryRow(
     o.string("id")!!, o.string("seed_path"), o.string("label")!!, o.string("parent_id"), o.long("sort")!!.toInt(),
     o.bool("user_modified") ?: false, o.bool("deleted") ?: false, description = o.string("description"),
+    descriptionSuggestion = o.string("description_suggestion"),
   )
 
   private fun tagJson(t: TagRow) = buildJsonObject {
@@ -358,6 +379,8 @@ class SyncEngine(
     o.string("category_model"), o.double("category_confidence"), o.millis("category_at"), o.bool("deleted") ?: false,
     suggestionCategoryId = o.string("suggestion_category_id"), suggestionConfidence = o.double("suggestion_confidence"),
     suggestionModel = o.string("suggestion_model"), suggestionAt = o.millis("suggestion_at"),
+    sizeSuggestionE6 = o.long("size_suggestion_e6"), sizeSuggestionUnit = o.string("size_suggestion_unit"),
+    sizeSuggestionModel = o.string("size_suggestion_model"),
   )
 
   private fun storeItemJson(s: StoreItemRow) = buildJsonObject {
@@ -420,7 +443,8 @@ class SyncEngine(
     private const val CATEGORY = "category"
     private const val TAG_TABLE = "tag"
     // Parents before children, so a pulled row's references already exist locally.
-    val TABLES = listOf("issuer", "receipt", "category", "tag", "product", "store_item", "product_tag", "receipt_line")
+    val TABLES = listOf("issuer", "receipt", "category", "tag", "product", "store_item", "product_tag", "receipt_line",
+      "link_suggestion", "worker_report")
     private const val PAGE = 1000
     private const val OVERLAP_SECONDS = 60L
   }

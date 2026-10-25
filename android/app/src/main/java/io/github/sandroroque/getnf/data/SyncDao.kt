@@ -71,6 +71,11 @@ abstract class SyncDao {
   @Query("UPDATE product_tag SET tagId = :to WHERE tagId = :from") abstract suspend fun moveProductTags(from: String, to: String)
   @Query("DELETE FROM tag WHERE id = :id") abstract suspend fun deleteTag(id: String)
 
+  @Query("SELECT * FROM link_suggestion WHERE id = :id") abstract suspend fun linkSuggestion(id: String): LinkSuggestionRow?
+  @Query("SELECT * FROM link_suggestion WHERE dirty = 1") abstract suspend fun dirtyLinkSuggestions(): List<LinkSuggestionRow>
+  @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putLinkSuggestion(row: LinkSuggestionRow)
+  @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putWorkerReport(row: WorkerReportRow)
+
   @Query("SELECT value FROM sync_state WHERE name = :name") abstract suspend fun state(name: String): String?
   @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putState(row: SyncStateRow)
 }

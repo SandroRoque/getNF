@@ -26,17 +26,31 @@ data class ProductSummary(
   val categoryHasChildren: Boolean,
   val spentCents: Long,
   val purchases: Int,
+  val suggestionModel: String? = null,
 ) {
   val title: String get() = name ?: description ?: "?"
-  /** Needs the user: no category, only a suggestion, or a category that was split. */
-  val toPick: Boolean get() = categoryId == null || categoryHasChildren
+  /** The LLM's check disagrees with a model-set category (stage 8): the user decides between the two. */
+  val disputed: Boolean get() = categoryReview == REVIEW_AUTOMATIC && suggestionCategoryId != null && suggestionCategoryId != categoryId
+  /** Needs the user: no category, only a suggestion, a category that was split, or two models disagreeing. */
+  val toPick: Boolean get() = categoryId == null || categoryHasChildren || disputed
   /** Set by a model and not confirmed (D69). */
   val unconfirmed: Boolean get() = categoryId != null && categoryReview == REVIEW_AUTOMATIC
 }
 
 data class CategoryNode(
   val id: String, val label: String, val parentId: String?, val sort: Int, val seedPath: String?, val description: String?,
-  val products: Int,
+  val products: Int, val descriptionSuggestion: String? = null,
+)
+
+/** A same-product proposal (stage 8) as the Sugestões list shows it. */
+data class LinkSuggestionView(
+  val id: String, val storeItemId: String, val itemDescription: String, val itemStore: String?, val productId: String,
+  val productName: String?, val productDescription: String?, val productStore: String?, val confidence: Double?, val reason: String?,
+)
+
+/** A pack size the LLM proposed (stage 8). */
+data class SizeSuggestionView(
+  val productId: String, val description: String?, val name: String?, val sizeE6: Long, val unit: String,
 )
 
 data class StoreItemDetail(
@@ -63,7 +77,7 @@ abstract class EditDao {
       p.categoryId, c.label AS categoryLabel, p.categoryReview, p.categorySource, p.categoryConfidence,
       p.suggestionCategoryId, sc.label AS suggestionLabel, p.suggestionConfidence,
       EXISTS (SELECT 1 FROM category ch WHERE ch.parentId = p.categoryId AND ch.deleted = 0) AS categoryHasChildren,
-      COALESCE(u.spent, 0) AS spentCents, COALESCE(u.n, 0) AS purchases
+      COALESCE(u.spent, 0) AS spentCents, COALESCE(u.n, 0) AS purchases, p.suggestionModel
     FROM product p
     LEFT JOIN category c ON c.id = p.categoryId
     LEFT JOIN category sc ON sc.id = p.suggestionCategoryId
@@ -79,7 +93,7 @@ abstract class EditDao {
 
   @Query(
     """
-    SELECT c.id, c.label, c.parentId, c.sort, c.seedPath, c.description,
+    SELECT c.id, c.label, c.parentId, c.sort, c.seedPath, c.description, c.descriptionSuggestion,
       (SELECT COUNT(*) FROM product p WHERE p.categoryId = c.id AND p.deleted = 0) AS products
     FROM category c WHERE c.deleted = 0 ORDER BY c.sort, c.label
     """,
@@ -87,6 +101,33 @@ abstract class EditDao {
   abstract fun categories(): Flow<List<CategoryNode>>
 
   @Query("SELECT * FROM product WHERE id = :id") abstract fun product(id: String): Flow<ProductRow?>
+
+  @Query(
+    """
+    SELECT ls.id, ls.storeItemId, s.description AS itemDescription, si.name AS itemStore, ls.productId,
+      p.name AS productName,
+      (SELECT t.description FROM store_item t WHERE t.productId = p.id AND t.deleted = 0 ORDER BY t.rowid DESC LIMIT 1) AS productDescription,
+      (SELECT ti.name FROM store_item t JOIN issuer ti ON ti.cnpj = t.storeCnpj WHERE t.productId = p.id AND t.deleted = 0 LIMIT 1) AS productStore,
+      ls.confidence, ls.reason
+    FROM link_suggestion ls JOIN store_item s ON s.id = ls.storeItemId JOIN product p ON p.id = ls.productId
+    LEFT JOIN issuer si ON si.cnpj = s.storeCnpj
+    WHERE ls.status = 'pending' AND s.productId != ls.productId AND p.deleted = 0
+    """,
+  )
+  abstract fun linkSuggestions(): Flow<List<LinkSuggestionView>>
+
+  @Query(
+    """
+    SELECT p.id AS productId, p.name,
+      (SELECT s.description FROM store_item s WHERE s.productId = p.id AND s.deleted = 0 ORDER BY s.rowid DESC LIMIT 1) AS description,
+      p.sizeSuggestionE6 AS sizeE6, p.sizeSuggestionUnit AS unit
+    FROM product p
+    WHERE p.sizeSuggestionE6 IS NOT NULL AND p.sizeSource IS NULL AND p.deleted = 0
+    """,
+  )
+  abstract fun sizeSuggestions(): Flow<List<SizeSuggestionView>>
+
+  @Query("SELECT * FROM worker_report ORDER BY at DESC LIMIT 1") abstract fun latestReport(): Flow<WorkerReportRow?>
   @Query("SELECT * FROM tag WHERE deleted = 0 ORDER BY slug") abstract fun tags(): Flow<List<TagRow>>
   @Query("SELECT tagId FROM product_tag WHERE productId = :id AND deleted = 0") abstract fun tagIds(id: String): Flow<List<String>>
 
@@ -191,9 +232,11 @@ class CatalogEditor(
    * "This store item is also that product" (data-model.md, flow 2). The product it leaves goes away if nothing else
    * uses it and nothing about it was set by hand; otherwise it stays, empty.
    */
-  suspend fun link(storeItemId: String, productId: String) = write {
+  suspend fun link(storeItemId: String, productId: String) = write { linkLocked(storeItemId, productId) }
+
+  private suspend fun linkLocked(storeItemId: String, productId: String) {
     val item = requireNotNull(dao.storeItemNow(storeItemId)) { "no store item $storeItemId" }
-    if (item.productId == productId) return@write
+    if (item.productId == productId) return
     sync.upsertStoreItem(item.copy(productId = productId, linkSource = SOURCE_USER, linkReview = REVIEW_CONFIRMED, dirty = true))
     dropIfEmpty(item.productId)
   }
@@ -213,6 +256,30 @@ class CatalogEditor(
     val p = dao.productNow(productId) ?: return
     val handSet = p.name != null || p.categorySource == SOURCE_USER || p.sizeSource == "manual"
     if (!handSet && dao.storeItemsOf(productId).isEmpty() && dao.overridesOf(productId) == 0) save(p.copy(deleted = true))
+  }
+
+  // ---- the LLM's suggestions (stage 8) ----
+
+  suspend fun acceptLink(suggestionId: String) = write {
+    val s = requireNotNull(database.sync().linkSuggestion(suggestionId)) { "Sugestão não encontrada." }
+    linkLocked(s.storeItemId, s.productId)
+    sync.putLinkSuggestion(s.copy(status = "accepted", dirty = true))
+  }
+
+  suspend fun refuseLink(suggestionId: String) = write {
+    val s = requireNotNull(database.sync().linkSuggestion(suggestionId)) { "Sugestão não encontrada." }
+    sync.putLinkSuggestion(s.copy(status = "refused", dirty = true))
+  }
+
+  suspend fun acceptSize(productId: String) = write {
+    val p = product(productId)
+    save(p.copy(sizeE6 = p.sizeSuggestionE6, sizeUnit = p.sizeSuggestionUnit, sizeSource = "manual"))
+  }
+
+  /** Takes the drafted description as the category's own. Not a tree edit, so no event (D75 logs structure). */
+  suspend fun acceptDescription(categoryId: String) = write {
+    val c = category(categoryId)
+    sync.upsertCategory(c.copy(description = c.descriptionSuggestion, userModified = true, dirty = true))
   }
 
   // ---- lines ----

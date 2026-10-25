@@ -131,4 +131,43 @@ class CatalogEditorTest {
     editor.deleteCategory("veg", null)
     assertNull(dao.categories().singleOrNull { it.id == "veg" && !it.deleted })
   }
+
+  @Test fun theLlmsSuggestionsAreAcceptedOrRefusedByTheUser() = runTest {
+    receipt()
+    val items = dao.storeItems()
+    val (a, b) = items[0] to items[1]
+    db.sync().putLinkSuggestion(LinkSuggestionRow("s1", b.id, a.productId, .8, "mesmo item", "pending"))
+    db.sync().putLinkSuggestion(LinkSuggestionRow("s2", items[2].id, a.productId, .7, null, "pending"))
+    assertEquals(2, db.edit().linkSuggestions().first().size)
+    editor.acceptLink("s1")
+    assertEquals(a.productId, dao.storeItems().single { it.id == b.id }.productId)
+    editor.refuseLink("s2")
+    assertEquals(listOf("accepted" to true, "refused" to true), listOf("s1", "s2").map { id -> db.sync().linkSuggestion(id)!!.let { it.status to it.dirty } })
+    assertTrue(db.edit().linkSuggestions().first().isEmpty())
+
+    // A size the parser missed: accepting makes it the user's.
+    dao.updateProduct(apple().copy(sizeSuggestionE6 = 1_000_000, sizeSuggestionUnit = "kg", sizeSuggestionModel = "llm"))
+    assertEquals(1, db.edit().sizeSuggestions().first().size)
+    editor.acceptSize(apple().id)
+    assertEquals(Triple<Long?, String?, String?>(1_000_000, "kg", "manual"), Triple(apple().sizeE6, apple().sizeUnit, apple().sizeSource))
+    assertTrue(db.edit().sizeSuggestions().first().isEmpty())
+  }
+
+  @Test fun whenTheLlmDisagreesWithJevTheUserPicks() = runTest {
+    receipt()
+    dao.updateProduct(apple().copy(categoryId = "veg", categorySource = "jev", categoryReview = "automatic", suggestionCategoryId = "fruit", suggestionModel = "llm"))
+    val row = db.edit().products().first().single { it.productId == apple().id }
+    assertTrue(row.disputed && row.toPick)
+    editor.setCategory(apple().id, "fruit")
+    assertEquals(listOf("fruit", "corrected"), listOf(apple().categoryId, apple().categoryReview))
+    assertFalse(db.edit().products().first().single { it.productId == apple().id }.toPick)
+  }
+
+  @Test fun aDraftedDescriptionCanBeTaken() = runTest {
+    receipt()
+    dao.updateCategory(dao.categories().single { it.id == "veg" }.copy(descriptionSuggestion = "Legumes frescos"))
+    editor.acceptDescription("veg")
+    assertEquals("Legumes frescos", dao.categories().single { it.id == "veg" }.description)
+    assertTrue(events().isEmpty())
+  }
 }

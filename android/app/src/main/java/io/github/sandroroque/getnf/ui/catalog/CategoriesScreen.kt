@@ -74,6 +74,7 @@ fun CategoriesScreen() {
           Column(Modifier.weight(1f)) {
             Text(c.label, style = if (depth == 0) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyLarge)
             c.description?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+              ?: c.descriptionSuggestion?.let { Text("Sugestão do LLM: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary) }
           }
           val n = totals[c.id] ?: 0
           if (n > 0) Text("$n", style = MaterialTheme.typography.bodySmall)
@@ -90,6 +91,11 @@ fun CategoriesScreen() {
       text = {
         Column {
           val hasChildren = categories.any { it.parentId == a.c.id }
+          if (a.c.description == null && a.c.descriptionSuggestion != null) {
+            Text("Sugestão do LLM: ${a.c.descriptionSuggestion}", style = MaterialTheme.typography.bodySmall)
+            Text("Usar a descrição sugerida", style = MaterialTheme.typography.bodyLarge,
+              modifier = Modifier.fillMaxWidth().clickable { val id = a.c.id; action = null; edit { editor.acceptDescription(id); done() } }.padding(vertical = 12.dp))
+          }
           for ((label, next) in listOfNotNull(
             "Renomear e descrever" to Action.Rename(a.c),
             "Nova subcategoria" to Action.Create(a.c),
@@ -116,7 +122,7 @@ fun CategoriesScreen() {
       onDismiss = { action = null },
     )
     is Action.Rename -> TextDialog(
-      "Renomear", listOf("Nome" to a.c.label, "Para que serve (uma linha)" to (a.c.description ?: "")),
+      "Renomear", listOf("Nome" to a.c.label, "Para que serve (uma linha)" to (a.c.description ?: a.c.descriptionSuggestion ?: "")),
       onSave = { (label, description) ->
         action = null
         if (label.isNotBlank()) edit { editor.renameCategory(a.c.id, label, description); done() }

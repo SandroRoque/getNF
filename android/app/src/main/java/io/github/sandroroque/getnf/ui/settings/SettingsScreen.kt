@@ -52,6 +52,8 @@ fun SettingsScreen(onDone: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
       AccountSection(app, onDone)
       HorizontalDivider()
+      HealthSection(app)
+      HorizontalDivider()
       BackupSection(app)
     }
   }
@@ -121,6 +123,30 @@ private fun AccountSection(app: GetNFApp, onDone: () -> Unit) {
     }) { Text("Salvar servidor") }
   }
   status?.let { Text(it) }
+}
+
+/** The LLM worker's last health report (D65, D69, stage 8), in plain words. */
+@Composable
+private fun HealthSection(app: GetNFApp) {
+  val row by remember { app.database.edit().latestReport() }.collectAsStateWithLifecycle(null)
+  Text("Saúde dos dados", style = MaterialTheme.typography.titleMedium)
+  val r = row?.let { runCatching { kotlinx.serialization.json.Json.parseToJsonElement(it.report) as kotlinx.serialization.json.JsonObject }.getOrNull() }
+  if (row == null || r == null) {
+    Text("O revisor (LLM no PC) ainda não rodou para esta conta.", style = MaterialTheme.typography.bodySmall)
+    return
+  }
+  fun n(key: String) = (r[key] as? kotlinx.serialization.json.JsonPrimitive)?.takeUnless { it is kotlinx.serialization.json.JsonNull }?.content
+  val lines = listOfNotNull(
+    "Última revisão: ${java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(row!!.at)}",
+    n("audited")?.let { "Conferidas pelo LLM: $it, discordou de ${n("disagreed") ?: "0"}" },
+    n("automatic_unconfirmed")?.let { "Categorias automáticas ainda não confirmadas: $it (nunca conferidas: ${n("never_checked") ?: "?"})" },
+    n("sample_error_rate")?.let { "Erro medido na amostra: ${Math.round(it.toDouble() * 100)}% de ${n("sample_size")} conferências" },
+    n("abbreviations_added")?.takeIf { it != "0" }?.let { "Abreviações aprendidas: $it" },
+    n("links_proposed")?.takeIf { it != "0" }?.let { "Mesmos produtos sugeridos: $it" },
+    n("sizes_proposed")?.takeIf { it != "0" }?.let { "Tamanhos sugeridos: $it" },
+    n("backup_age_hours")?.let { "Último backup: há ${it.toDouble().toInt()} h" },
+  )
+  lines.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
 }
 
 /** Export everything to a file the user picks, or replace everything from one (D47). */

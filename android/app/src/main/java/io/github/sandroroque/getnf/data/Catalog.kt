@@ -108,6 +108,8 @@ data class CategoryRow(
   @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
   /** What the category is for, in a line (D75); models read it instead of the label. */
   val description: String? = null,
+  /** A description the LLM drafted (stage 8), shown until the user writes or accepts one. Never pushed. */
+  val descriptionSuggestion: String? = null,
 )
 
 @Entity(tableName = "tag", indices = [Index("slug", unique = true)])
@@ -157,6 +159,10 @@ data class ProductRow(
   val suggestionConfidence: Double? = null,
   val suggestionModel: String? = null,
   val suggestionAt: Long? = null,
+  /** A pack size the LLM read where the parser couldn't (stage 8); null amount with a model: "not a size". */
+  val sizeSuggestionE6: Long? = null,
+  val sizeSuggestionUnit: String? = null,
+  val sizeSuggestionModel: String? = null,
 )
 
 /** One per code as receipts show it: a GTIN anywhere, or a store code together with its store's CNPJ. */
@@ -253,6 +259,23 @@ data class CategoryEventRow(
   val at: Long,
   @ColumnInfo(defaultValue = "1") val dirty: Boolean = true,
 )
+
+/** "This store item is the same product as that one", proposed by the LLM (stage 8); the user accepts or refuses. */
+@Entity(tableName = "link_suggestion")
+data class LinkSuggestionRow(
+  @PrimaryKey val id: String,
+  val storeItemId: String,
+  val productId: String,
+  val confidence: Double?,
+  val reason: String?,
+  /** `pending`, `accepted` or `refused`. */
+  val status: String,
+  @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
+)
+
+/** The LLM worker's health report (D65, D69, stage 8): the JSON as written, newest kept. */
+@Entity(tableName = "worker_report")
+data class WorkerReportRow(@PrimaryKey val id: Long, val at: Long, val report: String)
 
 /** Sync bookkeeping that must travel with the database (a restore brings its own): pull cursors per table. */
 @Entity(tableName = "sync_state")
