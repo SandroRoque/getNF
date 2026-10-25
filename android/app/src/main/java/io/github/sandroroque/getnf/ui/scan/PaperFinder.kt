@@ -20,7 +20,7 @@ internal data class OcrQuad(val corners: List<DocumentPoint>, val confidence: Do
   val start: DocumentPoint get() = DocumentPoint((corners[0].x + corners[3].x) / 2, (corners[0].y + corners[3].y) / 2)
   val end: DocumentPoint get() = DocumentPoint((corners[1].x + corners[2].x) / 2, (corners[1].y + corners[2].y) / 2)
   val direction: Double get() = atan2(end.y - start.y, end.x - start.x)
-  val height: Double get() = (ReceiptGeometry.distance(corners[0], corners[3]) + ReceiptGeometry.distance(corners[1], corners[2])) / 2
+  val height: Double get() = (distance(corners[0], corners[3]) + distance(corners[1], corners[2])) / 2
 }
 
 /** What [PaperFinder] saw, for drawing while tuning it, in frame pixels. */
@@ -52,14 +52,14 @@ internal object PaperFinder {
     if (text.size < 4) return stop("too few OCR lines")
 
     // 1. Orientation: the length-weighted circular median of the lines' directions, refined by their mean nearby.
-    val weighted = text.map { it.direction to ReceiptGeometry.distance(it.start, it.end) }
+    val weighted = text.map { it.direction to distance(it.start, it.end) }
     val coarse = (0 until 72).map { it * PI / 36 - PI }.maxBy { a ->
       weighted.sumOf { (d, w) -> if (abs(angleBetween(d, a)) <= PI / 18) w else 0.0 }
     }
     val rows = text.filter { abs(angleBetween(it.direction, coarse)) <= PI / 18 }
     if (rows.size < 4) return stop("too few lines in one direction")
-    val angle = coarse + rows.sumOf { angleBetween(it.direction, coarse) * ReceiptGeometry.distance(it.start, it.end) } /
-      rows.sumOf { ReceiptGeometry.distance(it.start, it.end) }
+    val angle = coarse + rows.sumOf { angleBetween(it.direction, coarse) * distance(it.start, it.end) } /
+      rows.sumOf { distance(it.start, it.end) }
     trace?.lines = rows; trace?.angle = angle
     val s = sin(angle); val c = cos(angle)
     // u along the rows (reading direction), v down the receipt.

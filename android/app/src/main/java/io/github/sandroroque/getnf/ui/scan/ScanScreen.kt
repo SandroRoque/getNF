@@ -73,14 +73,12 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
   val model = viewModel { CaptureViewModel(context.applicationContext as android.app.Application) }
   val lifecycle = LocalLifecycleOwner.current
   val state by model.state.collectAsStateWithLifecycle()
-  val inspection by model.inspection.collectAsStateWithLifecycle()
   val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-  var showMask by rememberSaveable { mutableStateOf(false) }
   var showExit by remember { mutableStateOf(false) }
   var torch by remember { mutableStateOf(false) }
   var showMore by remember { mutableStateOf(false) }
   val currentState by rememberUpdatedState(state)
-  val exitDialogVisible by rememberUpdatedState(showExit || inspection != null)
+  val exitDialogVisible by rememberUpdatedState(showExit)
   val controller = remember {
     LifecycleCameraController(context).apply {
       cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -126,7 +124,7 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
     if (state.completed) onCaptured() else if (state.exited) onCancel()
   }
   fun focusOnReceipt() {
-    val points = currentState.edges.flatMap { listOf(it.start, it.end) }
+    val points = currentState.outline.orEmpty()
     val x = if (points.isEmpty()) preview.width / 2f else points.map { it.x }.average().toFloat()
     val y = if (points.isEmpty()) preview.height / 2f else points.map { it.y }.average().toFloat()
     if (preview.width > 0 && preview.height > 0) {
@@ -135,8 +133,6 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
         .setAutoCancelDuration(2, TimeUnit.SECONDS).build())
     }
   }
-  // Keep CameraX's continuous autofocus. Repeated AF triggers used to lock/restart it
-  // every three seconds; explicit tap/focus requests now expire back to continuous AF.
   fun exit() {
     if (state.saving || state.completed || state.exited) return
     model.setAttached(false)
@@ -144,31 +140,26 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
   }
   BackHandler { exit() }
 
-  // The capture screen in the Calmo look (D81): the camera full-bleed, a thin four-step progress bar, one hint at a
-  // time, round controls. Everything drawn on the camera sits on soft scrims so it reads over any background.
+  // The capture screen in the Calmo look (D81), planned live (D85): the camera full-bleed with the paper found
+  // outlined, one hint at a time with an arrow along the receipt, and the receipt's map at the side: what is captured,
+  // what is left, where the camera is, and whether its ends have been seen.
   val onCamera = Color.White
-  val hint = primaryHint(state.guidance.warnings)
   Box(Modifier.fillMaxSize().background(Color.Black)) {
     Box(Modifier.fillMaxSize().then(if (landscape) Modifier.padding(horizontal = 196.dp) else Modifier)) {
       AndroidView(factory = { preview }, modifier = Modifier.fillMaxSize())
       Canvas(Modifier.fillMaxSize()) {
-        if (showMask) {
-          val path = Path().apply { fillType = PathFillType.EvenOdd }
-          state.maskPaths.forEach { ring ->
-            ring.forEachIndexed { i, p -> if (i == 0) path.moveTo(p.x.toFloat(), p.y.toFloat()) else path.lineTo(p.x.toFloat(), p.y.toFloat()) }
-            path.close()
+        state.outline?.let { corners ->
+          val path = Path().apply {
+            corners.forEachIndexed { i, p -> if (i == 0) moveTo(p.x.toFloat(), p.y.toFloat()) else lineTo(p.x.toFloat(), p.y.toFloat()) }
+            close()
           }
-          drawPath(path, Color(0x3393B2DA))
-        }
-        state.edges.forEach { edge ->
-          drawLine(if (edge.good) GOOD else PENDING,
-            Offset(edge.start.x.toFloat(), edge.start.y.toFloat()), Offset(edge.end.x.toFloat(), edge.end.y.toFloat()), 3.dp.toPx(),
-            cap = androidx.compose.ui.graphics.StrokeCap.Round)
+          drawPath(path, if (state.hint == CaptureHint.CLOSER || state.hint == CaptureHint.HOLD_STILL) PENDING else GOOD,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(3.dp.toPx(), join = androidx.compose.ui.graphics.StrokeJoin.Round))
         }
       }
     }
 
-    // Top: close, the progress, the flashlight.
+    // Top: close, the title, the flashlight.
     Column(
       (if (landscape) Modifier.width(196.dp).fillMaxHeight().align(Alignment.TopStart) else Modifier.fillMaxWidth().align(Alignment.TopCenter))
         .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Black.copy(alpha = .65f), Color.Transparent)))
@@ -188,10 +179,11 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
           }
         }
       }
-      Progress(listOf("Topo" to state.top, "Fundo" to state.bottom, "Tudo coberto" to state.connected, "QR Code" to state.qr), vertical = landscape)
-      if (state.segmentCount > 0) Text("${state.segmentCount} ${if (state.segmentCount == 1) "trecho salvo" else "trechos salvos"}" +
-        if (state.geometryKnown) " · formato reconhecido" else "", color = onCamera.copy(alpha = .75f), style = MaterialTheme.typography.labelMedium)
     }
+
+    // The receipt's map, at the side.
+    ReceiptMap(state, Modifier.align(if (landscape) Alignment.CenterStart else Alignment.CenterEnd)
+      .padding(horizontal = if (landscape) 24.dp else 12.dp).width(56.dp).fillMaxHeight(if (landscape) .62f else .46f))
 
     // Bottom: the one thing to do now, then the controls.
     Column(
@@ -204,28 +196,25 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
       val message = when {
         state.saving -> "Salvando a captura…"
         state.error != null -> state.error!!
-        hint != null -> hint.label
-        state.completed -> "Pronto"
-        else -> null
+        else -> state.hint.label
       }
-      if (message != null) Row(
+      Row(
         Modifier.clip(RoundedCornerShape(999.dp)).background(Color.Black.copy(alpha = .55f)).padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
       ) {
-        val destination = state.guidance.destination
-        // The arrow only when the hint itself is "go up/down": next to "centralize" it would contradict it.
-        if (!state.saving && state.error == null && (hint == CaptureHint.TOP || hint == CaptureHint.BOTTOM) && destination != null) Icon(
+        val down = state.down
+        // The arrow points along the receipt, the way to go: down it, or back up it.
+        if (!state.saving && state.error == null && down != null && (state.hint == CaptureHint.MOVE_DOWN || state.hint == CaptureHint.MOVE_UP)) Icon(
           io.github.sandroroque.getnf.ui.calmo.Icons.Arrow, null, tint = onCamera,
-          modifier = Modifier.size(22.dp).rotate(state.axisAngle + if (destination == MovementTarget.BOTTOM) 180f else 0f),
+          modifier = Modifier.size(22.dp).rotate(down + if (state.hint == CaptureHint.MOVE_DOWN) 180f else 0f),
         )
         Text(message, color = if (state.error != null) PENDING else onCamera,
           style = if (landscape) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
       }
-      val others = state.guidance.warnings.filter { it != hint && it !in DIRECTIONS }.take(1)
-      if (!state.saving) others.forEach { Text(it.label, color = onCamera.copy(alpha = .8f), style = MaterialTheme.typography.bodySmall) }
-      if (!landscape && !state.saving) Text("Percorra a nota devagar, com as laterais à vista.", color = onCamera.copy(alpha = .7f),
-        style = MaterialTheme.typography.bodySmall)
-      // Four in a row in portrait; two by two in landscape's narrower side column.
+      if (!state.saving && state.rows.isNotEmpty()) Text(
+        "${state.rows.count { it.captured }} de ${state.rows.size} linhas lidas · ${state.saved} ${if (state.saved == 1) "foto" else "fotos"}" +
+          if (state.qr) " · QR Code lido" else "",
+        color = onCamera.copy(alpha = .75f), style = MaterialTheme.typography.labelMedium)
       FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(10.dp),
         maxItemsInEachRow = if (landscape) 2 else 4) {
         RoundButton(io.github.sandroroque.getnf.ui.calmo.Icons.Focus, "Focar na nota") { focusOnReceipt() }
@@ -237,18 +226,9 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
     }
   }
   if (showMore) io.github.sandroroque.getnf.ui.catalog.CalmoSheet("Câmera", onDismiss = { showMore = false }) {
-    io.github.sandroroque.getnf.ui.calmo.FactRow("Área analisada", if (showMask) "ocultar" else "mostrar", onClick = { showMask = !showMask; showMore = false })
-    if (BuildConfig.DEBUG) io.github.sandroroque.getnf.ui.calmo.FactRow("Depuração", "inspecionar este frame", onClick = { showMore = false; model.inspectFrame() })
+    io.github.sandroroque.getnf.ui.calmo.Sub("A captura lê a nota enquanto você a percorre e guarda só as fotos que acrescentam linhas. " +
+      "O mapa ao lado mostra o que já foi lido; as pontas ficam firmes quando o topo e o fim da nota aparecem.")
     io.github.sandroroque.getnf.ui.calmo.Sub("Toque na tela para focar; pinça para zoom.")
-  }
-  inspection?.let { bitmap ->
-    Dialog(onDismissRequest = { model.closeInspection() }) {
-      Column(Modifier.fillMaxWidth().background(Color.Black).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Mesmo frame: bordas amarelas, referência magenta, área analisada azul", color = Color.White)
-        Image(bitmap.asImageBitmap(), contentDescription = "Frame analisado com contorno e máscara", modifier = Modifier.fillMaxWidth().weight(1f, fill = false))
-        TextButton(onClick = { model.closeInspection() }) { Text("Voltar à câmera") }
-      }
-    }
   }
   if (showExit) io.github.sandroroque.getnf.ui.catalog.CalmoSheet("Sair sem terminar?", onDismiss = { showExit = false; model.setAttached(true) }) {
     io.github.sandroroque.getnf.ui.calmo.Sub("O QR Code já foi lido. As imagens desta tentativa são descartadas ao sair; as fotos anteriores desta nota ficam.")
@@ -262,38 +242,36 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
 
 private val GOOD = Color(0xFF7CC29A)
 private val PENDING = Color(0xFFE8C46A)
-private val DIRECTIONS = setOf(CaptureHint.TOP, CaptureHint.BOTTOM, CaptureHint.QR)
 
 /**
- * The one hint to show large: what blocks the capture first (another receipt, lost tracking, the receipt off-centre,
- * blur, light), then where to move. The others wait; at most one shows small under it.
+ * The receipt so far, as a strip of paper: its rows in order (blank gaps to scale), green where captured, faint where
+ * still to read; a bracket where the camera is; its top and bottom drawn as an edge once seen, fading while unknown.
  */
-internal fun primaryHint(warnings: List<CaptureHint>): CaptureHint? {
-  val order = listOf(CaptureHint.OTHER_RECEIPT, CaptureHint.TRACKING, CaptureHint.CENTER, CaptureHint.FOCUS, CaptureHint.LIGHT,
-    CaptureHint.HOLD, CaptureHint.TOP, CaptureHint.BOTTOM, CaptureHint.QR)
-  return order.firstOrNull { it in warnings }
-}
-
-/** Four steps as one thin bar: filled when done, with the names small under it; a short list in landscape. */
 @Composable
-private fun Progress(steps: List<Pair<String, Boolean>>, vertical: Boolean = false) {
-  if (vertical) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-      for ((label, done) in steps) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(Modifier.width(18.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(if (done) GOOD else Color.White.copy(alpha = .28f)))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = if (done) GOOD else Color.White.copy(alpha = .8f))
-      }
+private fun ReceiptMap(state: CaptureUiState, modifier: Modifier) {
+  if (state.rows.isEmpty()) return
+  Canvas(modifier.clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = .45f)).padding(horizontal = 9.dp, vertical = 12.dp)) {
+    val heights = state.rows.map { 1f + it.gapAfter.toFloat() }
+    val unit = size.height / heights.sum()
+    val paper = Color.White.copy(alpha = .9f)
+    drawRect(paper.copy(alpha = .12f), size = size)
+    var y = 0f
+    for ((i, row) in state.rows.withIndex()) {
+      val h = heights[i] * unit
+      drawRect(if (row.captured) GOOD else Color.White.copy(alpha = .28f), Offset(3.dp.toPx(), y + h * .15f),
+        androidx.compose.ui.geometry.Size(size.width - 6.dp.toPx(), maxOf(1f, unit * .7f)))
+      y += h
     }
-    return
-  }
-  Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-      for ((_, done) in steps) Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp))
-        .background(if (done) GOOD else Color.White.copy(alpha = .28f)))
+    fun edge(at: Float, seen: Boolean) {
+      if (seen) drawLine(paper, Offset(0f, at), Offset(size.width, at), 2.dp.toPx())
+      else drawLine(paper.copy(alpha = .35f), Offset(0f, at), Offset(size.width, at), 1.dp.toPx(),
+        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())))
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-      for ((label, done) in steps) Text((if (done) "✓ " else "") + label, Modifier.weight(1f), style = MaterialTheme.typography.labelSmall,
-        color = if (done) GOOD else Color.White.copy(alpha = .75f), maxLines = 1)
+    edge(0f, state.topClosed); edge(size.height, state.bottomClosed)
+    state.view?.let { v ->
+      val top = heights.take(v.first).sum() * unit; val bottom = heights.take(v.last + 1).sum() * unit
+      drawRect(Color.White, Offset(-2.dp.toPx(), top), androidx.compose.ui.geometry.Size(size.width + 4.dp.toPx(), bottom - top),
+        style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
     }
   }
 }

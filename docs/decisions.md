@@ -1891,3 +1891,30 @@ On the five videos (`VideoIngestTest`, local): four complete, with 3, 7, 4 and 3
 9.6 s; each saved set holds the receipt's lines (checked against every line read confidently in the whole video;
 the remaining flags are OCR's variants of the same lines). The fifth stays incomplete: its bottom section is blurred
 in every frame. The pixel line model (D82) is no longer used by the capture.
+
+## D86. The capture is the planned flow, live; the old pipeline and OpenCV are gone (2026-10-25)
+
+The capture screen now runs D85's flow on the camera:
+
+- **Frames**: CameraX analysis at 1920×1440, the newest frame taken whenever the last is done (two to three a second:
+  on-device OCR is the slow part). Each is turned upright (luminance, and colourfulness from the chroma planes),
+  read by ML Kit's text recogniser and QR scanner, and given to the `IngestSession`. ML Kit reports its boxes in the
+  camera buffer's orientation even when told the rotation; they are turned upright before use.
+- **Saving**: the frame the session holds is kept; frames it commits become the attempt's photos (JPEG, a mask of the
+  paper's outline, and segment metadata with the outline as polygon, so the upload's crop works as before). When the
+  session is done and the receipt's QR code has been read inside the paper found, the photos become the receipt's
+  (`importCapture`); a code read inside the paper that isn't this receipt's shows "another receipt in view".
+- **Screen** (Calmo, D81): the paper's outline on the camera, one hint at a time ("Desça pela nota", "Suba pela nota",
+  "Aproxime a câmera", "Segure firme", "Volte ao trecho já lido", "Mostre o QR Code") with an arrow along the
+  receipt, and the receipt's map at the side: its rows in order, green when captured, a bracket where the camera is,
+  its ends drawn firm once seen. Under the hint: rows read, photos kept, QR read.
+- **Removed**: the D25–D41 pipeline (OpenCV outline and tracker, gradient quality, OCR validation of candidates, the
+  band policy), the pixel line model of D82, their tests, and the OpenCV dependency: the debug APK goes from 225 to
+  84 MB. Rows that frames reading their neighbours well can't read three times are print that isn't text (the logo)
+  and aren't required.
+- **Debug**: with `files/capture-dump/enabled` present, debug builds write every analysed frame and its OCR in the
+  layout `VideoIngestTest` replays, so a live session can be examined on the PC.
+
+On the emulator, with a recorded video as its camera, the flow runs end to end (outline, rows, map, QR, keyframes,
+photos), at one frame every 4–5 s; the emulator crops the 16:9 video to 4:3, hiding the receipt's end, so completion
+is to be judged on the phone.

@@ -46,7 +46,7 @@ class VideoIngestTest {
     var completeAt: Long? = null
     // The whole video's content, read before playing (the session may finish early).
     for (file in frames) File(file.path + ".ocr.json").takeIf { it.exists() }?.let { json.decodeFromString<PhotoText>(it.readText()) }?.let { o ->
-      texts[file.nameWithoutExtension] = o.lines.filter { it.confidence >= .7 }.map { CoverageMap.normalize(it.text) }.filter { it.length >= 10 }
+      texts[file.nameWithoutExtension] = o.lines.filter { it.confidence >= .7 }.map { RowAssembly.normalize(it.text) }.filter { it.length >= 10 }
     }
     for ((i, file) in frames.withIndex()) {
       val at = i * 200L
@@ -90,7 +90,7 @@ class VideoIngestTest {
       .fold(mutableListOf<String>()) { kept, t -> if (kept.none { similarText(it, t) }) kept += t; kept }
     val savedTexts = saved.flatMap { (id, _) -> held[id]?.let { f ->
       File(f.path + ".ocr.json").takeIf { it.exists() }?.let { json.decodeFromString<PhotoText>(it.readText()) }?.lines
-        ?.filter { it.confidence >= .6 }?.map { CoverageMap.normalize(it.text) }
+        ?.filter { it.confidence >= .6 }?.map { RowAssembly.normalize(it.text) }
     }.orEmpty() }
     // OCR splits and joins the same print differently from frame to frame: a line is covered when a saved line matches
     // it, contains it, or makes up most of it.

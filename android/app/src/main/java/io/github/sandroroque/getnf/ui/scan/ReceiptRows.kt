@@ -24,6 +24,8 @@ internal class RowAssembly {
     /** Later frames that matched this row, and that read past it with no row there. */
     var confirmed = 0
     var skipped = 0
+    /** Frames that read the rows around this one well but not this one: print that isn't text (a logo, a graphic). */
+    var illegible = 0
     /** Read once, then passed over twice: an artifact (two lines OCR fused into one box), not a printed row. */
     val doubtful: Boolean get() = confirmed == 0 && skipped >= 2
   }
@@ -221,6 +223,9 @@ internal class RowAssembly {
       return if (d <= max(1, shorter / 4)) 1 + min(shorter, 30) / 10.0 - d * .1 else -1.0
     }
 
+    /** A line's text for matching between frames: letters and digits only, upper case. */
+    fun normalize(text: String): String = text.uppercase().filter { it in 'A'..'Z' || it in '0'..'9' }
+
     /** One text mostly contained in the other: a row and a piece of it. */
     fun sameRow(a: String, b: String): Boolean {
       val shorter = min(a.length, b.length)
@@ -264,7 +269,7 @@ internal class RowAssembly {
       for (p in placed) if (groups.isNotEmpty() && p.second - groups.last().map { it.second }.average() < rowHeight * .5) groups.last() += p else groups += mutableListOf(p)
       return groups.map { g ->
         val ordered = g.sortedBy { it.third }
-        val text = CoverageMap.normalize(ordered.joinToString("") { it.first.text })
+        val text = normalize(ordered.joinToString("") { it.first.text })
         val weight = ordered.sumOf { max(1, it.first.text.length) }.toDouble()
         Row(text, ordered.sumOf { it.first.confidence * max(1, it.first.text.length) } / weight, g.map { it.second }.average(), ordered.maxOf { it.first.height })
       }.filter { it.text.isNotEmpty() }

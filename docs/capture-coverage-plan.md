@@ -82,4 +82,6 @@ the person a map of the receipt saying which height bands are captured, need a c
   printed rows (`RowAssembly`, text alignment), planned by `IngestSession`; four videos complete with 3–7 saved
   frames, the fifth (blurred bottom) correctly doesn't. Next: the session live in the app (step 3), on the emulator
   with these videos as the camera.
+- 2026-10-25: D86. The flow is live in the app (step 3); the old pipeline and OpenCV removed. Runs on the emulator with
+  a video as camera. Next: on the phone with real receipts; then full-resolution stills for the saved photos (step 4).
 

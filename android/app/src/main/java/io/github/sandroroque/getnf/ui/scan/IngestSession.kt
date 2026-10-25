@@ -66,6 +66,7 @@ internal class IngestSession {
       return skip(paper, if (assembly.rows.isEmpty()) closerOrStill(frameRows) else IngestHint.BACK_TO_CAPTURED, frame, down)
     }
     for ((rows, top, bottom) in pendingEnds) assembly.probeEnds(rows, top, bottom)
+    for (i in at.indices) if (at[i] >= 0 && !readable[i] && zoneMedian(frameRows, i) >= MIN_ZONE) assembly.rows[at[i]].illegible++
     val shows = at.filter { it >= 0 }.map { assembly.rows[it] }.toSet()
     val reads = at.indices.filter { at[it] >= 0 && readable[it] }.map { assembly.rows[at[it]] }.toSet()
     val view = at.filter { it >= 0 }.let { if (it.isEmpty()) null else it.min()..it.max() }
@@ -116,20 +117,21 @@ internal class IngestSession {
    * The rows that must be captured: all, except one row right at a closed end that no frame read well, which is the
    * paper's torn edge (a strip of the previous receipt, or a last line the cut went through); rows under six
    * characters, which are OCR's splinters of other rows (an amount read apart), their print in the stretch around;
-   * and rows later frames passed over as not there ([RowAssembly.Entry.doubtful]).
+   * rows later frames passed over as not there ([RowAssembly.Entry.doubtful]); and rows three frames failed to read
+   * while reading the rows around them well, which are print that isn't text (a logo).
    */
   fun required(): List<RowAssembly.Entry> {
-    var rows = assembly.rows.filter { it.text.length >= 6 && !it.doubtful }
+    var rows = assembly.rows.filter { it.text.length >= 6 && !it.doubtful && (it.illegible < ILLEGIBLE || it in captured) }
     if (assembly.topClosed && rows.size > 2 && rows.first().confidence < MIN_ZONE && rows.first() !in captured) rows = rows.drop(1)
     if (assembly.bottomClosed && rows.size > 2 && rows.last().confidence < MIN_ZONE && rows.last() !in captured) rows = rows.dropLast(1)
     return rows
   }
 
   /** Each row: its own confidence at least 0.5, and the median over three rows either side at least 0.6. */
-  private fun readable(rows: List<Row>): BooleanArray = BooleanArray(rows.size) { i ->
-    val zone = rows.subList(max(0, i - ZONE), min(rows.size, i + ZONE + 1)).map { it.confidence }.sorted()
-    rows[i].confidence >= MIN_ROW && zone[(zone.size - 1) / 2] >= MIN_ZONE
-  }
+  private fun readable(rows: List<Row>): BooleanArray = BooleanArray(rows.size) { i -> rows[i].confidence >= MIN_ROW && zoneMedian(rows, i) >= MIN_ZONE }
+
+  private fun zoneMedian(rows: List<Row>, i: Int): Double =
+    rows.subList(max(0, i - ZONE), min(rows.size, i + ZONE + 1)).map { it.confidence }.sorted().let { it[(it.size - 1) / 2] }
 
   /**
    * For each row and the next, whether print OCR didn't read lies between them: where they sit further apart than
@@ -222,6 +224,7 @@ internal class IngestSession {
     const val MIN_ZONE = .6
     const val CLOSE_ENOUGH_PX = 14.0
     const val MAX_PENDING = 20
+    const val ILLEGIBLE = 3
     // Dark share of the paper between two rows that means text OCR didn't read (a blank line has almost none; a QR
     // code or the logo is dense).
     const val UNREAD_PRINT_MIN = .02

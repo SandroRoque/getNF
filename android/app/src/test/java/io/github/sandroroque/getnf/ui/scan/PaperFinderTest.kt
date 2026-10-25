@@ -36,7 +36,7 @@ class PaperFinderTest {
       g.drawString(text, side + 18, baseline)
       val x1 = side + 18 + g.fontMetrics.stringWidth(text)
       quads += OcrQuad(listOf(DocumentPoint(side + 18.0, baseline - 18.0), DocumentPoint(x1.toDouble(), baseline - 18.0),
-        DocumentPoint(x1.toDouble(), baseline + 4.0), DocumentPoint(side + 18.0, baseline + 4.0)), .8, text.length)
+        DocumentPoint(x1.toDouble(), baseline + 4.0), DocumentPoint(side + 18.0, baseline + 4.0)), .8, text.length, text)
     }
     g.dispose()
     return image to quads
@@ -82,14 +82,31 @@ class PaperFinderTest {
     assertFalse(paper.bottomSeen)
   }
 
-  @Test fun readabilityFollowsWhatOcrIsSureOf() {
+  @Test fun aReadableViewOfTheWholeReceiptCompletesTheCaptureAtOnce() {
     val (image, quads) = frame()
-    val g = gray(image)
-    val paper = PaperFinder.find(g, quads)!!
-    val print = PrintLines.read(g, paper)!!
-    val sure = CoverageMap().apply { measure(print) }
-    assertTrue(sure.place("sure", print, quads)!!.cells.values.all { it })
-    val unsure = CoverageMap().apply { measure(print) }
-    assertTrue(unsure.place("unsure", print, quads.map { it.copy(confidence = .5) })!!.cells.values.none { it })
+    val session = IngestSession()
+    val step = session.offer(IngestFrame("whole", gray(image), quads, 0))
+    assertTrue(step.complete)
+    assertEquals(listOf("whole"), step.commits)
+    assertEquals(lines, session.rows.size)
+  }
+
+  @Test fun aReceiptReadUnsurelyIsNeverComplete() {
+    val (image, quads) = frame()
+    val session = IngestSession()
+    val step = session.offer(IngestFrame("unsure", gray(image), quads.map { it.copy(confidence = .5) }, 0))
+    assertFalse(step.complete)
+    assertTrue(step.commits.isEmpty())
+  }
+
+  @Test fun twoHalvesJoinByTheirTextAndCompleteTogether() {
+    val session = IngestSession()
+    val top = frame(to = paperH * 6 / 10); val bottom = frame(from = paperH * 4 / 10)
+    val first = session.offer(IngestFrame("top", gray(top.first), top.second, 0))
+    assertFalse(first.complete)
+    val second = session.offer(IngestFrame("bottom", gray(bottom.first), bottom.second, 2000))
+    assertTrue(second.complete)
+    assertEquals(listOf("top", "bottom"), session.committed)
+    assertEquals(lines, session.rows.size)
   }
 }

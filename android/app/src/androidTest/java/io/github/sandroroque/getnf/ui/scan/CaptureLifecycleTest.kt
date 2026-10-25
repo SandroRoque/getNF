@@ -11,47 +11,28 @@ import java.io.File
 
 /**
  * Empty-scene emulator with CAMERA pre-granted by adb; no receipt lookup or upload is requested. The controls are the
- * redesigned ones (D81): the bar's scan button, the close and "more" buttons, the camera sheet.
+ * redesigned ones (D81) on the capture planned live (D85): the bar's scan button, the close and "more" buttons, the
+ * camera sheet.
  */
 class CaptureLifecycleTest {
   @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
   private fun scan() = compose.onNodeWithContentDescription("Escanear nota").performClick()
   private fun backHome() = compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("Escanear nota").fetchSemanticsNodes().isNotEmpty() }
-  private fun showMask() {
-    compose.onNodeWithContentDescription("Mais opções").performClick()
-    compose.onNodeWithText("mostrar").performClick()
-  }
 
-  @Test fun landscapeKeepsMaskPreferenceAndControlsVisible() {
+  @Test fun theControlsAndTheExplanationWorkInBothOrientations() {
     scan()
-    showMask()
+    compose.onNodeWithText("Aponte para a nota").assertIsDisplayed()
     try {
       compose.activity.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
       compose.waitUntil(10_000) { compose.activity.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
       compose.onNodeWithContentDescription("Mais opções").assertIsDisplayed().performClick()
-      compose.onNodeWithText("ocultar").assertIsDisplayed()
-      compose.onNodeWithText("inspecionar este frame").assertIsDisplayed()
+      compose.onNodeWithText("Toque na tela para focar; pinça para zoom.").assertIsDisplayed()
       pressBack()
       compose.onNodeWithContentDescription("Sair da captura").assertIsDisplayed()
       pressBack()
       backHome()
     } finally { compose.activity.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
-  }
-
-  @Test fun maskControlAndSameFrameInspectionKeepTheSession() {
-    scan()
-    showMask()
-    compose.onNodeWithContentDescription("Mais opções").performClick()
-    compose.onNodeWithText("ocultar").assertIsDisplayed()
-    compose.onNodeWithText("inspecionar este frame").performClick()
-    compose.waitUntil(15_000) { compose.onAllNodesWithText("Voltar à câmera").fetchSemanticsNodes().isNotEmpty() }
-    compose.onNodeWithContentDescription("Frame analisado com contorno e máscara").assertIsDisplayed()
-    compose.activityRule.scenario.recreate()
-    compose.onNodeWithText("Voltar à câmera").performClick()
-    compose.onNodeWithContentDescription("Sair da captura").assertIsDisplayed()
-    pressBack()
-    backHome()
   }
 
   @Test fun rotationKeepsCaptureAndReentryStartsANewSession() {

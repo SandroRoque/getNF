@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-25. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D85). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D86). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -99,8 +99,9 @@ Superseded in direction by D82 (capture far from good enough: 26 frames where on
 
 ## Open items, roughly in priority order
 
-- **Capture planned from print lines (D82):** a live model of the receipt's lines, an absolute readability bar, few
-  strategic shots and a rendered coverage map. Starting with an offline replay of saved sessions; see
+- **Capture planned live (D82–D86):** the receipt is assembled from its OCR rows as the camera moves; only frames that
+  add rows are saved; the screen shows the receipt's map. Offline, four of five recorded videos complete with 3–7
+  photos. Next: try it on the phone with real receipts (debug builds can dump the frames to replay a session); see
   [capture-coverage-plan.md](capture-coverage-plan.md).
 - **UI/UX redesign (D81) built:** four tabs (Início, Gastos, Para você, Catálogo) with scan in the middle, one decision
   queue, stores as a lens, the Calmo look in light and dark, Portuguese throughout. Checked on the emulator; next, the
