@@ -1359,3 +1359,12 @@ Chosen by the user from [hosting-options.md](hosting-options.md) (D55: data onli
 - **Unchanged:** categorization runs in a separate worker (on the user's PC for now). PocketBase stays for local
   development until the move. Still open: photos online from the start or later (D61 makes them cheap), and the free
   tier vs Pro.
+
+## D63. Supabase setup: photos online from the start, free tier for now (2026-10-24)
+
+The two choices D62 left open, made by the user.
+
+- **Photos go online from the start,** in D61's small form (receipt crop, grayscale, WebP; full quality read on the
+  phone only). So D61 has to be built before or with the move to Supabase, not after.
+- **Free tier for now.** Limits to watch: 500 MB database, 1 GB files (years of one user's D61 photos), and the
+  project pauses after a week without requests. Move to Pro (US$25/month) when friends join or a limit bites.

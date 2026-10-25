@@ -84,8 +84,8 @@ Se as fotos virarem o grosso da conta, só elas vão para um armazenamento barat
 ## O que decidir
 
 1. ~~Supabase ou PocketBase em VPS~~: Supabase (D62).
-2. Fotos no serviço online desde o início, ou só os dados primeiro e as fotos depois.
-3. Começar no plano grátis ou já no Pro.
+2. ~~Fotos desde o início ou depois~~: desde o início, no formato pequeno do D61 (D63).
+3. ~~Plano grátis ou Pro~~: grátis por enquanto (D63).
 
 ## Fontes (2026-10-24)
 
