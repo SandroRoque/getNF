@@ -2,10 +2,14 @@ package io.github.sandroroque.getnf.ui.scan
 
 import kotlin.math.*
 
-/** An 8-bit grayscale image, row-major. Plain Kotlin, so the line model runs on the JVM as well as live (D82). */
-internal class GrayImage(val width: Int, val height: Int, val pixels: ByteArray) {
-  init { require(pixels.size == width * height) }
+/**
+ * An 8-bit grayscale image, row-major, with optionally how colourful each pixel is ([chroma], 0 for grey). Plain
+ * Kotlin, so the line model runs on the JVM as well as live (D82).
+ */
+internal class GrayImage(val width: Int, val height: Int, val pixels: ByteArray, val chroma: ByteArray? = null) {
+  init { require(pixels.size == width * height && (chroma == null || chroma.size == pixels.size)) }
   operator fun get(x: Int, y: Int): Int = pixels[y * width + x].toInt() and 0xff
+  fun chroma(x: Int, y: Int): Int = chroma?.let { it[y * width + x].toInt() and 0xff } ?: 0
 }
 
 /** One printed row, in rows of the upright paper (see [PrintLines.read]) at its centre column, after deskew. */
@@ -80,7 +84,34 @@ internal object PrintLines {
    * paper, not the paper's end. Null when a side is cut (no stretch shows the paper's full width) or the frame shows
    * too few text lines to measure a pitch.
    */
-  fun read(image: GrayImage, paper: PaperOutline): FramePrint? = read(image, paper.corners, paper.topSeen to paper.bottomSeen)
+  /**
+   * [ocr], when given, sets the pitch: OCR's lines are where the text is even when the print is too small for the ink
+   * profile to separate its lines (an overview), which would otherwise misjudge the receipt's length.
+   */
+  fun read(image: GrayImage, paper: PaperOutline, ocr: List<OcrQuad> = emptyList()): FramePrint? =
+    read(image, paper.corners, paper.topSeen to paper.bottomSeen)?.let { print -> ocrPitch(print, ocr)?.let { (a, b) -> print.copy(pitchA = a, pitchB = b) } ?: print }
+
+  /** The pitch against row from OCR's lines in the upright paper: spacing between neighbouring rows of text, fitted. */
+  private fun ocrPitch(print: FramePrint, ocr: List<OcrQuad>): Pair<Double, Double>? {
+    val rows = ocr.filter { it.characters >= 3 }.map { line ->
+      val c = line.corners.map { print.fromFrame(it.x, it.y) }
+      (c.sumOf { it.y } / 4) to ((c[3].y - c[0].y + c[2].y - c[1].y) / 2)
+    }.filter { it.first in 0.0..print.height.toDouble() }.sortedBy { it.first }
+    if (rows.size < 6) return null
+    val height = rows.map { it.second }.sorted()[rows.size / 2]
+    // Boxes on the same printed row ("Valor" and its amount) are one row.
+    val merged = mutableListOf<MutableList<Double>>()
+    for ((y, _) in rows) if (merged.isNotEmpty() && y - merged.last().average() < height * .5) merged.last() += y else merged += mutableListOf(y)
+    val centres = merged.map { it.average() }
+    val spacings = centres.zipWithNext().map { (a, b) -> (a + b) / 2 to b - a }.filter { it.second < height * 2.5 }
+    if (spacings.size < 4) return null
+    val median = spacings.map { it.second }.sorted()[spacings.size / 2]
+    val kept = spacings.filter { it.second in median * .75..median * 1.3 }
+    if (kept.size < 4) return null
+    val (a, b) = fit(kept)
+    val ends = listOf(a, a + b * print.height)
+    return if (ends.min() < 2 || ends.max() / ends.min() > 2.2) null else a to b
+  }
 
   /** [ends], when known (from [PaperFinder]), says whether the outline's top and bottom are the paper's own ends. */
   fun read(image: GrayImage, polygon: List<DocumentPoint>, ends: Pair<Boolean, Boolean>? = null): FramePrint? {

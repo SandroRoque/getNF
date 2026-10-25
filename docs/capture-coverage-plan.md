@@ -78,4 +78,8 @@ the person a map of the receipt saying which height bands are captured, need a c
   corners); the replay reads `<photo>.ocr.json` and draws, per frame, the overlay and a trace of how the paper was
   found. All 10 sessions: paper found on 58 of 62 frames; lengths consistent per receipt (82.9/83.1; 57.7–62.5).
   Not placed: 8 frames that show neither end (content registration). Next: go live (step 3).
+- 2026-10-25: D85. Five recorded videos played through the capture as if live. The receipt is assembled from its
+  printed rows (`RowAssembly`, text alignment), planned by `IngestSession`; four videos complete with 3–7 saved
+  frames, the fifth (blurred bottom) correctly doesn't. Next: the session live in the app (step 3), on the emulator
+  with these videos as the camera.
 

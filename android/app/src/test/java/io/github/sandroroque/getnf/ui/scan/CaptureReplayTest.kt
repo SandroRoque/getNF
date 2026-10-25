@@ -50,12 +50,12 @@ class CaptureReplayTest {
       val gray = BufferedImage(image.width, image.height, BufferedImage.TYPE_BYTE_GRAY).apply { createGraphics().drawImage(image, 0, 0, null) }
       val pixels = (gray.raster.dataBuffer as DataBufferByte).data
       val recorded = s.polygon.map { DocumentPoint(it[0], it[1]) }
-      val frame = GrayImage(gray.width, gray.height, pixels)
+      val frame = GrayImage(gray.width, gray.height, pixels, chroma(image))
       // The paper is found from its print; the capture's own outline only says which end is the top (D82).
       val trace = PaperTrace()
       val ocr = File(dir, s.photo + ".ocr.json").takeIf { it.exists() }?.let { json.decodeFromString<PhotoText>(it.readText()) }
       val lines = ocr?.lines.orEmpty().mapNotNull { l ->
-        l.corners?.chunked(2)?.map { (x, y) -> DocumentPoint(x.toDouble(), y.toDouble()) }?.let { OcrQuad(it, l.confidence.toDouble(), l.text.length) }
+        l.corners?.chunked(2)?.map { (x, y) -> DocumentPoint(x.toDouble(), y.toDouble()) }?.let { OcrQuad(it, l.confidence.toDouble(), l.text.length, l.text) }
       }
       val paper = PaperFinder.find(frame, lines, trace)
       val print = paper?.let { PrintLines.read(frame, it) }

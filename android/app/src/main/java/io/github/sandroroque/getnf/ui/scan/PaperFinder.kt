@@ -4,13 +4,19 @@ import kotlin.math.*
 
 /**
  * The receipt's paper in a frame, found from its print (D82): normalized corners top-left, top-right, bottom-right,
- * bottom-left (rows of print run from the left corners to the right ones, and read downwards), and whether each end
- * is the paper's own end rather than where the frame cuts it.
+ * bottom-left (rows of print run from the left corners to the right ones, and read downwards), whether each end is
+ * the paper's own end rather than where the frame cuts it, and the OCR lines that belong to it.
  */
-internal data class PaperOutline(val corners: List<DocumentPoint>, val topSeen: Boolean, val bottomSeen: Boolean)
+internal data class PaperOutline(
+  val corners: List<DocumentPoint>,
+  val topSeen: Boolean,
+  val bottomSeen: Boolean,
+  /** The OCR lines that belong to this receipt (its text block), in frame pixels. */
+  val lines: List<OcrQuad> = emptyList(),
+)
 
 /** One line of text as OCR read it: its corners in frame pixels (top-left, clockwise) and how sure it is. */
-internal data class OcrQuad(val corners: List<DocumentPoint>, val confidence: Double, val characters: Int) {
+internal data class OcrQuad(val corners: List<DocumentPoint>, val confidence: Double, val characters: Int, val text: String = "") {
   val start: DocumentPoint get() = DocumentPoint((corners[0].x + corners[3].x) / 2, (corners[0].y + corners[3].y) / 2)
   val end: DocumentPoint get() = DocumentPoint((corners[1].x + corners[2].x) / 2, (corners[1].y + corners[2].y) / 2)
   val direction: Double get() = atan2(end.y - start.y, end.x - start.x)
@@ -61,16 +67,24 @@ internal object PaperFinder {
     fun v(p: DocumentPoint) = -p.x * s + p.y * c
     fun xy(u: Double, v: Double) = DocumentPoint(u * c - v * s, u * s + v * c)
 
-    // 2. Text block: lines sorted down the receipt, split where the gap is many lines tall (a QR code is up to about
-    //    fifteen, with nothing beside it) or the next line lies outside the columns so far; the longest run wins.
+    // 2. Text block: lines grouped with those they share columns with and lie near (another receipt beside this one
+    //    forms its own group); in the largest group, the longest run down the receipt, split where the gap is many
+    //    lines tall (a QR code is up to about fifteen, with nothing beside it).
     val lineHeight = rows.map { it.height }.sorted()[rows.size / 2]
-    val sorted = rows.sortedBy { v(it.start) }
+    val group = IntArray(rows.size) { it }
+    fun root(i: Int): Int { var r = i; while (group[r] != r) r = group[r]; return r }
+    val spans = rows.map { l -> Triple(l.corners.minOf(::u), l.corners.maxOf(::u), l.corners.minOf(::v)) }
+    for (i in rows.indices) for (j in i + 1 until rows.size) {
+      val (a0, a1, av) = spans[i]; val (b0, b1, bv) = spans[j]
+      val overlap = min(a1, b1) - max(a0, b0)
+      if (overlap >= min(a1 - a0, b1 - b0) * .3 && abs(av - bv) <= lineHeight * 20) group[root(i)] = root(j)
+    }
+    val column = rows.indices.groupBy(::root).values.maxBy { it.size }.map { rows[it] }
+    val sorted = column.sortedBy { v(it.start) }
     val runs = mutableListOf(mutableListOf(sorted.first()))
     for (line in sorted.drop(1)) {
       val run = runs.last()
-      val gap = line.corners.minOf(::v) - run.maxOf { it.corners.maxOf(::v) }
-      val overlaps = line.corners.minOf(::u) < run.maxOf { it.corners.maxOf(::u) } && line.corners.maxOf(::u) > run.minOf { it.corners.minOf(::u) }
-      if (gap > lineHeight * 20 || !overlaps) runs += mutableListOf(line) else run += line
+      if (line.corners.minOf(::v) - run.maxOf { it.corners.maxOf(::v) } > lineHeight * 20) runs += mutableListOf(line) else run += line
     }
     val block = runs.maxBy { r -> r.maxOf { it.corners.maxOf(::v) } - r.minOf { it.corners.minOf(::v) } }
     if (block.size < 4) return stop("text block too small")
@@ -81,7 +95,9 @@ internal object PaperFinder {
     trace?.block = listOf(xy(blockU0, blockV0), xy(blockU1, blockV0), xy(blockU1, blockV1), xy(blockU0, blockV1))
     if (blockU1 - blockU0 < lineHeight * 4) return stop("text block too narrow")
 
-    // 3. Paper: walk outwards on a smaller copy until the paper's brightness drops, against the paper's level nearby.
+    // 3. Paper: walk outwards on a smaller copy until the paper's look drops, against the paper's level nearby. The look
+    //    is brightness less colourfulness: paper is light and neutral, and a coloured surface (an orange envelope in
+    //    the shade) can be as bright as paper in shadow while its colour sets it clearly apart.
     val k = max(1, ceil(max(image.width, image.height) / SIZE.toDouble()).toInt())
     val small = downscale(image, k)
     fun gray(p: DocumentPoint): Double? {
@@ -95,36 +111,74 @@ internal object PaperFinder {
       while (vv <= v1) { var uu = u0; while (uu <= u1) { gray(xy(uu, vv))?.let(values::add); uu += step }; vv += step }
       return if (values.isEmpty()) 0.0 else values.sorted()[(values.size - 1) * 8 / 10]
     }
-    /** Distance from (u, v) along (du, dv) to where the paper ends, or null when the frame's border comes first. */
-    fun walk(u0: Double, v0: Double, du: Double, dv: Double, paper: Double): Double? {
-      // Averaged a few pixels across the walk, and only a drop longer than a line and a half counts: print (a stroke,
-      // a strip of the previous receipt at a torn end) is over by then, while beyond the paper's edge it stays dark.
-      val sustained = max(4, (lineHeight * 1.5 / k).toInt())
-      var t = 2.0 * k; var below = 0
-      while (true) {
-        var sum = 0.0
-        for (o in -4..4) sum += gray(xy(u0 + du * t - dv * o * k, v0 + dv * t + du * o * k))
-          ?: return if (below >= 4) t - below * k else null
-        if (sum / 9 < paper * EDGE) { if (++below >= sustained) return t - (below - 1) * k } else below = 0
+    val width = blockU1 - blockU0
+    /**
+     * Distance from (u, v) along (du, dv) to where the paper ends: the largest sustained step down in brightness
+     * (means over a line and a half either side), when clear (at least 8% of the paper's level and 10 grey levels).
+     * Print is too short to make a sustained step; a pale but different surface still makes a clear one. Beside the
+     * paper ([sliver]) a few samples of that surface before the frame's border are enough; beyond an end the full
+     * window must show it, since a false end stops the capture early and the frame's corners darken. Null when the
+     * border comes first without one; [lastBorder] is then how far the border is.
+     */
+    var lastDrop = 0.0
+    var lastBorder = 0.0
+    /** The last walk reached the frame's border too soon to tell (rather than finding no step on the way). */
+    var lastShort = false
+    fun walk(u0: Double, v0: Double, du: Double, dv: Double, paper: Double, sliver: Boolean = false): Double? {
+      val samples = mutableListOf<Double>()
+      var t = 2.0 * k
+      while (t < width * 1.2 + lineHeight * 20) {
+        var sum = 0.0; var inside = true
+        for (o in -4..4) { val g = gray(xy(u0 + du * t - dv * o * k, v0 + dv * t + du * o * k)); if (g == null) { inside = false; break }; sum += g }
+        if (!inside) break
+        samples += sum / 9
         t += k
       }
+      lastBorder = t
+      val w = max(3, (lineHeight * 1.5 / k).toInt())
+      val after = if (sliver) 3 else w
+      lastShort = samples.size < 3 + after + w
+      // The margin between the print and the edge can be short: the window before the step is what there is (3 at
+      // least) up to a line and a half.
+      if (samples.size < 3 + after) return null
+      val prefix = DoubleArray(samples.size + 1).also { for (i in samples.indices) it[i + 1] = it[i] + samples[i] }
+      fun mean(a: Int, b: Int) = (prefix[b] - prefix[a]) / (b - a)
+      var best = -1; var bestDrop = 0.0
+      for (i in 3..samples.size - after) {
+        val drop = mean(max(0, i - w), i) - mean(i, min(samples.size, i + w))
+        if (drop > bestDrop) { bestDrop = drop; best = i }
+      }
+      if (best < 0 || bestDrop < max(10.0, paper * .08)) return null
+      // The step is spread over the averaging window; its foot is where the brightness first falls below halfway.
+      val half = (mean(max(0, best - w), best) + mean(best, min(samples.size, best + w))) / 2
+      val foot = (max(0, best - w) until min(samples.size, best + w)).firstOrNull { samples[it] < half } ?: best
+      lastDrop = bestDrop
+      return 2.0 * k + foot * k
     }
-    val width = blockU1 - blockU0
     val bands = (0..20).map { blockV0 + (blockV1 - blockV0) * it / 20.0 }
-    fun side(u0: Double, du: Double): Pair<List<Pair<Double, Double>>, Int> {
-      val found = mutableListOf<Pair<Double, Double>>(); var cut = 0
+    val sideDrops = mutableListOf<Double>()
+    /** Edge points of one side; where the frame cuts the paper with blank paper still beside the print, the border. */
+    fun side(u0: Double, du: Double): Triple<List<Pair<Double, Double>>, List<Pair<Double, Double>>, Int> {
+      val found = mutableListOf<Pair<Double, Double>>(); val border = mutableListOf<Pair<Double, Double>>(); var cut = 0
       for (vv in bands) {
         val paper = level(blockU0, blockU1, vv - lineHeight, vv + lineHeight)
-        val t = walk(u0, vv, du, 0.0, paper)
-        if (t == null) cut++ else if (t < width * .5) { found += vv to u0 + du * t; trace?.edges?.add(xy(u0 + du * t, vv)) }
+        val t = walk(u0, vv, du, 0.0, paper, sliver = true)
+        when {
+          t != null && t < width * .5 -> { found += vv to u0 + du * t; sideDrops += lastDrop; trace?.edges?.add(xy(u0 + du * t, vv)) }
+          t == null && lastBorder >= lineHeight * .5 -> border += vv to u0 + du * (lastBorder - k)
+          t == null -> cut++
+        }
       }
-      return found to cut
+      return Triple(found, border, cut)
     }
-    val (left, leftCut) = side(blockU0, -1.0)
-    val (right, rightCut) = side(blockU1, 1.0)
-    // A side mostly beyond the frame: no stretch here shows the paper's full width.
-    if (left.size < 5 || right.size < 5 || leftCut > bands.size / 2 || rightCut > bands.size / 2) {
-      return stop("sides: left ${left.size} found $leftCut cut, right ${right.size} found $rightCut cut")
+    val (left, leftBorder, leftCut) = side(blockU0, -1.0)
+    val (right, rightBorder, rightCut) = side(blockU1, 1.0)
+    // A side whose edge is mostly beyond the frame counts only if the frame still shows blank paper beside all the
+    // print: the whole width of the text is in view. Print running into the border is cut.
+    fun usable(found: List<Pair<Double, Double>>, border: List<Pair<Double, Double>>, cut: Int) =
+      found.size >= 5 || (border.size + found.size >= bands.size * 2 / 3 && cut <= bands.size / 6)
+    if (!usable(left, leftBorder, leftCut) || !usable(right, rightBorder, rightCut)) {
+      return stop("sides: left ${left.size}+${leftBorder.size} found $leftCut cut, right ${right.size}+${rightBorder.size} found $rightCut cut")
     }
     // The paper's sides run nearly parallel to its print: fit each through the edge points near its typical distance
     // from the text (a bright desk beside the paper lets a few walks run on), with its lean kept small.
@@ -136,25 +190,44 @@ internal object PaperFinder {
       val mid = (blockV0 + blockV1) / 2
       return (a + b * mid - lean * mid) to lean
     }
-    val leftLine = sideLine(left, blockU0); val rightLine = sideLine(right, blockU1)
+    val leftLine = sideLine(left.takeIf { it.size >= 5 } ?: (left + leftBorder), blockU0)
+    val rightLine = sideLine(right.takeIf { it.size >= 5 } ?: (right + rightBorder), blockU1)
 
+    // With both sides beyond the frame there is no step to compare an end with; a clear step is then enough.
+    val sideDrop = if (sideDrops.isEmpty()) 0.0 else sideDrops.sorted()[sideDrops.size / 2]
     fun end(v0: Double, dv: Double): Pair<Pair<Double, Double>, Boolean> {
-      val found = mutableListOf<Pair<Double, Double>>(); var cut = 0
+      // Columns where the edge was found; where no step was found; where the border came too soon to tell (a tilted
+      // receipt's end can leave the frame at one corner).
+      val found = mutableListOf<Pair<Double, Double>>(); var cut = 0; var short = 0
       val paper = if (dv < 0) level(blockU0, blockU1, v0, v0 + lineHeight * 2) else level(blockU0, blockU1, v0 - lineHeight * 2, v0)
       for (f in listOf(.2, .35, .5, .65, .8)) {
         val uu = blockU0 + width * f
-        val t = walk(uu, v0, 0.0, dv, paper)
-        if (t == null) cut++ else { found += uu to v0 + dv * t; trace?.edges?.add(xy(uu, v0 + dv * t)) }
+        // The paper's end steps onto the same background as its sides: a much weaker step is shading or a crease.
+        // From two lines inside the print: a receipt can be torn right through its last line, which then pokes past
+        // the edge, so a walk started at the last line's edge may already be off the paper.
+        val start = v0 - dv * lineHeight * 2
+        val t = walk(uu, start, 0.0, dv, paper)?.takeIf { lastDrop >= sideDrop * .35 }
+        if (t != null) { found += uu to start + dv * t; trace?.edges?.add(xy(uu, start + dv * t)) }
+        else if (lastShort) short++ else cut++
       }
-      if (cut >= 3 || found.size < 2) {
-        // Cut by the frame: the end is as far as the paper's whole width stays inside the frame.
+      // Cut by the frame: the end is as far as the paper's whole width stays inside the frame.
+      fun cutEnd(): Pair<Pair<Double, Double>, Boolean> {
         fun inside(t: Double) = listOf(leftLine, rightLine).all { (a, b) -> gray(xy(a + b * (v0 + dv * t), v0 + dv * t)) != null } &&
           gray(xy(blockU0 + width / 2, v0 + dv * t)) != null
         var t = 0.0
         while (inside(t + k)) t += k
         return (v0 + dv * t to 0.0) to false
       }
-      return robustLine(found) to true
+      if (found.size < 2 || cut > 1) return cutEnd()
+      // An end runs straight across, like the print: its lean is kept small, as the sides'.
+      val (a, b) = robustLine(found)
+      val lean = b.coerceIn(-.15, .15)
+      val mid = (blockU0 + blockU1) / 2
+      val line = (a + b * mid - lean * mid) to lean
+      // No print of this receipt lies beyond its end: if some does, the step was something else (a crease, a shadow).
+      // (A box can poke past a torn edge; its centre can't.)
+      val beyond = block.any { l -> DocumentPoint(l.corners.sumOf { it.x } / 4, l.corners.sumOf { it.y } / 4).let { p -> (v(p) - (line.first + line.second * u(p))) * dv > 0 } }
+      return if (beyond) cutEnd() else line to true
     }
     val (topLine, topSeen) = end(blockV0, -1.0)
     val (bottomLine, bottomSeen) = end(blockV1, 1.0)
@@ -165,19 +238,20 @@ internal object PaperFinder {
       return xy(side.first + side.second * vv, vv)
     }
     val corners = listOf(corner(leftLine, topLine), corner(rightLine, topLine), corner(rightLine, bottomLine), corner(leftLine, bottomLine))
-    return PaperOutline(corners.map { DocumentPoint(it.x / image.width, it.y / image.height) }, topSeen, bottomSeen)
+    return PaperOutline(corners.map { DocumentPoint(it.x / image.width, it.y / image.height) }, topSeen, bottomSeen, block)
   }
 
   /** Signed difference between two directions, in (-π, π]. */
   private fun angleBetween(a: Double, b: Double): Double = ((a - b) % (2 * PI) + 3 * PI) % (2 * PI) - PI
 
+  /** A smaller copy whose value is the paper-likeness: brightness less one and a half times the colourfulness. */
   private fun downscale(image: GrayImage, k: Int): GrayImage {
     val w = image.width / k; val h = image.height / k
     val out = ByteArray(w * h)
     for (y in 0 until h) for (x in 0 until w) {
-      var sum = 0
-      for (dy in 0 until k) for (dx in 0 until k) sum += image[x * k + dx, y * k + dy]
-      out[y * w + x] = (sum / (k * k)).toByte()
+      var sum = 0; var colour = 0
+      for (dy in 0 until k) for (dx in 0 until k) { sum += image[x * k + dx, y * k + dy]; colour += image.chroma(x * k + dx, y * k + dy) }
+      out[y * w + x] = ((sum - colour * 3 / 2) / (k * k)).coerceIn(0, 255).toByte()
     }
     return GrayImage(w, h, out)
   }

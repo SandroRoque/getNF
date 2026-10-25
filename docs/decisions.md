@@ -1853,3 +1853,41 @@ one session and broke another. The user agreed to use the app's on-device OCR (M
 Replay of all 10 sessions (62 frames): the paper is found on 58. One receipt measures 82.9 and 83.1 print lines in
 its two sessions (OCR line positions suggest about 82); the other 57.7–62.5 across seven sessions, over the board,
 in shadow and sideways. This morning's session still resolves to its frame at 6 s alone.
+
+## D85. The receipt is assembled from its printed rows; capture is planned on that assembly (2026-10-25)
+
+The user recorded five videos of receipts (two of them where the whole receipt in view is too small to read, so
+views must be joined), copied to `test-media/video/`. Played through the capture as if live (frames at 5 a second,
+on-device OCR per frame from the emulator), the D82–D84 coordinate (distance down the receipt in print lines, from
+each frame's pitch estimate) proved unstable: estimates are noisy, errors grow towards the ends, and false ends and
+lengths followed.
+
+The receipt is now the ordered sequence of its printed rows, assembled the way overlapping reads are:
+
+- **Rows** are OCR's boxes on one printed line, merged, with their text and confidence, from the text block the paper
+  finder assigns to this receipt (another receipt beside it is a separate block). Boxes cut by the frame's border are
+  left out.
+- **Assembly** (`RowAssembly`): each frame's rows are aligned with the rows known so far (overlap alignment, scoring
+  by how alike and how long the rows are), which places views of the middle with no end in view and no measuring.
+  Rows OCR missed or split are filled in; a surer read replaces a worse one; a row that is mostly another's text is
+  that row in part; a row read once and passed over by two later frames is an artefact. Only a frame read well
+  starts the assembly.
+- **Ends** close when a frame shows the paper's edge right at the assembly's first or last row (frames that saw an end
+  but couldn't be placed are retried as the assembly grows); print appearing past a closed end reopens it. The edge
+  walk compares paper-likeness (brightness less colourfulness, from the camera's chroma), so a pale coloured surface
+  is told from paper; an end needs a clear step beyond it, starts two lines inside the print (a receipt torn through
+  its last line), and no row may lie past it.
+- **Readable** rows: own OCR confidence at least 0.5 in a stretch (three rows either side) of median at least 0.6.
+- **Unread print**: where two neighbouring rows sit further apart than usual, the paper between them is checked; a
+  band of ink at least half a row tall, clear of both rows, is print OCR didn't read, and the capture can't finish
+  until some frame reads rows there (a dashed rule is thinner; the QR code and the logo are dense).
+- **Keyframes** (`IngestSession`): the frame reading the most rows not captured yet, touching what is captured, is
+  held; a frame reading all it would add and more replaces it; a frame reading rows it can't has it saved and is held
+  in turn; it is saved when the view moves on, after 1.5 s, or when it completes the capture.
+- **Done**: both ends closed, no unread print, and every row captured, except rows under six characters (OCR's
+  splinters), artefacts, and one row at a closed end never read well (the torn edge).
+
+On the five videos (`VideoIngestTest`, local): four complete, with 3, 7, 4 and 3 saved frames, at 7.8, 12.2, 6.4 and
+9.6 s; each saved set holds the receipt's lines (checked against every line read confidently in the whole video;
+the remaining flags are OCR's variants of the same lines). The fifth stays incomplete: its bottom section is blurred
+in every frame. The pixel line model (D82) is no longer used by the capture.
