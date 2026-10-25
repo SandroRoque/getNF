@@ -101,15 +101,16 @@ fun MainNavigation() {
         entry<StoreDetail> { key ->
           StoreScreen(key.cnpj, onBack = ::back, onOpenReceipt = { open(ReceiptDetail(it)) }, onOpenProduct = { open(ProductDetail(it)) })
         }
-        entry<IpciKey> { key -> IpciScreen(key.categoryId, onOpenProduct = { open(ProductDetail(it)) }) }
+        entry<IpciKey> { key -> IpciScreen(key.categoryId, onOpenProduct = { open(ProductDetail(it)) }, onBack = ::back) }
         entry<Scan> { ScanScreen(onCaptured = ::back, onCancel = ::back) }
         entry<Page> { key ->
           PageScreen(chave = key.chave, onDone = ::back, onNext = { next -> back(); open(Page(next)) })
         }
-        entry<ReceiptDetail> { key -> ReceiptScreen(chave = key.chave, onOpenProduct = { open(ProductDetail(it)) }) }
+        entry<ReceiptDetail> { key -> ReceiptScreen(chave = key.chave, onOpenProduct = { open(ProductDetail(it)) }, onBack = ::back) }
         entry<ProductDetail> { key ->
           // "Separar" opens the new product in place of this one, so Back returns to where the user came from.
-          ProductScreen(key.productId, onOpenProduct = { back(); open(ProductDetail(it)) })
+          ProductScreen(key.productId, onOpenProduct = { back(); open(ProductDetail(it)) }, onBack = ::back,
+            onOpenReceipt = { open(ReceiptDetail(it)) })
         }
         entry<Settings> { SettingsScreen(onDone = ::back) }
       },

@@ -11,16 +11,16 @@ data class CurrentNetwork(val key: String, val label: String) {
   companion object {
     fun of(context: Context): CurrentNetwork {
       val cm = context.getSystemService(ConnectivityManager::class.java)
-      val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return CurrentNetwork("none", "no connection")
+      val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return CurrentNetwork("none", "sem conexão")
       return when {
         // Telling Wi-Fi networks apart needs the location permission; one bucket is good enough for a home network.
         caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> CurrentNetwork("wifi", "Wi-Fi")
         caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> {
           // Each SIM is a different carrier, so a different IP. Needs no permission on Android 11+.
           val sub = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) SubscriptionManager.getActiveDataSubscriptionId() else -1
-          if (sub >= 0) CurrentNetwork("cellular:$sub", "mobile data (SIM #$sub)") else CurrentNetwork("cellular", "mobile data")
+          if (sub >= 0) CurrentNetwork("cellular:$sub", "dados móveis (chip $sub)") else CurrentNetwork("cellular", "dados móveis")
         }
-        else -> CurrentNetwork("other", "this network")
+        else -> CurrentNetwork("other", "esta rede")
       }
     }
   }

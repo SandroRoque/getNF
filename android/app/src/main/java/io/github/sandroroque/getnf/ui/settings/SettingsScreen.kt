@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -48,14 +49,15 @@ import kotlinx.coroutines.withContext
 @Composable
 fun SettingsScreen(onDone: () -> Unit) {
   val app = LocalContext.current.applicationContext as GetNFApp
-  Scaffold(topBar = { TopAppBar(title = { Text("Ajustes") }) }) { padding ->
-    Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+  Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
+    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+      io.github.sandroroque.getnf.ui.calmo.BackHeader("Voltar", onDone)
+      io.github.sandroroque.getnf.ui.calmo.ScreenTitle("Ajustes")
       AccountSection(app, onDone)
       HorizontalDivider()
       HealthSection(app)
       HorizontalDivider()
       BackupSection(app)
-    }
   }
 }
 
@@ -162,51 +164,51 @@ private fun BackupSection(app: GetNFApp) {
     if (uri == null) return@rememberLauncherForActivityResult
     busy = true
     scope.launch {
-      status = runCatching { app.backup.export(uri) { done, total -> status = "Exporting… $done of $total files" } }
-        .fold({ "Exported ${it.receipts} receipts and ${it.photos} photos ✓" }, { "Export failed: ${it.message}" })
+      status = runCatching { app.backup.export(uri) { done, total -> status = "Exportando… $done de $total arquivos" } }
+        .fold({ "Exportadas ${it.receipts} notas e ${it.photos} fotos ✓" }, { "A exportação falhou: ${it.message}" })
       busy = false
     }
   }
   val restore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
     if (uri == null) return@rememberLauncherForActivityResult
     busy = true
-    status = "Checking the backup…"
+    status = "Conferindo a cópia…"
     scope.launch {
       runCatching { app.backup.inspect(uri) }
         .onSuccess { candidate = it; status = null }
-        .onFailure { status = "Can't restore this file: ${it.message}" }
+        .onFailure { status = "Não dá para restaurar este arquivo: ${it.message}" }
       busy = false
     }
   }
 
-  Text("Backup", style = MaterialTheme.typography.titleMedium)
-  Text("Receipts, photos, pages and the receipt database. Not the account sign-in.", style = MaterialTheme.typography.bodySmall)
+  Text("Cópia de segurança", style = MaterialTheme.typography.titleMedium)
+  Text("Notas, fotos, páginas e o banco de dados do celular, num arquivo que você escolhe. A conta não vai junto.", style = MaterialTheme.typography.bodySmall)
   Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-    OutlinedButton(enabled = !busy, onClick = { export.launch("getnf-backup-${LocalDate.now()}.zip") }) { Text("Export data") }
-    OutlinedButton(enabled = !busy, onClick = { restore.launch(arrayOf("application/zip", "application/octet-stream")) }) { Text("Restore data") }
+    OutlinedButton(enabled = !busy, onClick = { export.launch("getnf-backup-${LocalDate.now()}.zip") }) { Text("Exportar") }
+    OutlinedButton(enabled = !busy, onClick = { restore.launch(arrayOf("application/zip", "application/octet-stream")) }) { Text("Restaurar") }
   }
   status?.let { Text(it) }
 
   candidate?.let { m ->
     AlertDialog(
       onDismissRequest = { candidate = null; app.backup.discardInspected() },
-      title = { Text("Replace all data?") },
+      title = { Text("Substituir tudo?") },
       text = {
         Text(
-          "Backup from ${java.text.DateFormat.getDateTimeInstance().format(m.createdAt)}: ${m.receipts} receipts, ${m.photos} photos.\n" +
-            "On this phone now: ${receipts.size} receipts, ${receipts.sumOf { it.photos.size }} photos.\n\n" +
-            "Everything on this phone is replaced by the backup, and the app restarts.",
+          "Cópia de ${java.text.DateFormat.getDateTimeInstance().format(m.createdAt)}: ${m.receipts} notas, ${m.photos} fotos.\n" +
+            "Neste celular agora: ${receipts.size} notas, ${receipts.sumOf { it.photos.size }} fotos.\n\n" +
+            "Tudo neste celular é substituído pela cópia, e o app reinicia.",
         )
       },
       confirmButton = {
         TextButton(onClick = {
-          candidate = null; busy = true; status = "Restoring…"
+          candidate = null; busy = true; status = "Restaurando…"
           scope.launch {
-            runCatching { app.backup.restoreAndRestart() }.onFailure { status = "Restore failed: ${it.message}"; busy = false }
+            runCatching { app.backup.restoreAndRestart() }.onFailure { status = "A restauração falhou: ${it.message}"; busy = false }
           }
-        }) { Text("Replace") }
+        }) { Text("Substituir") }
       },
-      dismissButton = { TextButton(onClick = { candidate = null; app.backup.discardInspected() }) { Text("Cancel") } },
+      dismissButton = { TextButton(onClick = { candidate = null; app.backup.discardInspected() }) { Text("Cancelar") } },
     )
   }
 }

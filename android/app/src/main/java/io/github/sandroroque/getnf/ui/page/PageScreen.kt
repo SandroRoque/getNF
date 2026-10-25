@@ -48,11 +48,11 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.launch
 
 private enum class Status(val text: String) {
-  Loading("Opening the SEFAZ page…"),
-  Challenge("SEFAZ wants a human check: solve it below."),
-  RateLimited("SEFAZ is blocking this network for a few minutes (too many requests). The photos are safe: close this and reopen the receipt from the home screen later."),
-  Saved("Page saved ✓ It will upload in the background."),
-  Failed("Couldn't read the page. Pull it up again from the home screen."),
+  Loading("Abrindo a página da SEFAZ…"),
+  Challenge("A SEFAZ quer confirmar que você é uma pessoa: resolva abaixo."),
+  RateLimited("A SEFAZ está bloqueando esta rede por alguns minutos (consultas demais). As fotos estão salvas: feche e busque a página mais tarde, em Para você."),
+  Saved("Página salva ✓ Ela sobe para o servidor em segundo plano."),
+  Failed("Não deu para ler a página. Tente de novo em Para você."),
 }
 
 /**
@@ -80,12 +80,12 @@ fun PageScreen(chave: String, onDone: () -> Unit, onNext: (String) -> Unit) {
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text("Receipt page") },
+        title = { Text("Página da nota") },
         actions = {
           if (status == Status.Saved && next != null) {
-            TextButton(onClick = { budgetCheck.request(onFetch = { onNext(next.chave) }, onLater = onDone) }) { Text("Next") }
+            TextButton(onClick = { budgetCheck.request(onFetch = { onNext(next.chave) }, onLater = onDone) }) { Text("Próxima") }
           }
-          TextButton(onClick = onDone) { Text(if (status == Status.Saved) "Done" else "Skip") }
+          TextButton(onClick = onDone) { Text(if (status == Status.Saved) "Pronto" else "Pular") }
         },
       )
     },
@@ -99,7 +99,7 @@ fun PageScreen(chave: String, onDone: () -> Unit, onNext: (String) -> Unit) {
       val url = receipt?.qrUrl
       if (url == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-          if (receipt != null) Text("This receipt has no QR URL.")
+          if (receipt != null) Text("Esta nota não tem o endereço do QR Code.")
         }
       } else {
         SefazWebView(

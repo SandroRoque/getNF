@@ -1,5 +1,6 @@
 package io.github.sandroroque.getnf.ui.catalog
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -9,57 +10,63 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.sandroroque.getnf.GetNFApp
+import io.github.sandroroque.getnf.data.PricePoint
 import io.github.sandroroque.getnf.data.ProductRow
 import io.github.sandroroque.getnf.data.StoreItemDetail
-import io.github.sandroroque.getnf.sync.SyncWorker
-import io.github.sandroroque.getnf.ui.Format
-import io.github.sandroroque.getnf.data.PricePoint
+import io.github.sandroroque.getnf.data.TagRow
 import io.github.sandroroque.getnf.data.pricePoint
+import io.github.sandroroque.getnf.sync.SyncWorker
+import io.github.sandroroque.getnf.theme.Calmo
+import io.github.sandroroque.getnf.ui.Format
+import io.github.sandroroque.getnf.ui.calmo.AmountRow
+import io.github.sandroroque.getnf.ui.calmo.BackHeader
+import io.github.sandroroque.getnf.ui.calmo.ButtonKind
+import io.github.sandroroque.getnf.ui.calmo.DecisionCard
+import io.github.sandroroque.getnf.ui.calmo.FactRow
+import io.github.sandroroque.getnf.ui.calmo.Mark
+import io.github.sandroroque.getnf.ui.calmo.MidNumber
+import io.github.sandroroque.getnf.ui.calmo.Pill
+import io.github.sandroroque.getnf.ui.calmo.ScreenTitle
+import io.github.sandroroque.getnf.ui.calmo.SectionLabel
+import io.github.sandroroque.getnf.ui.calmo.Sub
+import io.github.sandroroque.getnf.ui.review.sizeText
 import io.github.sandroroque.getnf.ui.spending.TimeSeries
-import java.text.DateFormat
-import java.util.Date
 
-private sealed interface Dialog {
-  data object Name : Dialog
-  data object Category : Dialog
-  data object Size : Dialog
-  data object Join : Dialog
+private sealed interface Sheet {
+  data object Edit : Sheet
+  data object Name : Sheet
+  data object Category : Sheet
+  data object Size : Sheet
+  data object Join : Sheet
   /** The other product is sold in another unit: price per kg stops being comparable (data-model.md). */
-  data class JoinUnits(val other: String, val units: String) : Dialog
+  data class JoinUnits(val other: String, val units: String) : Sheet
 }
 
 /**
- * One product: its name, category (with where it came from), size, tags, the store items that count as it, and its
- * purchases. "Juntar" makes another product's store items count as this one (banana caturra in two markets).
+ * One product (D81): its price over time first, then what it is and where it was bought. Editing (name, category,
+ * size, tags, joining or separating store items) lives behind "Editar".
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun ProductScreen(productId: String, onOpenProduct: (String) -> Unit) {
+fun ProductScreen(productId: String, onOpenProduct: (String) -> Unit, onBack: () -> Unit = {}, onOpenReceipt: (String) -> Unit = {}) {
   val context = LocalContext.current
   val app = context.applicationContext as GetNFApp
   val dao = app.database.edit()
@@ -72,118 +79,143 @@ fun ProductScreen(productId: String, onOpenProduct: (String) -> Unit) {
   val products by remember { dao.products() }.collectAsStateWithLifecycle(emptyList())
   val allLines by remember { app.database.spending().lines() }.collectAsStateWithLifecycle(emptyList())
   val prices = remember(allLines, productId) { allLines.filter { it.productId == productId }.mapNotNull(::pricePoint) }
-  var dialog by remember { mutableStateOf<Dialog?>(null) }
+  var sheet by remember { mutableStateOf<Sheet?>(null) }
   val edit = rememberEdit()
   val editor = app.catalogEditor
   val done = { SyncWorker.enqueue(context) }
   val p = product ?: return
   val title = p.name ?: items.firstOrNull()?.description ?: "Produto"
 
-  Scaffold(topBar = { TopAppBar(title = { Text(title, maxLines = 1) }) }) { padding ->
-    LazyColumn(
-      Modifier.fillMaxSize().padding(padding),
-      contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp),
-      verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-      item {
-        Field("Nome", p.name ?: "(o da nota: ${items.firstOrNull()?.description ?: "?"})") { dialog = Dialog.Name }
-        Field("Categoria", (pathOf(categories, p.categoryId) ?: "Sem categoria") + " · " + origin(p)) { dialog = Dialog.Category }
-        if (p.categoryId == null && p.suggestionCategoryId != null) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text("Sugestão: ${pathOf(categories, p.suggestionCategoryId)}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-          OutlinedButton(onClick = { edit { editor.confirm(p.id); done() } }) { Text("Aceitar") }
-        }
-        if (p.categoryReview == "automatic") OutlinedButton(onClick = { edit { editor.confirm(p.id); done() } }) { Text("Confirmar categoria") }
-        Field("Tamanho", size(p, items)) { dialog = Dialog.Size }
-        if (tags.isNotEmpty()) {
-          Text("Marcadores", style = MaterialTheme.typography.labelLarge)
-          FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (t in tags) FilterChip(selected = t.id in tagIds, label = { Text(t.description) },
-              onClick = { edit { editor.setTag(p.id, t.id, t.id !in tagIds); done() } })
-          }
-        }
-        HorizontalDivider()
-        Text("Itens nas notas", style = MaterialTheme.typography.titleSmall)
+  LazyColumn(
+    Modifier.fillMaxSize().statusBarsPadding(),
+    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
+    verticalArrangement = Arrangement.spacedBy(14.dp),
+  ) {
+    item {
+      BackHeader("Voltar", onBack) {
+        Text("Editar", style = MaterialTheme.typography.bodyMedium, color = Calmo.acc,
+          modifier = Modifier.clickable { sheet = Sheet.Edit }.padding(8.dp))
       }
-      items(items, key = { it.id }) { s ->
-        StoreItem(s, canSplit = items.size > 1) { edit { val fresh = editor.unlink(s.id); done(); onOpenProduct(fresh) } }
-      }
-      item {
-        OutlinedButton(onClick = { dialog = Dialog.Join }) { Text("Juntar outro produto a este…") }
-        Text("Só o mesmo item, mesma variedade e forma de venda; produtos parecidos ficam separados e se agrupam pela categoria.",
-          style = MaterialTheme.typography.bodySmall)
-        PriceSection(prices)
-        HorizontalDivider()
-        Text("Compras (${purchases.size}) · ${Format.brl(purchases.sumOf { it.netCents })}", style = MaterialTheme.typography.titleSmall)
-      }
-      items(purchases, key = { "${it.chave}/${it.lineNo}" }) { b ->
-        Row(Modifier.fillMaxWidth()) {
-          Column(Modifier.weight(1f)) {
-            Text(b.issuedAt?.let { DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(it)) } ?: "?", style = MaterialTheme.typography.bodyMedium)
-            Text("${b.issuerName ?: ""} · ${Format.e4(b.qtyE4)} ${b.unit.orEmpty()} × ${Format.brl(Math.round(b.unitPriceE4 / 100.0))}" +
-              if (b.override) " · só esta linha" else "", style = MaterialTheme.typography.bodySmall)
-          }
-          Text(Format.brl(b.netCents), style = MaterialTheme.typography.bodyMedium)
+    }
+    item {
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        ScreenTitle(title)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+          Sub(pathOf(categories, p.categoryId) ?: "Sem categoria")
+          origin(p)?.let { Mark(it, you = it == "você") }
         }
       }
+    }
+    // A model's answer waiting for the user, right where the category is shown.
+    if (p.categoryReview == "automatic" || (p.categoryId == null && p.suggestionCategoryId != null)) item {
+      val proposed = p.categoryId ?: p.suggestionCategoryId
+      DecisionCard(title = "É ${categories.firstOrNull { it.id == proposed }?.label ?: "?"}?", amount = null,
+        why = if (p.categoryId == null) "Sugestão de um modelo, ainda não confirmada." else "Definida por um modelo, ainda não confirmada.") {
+        Pill("Sim", ButtonKind.Solid) { edit { editor.confirm(p.id); done() } }
+        Pill("Outra", ButtonKind.Ghost) { sheet = Sheet.Category }
+      }
+    }
+    item { PriceBlock(prices) }
+    item {
+      Column {
+        FactRow("Tamanho", size(p, items), mark = sizeMark(p, items), onClick = { sheet = Sheet.Size })
+        FactRow("Compras", "${Format.count(purchases.size, "compra", "compras")} · ${Format.brl(purchases.sumOf { it.netCents })}")
+        FactRow("Nas notas", items.joinToString(" · ") { it.description })
+        FactRow("Lojas", items.mapNotNull { it.issuerName }.distinct().joinToString(" · ").ifEmpty { "qualquer loja (código de barras)" })
+        if (tagIds.isNotEmpty()) FactRow("Marcadores", tags.filter { it.id in tagIds }.joinToString(" · ") { it.description })
+      }
+    }
+    item { SectionLabel("Compras", Modifier.padding(top = 6.dp)) }
+    items(purchases, key = { "${it.chave}/${it.lineNo}" }) { b ->
+      AmountRow(
+        title = b.issuedAt?.let(Format::date) ?: "?",
+        subtitle = "${b.issuerName ?: ""} · ${Format.e4(b.qtyE4)} ${b.unit.orEmpty().lowercase()} × ${Format.brl(Math.round(b.unitPriceE4 / 100.0))}" +
+          if (b.override) " · só esta linha" else "",
+        amount = Format.brl(b.netCents), onClick = { onOpenReceipt(b.chave) },
+      )
     }
   }
 
-  when (dialog) {
-    Dialog.Name -> TextDialog("Nome do produto", listOf("Nome" to (p.name ?: "")),
-      hint = "Vazio usa a descrição da nota mais recente.",
-      onSave = { (name) -> dialog = null; edit { editor.rename(p.id, name); done() } }, onDismiss = { dialog = null })
-    Dialog.Category -> CategoryPickerDialog(title, categories, current = p.categoryId, noneLabel = "Sem categoria",
-      onPick = { id -> dialog = null; edit { editor.setCategory(p.id, id); done() } }, onDismiss = { dialog = null })
-    Dialog.Size -> SizeDialog(p, onDismiss = { dialog = null }) { e6, unit, manual ->
-      dialog = null; edit { editor.setSize(p.id, e6, unit, manual); done() }
-    }
-    Dialog.Join -> ProductPickerDialog("Juntar a “$title”", products.filter { it.productId != p.id },
+  when (val s = sheet) {
+    Sheet.Edit -> EditSheet(p, items, tags, tagIds, onDismiss = { sheet = null }, onPick = { sheet = it },
+      onTag = { id, on -> edit { editor.setTag(p.id, id, on); done() } },
+      onSeparate = { id -> sheet = null; edit { val fresh = editor.unlink(id); done(); onOpenProduct(fresh) } })
+    Sheet.Name -> TextDialog("Nome do produto", listOf("Nome" to (p.name ?: "")), hint = "Vazio usa a descrição da nota mais recente.",
+      onSave = { (name) -> sheet = null; edit { editor.rename(p.id, name); done() } }, onDismiss = { sheet = null })
+    Sheet.Category -> CategoryPickerDialog(title, categories, current = p.categoryId, noneLabel = "Sem categoria",
+      onPick = { id -> sheet = null; edit { editor.setCategory(p.id, id); done() } }, onDismiss = { sheet = null })
+    Sheet.Size -> SizeSheet(p, onDismiss = { sheet = null }) { e6, unit, manual -> sheet = null; edit { editor.setSize(p.id, e6, unit, manual); done() } }
+    Sheet.Join -> ProductPickerDialog("Juntar a “$title”", products.filter { it.productId != p.id },
       onPick = { other ->
-        dialog = null
+        sheet = null
         edit {
           val mine = dao.lineUnits(p.id).map(::byWeight).toSet(); val theirs = dao.lineUnits(other).map(::byWeight).toSet()
           if (mine.isNotEmpty() && theirs.isNotEmpty() && mine != theirs)
-            dialog = Dialog.JoinUnits(other, (dao.lineUnits(p.id) + dao.lineUnits(other)).distinct().joinToString(" e "))
+            sheet = Sheet.JoinUnits(other, (dao.lineUnits(p.id) + dao.lineUnits(other)).distinct().joinToString(" e "))
           else { join(app, other, p.id); done() }
         }
-      },
-      onDismiss = { dialog = null })
-    is Dialog.JoinUnits -> AlertDialog(
-      onDismissRequest = { dialog = null },
-      title = { Text("Unidades diferentes") },
-      text = { Text("Um é vendido por peso e o outro por unidade (${(dialog as Dialog.JoinUnits).units}). Juntos, o preço por kg deixa de ser comparável. Juntar mesmo assim?") },
-      confirmButton = { TextButton(onClick = { val o = (dialog as Dialog.JoinUnits).other; dialog = null; edit { join(app, o, p.id); done() } }) { Text("Juntar") } },
-      dismissButton = { TextButton(onClick = { dialog = null }) { Text("Cancelar") } },
-    )
+      }, onDismiss = { sheet = null })
+    is Sheet.JoinUnits -> CalmoSheet("Unidades diferentes", onDismiss = { sheet = null }) {
+      Sub("Um é vendido por peso e o outro por unidade (${s.units}). Juntos, o preço por kg deixa de ser comparável.")
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Pill("Juntar mesmo assim", ButtonKind.Solid) { sheet = null; edit { join(app, s.other, p.id); done() } }
+        Pill("Cancelar", ButtonKind.Ghost) { sheet = null }
+      }
+    }
     null -> {}
   }
 }
 
-/**
- * The shelf price over time (stage 5), per kg or litre when it can be, one line per store. Mixed bases (bought by
- * weight once, by unit another time) show the most common one.
- */
+/** Everything about a product that can be changed by hand, in one sheet. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PriceSection(points: List<PricePoint>) {
-  if (points.size < 2) return
-  val basis = points.groupBy { it.basis }.maxBy { it.value.size }
-  val shown = basis.value
-  HorizontalDivider()
-  Text("Preço por ${basis.key}", style = MaterialTheme.typography.titleSmall)
-  TimeSeries(shown.groupBy { it.storeName ?: "?" }.mapValues { (_, ps) -> ps.map { it.at to it.cents.toDouble() } },
-    format = { Format.brl(Math.round(it)) })
-  val stores = shown.map { it.storeName ?: "?" }.distinct()
-  // Same order as TimeSeries gives its series their colours.
-  if (stores.size > 1) FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-    stores.forEachIndexed { i, st ->
-      Text("● $st", style = MaterialTheme.typography.bodySmall, color = io.github.sandroroque.getnf.ui.spending.PALETTE[i % 10])
+private fun EditSheet(
+  p: ProductRow, items: List<StoreItemDetail>, tags: List<TagRow>, tagIds: List<String>,
+  onDismiss: () -> Unit, onPick: (Sheet) -> Unit, onTag: (String, Boolean) -> Unit, onSeparate: (String) -> Unit,
+) {
+  CalmoSheet("Editar produto", onDismiss) {
+    Column {
+      FactRow("Nome", p.name ?: "o da nota", onClick = { onPick(Sheet.Name) })
+      FactRow("Categoria", "trocar", onClick = { onPick(Sheet.Category) })
+      FactRow("Tamanho", "definir", onClick = { onPick(Sheet.Size) })
+      FactRow("Juntar", "outro produto a este", onClick = { onPick(Sheet.Join) })
+    }
+    if (tags.isNotEmpty()) {
+      SectionLabel("Marcadores")
+      FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (t in tags) Pill(t.description, if (t.id in tagIds) ButtonKind.Solid else ButtonKind.Ghost) { onTag(t.id, t.id !in tagIds) }
+      }
+    }
+    if (items.size > 1) {
+      SectionLabel("Itens das notas")
+      for (s in items) AmountRow(s.description, null, subtitle = s.issuerName ?: "qualquer loja", trailingMark = "separar", onClick = { onSeparate(s.id) })
     }
   }
-  val first = shown.minBy { it.at }; val last = shown.maxBy { it.at }
-  val change = (last.cents - first.cents) * 100.0 / first.cents
-  Text("${Format.brl(first.cents)} → ${Format.brl(last.cents)} (${if (change >= 0) "+" else ""}${"%.1f".format(change)}%), preço de prateleira, antes de descontos.",
-    style = MaterialTheme.typography.bodySmall)
+}
+
+/** The latest price per kg/l (or unit), its change since the first, and the chart: one line per store. */
+@Composable
+private fun PriceBlock(points: List<PricePoint>) {
+  if (points.isEmpty()) return
+  val basis = points.groupBy { it.basis }.maxBy { it.value.size }
+  val shown = basis.value.sortedBy { it.at }
+  val last = shown.last(); val first = shown.first()
+  Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(verticalAlignment = Alignment.Bottom) {
+      MidNumber(Format.brl(last.cents))
+      Sub(" /${basis.key}", Modifier.padding(bottom = 4.dp).weight(1f))
+      if (shown.size > 1) {
+        val change = (last.cents - first.cents) * 100.0 / first.cents
+        Text(if (change == 0.0) "igual a ${Format.date(first.at)}" else "%+.1f%% desde %s".format(change, Format.date(first.at)).replace('.', ','),
+          style = MaterialTheme.typography.bodySmall, color = when { change > 0 -> Calmo.up; change < 0 -> Calmo.down; else -> Calmo.mute })
+      }
+    }
+    if (shown.size > 1) {
+      TimeSeries(shown.groupBy { it.storeName ?: "?" }.mapValues { (_, ps) -> ps.map { it.at to it.cents.toDouble() } },
+        format = { Format.brl(Math.round(it)) })
+      Sub("Preço de prateleira." + if (shown.map { it.storeName }.distinct().size > 1) " Uma linha por loja." else "")
+    }
+  }
 }
 
 private suspend fun join(app: GetNFApp, other: String, into: String) {
@@ -192,72 +224,49 @@ private suspend fun join(app: GetNFApp, other: String, into: String) {
 
 private fun byWeight(unit: String?) = unit?.uppercase() in setOf("KG", "G", "L", "ML")
 
-@Composable
-private fun Field(label: String, value: String, onEdit: () -> Unit) {
-  Row(Modifier.fillMaxWidth()) {
-    Column(Modifier.weight(1f)) {
-      Text(label, style = MaterialTheme.typography.labelLarge)
-      Text(value, style = MaterialTheme.typography.bodyLarge)
-    }
-    TextButton(onClick = onEdit) { Text("Alterar") }
-  }
-}
-
-@Composable
-private fun StoreItem(s: StoreItemDetail, canSplit: Boolean, onSplit: () -> Unit) {
-  Row(Modifier.fillMaxWidth()) {
-    Column(Modifier.weight(1f)) {
-      Text(s.description, style = MaterialTheme.typography.bodyMedium)
-      val code = if (s.codeKind == "gtin") "código de barras ${s.code}" else "código ${s.code} da loja"
-      Text("${s.issuerName ?: "qualquer loja"} · $code · ${s.lines} compra(s)", style = MaterialTheme.typography.bodySmall)
-    }
-    if (canSplit) TextButton(onClick = onSplit) { Text("Separar") }
-  }
-}
-
-private fun origin(p: ProductRow) = when {
-  p.categoryId == null -> "sem categoria"
-  p.categorySource == "user" && p.categoryReview == "corrected" -> "corrigida por você"
-  p.categorySource == "user" -> "escolhida por você"
-  p.categoryReview == "automatic" -> "automática (${p.categorySource}${p.categoryConfidence?.let { ", ${Math.round(it * 100)}%" } ?: ""}), não confirmada"
-  p.categorySource == "import" -> "importada"
-  else -> p.categorySource ?: "?"
+/** Who set the category, as a mark (D81). */
+private fun origin(p: ProductRow): String? = when {
+  p.categoryId == null -> null
+  p.categorySource == "user" -> "você"
+  p.categorySource?.startsWith("jev") == true -> "Jev"
+  p.categorySource?.startsWith("llm") == true -> "LLM"
+  p.categorySource == "import" -> "antes"
+  else -> p.categorySource
 }
 
 private fun size(p: ProductRow, items: List<StoreItemDetail>): String {
   val parsed = items.firstNotNullOfOrNull { s -> s.parsedSizeE6?.let { it to s.parsedSizeUnit } }
   return when {
-    p.sizeSource == "manual" && p.sizeE6 == null -> "sem tamanho (definido por você)"
-    p.sizeSource == "manual" -> "${Format.e4(p.sizeE6!! / 100)} ${p.sizeUnit} (definido por você)"
-    parsed != null -> "${Format.e4(parsed.first / 100)} ${parsed.second} (lido da descrição)"
+    p.sizeSource == "manual" && p.sizeE6 == null -> "sem tamanho"
+    p.sizeSource == "manual" -> sizeText(p.sizeE6!!, p.sizeUnit ?: "kg")
+    parsed != null -> sizeText(parsed.first, parsed.second ?: "kg")
     else -> "desconhecido"
   }
 }
 
+private fun sizeMark(p: ProductRow, items: List<StoreItemDetail>) = when {
+  p.sizeSource == "manual" -> "você"
+  items.any { it.parsedSizeE6 != null } -> "da nota"
+  else -> null
+}
+
 /** A size by hand in kg or litres, "no size", or back to what the description says. */
 @Composable
-private fun SizeDialog(p: ProductRow, onDismiss: () -> Unit, onSave: (Long?, String?, Boolean) -> Unit) {
+private fun SizeSheet(p: ProductRow, onDismiss: () -> Unit, onSave: (Long?, String?, Boolean) -> Unit) {
   var amount by remember { mutableStateOf(p.sizeE6?.let { Format.e4(it / 100) } ?: "") }
   var unit by remember { mutableStateOf(p.sizeUnit ?: "kg") }
   val e6 = amount.replace(".", "").replace(",", ".").toBigDecimalOrNull()?.movePointRight(6)?.toLong()
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text("Tamanho") },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Quanto vem na embalagem, em kg ou litros (500 g = 0,5 kg).", style = MaterialTheme.typography.bodySmall)
-        OutlinedTextField(amount, { amount = it }, label = { Text("Quantidade") }, singleLine = true,
-          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-          for (u in listOf("kg", "l")) FilterChip(selected = unit == u, onClick = { unit = u }, label = { Text(u) })
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-          TextButton(onClick = { onSave(null, null, true) }) { Text("Sem tamanho") }
-          TextButton(onClick = { onSave(null, null, false) }) { Text("Usar o da descrição") }
-        }
-      }
-    },
-    confirmButton = { TextButton(enabled = e6 != null && e6 > 0, onClick = { onSave(e6, unit, true) }) { Text("Salvar") } },
-    dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
-  )
+  CalmoSheet("Tamanho", onDismiss) {
+    Sub("Quanto vem na embalagem, em kg ou litros (500 g = 0,5 kg).")
+    OutlinedTextField(amount, { amount = it }, label = { Text("Quantidade") }, singleLine = true,
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      for (u in listOf("kg", "l")) Pill(u, if (unit == u) ButtonKind.Solid else ButtonKind.Ghost) { unit = u }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      Pill("Salvar", ButtonKind.Solid, enabled = e6 != null && e6 > 0) { onSave(e6, unit, true) }
+      Pill("Sem tamanho", ButtonKind.Ghost) { onSave(null, null, true) }
+      Pill("O da nota", ButtonKind.Ghost) { onSave(null, null, false) }
+    }
+  }
 }

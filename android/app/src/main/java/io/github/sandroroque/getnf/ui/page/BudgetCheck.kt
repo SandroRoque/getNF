@@ -20,9 +20,9 @@ import java.util.Date
 fun budgetText(network: CurrentNetwork, status: LookupBudget.Status): String {
   val at = status.nextFreeAt?.let { DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it)) }
   return when {
-    status.blocked -> "SEFAZ is blocking ${network.label}. Try again after $at, or switch networks."
-    status.remaining == 0 -> "SEFAZ budget used up on ${network.label} (${LookupBudget.LIMIT}/hour). Next slot at $at."
-    else -> "${status.remaining} of ${LookupBudget.LIMIT} SEFAZ lookups left this hour on ${network.label}."
+    status.blocked -> "A SEFAZ está bloqueando ${network.label}. Tente depois das $at, ou troque de rede."
+    status.remaining == 0 -> "Consultas à SEFAZ esgotadas em ${network.label} (${LookupBudget.LIMIT} por hora). Próxima às $at."
+    else -> "${status.remaining} de ${LookupBudget.LIMIT} consultas à SEFAZ livres nesta hora, em ${network.label}."
   }
 }
 
@@ -46,12 +46,12 @@ class BudgetCheck internal constructor(private val context: Context) {
     val p = prompt ?: return
     AlertDialog(
       onDismissRequest = { prompt = null },
-      title = { Text("Fetch the page later?") },
+      title = { Text("Buscar a página depois?") },
       text = {
         Text(
           p.text +
-            "\n\nThe photos are saved either way. If you switch to a different network (another SIM, or Wi-Fi vs mobile " +
-            "data), you can fetch now."
+            "\n\nAs fotos ficam salvas de qualquer jeito. Em outra rede (outro chip, ou Wi-Fi em vez de dados móveis), " +
+            "dá para buscar agora."
         )
       },
       confirmButton = {
@@ -61,7 +61,7 @@ class BudgetCheck internal constructor(private val context: Context) {
             p.onLater()
           }
         ) {
-          Text("Later")
+          Text("Depois")
         }
       },
       dismissButton = {
@@ -71,7 +71,7 @@ class BudgetCheck internal constructor(private val context: Context) {
             p.onFetch()
           }
         ) {
-          Text("Fetch anyway")
+          Text("Buscar mesmo assim")
         }
       },
     )

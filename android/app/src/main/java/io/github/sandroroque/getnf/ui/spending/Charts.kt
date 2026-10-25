@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
@@ -97,24 +98,29 @@ fun TimeSeries(series: Map<String, List<Pair<Long, Double>>>, format: (Double) -
   if (all.isEmpty()) return
   val (x0, x1) = all.minOf { it.first } to all.maxOf { it.first }
   val (lo, hi) = all.minOf { it.second } to all.maxOf { it.second }
-  val pad = ((hi - lo) * .1).takeIf { it > 0 } ?: (hi * .05 + 1)
+  val pad = ((hi - lo) * .15).takeIf { it > 0 } ?: (hi * .05 + 1)
   val (y0, y1) = lo - pad to hi + pad
-  val axis = MaterialTheme.colorScheme.outlineVariant
-  Box(modifier.fillMaxWidth().height(150.dp)) {
-    Canvas(Modifier.fillMaxWidth().height(150.dp)) {
+  val c = io.github.sandroroque.getnf.theme.Calmo
+  // One series in the text colour; several (one per store) in the category colours, in order (D81).
+  val colors = if (series.size == 1) listOf(c.fg) else c.categories
+  Box(modifier.fillMaxWidth().height(120.dp)) {
+    Canvas(Modifier.fillMaxWidth().height(120.dp).padding(start = 44.dp, top = 6.dp, bottom = 6.dp, end = 6.dp)) {
       fun at(p: Pair<Long, Double>) = Offset(
         if (x1 == x0) size.width / 2 else size.width * (p.first - x0) / (x1 - x0).toFloat(),
         size.height * (1 - ((p.second - y0) / (y1 - y0)).toFloat()),
       )
-      drawLine(axis, Offset(0f, size.height), Offset(size.width, size.height))
+      drawLine(c.line, Offset(0f, size.height), Offset(size.width, size.height))
       series.entries.forEachIndexed { i, (_, points) ->
-        val color = PALETTE[i % PALETTE.size]
+        val color = colors[i % colors.size]
         val sorted = points.sortedBy { it.first }.map(::at)
-        sorted.zipWithNext { a, b -> drawLine(color, a, b, strokeWidth = 2.dp.toPx()) }
-        sorted.forEach { drawCircle(color, 4.dp.toPx(), it); drawCircle(Color.White, 4.dp.toPx(), it, style = Stroke(1.dp.toPx())) }
+        sorted.zipWithNext { a, b -> drawLine(color, a, b, strokeWidth = 1.8.dp.toPx()) }
+        sorted.forEachIndexed { j, p ->
+          drawCircle(if (j == sorted.lastIndex) color else c.bg, 3.5.dp.toPx(), p)
+          drawCircle(color, 3.5.dp.toPx(), p, style = Stroke(1.5.dp.toPx()))
+        }
       }
     }
-    Text(format(hi), style = MaterialTheme.typography.labelSmall, modifier = Modifier.align(Alignment.TopStart))
-    if (hi != lo) Text(format(lo), style = MaterialTheme.typography.labelSmall, modifier = Modifier.align(Alignment.BottomStart))
+    Text(format(hi), style = MaterialTheme.typography.labelSmall, color = c.mute, modifier = Modifier.align(Alignment.TopStart))
+    if (hi != lo) Text(format(lo), style = MaterialTheme.typography.labelSmall, color = c.mute, modifier = Modifier.align(Alignment.BottomStart))
   }
 }
