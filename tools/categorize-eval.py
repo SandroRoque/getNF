@@ -156,6 +156,7 @@ def laya(args):
     sys.exit(f"{args.key_env} is not set (environment or server/.env.local)")
   headers = {"Authorization": f"Bearer {key}"} if key else None
   leaves = [p for p in labels if not children.get(p)]
+  off = json.load(open(os.path.join(OUT, "off.json"), encoding="utf-8")) if args.lookup else {}
   results, started, tokens = [], time.time(), 0
   for n, item in enumerate(items):
     text = expand(item["description"]) if expand else item["description"]
@@ -165,6 +166,14 @@ def laya(args):
     state = ({"item": text} if args.lang == "en" else {"descricao": text})
     if args.context:
       state["contexto"] = describe(item, True)
+    found = off.get(item.get("gtin") or "")
+    if found:
+      # What Open Food Facts calls the barcode (D60): a full name, and its own categories when it has them.
+      state["product_name"] = " ".join(x for x in (found.get("product_name_pt") or found.get("product_name"),
+                                                   found.get("brands"), found.get("quantity")) if x)
+      tags = [t.split(":", 1)[-1].replace("-", " ") for t in found.get("categories_tags") or []]
+      if tags:
+        state["product_categories"] = ", ".join(tags[-4:])
     node, steps = "", []
     if args.flat:
       # One question over every leaf: the hosted model takes up to 255 options (Laya's head budget is ~20).
@@ -201,7 +210,8 @@ def laya(args):
                     "confidence": min(s["confidence"] or 0 for s in steps) if steps else 0})
   tag = "".join([f"-{args.lang}", "+lex" if args.lexicon else "", "+desc" if args.descriptions else "",
                  "+nohere" if args.no_here else "", "+clean" if args.clean else "",
-                 "+flat" if args.flat else "", "+ctx" if args.context else "", f"+{args.tag}" if args.tag else ""])
+                 "+flat" if args.flat else "", "+ctx" if args.context else "",
+                 "+off" if args.lookup else "", f"+{args.tag}" if args.tag else ""])
   if tokens:
     print(f"{tokens} input tokens reported")
   save(f"laya-{args.model or 'auto'}{tag}", results, started)
@@ -417,6 +427,7 @@ def main():
   l.add_argument("--clean", action="store_true", help="drop sizes and counts from the item text")
   l.add_argument("--tag", help="extra name for the run")
   l.add_argument("--key-env", help="name of the variable holding a bearer key (e.g. TYPESAFE_API_KEY)")
+  l.add_argument("--lookup", action="store_true", help="add Open Food Facts' name and categories (from `lookup`)")
   l.add_argument("--flat", action="store_true", help="one question over all leaf categories instead of the tree walk")
   l.add_argument("--context", action="store_true", help="add unit, price, store and the receipt's other items to the state")
   l.set_defaults(fn=laya)

@@ -1450,3 +1450,17 @@ For comparison: trained Laya 90% (D58), local LLM with context, examples and not
   Laya, its confidence can route items to review, and it is cheap and fast. Data leaves to TypeSafe: item
   descriptions, and with context the store name, prices and the receipt's other items. Not decided: Jev vs Laya;
   next would be a lexicon kept by the LLM instead of by hand, measured on items not seen when writing it.
+
+## D68. Open Food Facts names fed to Jev: raw text 85% → 90%; with the lexicon no gain (2026-10-25)
+
+The user noticed that D60's lookups had never reached a model: they only measured coverage. `categorize-eval.py laya
+--lookup` now adds Open Food Facts' name (with brand and quantity) and its last few categories to the state when the
+barcode is known (14 of the 82 items). Same Jev setup as D67, flat question.
+
+- **Raw receipt text with context: 85% → 90%.** All three misses that Open Food Facts knew got fixed: LING CALAB SEARA
+  (sausage), PEITO FGO EXCELSIOR (its "peito de frango defumado" made it a cold cut) and DET LIMPOL (cleaning).
+- **Translation-only lexicon: 96% → 95%.** The detergent flipped to laundry: Open Food Facts calls it just
+  "detergente", vaguer than the lexicon's "dish detergent". The other misses had no lookup.
+- **So:** lookup names help exactly where the receipt text is unreadable and the barcode is known; coverage is the
+  limit. 11 of the 12 raw-text misses have barcodes, only 3 of them in Open Food Facts; the rest are mainstream
+  Brazilian brands (Tirol, Carolina, Duetto), so Cosmos (needs the user's token) is the next test.
