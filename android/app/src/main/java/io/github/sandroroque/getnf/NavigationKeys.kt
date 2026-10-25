@@ -3,11 +3,19 @@ package io.github.sandroroque.getnf
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
-/** Spending reports (stage 5): the first screen. */
+/** Início (D81): the month at a glance. The first screen. */
+@Serializable data object Inicio : NavKey
+
+/** Gastos: where the money went (stage 5, D81). */
 @Serializable data object Spending : NavKey
 
-/** The receipts list ("Notas"). */
-@Serializable data object Home : NavKey
+/** Para você: every decision, one queue (D81). */
+@Serializable data object ParaVoce : NavKey
+
+/** Catálogo: products, categories, stores and receipts; [segment] picks which (D81). */
+@Serializable data class Catalog(val segment: Int = 0) : NavKey
+
+@Serializable data class StoreDetail(val cnpj: String) : NavKey
 
 @Serializable data object Scan : NavKey
 
@@ -19,13 +27,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object Settings : NavKey
 
-/** Products: what needs a decision first, then everything (stage 4c). */
-@Serializable data object Products : NavKey
-
 @Serializable data class ProductDetail(val productId: String) : NavKey
 
 /** The personal price index (stage 7), for everything or a category subtree. */
 @Serializable data class IpciKey(val categoryId: String?) : NavKey
 
-/** The category tree, editable (D75). */
-@Serializable data object Categories : NavKey

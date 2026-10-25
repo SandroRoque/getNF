@@ -1,6 +1,5 @@
 package io.github.sandroroque.getnf.ui.spending
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,22 +7,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,30 +23,36 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.sandroroque.getnf.GetNFApp
-import io.github.sandroroque.getnf.data.CategoryNode
-import io.github.sandroroque.getnf.data.Period
-import io.github.sandroroque.getnf.data.Spending
+import io.github.sandroroque.getnf.data.Caveats
 import io.github.sandroroque.getnf.data.Ipci
+import io.github.sandroroque.getnf.data.Spending
 import io.github.sandroroque.getnf.data.SpendingLine
 import io.github.sandroroque.getnf.data.productsIn
+import io.github.sandroroque.getnf.data.storesIn
+import io.github.sandroroque.getnf.theme.Calmo
 import io.github.sandroroque.getnf.ui.Format
-import io.github.sandroroque.getnf.ui.catalog.flatten
+import io.github.sandroroque.getnf.ui.calmo.AmountRow
+import io.github.sandroroque.getnf.ui.calmo.EmptyState
+import io.github.sandroroque.getnf.ui.calmo.MidNumber
+import io.github.sandroroque.getnf.ui.calmo.SectionLabel
+import io.github.sandroroque.getnf.ui.calmo.Segments
+import io.github.sandroroque.getnf.ui.calmo.Sub
+import io.github.sandroroque.getnf.ui.calmo.TabHeader
+import io.github.sandroroque.getnf.ui.home.rememberCategoryColor
 
 /**
- * Gastos (stage 5): spending per month or year as stacked bars, the selected period's categories (tap to go down the
- * tree), the products there, and what the numbers can't say (estimated discounts, uncategorized spending, receipts
- * without their page). Read from the phone's own database: works offline.
+ * Gastos (stage 5, D81): one period at a time. Bars to pick the month or year; its total and what's estimated or
+ * missing; then by category (tap to go down the tree) or by store; then the products there. Offline: read from the
+ * phone's own database.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpendingScreen(
   onScan: () -> Unit, onOpenProduct: (String) -> Unit, onCategories: () -> Unit, onSettings: () -> Unit,
-  onIpci: (String?) -> Unit = {},
+  onIpci: (String?) -> Unit = {}, onOpenStore: (String) -> Unit = {},
 ) {
   val app = LocalContext.current.applicationContext as GetNFApp
   val lines by remember { app.database.spending().lines() }.collectAsStateWithLifecycle(null)
@@ -65,144 +62,132 @@ fun SpendingScreen(
   var yearly by rememberSaveable { mutableStateOf(false) }
   var selectedKey by rememberSaveable { mutableStateOf<String?>(null) }
   var path by rememberSaveable { mutableStateOf(listOf<String>()) }
-  var menu by remember { mutableStateOf(false) }
+  var lens by rememberSaveable { mutableStateOf(0) }
 
   val parents = remember(categories) { categories.associate { it.id to it.parentId } }
   val spending = remember(lines, parents, yearly) { lines?.let { Spending(it, parents, yearly) } }
   val byId = remember(categories) { categories.associateBy { it.id } }
-  val colorOf = remember(categories) {
-    val tops = flatten(categories).filter { it.second == 0 }.map { it.first.id }
-    val f: (String?) -> Color = { id -> tops.indexOf(id).takeIf { it >= 0 }?.let { PALETTE[it % PALETTE.size] } ?: UNCATEGORIZED }
-    f
-  }
+  val colorOf = rememberCategoryColor(categories)
   val selected = spending?.periods?.let { ps -> ps.firstOrNull { it.key == selectedKey } ?: ps.lastOrNull() }
   val node = path.lastOrNull()
+  val titles = products.associate { it.productId to it.title }
 
-  Scaffold(
-    topBar = {
-      TopAppBar(title = { Text("Gastos") }, actions = {
-        TextButton(onClick = { menu = true }) { Text("Mais") }
-        DropdownMenu(menu, { menu = false }) {
-          DropdownMenuItem(text = { Text("Categorias") }, onClick = { menu = false; onCategories() })
-          DropdownMenuItem(text = { Text("Ajustes") }, onClick = { menu = false; onSettings() })
+  LazyColumn(
+    Modifier.fillMaxSize().statusBarsPadding(),
+    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
+    verticalArrangement = Arrangement.spacedBy(14.dp),
+  ) {
+    item {
+      TabHeader("Gastos") {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+          for ((i, l) in listOf("Mês", "Ano").withIndex()) Text(l, style = MaterialTheme.typography.bodyMedium,
+            color = if ((i == 1) == yearly) Calmo.fg else Calmo.mute,
+            modifier = Modifier.clickable { yearly = i == 1; selectedKey = null })
         }
-      })
-    },
-    floatingActionButton = { ExtendedFloatingActionButton(onClick = onScan) { Text("Escanear nota") } },
-  ) { padding ->
-    if (spending == null) return@Scaffold
+      }
+    }
+    if (spending == null) return@LazyColumn
     if (selected == null) {
-      Text("Nenhum gasto ainda. Escaneie uma nota e busque a página dela.", Modifier.padding(padding).padding(16.dp))
-      return@Scaffold
+      item { EmptyState("Os gastos aparecem aqui quando a primeira nota tiver a página da SEFAZ lida.") }
+      return@LazyColumn
+    }
+    item { Bars(spending, selected) { selectedKey = it.key } }
+    item {
+      Column {
+        MidNumber(Format.brl(spending.total(selected)))
+        Sub("${label(selected, long = true)} · ${Format.count(spending.linesIn(selected).map { it.chave }.distinct().size, "nota", "notas")}")
+        CaveatLine(spending.caveats(selected), waiting)
+      }
+    }
+    item { Segments(listOf("Categorias", "Lojas"), lens) { lens = it } }
+
+    if (lens == 1) {
+      items(storesIn(spending.linesIn(selected)), key = { "s:${it.cnpj}" }) { s ->
+        AmountRow(s.name ?: "Loja sem nome", Format.brl(s.netCents), subtitle = "${s.receipts} ${if (s.receipts == 1) "nota" else "notas"} · ${s.lines} itens",
+          onClick = s.cnpj?.let { c -> { onOpenStore(c) } })
+      }
+      return@LazyColumn
+    }
+
+    if (path.isNotEmpty()) item {
+      // Where we are in the tree; each step goes back up.
+      Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("Tudo", style = MaterialTheme.typography.bodySmall, color = Calmo.acc, modifier = Modifier.clickable { path = emptyList() })
+        path.forEachIndexed { i, id ->
+          Sub("›")
+          Text(byId[id]?.label ?: "?", style = MaterialTheme.typography.bodySmall,
+            color = if (i == path.lastIndex) Calmo.fg else Calmo.acc, modifier = Modifier.clickable { path = path.take(i + 1) })
+        }
+      }
     }
     val slices = spending.slices(selected, node)
-    val total = slices.sumOf { it.netCents }
-    val nodeLines = spending.linesUnder(selected, node)
-    val caveats = spending.caveats(selected)
-    LazyColumn(
-      Modifier.fillMaxSize().padding(padding),
-      contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
-      verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-      item {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-          FilterChip(selected = !yearly, onClick = { yearly = false; selectedKey = null }, label = { Text("Mês") })
-          FilterChip(selected = yearly, onClick = { yearly = true; selectedKey = null }, label = { Text("Ano") })
-        }
-        StackedBars(spending.periods, spending.stacks(), colorOf, selected) { selectedKey = it.key }
-        Text("${label(selected, long = true).replaceFirstChar { it.uppercase() }}: ${Format.brl(spending.total(selected))}",
-          style = MaterialTheme.typography.titleMedium)
-        Text("${spending.linesIn(selected).map { it.chave }.distinct().size} nota(s)", style = MaterialTheme.typography.bodySmall)
-      }
-      item { Caveats(caveats, waiting) }
-      if (node == null) item { IpciCard(lines.orEmpty(), spending, null, onIpci) }
-      item {
-        // Where we are in the tree: "Tudo › Alimentos › Frutas"; each step goes back up.
-        Row(horizontalArrangement = Arrangement.spacedBy(0.dp), verticalAlignment = Alignment.CenterVertically) {
-          TextButton(onClick = { path = emptyList() }) { Text("Tudo") }
-          path.forEachIndexed { i, id ->
-            Text("›")
-            TextButton(onClick = { path = path.take(i + 1) }) { Text(byId[id]?.label ?: "?") }
-          }
-        }
-      }
-      items(slices, key = { "slice:${it.categoryId}" }) { slice ->
-        val here = slice.categoryId == node && node != null
-        val drillable = slice.categoryId != null && !here && categories.any { it.parentId == slice.categoryId }
-        val name = when {
-          slice.categoryId == null -> "Sem categoria"
-          here -> "${byId[node]?.label} (sem subcategoria)"
-          else -> byId[slice.categoryId]?.label ?: "?"
-        }
-        Row(
-          Modifier.fillMaxWidth().clickable(enabled = drillable || (slice.categoryId != null && !here)) {
-            path = path + slice.categoryId!!
-          }.padding(vertical = 6.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Canvas(Modifier.size(12.dp)) { drawCircle(colorOf(path.firstOrNull() ?: slice.categoryId)) }
-          Column(Modifier.weight(1f).padding(start = 8.dp)) {
-            Row {
-              Text(name + if (drillable) " ›" else "", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-              Text(Format.brl(slice.netCents), style = MaterialTheme.typography.bodyLarge)
-            }
-            ShareBar(if (total > 0) slice.netCents.toFloat() / total else 0f, colorOf(path.firstOrNull() ?: slice.categoryId), Modifier.fillMaxWidth())
-            Text("${percent(slice.netCents, total)} · ${slice.lines} item(ns)", style = MaterialTheme.typography.bodySmall)
-          }
-        }
-      }
-      if (node != null) item { IpciCard(lines.orEmpty(), spending, node, onIpci) }
-      item {
-        HorizontalDivider()
-        Text(if (node == null) "Produtos" else "Produtos em ${byId[node]?.label}", style = MaterialTheme.typography.titleSmall,
-          modifier = Modifier.padding(top = 8.dp))
-      }
-      val titles = products.associate { it.productId to it.title }
-      items(productsIn(nodeLines).take(50), key = { "product:${it.productId}" }) { p ->
-        Row(Modifier.fillMaxWidth().clickable { onOpenProduct(p.productId) }.padding(vertical = 6.dp)) {
-          Column(Modifier.weight(1f)) {
-            Text(titles[p.productId] ?: "?", style = MaterialTheme.typography.bodyMedium)
-            Text(p.qty.entries.joinToString(" + ") { (unit, q) -> "${Format.e4(q)} ${unit.lowercase()}" }, style = MaterialTheme.typography.bodySmall)
-          }
-          Text(Format.brl(p.netCents), style = MaterialTheme.typography.bodyMedium)
-        }
-      }
+    val total = slices.sumOf { it.netCents }.takeIf { it > 0 } ?: 1
+    items(slices, key = { "c:${it.categoryId}" }) { s ->
+      val here = s.categoryId == node && node != null
+      val deeper = s.categoryId != null && !here
+      AmountRow(
+        title = when { s.categoryId == null -> "Sem categoria"; here -> "${byId[node]?.label} (sem subcategoria)"; else -> byId[s.categoryId]?.label ?: "?" },
+        subtitle = "${Math.round(s.netCents * 100.0 / total)}% · ${s.lines} itens",
+        amount = Format.brl(s.netCents), dot = colorOf(s.categoryId ?: node),
+        onClick = if (deeper) ({ path = path + s.categoryId!! }) else null,
+      )
+    }
+    item { IpciLine(lines.orEmpty(), spending, node, onIpci) }
+    item { SectionLabel(if (node == null) "Produtos" else "Produtos em ${byId[node]?.label}", Modifier.padding(top = 6.dp)) }
+    items(productsIn(spending.linesUnder(selected, node)).take(40), key = { "p:${it.productId}" }) { p ->
+      AmountRow(titles[p.productId] ?: "?", Format.brl(p.netCents),
+        subtitle = p.qty.entries.joinToString(" + ") { (unit, q) -> "${Format.e4(q)} ${unit.lowercase()}" },
+        onClick = { onOpenProduct(p.productId) })
     }
   }
 }
 
-/** What the numbers can't fully say, in plain words, only when it applies. */
+/** One bar per period, the selected one dark; tap to pick. A gap means no receipts, not zero spending. */
 @Composable
-private fun Caveats(c: io.github.sandroroque.getnf.data.Caveats, waiting: Int) {
+private fun Bars(spending: Spending, selected: io.github.sandroroque.getnf.data.Period, onSelect: (io.github.sandroroque.getnf.data.Period) -> Unit) {
+  val periods = spending.periods.takeLast(12)
+  val max = periods.maxOfOrNull { spending.total(it) }?.takeIf { it > 0 } ?: 1
+  val c = Calmo
+  // Fixed-width bars, newest at the right: one month alone stays a bar, not a block.
+  Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
+    Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
+      for (p in periods) {
+        val f = spending.total(p).toFloat() / max
+        androidx.compose.foundation.Canvas(Modifier.width(22.dp).height(78.dp).clickable { onSelect(p) }) {
+          val h = size.height * f.coerceAtLeast(.02f)
+          drawRoundRect(if (p == selected) c.fg else c.line, topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - h),
+            size = androidx.compose.ui.geometry.Size(size.width, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f))
+        }
+      }
+    }
+    Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      for (p in periods) Text(label(p).substringBefore("\n"), Modifier.width(22.dp), style = MaterialTheme.typography.labelSmall,
+        color = if (p == selected) Calmo.fg else Calmo.mute, maxLines = 1, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    }
+  }
+}
+
+/** What the number can't say, in one quiet line. */
+@Composable
+private fun CaveatLine(c: Caveats, waiting: Int) {
   val notes = listOfNotNull(
-    "${Format.brl(c.proratedDiscountCents)} de desconto foi rateado entre os itens: o valor por item é estimado.".takeIf { c.proratedDiscountCents > 0 },
-    "${Format.brl(c.uncategorizedCents)} ainda sem categoria.".takeIf { c.uncategorizedCents > 0 },
-    "$waiting nota(s) esperando a página da SEFAZ não entram aqui.".takeIf { waiting > 0 },
-    "${c.undatedLines} item(ns) sem data ficam de fora.".takeIf { c.undatedLines > 0 },
+    "${Format.brl(c.proratedDiscountCents)} de desconto rateado (estimado)".takeIf { c.proratedDiscountCents > 0 },
+    "${Format.brl(c.uncategorizedCents)} sem categoria".takeIf { c.uncategorizedCents > 0 },
+    "$waiting ${if (waiting == 1) "nota esperando" else "notas esperando"} a página".takeIf { waiting > 0 },
   )
-  if (notes.isEmpty()) return
-  Card(Modifier.fillMaxWidth()) {
-    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-      notes.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
-    }
-  }
+  if (notes.isNotEmpty()) Sub(notes.joinToString(" · "), Modifier.padding(top = 2.dp))
 }
 
-/** The IPCI's latest reading for everything or a category, opening the full view (stage 7, D79). */
+/** The IPCI's latest reading here, opening the full view (stage 7, D79). */
 @Composable
-private fun IpciCard(all: List<SpendingLine>, spending: Spending, categoryId: String?, onOpen: (String?) -> Unit) {
-  val months = remember(all, categoryId) {
-    Ipci.compute(if (categoryId == null) all else all.filter { categoryId in spending.ancestry(it.categoryId) })
-  }
+private fun IpciLine(all: List<SpendingLine>, spending: Spending, categoryId: String?, onOpen: (String?) -> Unit) {
+  val months = remember(all, categoryId) { Ipci.compute(if (categoryId == null) all else all.filter { categoryId in spending.ancestry(it.categoryId) }) }
   if (months.size < 2) return
   val latest = months.lastOrNull { it.reading != null }
-  Card(Modifier.fillMaxWidth().clickable { onOpen(categoryId) }) {
-    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-      Text(if (categoryId == null) "Inflação pessoal (IPCI) ›" else "Preços nesta categoria (IPCI) ›", style = MaterialTheme.typography.titleSmall)
-      Text(latest?.let { "%+.1f%% em %s".format(it.reading, label(it.period, long = true)).replace('.', ',') } ?: "Dados insuficientes por enquanto",
-        style = MaterialTheme.typography.bodyMedium)
-    }
+  Row(Modifier.fillMaxWidth().clickable { onOpen(categoryId) }.padding(vertical = 6.dp), verticalAlignment = Alignment.Bottom) {
+    Sub(if (latest == null) "Preços: dados insuficientes por enquanto" else "Preços, ${label(latest.period, long = true)}", Modifier.weight(1f))
+    if (latest != null) Text("%+.1f%%".format(latest.reading).replace('.', ','), style = MaterialTheme.typography.bodyLarge,
+      color = if (latest.reading!! > 0) Calmo.up else Calmo.down)
+    Sub(" ›")
   }
 }
-
-private fun percent(part: Long, total: Long) = if (total > 0) "${Math.round(part * 100.0 / total)}%" else "–"

@@ -8,7 +8,19 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import io.github.sandroroque.getnf.theme.Calmo
+import io.github.sandroroque.getnf.ui.calmo.AmountRow
+import io.github.sandroroque.getnf.ui.calmo.ButtonKind
+import io.github.sandroroque.getnf.ui.calmo.Pill
+import io.github.sandroroque.getnf.ui.calmo.ScreenTitle
+import io.github.sandroroque.getnf.ui.calmo.SearchBox
+import io.github.sandroroque.getnf.ui.calmo.Sub
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -61,12 +73,25 @@ fun pathOf(categories: List<CategoryNode>, id: String?): String? {
   return chain.takeIf { it.isNotEmpty() }?.joinToString(" › ") { it.label }
 }
 
-private fun fold(text: String) =
+internal fun fold(text: String) =
   Normalizer.normalize(text, Normalizer.Form.NFD).replace(Regex("\\p{M}"), "").lowercase()
+
+/** A sheet from the bottom with a title, in the Calmo look (D81): every picker and editor uses it. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CalmoSheet(title: String, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+  ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    containerColor = Calmo.sheet, contentColor = Calmo.fg) {
+    Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+      ScreenTitle(title)
+      content()
+    }
+  }
+}
 
 /**
  * Picks a category from the tree, searchable by label or description. A search keeps the matches' parents visible.
- * [exclude] hides categories (and their subtrees) that can't be chosen, such as the one being moved; [allowNone]
+ * [exclude] hides categories (and their subtrees) that can't be chosen, such as the one being moved; [noneLabel]
  * offers "no category" / "top level".
  */
 @Composable
@@ -91,31 +116,24 @@ fun CategoryPickerDialog(
     val keep = matches + matches.flatMap { generateSequence(byId[it]?.parentId) { p -> byId[p]?.parentId }.toList() }
     visible.filter { it.first.id in keep }
   }
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text(title) },
-    text = {
-      Column {
-        OutlinedTextField(query, { query = it }, label = { Text("Buscar") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        LazyColumn(Modifier.heightIn(max = 420.dp)) {
-          if (noneLabel != null) item {
-            Text(noneLabel, style = MaterialTheme.typography.bodyLarge,
-              modifier = Modifier.fillMaxWidth().clickable { onPick(null) }.padding(vertical = 10.dp))
-          }
-          items(shown, key = { it.first.id }) { (c, depth) ->
-            Text(
-              c.label,
-              style = MaterialTheme.typography.bodyLarge,
-              fontWeight = if (c.id == current) FontWeight.Bold else null,
-              modifier = Modifier.fillMaxWidth().clickable { onPick(c.id) }.padding(start = (depth * 16).dp, top = 10.dp, bottom = 10.dp),
-            )
-          }
-        }
+  CalmoSheet(title, onDismiss) {
+    SearchBox(query, { query = it }, "Buscar categoria")
+    LazyColumn(Modifier.heightIn(max = 460.dp)) {
+      if (noneLabel != null) item {
+        Text(noneLabel, style = MaterialTheme.typography.bodyLarge, color = Calmo.mute,
+          modifier = Modifier.fillMaxWidth().clickable { onPick(null) }.padding(vertical = 12.dp))
       }
-    },
-    confirmButton = {},
-    dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
-  )
+      items(shown, key = { it.first.id }) { (c, depth) ->
+        Text(
+          c.label,
+          style = if (depth == 0) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyLarge,
+          fontWeight = if (c.id == current) FontWeight.Bold else null,
+          color = Calmo.fg,
+          modifier = Modifier.fillMaxWidth().clickable { onPick(c.id) }.padding(start = (depth * 18).dp, top = 11.dp, bottom = 11.dp),
+        )
+      }
+    }
+  }
 }
 
 /** Picks another product, searchable by name or receipt wording. */
@@ -124,28 +142,17 @@ fun ProductPickerDialog(title: String, products: List<ProductSummary>, onPick: (
   var query by remember { mutableStateOf("") }
   val q = fold(query.trim())
   val shown = products.filter { q.isEmpty() || q in fold(it.title) || q in fold(it.description.orEmpty()) }
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text(title) },
-    text = {
-      Column {
-        OutlinedTextField(query, { query = it }, label = { Text("Buscar") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        LazyColumn(Modifier.heightIn(max = 420.dp)) {
-          items(shown, key = { it.productId }) { p ->
-            Column(Modifier.fillMaxWidth().clickable { onPick(p.productId) }.padding(vertical = 8.dp)) {
-              Text(p.title, style = MaterialTheme.typography.bodyLarge)
-              Text("${p.categoryLabel ?: "Sem categoria"} · ${Format.brl(p.spentCents)}", style = MaterialTheme.typography.bodySmall)
-            }
-          }
-        }
+  CalmoSheet(title, onDismiss) {
+    SearchBox(query, { query = it }, "Buscar produto")
+    LazyColumn(Modifier.heightIn(max = 460.dp)) {
+      items(shown, key = { it.productId }) { p ->
+        AmountRow(p.title, Format.brl(p.spentCents), subtitle = p.categoryLabel ?: "Sem categoria", onClick = { onPick(p.productId) })
       }
-    },
-    confirmButton = {},
-    dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
-  )
+    }
+  }
 }
 
-/** A one- or two-field text dialog (label and description, a new name...). */
+/** One or two text fields (a name and a description, say) in a sheet. */
 @Composable
 fun TextDialog(
   title: String,
@@ -156,18 +163,14 @@ fun TextDialog(
   hint: String? = null,
 ) {
   val values = remember { fields.map { mutableStateOf(it.second) } }
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text(title) },
-    text = {
-      Column {
-        hint?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-        fields.forEachIndexed { i, (label, _) ->
-          OutlinedTextField(values[i].value, { values[i].value = it }, label = { Text(label) }, modifier = Modifier.fillMaxWidth())
-        }
-      }
-    },
-    confirmButton = { TextButton(onClick = { onSave(values.map { it.value }) }) { Text(confirm) } },
-    dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
-  )
+  CalmoSheet(title, onDismiss) {
+    hint?.let { Sub(it) }
+    fields.forEachIndexed { i, (label, _) ->
+      OutlinedTextField(values[i].value, { values[i].value = it }, label = { Text(label) }, modifier = Modifier.fillMaxWidth())
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      Pill(confirm, ButtonKind.Solid) { onSave(values.map { it.value }) }
+      Pill("Cancelar", ButtonKind.Ghost, onClick = onDismiss)
+    }
+  }
 }

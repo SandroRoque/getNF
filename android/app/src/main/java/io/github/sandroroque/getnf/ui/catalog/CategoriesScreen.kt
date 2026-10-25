@@ -31,6 +31,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.sandroroque.getnf.GetNFApp
 import io.github.sandroroque.getnf.data.CategoryNode
 import io.github.sandroroque.getnf.sync.SyncWorker
+import io.github.sandroroque.getnf.theme.Calmo
+import io.github.sandroroque.getnf.ui.calmo.ButtonKind
+import io.github.sandroroque.getnf.ui.calmo.Dot
+import io.github.sandroroque.getnf.ui.calmo.Hairline
+import io.github.sandroroque.getnf.ui.calmo.Pill
+import io.github.sandroroque.getnf.ui.calmo.Sub
+import androidx.compose.ui.Alignment
 
 private sealed interface Action {
   data class Menu(val c: CategoryNode) : Action
@@ -47,9 +54,8 @@ private sealed interface Action {
  * so later reviews and models can learn from it. A split keeps the products in the category and sends them to the
  * review list to pick one of the new parts.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoriesScreen() {
+fun CategoryTree() {
   val context = LocalContext.current
   val app = context.applicationContext as GetNFApp
   val categories by remember { app.database.edit().categories() }.collectAsStateWithLifecycle(emptyList())
@@ -57,6 +63,7 @@ fun CategoriesScreen() {
   val edit = rememberEdit()
   val editor = app.catalogEditor
   val done = { SyncWorker.enqueue(context) }
+  val colorOf = io.github.sandroroque.getnf.ui.home.rememberCategoryColor(categories)
   // Products counted in a category and everything under it.
   val totals = remember(categories) {
     val children = categories.groupBy { it.parentId }
@@ -64,31 +71,29 @@ fun CategoriesScreen() {
     categories.associate { it.id to total(it) }
   }
 
-  Scaffold(
-    topBar = { TopAppBar(title = { Text("Categorias") }) },
-    floatingActionButton = { ExtendedFloatingActionButton(onClick = { action = Action.Create(null) }) { Text("Nova categoria") } },
-  ) { padding ->
-    LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
-      items(flatten(categories), key = { it.first.id }) { (c, depth) ->
-        Row(Modifier.fillMaxWidth().clickable { action = Action.Menu(c) }.padding(start = (depth * 16).dp, top = 10.dp, bottom = 10.dp)) {
-          Column(Modifier.weight(1f)) {
-            Text(c.label, style = if (depth == 0) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyLarge)
-            c.description?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-              ?: c.descriptionSuggestion?.let { Text("Sugestão do LLM: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary) }
+  LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp)) {
+    item {
+      Row(Modifier.padding(vertical = 10.dp)) { Pill("Nova categoria", ButtonKind.Outline) { action = Action.Create(null) } }
+    }
+    items(flatten(categories), key = { it.first.id }) { (c, depth) ->
+      Column(Modifier.fillMaxWidth().clickable { action = Action.Menu(c) }) {
+        Row(Modifier.fillMaxWidth().padding(start = (depth * 18).dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+          if (depth == 0) Dot(colorOf(c.id))
+          Column(Modifier.weight(1f).padding(start = if (depth == 0) 10.dp else 0.dp)) {
+            Text(c.label, style = if (depth == 0) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium, color = Calmo.fg)
+            c.description?.let { Sub(it) }
+              ?: c.descriptionSuggestion?.let { Text("Sugestão do LLM: $it", style = MaterialTheme.typography.bodySmall, color = Calmo.acc) }
           }
           val n = totals[c.id] ?: 0
-          if (n > 0) Text("$n", style = MaterialTheme.typography.bodySmall)
+          if (n > 0) Sub("$n")
         }
-        if (depth == 0) HorizontalDivider()
+        if (depth == 0) Hairline()
       }
     }
   }
 
   when (val a = action) {
-    is Action.Menu -> AlertDialog(
-      onDismissRequest = { action = null },
-      title = { Text(pathOf(categories, a.c.id) ?: a.c.label) },
-      text = {
+    is Action.Menu -> CalmoSheet(pathOf(categories, a.c.id) ?: a.c.label, onDismiss = { action = null }) {
         Column {
           val hasChildren = categories.any { it.parentId == a.c.id }
           if (a.c.description == null && a.c.descriptionSuggestion != null) {
@@ -105,12 +110,9 @@ fun CategoriesScreen() {
             ("Excluir…" to Action.Delete(a.c)).takeIf { !hasChildren },
           )) Text(label, style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.fillMaxWidth().clickable { action = next }.padding(vertical = 12.dp))
-          if (hasChildren) Text("Para excluir ou dividir, primeiro mova ou exclua as subcategorias.", style = MaterialTheme.typography.bodySmall)
+          if (hasChildren) Sub("Para excluir ou dividir, primeiro mova ou exclua as subcategorias.")
         }
-      },
-      confirmButton = {},
-      dismissButton = { TextButton(onClick = { action = null }) { Text("Fechar") } },
-    )
+    }
     is Action.Create -> TextDialog(
       if (a.parent == null) "Nova categoria" else "Nova em ${a.parent.label}",
       listOf("Nome" to "", "Para que serve (uma linha)" to ""),
@@ -146,13 +148,13 @@ fun CategoriesScreen() {
       onSave = { (text) -> action = null; edit { editor.splitCategory(a.c.id, text.split('\n', ',')); done() } },
       onDismiss = { action = null },
     )
-    is Action.Delete -> if ((totals[a.c.id] ?: 0) == 0) AlertDialog(
-      onDismissRequest = { action = null },
-      title = { Text("Excluir “${a.c.label}”?") },
-      text = { Text("Nenhum produto está nela.") },
-      confirmButton = { TextButton(onClick = { action = null; edit { editor.deleteCategory(a.c.id, null); done() } }) { Text("Excluir") } },
-      dismissButton = { TextButton(onClick = { action = null }) { Text("Cancelar") } },
-    ) else CategoryPickerDialog(
+    is Action.Delete -> if ((totals[a.c.id] ?: 0) == 0) CalmoSheet("Excluir “${a.c.label}”?", onDismiss = { action = null }) {
+      Sub("Nenhum produto está nela.")
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Pill("Excluir", ButtonKind.Solid) { action = null; edit { editor.deleteCategory(a.c.id, null); done() } }
+        Pill("Cancelar", ButtonKind.Ghost) { action = null }
+      }
+    } else CategoryPickerDialog(
       "Excluir “${a.c.label}”: para onde vão os ${totals[a.c.id]} produtos?", categories, exclude = setOf(a.c.id),
       current = a.c.parentId,
       onPick = { destination -> action = null; edit { editor.deleteCategory(a.c.id, destination); done() } },

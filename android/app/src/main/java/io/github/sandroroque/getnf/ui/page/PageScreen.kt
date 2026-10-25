@@ -41,7 +41,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.sandroroque.getnf.GetNFApp
 import io.github.sandroroque.getnf.data.CurrentNetwork
 import io.github.sandroroque.getnf.data.Receipt
-import io.github.sandroroque.getnf.ui.home.waitingForPage
 import io.github.sandroroque.getnf.sync.SyncWorker
 import java.io.ByteArrayInputStream
 import java.util.concurrent.ConcurrentHashMap
@@ -217,3 +216,7 @@ private fun SefazWebView(url: String, onLookup: () -> Unit, onKind: (SefazPage.K
     },
   )
 }
+
+/** Receipts still missing their SEFAZ page, oldest first: the order "Next" works through. */
+fun waitingForPage(receipts: List<io.github.sandroroque.getnf.data.Receipt>) =
+  receipts.filter { it.pageFile == null }.sortedBy { it.capturedAt }

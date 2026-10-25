@@ -1,115 +1,147 @@
 package io.github.sandroroque.getnf
 
-import androidx.compose.runtime.Composable
-import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
-import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberNavBackStack
-import androidx.navigation3.ui.NavDisplay
-import io.github.sandroroque.getnf.ui.catalog.CategoriesScreen
-import io.github.sandroroque.getnf.ui.catalog.ProductScreen
-import io.github.sandroroque.getnf.ui.catalog.ProductsScreen
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import io.github.sandroroque.getnf.ui.home.HomeScreen
-import io.github.sandroroque.getnf.ui.spending.IpciScreen
-import io.github.sandroroque.getnf.ui.spending.SpendingScreen
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.NavDisplay
+import io.github.sandroroque.getnf.theme.Calmo
+import io.github.sandroroque.getnf.ui.calmo.Hairline
+import io.github.sandroroque.getnf.ui.calmo.Icons
+import io.github.sandroroque.getnf.ui.catalog.CatalogScreen
+import io.github.sandroroque.getnf.ui.catalog.ProductScreen
+import io.github.sandroroque.getnf.ui.catalog.StoreScreen
+import io.github.sandroroque.getnf.ui.home.InicioScreen
 import io.github.sandroroque.getnf.ui.page.PageScreen
 import io.github.sandroroque.getnf.ui.receipt.ReceiptScreen
+import io.github.sandroroque.getnf.ui.review.ParaVoceScreen
 import io.github.sandroroque.getnf.ui.scan.ScanScreen
 import io.github.sandroroque.getnf.ui.settings.SettingsScreen
+import io.github.sandroroque.getnf.ui.spending.IpciScreen
+import io.github.sandroroque.getnf.ui.spending.SpendingScreen
 
 /**
- * Navigation 3: the back stack is a plain list of keys; the last one is on screen. Three tabs at the bottom (stage 5):
- * Gastos (first), Notas and Produtos; switching tabs starts that tab's stack afresh.
- * Flow: Home → Scan → Home after automatic capture; portal lookup is explicitly started from Home.
- * Home → ReceiptDetail shows what was read from a saved page; its lines open their product.
- * Home → Products (the review list, stage 4c) → ProductDetail; Home → Categories edits the tree.
- * Page → Page for "Next" replaces the page so Back still returns Home.
+ * Navigation 3: the back stack is a plain list of keys; the last one is on screen. Four tabs (D81): Início, Gastos,
+ * Para você and Catálogo, with Scan as the bar's middle button. A tab starts its own stack afresh; the bar shows only
+ * on the tab screens themselves. Page → Page for "Next" replaces the page so Back still returns where it came from.
  */
 @Composable
 fun MainNavigation() {
-  val backStack = rememberNavBackStack(Spending)
-  val tabs = listOf(Spending to ("📊" to "Gastos"), Home to ("🧾" to "Notas"), Products to ("🏷️" to "Produtos"))
+  val backStack = rememberNavBackStack(Inicio)
   val root = backStack.firstOrNull()
+  fun tab(key: NavKey) { if (backStack.size != 1 || root != key) { backStack.clear(); backStack.add(key) } }
+  fun open(key: NavKey) { backStack.add(key) }
+  fun back() { backStack.removeLastOrNull() }
 
-  // No insets of its own: each screen's Scaffold handles the status bar; this one only makes room for the tabs.
   Scaffold(
+    containerColor = Calmo.bg,
     contentWindowInsets = WindowInsets(0, 0, 0, 0),
     bottomBar = {
-      // Only on the three top screens; deeper screens keep the whole height and go back with Back.
-      if (backStack.size == 1) NavigationBar {
-        for ((key, look) in tabs) NavigationBarItem(
-          selected = root == key,
-          onClick = { if (root != key) { backStack.clear(); backStack.add(key) } },
-          icon = { Text(look.first) },
-          label = { Text(look.second) },
-        )
-      }
+      if (backStack.size == 1) TabBar(
+        selected = root?.let { if (it is Catalog) Catalog() else it },
+        onTab = ::tab, onScan = { open(Scan) },
+      )
     },
   ) { padding ->
     NavDisplay(
       modifier = Modifier.padding(bottom = padding.calculateBottomPadding()).consumeWindowInsets(padding),
       backStack = backStack,
-      entryDecorators = listOf(
-        rememberSaveableStateHolderNavEntryDecorator(),
-        rememberViewModelStoreNavEntryDecorator(),
-      ),
-      onBack = { backStack.removeLastOrNull() },
-      entryProvider =
-        entryProvider {
-          entry<Spending> {
-            SpendingScreen(
-              onScan = { backStack.add(Scan) },
-              onOpenProduct = { backStack.add(ProductDetail(it)) },
-              onCategories = { backStack.add(Categories) },
-              onSettings = { backStack.add(Settings) },
-              onIpci = { backStack.add(IpciKey(it)) },
-            )
-          }
-          entry<IpciKey> { key -> IpciScreen(key.categoryId, onOpenProduct = { backStack.add(ProductDetail(it)) }) }
-          entry<Home> {
-            HomeScreen(
-              onScan = { backStack.add(Scan) },
-              onOpenPage = { chave -> backStack.add(Page(chave)) },
-              onOpenReceipt = { chave -> backStack.add(ReceiptDetail(chave)) },
-              onSettings = { backStack.add(Settings) },
-            )
-          }
-          entry<Scan> {
-            ScanScreen(
-              onCaptured = { backStack.removeLastOrNull() },
-              onCancel = { backStack.removeLastOrNull() },
-            )
-          }
-          entry<Page> { key ->
-            PageScreen(
-              chave = key.chave,
-              onDone = { backStack.removeLastOrNull() },
-              // Straight on to the next waiting receipt, replacing this page so Back still returns where it came from.
-              onNext = { next ->
-                backStack.removeLastOrNull()
-                backStack.add(Page(next))
-              },
-            )
-          }
-          entry<ReceiptDetail> { key -> ReceiptScreen(chave = key.chave, onOpenProduct = { backStack.add(ProductDetail(it)) }) }
-          entry<Products> {
-            ProductsScreen(onOpenProduct = { backStack.add(ProductDetail(it)) }, onCategories = { backStack.add(Categories) })
-          }
-          entry<ProductDetail> { key ->
-            // "Separar" opens the new product in place of this one, so Back returns to where the user came from.
-            ProductScreen(key.productId, onOpenProduct = { backStack.removeLastOrNull(); backStack.add(ProductDetail(it)) })
-          }
-          entry<Categories> { CategoriesScreen() }
-          entry<Settings> { SettingsScreen(onDone = { backStack.removeLastOrNull() }) }
-        },
+      entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
+      onBack = { back() },
+      entryProvider = entryProvider {
+        entry<Inicio> {
+          InicioScreen(
+            onSpending = { tab(Spending) }, onDecisions = { tab(ParaVoce) }, onIpci = { open(IpciKey(null)) },
+            onReceipt = { open(ReceiptDetail(it)) }, onSettings = { open(Settings) },
+          )
+        }
+        entry<Spending> {
+          SpendingScreen(
+            onScan = { open(Scan) }, onOpenProduct = { open(ProductDetail(it)) }, onCategories = { tab(Catalog(1)) },
+            onSettings = { open(Settings) }, onIpci = { open(IpciKey(it)) }, onOpenStore = { open(StoreDetail(it)) },
+          )
+        }
+        entry<ParaVoce> {
+          ParaVoceScreen(
+            onOpenPage = { open(Page(it)) }, onOpenProduct = { open(ProductDetail(it)) },
+            onOpenReceipt = { open(ReceiptDetail(it)) }, onCategories = { tab(Catalog(1)) },
+          )
+        }
+        entry<Catalog> { key ->
+          CatalogScreen(
+            initialSegment = key.segment, onOpenProduct = { open(ProductDetail(it)) }, onOpenStore = { open(StoreDetail(it)) },
+            onOpenReceipt = { open(ReceiptDetail(it)) }, onOpenPage = { open(Page(it)) },
+          )
+        }
+        entry<StoreDetail> { key ->
+          StoreScreen(key.cnpj, onBack = ::back, onOpenReceipt = { open(ReceiptDetail(it)) }, onOpenProduct = { open(ProductDetail(it)) })
+        }
+        entry<IpciKey> { key -> IpciScreen(key.categoryId, onOpenProduct = { open(ProductDetail(it)) }) }
+        entry<Scan> { ScanScreen(onCaptured = ::back, onCancel = ::back) }
+        entry<Page> { key ->
+          PageScreen(chave = key.chave, onDone = ::back, onNext = { next -> back(); open(Page(next)) })
+        }
+        entry<ReceiptDetail> { key -> ReceiptScreen(chave = key.chave, onOpenProduct = { open(ProductDetail(it)) }) }
+        entry<ProductDetail> { key ->
+          // "Separar" opens the new product in place of this one, so Back returns to where the user came from.
+          ProductScreen(key.productId, onOpenProduct = { back(); open(ProductDetail(it)) })
+        }
+        entry<Settings> { SettingsScreen(onDone = ::back) }
+      },
     )
+  }
+}
+
+/** The bar: four tabs and the scan button in the middle (D81). */
+@Composable
+private fun TabBar(selected: NavKey?, onTab: (NavKey) -> Unit, onScan: () -> Unit) {
+  Column(Modifier.background(Calmo.bg).navigationBarsPadding()) {
+    Hairline()
+    Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp), verticalAlignment = Alignment.Bottom,
+      horizontalArrangement = Arrangement.SpaceEvenly) {
+      TabItem(Icons.Home, "Início", selected == Inicio) { onTab(Inicio) }
+      TabItem(Icons.Chart, "Gastos", selected == Spending) { onTab(Spending) }
+      Box(Modifier.size(52.dp).clip(CircleShape).border(1.5.dp, Calmo.fg, CircleShape).clickable(onClick = onScan),
+        contentAlignment = Alignment.Center) {
+        Icon(Icons.Scan, "Escanear nota", Modifier.size(25.dp), tint = Calmo.fg)
+      }
+      TabItem(Icons.Inbox, "Para você", selected == ParaVoce) { onTab(ParaVoce) }
+      TabItem(Icons.Grid, "Catálogo", selected is Catalog) { onTab(Catalog()) }
+    }
+  }
+}
+
+@Composable
+private fun TabItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+  val color = if (selected) Calmo.fg else Calmo.mute
+  Column(Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp)).clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 4.dp),
+    horizontalAlignment = Alignment.CenterHorizontally) {
+    Icon(icon, null, Modifier.size(22.dp), tint = color)
+    Text(label, style = MaterialTheme.typography.labelMedium, color = color)
   }
 }

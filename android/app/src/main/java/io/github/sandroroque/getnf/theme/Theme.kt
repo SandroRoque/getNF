@@ -1,50 +1,33 @@
 package io.github.sandroroque.getnf.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
 
-private val DarkColorScheme = darkColorScheme(primary = Purple80, secondary = PurpleGrey80, tertiary = Pink80)
-
-private val LightColorScheme =
-  lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
-  )
-
+/**
+ * The app's theme (D81, "Calmo"). No dynamic color: the design's quiet palette is the identity. Material components
+ * still read MaterialTheme, so its scheme is derived from the same tokens; screens use [Calmo] for the rest.
+ */
 @Composable
-fun GetNFTheme(
-  darkTheme: Boolean = isSystemInDarkTheme(),
-  // Dynamic color is available on Android 12+
-  dynamicColor: Boolean = true,
-  content: @Composable () -> Unit,
-) {
-  val colorScheme =
-    when {
-      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-        val context = LocalContext.current
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-      }
-      darkTheme -> DarkColorScheme
-      else -> LightColorScheme
-    }
-
-  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+fun GetNFTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+  val c = if (darkTheme) DarkCalmo else LightCalmo
+  val scheme = (if (darkTheme) darkColorScheme() else lightColorScheme()).copy(
+    primary = c.fg, onPrimary = c.bg, secondary = c.acc, onSecondary = c.bg, tertiary = c.acc,
+    background = c.bg, onBackground = c.fg, surface = c.bg, onSurface = c.fg, surfaceVariant = c.line,
+    onSurfaceVariant = c.mute, surfaceContainer = c.sheet, surfaceContainerLow = c.sheet, surfaceContainerHigh = c.sheet,
+    surfaceContainerHighest = c.sheet, surfaceContainerLowest = c.bg, outline = c.line, outlineVariant = c.line,
+    secondaryContainer = c.line, onSecondaryContainer = c.fg, primaryContainer = c.line, onPrimaryContainer = c.fg,
+    error = c.up,
+  )
+  CompositionLocalProvider(LocalCalmo provides c) {
+    MaterialTheme(colorScheme = scheme, typography = Typography, content = content)
+  }
 }
+
+/** The Calmo tokens of the current theme. */
+val Calmo: CalmoColors
+  @Composable @ReadOnlyComposable get() = LocalCalmo.current
