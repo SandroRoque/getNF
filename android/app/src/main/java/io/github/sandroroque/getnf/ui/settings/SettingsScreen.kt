@@ -36,9 +36,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.sandroroque.getnf.GetNFApp
 import io.github.sandroroque.getnf.data.BackupManifest
-import io.github.sandroroque.getnf.data.ServerConfig
+import io.github.sandroroque.getnf.data.ProjectConfig
+import io.github.sandroroque.getnf.sync.SupabaseClient
+import io.github.sandroroque.getnf.sync.SyncWorker
 import java.time.LocalDate
-import io.github.sandroroque.getnf.upload.UploadWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,72 +47,80 @@ import kotlinx.coroutines.withContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(onDone: () -> Unit) {
-  val context = LocalContext.current
-  val app = context.applicationContext as GetNFApp
-  val scope = rememberCoroutineScope()
-  val initial = remember { app.serverSettings.get() }
-  var url by remember { mutableStateOf(initial.url) }
-  var email by remember { mutableStateOf(initial.email) }
-  var password by remember { mutableStateOf(initial.password) }
-  var result by remember { mutableStateOf<String?>(null) }
-
-  Scaffold(topBar = { TopAppBar(title = { Text("PocketBase server") }) }) { padding ->
+  val app = LocalContext.current.applicationContext as GetNFApp
+  Scaffold(topBar = { TopAppBar(title = { Text("Ajustes") }) }) { padding ->
     Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-      OutlinedTextField(
-        url,
-        { url = it },
-        label = { Text("Server URL") },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-        modifier = Modifier.fillMaxWidth(),
-      )
-      OutlinedTextField(
-        email,
-        { email = it },
-        label = { Text("Email") },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-        modifier = Modifier.fillMaxWidth(),
-      )
-      OutlinedTextField(
-        password,
-        { password = it },
-        label = { Text("Password") },
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        modifier = Modifier.fillMaxWidth(),
-      )
-      Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedButton(
-          onClick = {
-            result = "Testing…"
-            scope.launch {
-              result =
-                withContext(Dispatchers.IO) {
-                  runCatching { app.pocketBase.login(ServerConfig(url.trim(), email.trim(), password)) }
-                    .fold({ "Login OK ✓" }, { "Failed: ${it.message}" })
-                }
-            }
-          }
-        ) {
-          Text("Test")
-        }
-        Button(
-          onClick = {
-            app.serverSettings.set(ServerConfig(url, email, password))
-            UploadWorker.enqueue(context)
-            onDone()
-          }
-        ) {
-          Text("Save")
-        }
-      }
-      result?.let { Text(it) }
+      AccountSection(app, onDone)
       HorizontalDivider()
       BackupSection(app)
     }
   }
+}
+
+/**
+ * Sign in to the Supabase project (D70). Only the refresh token is kept, never the password. The project's address
+ * and publishable key come with the build; they can be changed here (say, to a local Supabase for development).
+ */
+@Composable
+private fun AccountSection(app: GetNFApp, onDone: () -> Unit) {
+  val context = LocalContext.current
+  val scope = rememberCoroutineScope()
+  val initial = remember { app.accountSettings.project() }
+  var account by remember { mutableStateOf(app.accountSettings.account()) }
+  var url by remember { mutableStateOf(initial.url) }
+  var key by remember { mutableStateOf(initial.key) }
+  var email by remember { mutableStateOf(account?.email ?: "") }
+  var password by remember { mutableStateOf("") }
+  var showProject by remember { mutableStateOf(!initial.isComplete) }
+  var status by remember { mutableStateOf<String?>(null) }
+  var busy by remember { mutableStateOf(false) }
+
+  Text("Conta", style = MaterialTheme.typography.titleMedium)
+  val current = account
+  if (current != null) {
+    Text("Conectado como ${current.email}. As notas e o catálogo sincronizam com o servidor.")
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+      Button(onClick = { SyncWorker.enqueue(context); onDone() }) { Text("Sincronizar agora") }
+      OutlinedButton(onClick = { app.accountSettings.signOut(); account = null; status = "Desconectado. Nada foi apagado do celular." }) { Text("Sair") }
+    }
+  } else {
+    Text("Sem conta, tudo fica só neste celular.", style = MaterialTheme.typography.bodySmall)
+    OutlinedTextField(email, { email = it }, label = { Text("E-mail") }, singleLine = true,
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(password, { password = it }, label = { Text("Senha") }, singleLine = true,
+      visualTransformation = PasswordVisualTransformation(),
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
+    Button(enabled = !busy && email.isNotBlank() && password.isNotEmpty(), onClick = {
+      busy = true; status = "Entrando…"
+      scope.launch {
+        val project = ProjectConfig(url, key)
+        status = withContext(Dispatchers.IO) {
+          runCatching { SupabaseClient(project.url.trim(), project.key.trim()).signIn(email.trim(), password) }
+        }.fold(
+          { session ->
+            app.accountSettings.setProject(project)
+            app.accountSettings.signedIn(session)
+            account = app.accountSettings.account(); password = ""
+            SyncWorker.enqueue(context)
+            "Conectado ✓ Sincronizando…"
+          },
+          { "Não deu certo: ${it.message}" },
+        )
+        busy = false
+      }
+    }) { Text("Entrar") }
+  }
+  TextButton(onClick = { showProject = !showProject }) { Text(if (showProject) "Ocultar servidor" else "Servidor…") }
+  if (showProject) {
+    OutlinedTextField(url, { url = it }, label = { Text("Endereço do projeto") }, singleLine = true,
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(key, { key = it }, label = { Text("Chave pública (publishable)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+    if (current != null) Text("Trocar de servidor desconecta a conta.", style = MaterialTheme.typography.bodySmall)
+    OutlinedButton(onClick = {
+      app.accountSettings.setProject(ProjectConfig(url, key)); account = app.accountSettings.account(); status = "Servidor salvo."
+    }) { Text("Salvar servidor") }
+  }
+  status?.let { Text(it) }
 }
 
 /** Export everything to a file the user picks, or replace everything from one (D47). */
@@ -145,7 +154,7 @@ private fun BackupSection(app: GetNFApp) {
   }
 
   Text("Backup", style = MaterialTheme.typography.titleMedium)
-  Text("Receipts, photos, pages and the receipt database. Not the server login.", style = MaterialTheme.typography.bodySmall)
+  Text("Receipts, photos, pages and the receipt database. Not the account sign-in.", style = MaterialTheme.typography.bodySmall)
   Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
     OutlinedButton(enabled = !busy, onClick = { export.launch("getnf-backup-${LocalDate.now()}.zip") }) { Text("Export data") }
     OutlinedButton(enabled = !busy, onClick = { restore.launch(arrayOf("application/zip", "application/octet-stream")) }) { Text("Restore data") }

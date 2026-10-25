@@ -25,25 +25,26 @@ android {
         versionName = "1.0"
     }
 
-    // Server defaults baked into the APK so the app works without typing anything.
-    // Debug builds point at the dev PocketBase (host machine as seen from the emulator) and use
-    // the app login from server/.env.local (gitignored). Release builds start empty: set them in Settings.
+    // The Supabase project baked into the APK (D70): its URL and publishable key, which are public by design (Row
+    // Level Security protects the data). Debug builds read them from server/.env.local (gitignored), and
+    // -Pgetnf.supabaseUrl / -Pgetnf.supabaseKey override that, e.g. to point the emulator at a local Supabase
+    // (http://10.0.2.2:54321). Release builds start empty: set them in Settings. Nobody is signed in by default.
     val devEnv = Properties().apply {
       providers.fileContents(rootProject.layout.projectDirectory.file("../server/.env.local")).asText.orNull
         ?.let { load(it.reader()) }
     }
     fun quoted(v: String?) = "\"" + (v ?: "").replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+    val supabaseUrl = providers.gradleProperty("getnf.supabaseUrl").orNull ?: devEnv.getProperty("SUPABASE_URL")
+    val supabaseKey = providers.gradleProperty("getnf.supabaseKey").orNull ?: devEnv.getProperty("SUPABASE_PUBLISHABLE_KEY")
 
     buildTypes {
         debug {
-            buildConfigField("String", "DEFAULT_SERVER_URL", quoted("http://10.0.2.2:8090"))
-            buildConfigField("String", "DEFAULT_EMAIL", quoted(devEnv.getProperty("DEV_APP_EMAIL")))
-            buildConfigField("String", "DEFAULT_PASSWORD", quoted(devEnv.getProperty("DEV_APP_PASSWORD")))
+            buildConfigField("String", "DEFAULT_SUPABASE_URL", quoted(supabaseUrl))
+            buildConfigField("String", "DEFAULT_SUPABASE_KEY", quoted(supabaseKey))
         }
         release {
-            buildConfigField("String", "DEFAULT_SERVER_URL", quoted(""))
-            buildConfigField("String", "DEFAULT_EMAIL", quoted(""))
-            buildConfigField("String", "DEFAULT_PASSWORD", quoted(""))
+            buildConfigField("String", "DEFAULT_SUPABASE_URL", quoted(""))
+            buildConfigField("String", "DEFAULT_SUPABASE_KEY", quoted(""))
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

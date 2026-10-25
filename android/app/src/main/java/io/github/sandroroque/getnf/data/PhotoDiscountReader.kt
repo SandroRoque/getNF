@@ -62,8 +62,8 @@ class PhotoDiscountReader(
       dao.insertLines(lines.mapIndexed { i, l ->
         when {
           l.discountSource == "manual" -> l
-          l.lineNo in read -> l.copy(discountCents = discounts[i].cents, discountSource = "photo", discountReview = "unreviewed")
-          else -> l.copy(discountCents = discounts[i].cents, discountSource = discounts[i].source.value, discountReview = "unreviewed")
+          l.lineNo in read -> l.copy(discountCents = discounts[i].cents, discountSource = "photo", discountReview = "unreviewed", dirty = true)
+          else -> l.copy(discountCents = discounts[i].cents, discountSource = discounts[i].source.value, discountReview = "unreviewed", dirty = true)
         }
       })
     } }

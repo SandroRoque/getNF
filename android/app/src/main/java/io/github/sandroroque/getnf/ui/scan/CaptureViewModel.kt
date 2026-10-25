@@ -12,7 +12,7 @@ import io.github.sandroroque.getnf.GetNFApp
 import io.github.sandroroque.getnf.data.CaptureSegment
 import io.github.sandroroque.getnf.data.CaptureSessionManifest
 import io.github.sandroroque.getnf.data.ReceiptStore
-import io.github.sandroroque.getnf.upload.UploadWorker
+import io.github.sandroroque.getnf.sync.SyncWorker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
@@ -50,7 +50,7 @@ internal class CaptureViewModel(application: Application) : AndroidViewModel(app
   private val _state = MutableStateFlow(CaptureSessionState())
   val state = _state.asStateFlow()
   private val scanner = BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build())
-  private val engine by lazy { CaptureEngine(app.captureSessions, app.receiptStore, { _state.value = it }, { UploadWorker.enqueue(app) }) }
+  private val engine by lazy { CaptureEngine(app.captureSessions, app.receiptStore, { _state.value = it }, { SyncWorker.enqueue(app) }) }
   val analyzer = ReceiptCameraAnalyzer(scanner, executor, { attached.get() && !closing.get() }, { frame ->
     try { engine.observe(frame) } catch (failure: Exception) { report(failure) }
   }, { failure -> report(failure) }, { bitmap ->

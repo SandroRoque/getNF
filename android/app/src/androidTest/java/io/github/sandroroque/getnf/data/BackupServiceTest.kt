@@ -36,12 +36,13 @@ class BackupServiceTest {
     store.addPhoto(chave, store.newPhotoFile(chave).apply { writeBytes(ByteArray(2048) { it.toByte() }) })
     store.savePage(chave, "https://x", "<html>página</html>")
     store.markUploaded(chave, store.get(chave)!!.version, "r1")
-    ServerMirror(db).apply(ServerSnapshot(
-      listOf(ServerCategory("c", "food", "Comida", 1, null)), emptyList(),
-      listOf(ServerProduct("p", "gtin:7890000000017", "CAFE", "c", emptyList(), null, null, null)),
-      listOf(ServerReceipt("r1", chave, "qr", 1, null, null, "page.html", emptyList(), "M", "11222333000181", 1_000, 1.0, 0.0, 1.0, 1, null)),
-      listOf(ServerItem("r1", 1, "p", "CAFE", "7890000000017", 1.0, "UN", 1.0, 1.0, 0.0, "prorated")),
-    ))
+    val catalog = db.catalog()
+    catalog.insertCategory(CategoryRow("c", "food", "Comida", null, 1))
+    catalog.insertProduct(ProductRow("p", null, "c", null, null, null, createdAt = 1, categorySource = "user", dirty = true))
+    catalog.insertStoreItem(StoreItemRow("s", "gtin", "7890000000017", "", "CAFE", null, null, "p"))
+    catalog.putIssuer(IssuerRow("11222333000181", "M"))
+    catalog.putParsed(ReceiptParsedRow(chave, "11222333000181", 1_000, 100, 0, 100, 1, null))
+    catalog.insertLines(listOf(ReceiptLineRow(chave, 1, "CAFE", "7890000000017", 10_000, "UN", 10_000, 100, "s", discountCents = 0, discountSource = "prorated")))
     val before = snapshot(db, receiptsRoot)
 
     val service = BackupService(context, db, receiptsRoot, dbFile, files)

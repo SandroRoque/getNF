@@ -10,10 +10,10 @@ import io.github.sandroroque.getnf.data.PhotoDiscountReader
 import io.github.sandroroque.getnf.discounts.PhotoOcr
 import io.github.sandroroque.getnf.data.ReceiptStore
 import io.github.sandroroque.getnf.data.CaptureSessionStore
-import io.github.sandroroque.getnf.data.ServerMirror
-import io.github.sandroroque.getnf.data.ServerSettings
-import io.github.sandroroque.getnf.upload.PocketBaseClient
-import io.github.sandroroque.getnf.upload.UploadWorker
+import io.github.sandroroque.getnf.data.AccountSettings
+import io.github.sandroroque.getnf.sync.SyncEngine
+import io.github.sandroroque.getnf.sync.SyncWorker
+import io.github.sandroroque.getnf.sync.WebpArchiver
 import java.io.File
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -23,13 +23,12 @@ class GetNFApp : Application() {
   val database by lazy { ReceiptDatabase.open(this) }
   val receiptStore by lazy { ReceiptStore(File(filesDir, "receipts"), database) }
   val backup by lazy { BackupService(this, database, File(filesDir, "receipts")) }
-  val serverMirror by lazy { ServerMirror(database) }
   val receiptParser by lazy { ReceiptParser(database, File(filesDir, "receipts")) }
   private val photoOcr by lazy { PhotoOcr(this) }
   val photoDiscounts by lazy { PhotoDiscountReader(database, File(filesDir, "receipts")) { photoOcr.read(it) } }
   val captureSessions by lazy { CaptureSessionStore(File(filesDir, "capture-sessions")) }
-  val serverSettings by lazy { ServerSettings(this) }
-  val pocketBase by lazy { PocketBaseClient() }
+  val accountSettings by lazy { AccountSettings(this) }
+  val syncEngine by lazy { SyncEngine(database, receiptStore, WebpArchiver()) }
   val lookupBudget by lazy {
     val prefs = getSharedPreferences("sefaz", MODE_PRIVATE)
     LookupBudget(load = { prefs.getString("lookups", "") ?: "" }, save = { prefs.edit().putString("lookups", it).apply() })
@@ -51,9 +50,9 @@ class GetNFApp : Application() {
       restore.cleanUp()
       // Pages saved before D49, or read by an older parser (D49).
       receiptParser.parsePending(receiptStore.receipts.value).let { if (it > 0) android.util.Log.i("ReceiptParser", "parsed $it saved page(s)") }
-      // Catch anything left over from a previous run (e.g. the app was killed mid-upload), and refresh the copy of
-      // the server's lines and catalog (D46). Not under instrumented tests: debug builds point at the real server.
-      if (!underInstrumentation()) UploadWorker.enqueue(this@GetNFApp)
+      // Push anything left over from a previous run (e.g. the app was killed mid-sync) and pull the server's changes
+      // (D70). Not under instrumented tests: debug builds point at the real project.
+      if (!underInstrumentation()) SyncWorker.enqueue(this@GetNFApp)
     }
   }
 

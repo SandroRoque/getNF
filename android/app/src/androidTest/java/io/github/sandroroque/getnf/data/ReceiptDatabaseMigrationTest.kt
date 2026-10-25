@@ -46,4 +46,27 @@ class ReceiptDatabaseMigrationTest {
       }
     }
   }
+
+  @Test fun version3DataSurvivesVersion4ReadyToGoToSupabase() {
+    val name = "migration-test-4.db"
+    helper.createDatabase(name, 3).use { db ->
+      db.execSQL("INSERT INTO receipt (chave, qrUrl, capturedAt, pageUrl, pageFile, pageFetchedAt, version, uploadedVersion, remoteId, uploadError) VALUES ('k', 'qr', 1, NULL, 'page.html', 2, 3, 3, 'r1', NULL)")
+      db.execSQL("INSERT INTO receipt_photo (receipt, localName, position, uploaded, segment) VALUES ('k', 'a.jpg', 0, 1, NULL)")
+      db.execSQL("INSERT INTO category (id, seedPath, label, parentId, sort, userModified, deleted) VALUES ('c', 'food', 'Comida', NULL, 1, 0, 0)")
+      db.execSQL("INSERT INTO product (id, name, categoryId, sizeE6, sizeUnit, sizeSource, archived, createdAt) VALUES ('p', NULL, 'c', NULL, NULL, NULL, 0, 1)")
+      db.execSQL("INSERT INTO product (id, name, categoryId, sizeE6, sizeUnit, sizeSource, archived, createdAt) VALUES ('q', NULL, NULL, NULL, NULL, NULL, 0, 1)")
+      db.execSQL("INSERT INTO store_item (id, codeKind, code, storeCnpj, description, parsedSizeE6, parsedSizeUnit, productId) VALUES ('s', 'gtin', '1', '', 'X', NULL, NULL, 'p')")
+    }
+    helper.runMigrationsAndValidate(name, 4, true, ReceiptDatabase.MIGRATION_3_4).use { db ->
+      db.query("SELECT uploadedVersion, remoteId FROM receipt WHERE chave = 'k'").use { c -> c.moveToFirst(); assertEquals(true, c.isNull(0) && c.isNull(1)) }
+      db.query("SELECT uploaded FROM receipt_photo").use { c -> c.moveToFirst(); assertEquals(0, c.getInt(0)) }
+      db.query("SELECT id, categorySource, categoryReview, dirty FROM product ORDER BY id").use { c ->
+        c.moveToFirst(); assertEquals(listOf("p", "import", "automatic", "1"), listOf(c.getString(0), c.getString(1), c.getString(2), c.getString(3)))
+        c.moveToNext(); assertEquals(true, c.isNull(1))
+      }
+      db.query("SELECT linkSource, dirty FROM store_item").use { c -> c.moveToFirst(); assertEquals("regex" to 1, c.getString(0) to c.getInt(1)) }
+      // Categories are seeded by the server; the first pull matches them by path.
+      db.query("SELECT dirty FROM category").use { c -> c.moveToFirst(); assertEquals(0, c.getInt(0)) }
+    }
+  }
 }

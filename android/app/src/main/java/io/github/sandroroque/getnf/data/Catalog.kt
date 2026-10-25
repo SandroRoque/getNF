@@ -15,8 +15,10 @@ import kotlinx.coroutines.flow.Flow
 /*
  * Lines and catalog (docs/data-model.md, D46). Money is Long cents, quantities and unit prices Long at scale 4, sizes
  * Long millionths of a kg or litre. ReceiptParser writes a receipt's header and lines from its saved page (D49);
- * ServerMirror copies the server's catalog, and the lines of receipts the phone hasn't parsed. Nothing is edited by
- * hand on the phone yet.
+ * SyncEngine pushes what changed to Supabase and pulls what changed there (D70).
+ *
+ * `dirty` marks a row the phone changed and hasn't pushed yet; a pull never overwrites a dirty row. `deleted` is a
+ * tombstone, so a removal reaches the other side.
  */
 
 /** What a parser read from a receipt's page. Its own table, so ReceiptStore's row writes never touch it. */
@@ -38,6 +40,7 @@ data class ReceiptParsedRow(
   @ColumnInfo(defaultValue = SOURCE_SERVER) val source: String = SOURCE_SERVER,
   /** The receipt's pageFetchedAt when the phone parsed it: a re-fetched page is parsed again. */
   val pageFetchedAt: Long? = null,
+  @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
 ) {
   companion object {
     const val SOURCE_SERVER = "server"
@@ -79,7 +82,7 @@ data class ParsedHeader(
 data class ParsedSummary(val chave: String, val lines: Int, val paidCents: Long?, val parseError: String?, val source: String)
 
 @Entity(tableName = "issuer")
-data class IssuerRow(@PrimaryKey val cnpj: String, val name: String)
+data class IssuerRow(@PrimaryKey val cnpj: String, val name: String, @ColumnInfo(defaultValue = "0") val dirty: Boolean = false)
 
 @Entity(
   tableName = "category",
@@ -97,10 +100,18 @@ data class CategoryRow(
   val userModified: Boolean = false,
   /** Tombstone: the seed doesn't recreate it. */
   val deleted: Boolean = false,
+  @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
 )
 
 @Entity(tableName = "tag", indices = [Index("slug", unique = true)])
-data class TagRow(@PrimaryKey val id: String, val slug: String, val description: String, val seed: Boolean = true, val deleted: Boolean = false)
+data class TagRow(
+  @PrimaryKey val id: String,
+  val slug: String,
+  val description: String,
+  val seed: Boolean = true,
+  val deleted: Boolean = false,
+  @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
+)
 
 /** What the thing is. Store items of several stores can point to the same product (D44). */
 @Entity(
@@ -122,6 +133,15 @@ data class ProductRow(
   val sizeSource: String?,
   val archived: Boolean = false,
   val createdAt: Long,
+  /** Who set the category (D51, D69): `user`, `regex`, `jev`, `laya`, `llm` or `import`. */
+  val categorySource: String? = null,
+  /** `suggested`, `automatic`, `confirmed` or `corrected`. */
+  val categoryReview: String? = null,
+  val categoryModel: String? = null,
+  val categoryConfidence: Double? = null,
+  val categoryAt: Long? = null,
+  @ColumnInfo(defaultValue = "0") val deleted: Boolean = false,
+  @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
 )
 
 /** One per code as receipts show it: a GTIN anywhere, or a store code together with its store's CNPJ. */
@@ -141,6 +161,11 @@ data class StoreItemRow(
   val parsedSizeE6: Long?,
   val parsedSizeUnit: String?,
   val productId: String,
+  /** Who linked it to its product: the parser (`regex`, a product of its own), the `user`, or a model. */
+  @ColumnInfo(defaultValue = "regex") val linkSource: String = "regex",
+  val linkReview: String? = null,
+  @ColumnInfo(defaultValue = "0") val deleted: Boolean = false,
+  @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
 )
 
 @Entity(
@@ -152,7 +177,12 @@ data class StoreItemRow(
   ],
   indices = [Index("tagId")],
 )
-data class ProductTagRow(val productId: String, val tagId: String)
+data class ProductTagRow(
+  val productId: String,
+  val tagId: String,
+  @ColumnInfo(defaultValue = "0") val deleted: Boolean = false,
+  @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
+)
 
 /** One printed line of a receipt. Extracted fields are evidence; corrections have their own columns. */
 @Entity(
@@ -184,7 +214,12 @@ data class ReceiptLineRow(
   /** `unreviewed` or `confirmed`. */
   val discountReview: String = "unreviewed",
   val orphaned: Boolean = false,
+  @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
 )
+
+/** Sync bookkeeping that must travel with the database (a restore brings its own): pull cursors per table. */
+@Entity(tableName = "sync_state")
+data class SyncStateRow(@PrimaryKey val name: String, val value: String)
 
 /** Net spending per store-local month and category path (empty for unclassified). */
 data class MonthlyCategoryTotal(val month: String, val category: String, val netCents: Long)

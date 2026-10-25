@@ -18,7 +18,8 @@ import kotlinx.coroutines.withContext
  * Reads a receipt's saved page into its header, lines and store items, on the phone (D49), with the same rules as the
  * server's ingest.js. A store item already known by its code keeps its product, and so its category; an unknown code
  * gets a new uncategorized product. Discounts read from a photo or set by hand survive a re-parse, matched by line
- * number. A page that can't be read keeps the receipt and its earlier lines, with the error recorded.
+ * number. A page that can't be read keeps the receipt and its earlier lines, with the error recorded. Everything it
+ * writes is marked dirty, for the next sync to push (D70).
  */
 class ReceiptParser(
   private val database: ReceiptDatabase,
@@ -85,6 +86,7 @@ class ReceiptParser(
     dao.putParsed(
       (old ?: ReceiptParsedRow(receipt.chave, null, null, null, null, null, null, null)).copy(
         parserVersion = NfcePage.VERSION, parseError = error, source = ReceiptParsedRow.SOURCE_PHONE, pageFetchedAt = receipt.pageFetchedAt,
+        dirty = true,
       ),
     )
   } }
@@ -92,7 +94,7 @@ class ReceiptParser(
   private suspend fun write(receipt: Receipt, p: ParsedReceipt): Int = database.useWriterConnection { it.immediateTransaction {
     val chave = receipt.chave
     val storeCnpj = p.store?.cnpj ?: ""
-    p.store?.takeIf { it.cnpj.isNotEmpty() }?.let { dao.putIssuer(IssuerRow(it.cnpj, it.name)) }
+    p.store?.takeIf { it.cnpj.isNotEmpty() }?.let { dao.putIssuer(IssuerRow(it.cnpj, it.name, dirty = true)) }
 
     // What a person or a photo said about a line outlives the page's re-reading.
     val old = dao.lines(chave).associateBy { it.lineNo }
@@ -111,12 +113,13 @@ class ReceiptParser(
       val existing = dao.storeItem(key.kind, key.code, key.storeCnpj)
       val storeItemId = if (existing != null) {
         // Keep the latest wording, like the server.
-        dao.updateStoreItem(existing.copy(description = description, parsedSizeE6 = size?.e6, parsedSizeUnit = size?.unit))
+        val updated = existing.copy(description = description, parsedSizeE6 = size?.e6, parsedSizeUnit = size?.unit)
+        if (updated != existing) dao.updateStoreItem(updated.copy(dirty = true))
         existing.id
       } else {
-        val product = ProductRow(newId(), name = null, categoryId = null, sizeE6 = null, sizeUnit = null, sizeSource = null, createdAt = now())
+        val product = ProductRow(newId(), name = null, categoryId = null, sizeE6 = null, sizeUnit = null, sizeSource = null, createdAt = now(), dirty = true)
         dao.insertProduct(product)
-        val item = StoreItemRow(newId(), key.kind, key.code, key.storeCnpj, description, size?.e6, size?.unit, product.id)
+        val item = StoreItemRow(newId(), key.kind, key.code, key.storeCnpj, description, size?.e6, size?.unit, product.id, dirty = true)
         dao.insertStoreItem(item)
         item.id
       }
@@ -127,6 +130,7 @@ class ReceiptParser(
         discountCents = discounts[i].cents,
         discountSource = if (i in known) kept.getValue(item.line).discountSource else discounts[i].source.value,
         discountReview = if (i in known) kept.getValue(item.line).discountReview else "unreviewed",
+        dirty = true,
       )
     }
     dao.insertLines(rows)
@@ -138,7 +142,7 @@ class ReceiptParser(
       parserVersion = NfcePage.VERSION,
       // The server's wording, so both sides read the same.
       parseError = if (p.warnings.isEmpty()) null else "warnings: " + p.warnings.joinToString("; "),
-      source = ReceiptParsedRow.SOURCE_PHONE, pageFetchedAt = receipt.pageFetchedAt,
+      source = ReceiptParsedRow.SOURCE_PHONE, pageFetchedAt = receipt.pageFetchedAt, dirty = true,
     ))
     dao.deleteUnusedIssuers()
     rows.size

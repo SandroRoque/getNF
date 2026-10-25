@@ -15,6 +15,10 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.Update
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.execSQL
 
 /**
  * Local database (D45, D46; schema in docs/data-model.md). Receipts and their photo evidence (ReceiptStore), plus the
@@ -89,7 +93,7 @@ abstract class ReceiptDao {
   entities = [
     ReceiptRow::class, PhotoRow::class, CaptureSessionRow::class,
     ReceiptParsedRow::class, IssuerRow::class, CategoryRow::class, TagRow::class, ProductRow::class, StoreItemRow::class,
-    ProductTagRow::class, ReceiptLineRow::class,
+    ProductTagRow::class, ReceiptLineRow::class, SyncStateRow::class,
   ],
   version = ReceiptDatabase.VERSION,
   // Every version ships a migration from the one before; schemas are exported to android/app/schemas.
@@ -98,10 +102,45 @@ abstract class ReceiptDao {
 abstract class ReceiptDatabase : RoomDatabase() {
   abstract fun receipts(): ReceiptDao
   abstract fun catalog(): CatalogDao
+  abstract fun sync(): SyncDao
 
   companion object {
     const val NAME = "getnf.db"
-    const val VERSION = 3
-    fun open(context: Context): ReceiptDatabase = Room.databaseBuilder(context, ReceiptDatabase::class.java, NAME).build()
+    const val VERSION = 4
+    fun open(context: Context): ReceiptDatabase =
+      Room.databaseBuilder(context, ReceiptDatabase::class.java, NAME).addMigrations(MIGRATION_3_4).build()
+
+    /**
+     * Supabase replaces PocketBase (D70): everything goes up again, to the new server. Sync columns; receipts and
+     * photos count as not uploaded; every row the phone holds is dirty, except categories and tags, which the server
+     * seeds itself and the first pull matches by path and slug. Categories that came from PocketBase were set by hand
+     * or by an agent: `import`, `automatic` (not confirmed by the user in the app, D69).
+     */
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+      // Both entry points: the app's framework SQLite calls the first, JVM tests on the bundled driver the second.
+      override fun migrate(db: SupportSQLiteDatabase) = statements3to4().forEach(db::execSQL)
+      override fun migrate(connection: SQLiteConnection) = statements3to4().forEach(connection::execSQL)
+    }
+
+    private fun statements3to4(): List<String> = buildList {
+      for (table in listOf("receipt_parsed", "issuer", "category", "tag", "product", "store_item", "product_tag", "receipt_line"))
+        add("ALTER TABLE `$table` ADD COLUMN `dirty` INTEGER NOT NULL DEFAULT 0")
+      for (table in listOf("product", "store_item", "product_tag"))
+        add("ALTER TABLE `$table` ADD COLUMN `deleted` INTEGER NOT NULL DEFAULT 0")
+      add("ALTER TABLE `product` ADD COLUMN `categorySource` TEXT")
+      add("ALTER TABLE `product` ADD COLUMN `categoryReview` TEXT")
+      add("ALTER TABLE `product` ADD COLUMN `categoryModel` TEXT")
+      add("ALTER TABLE `product` ADD COLUMN `categoryConfidence` REAL")
+      add("ALTER TABLE `product` ADD COLUMN `categoryAt` INTEGER")
+      add("ALTER TABLE `store_item` ADD COLUMN `linkSource` TEXT NOT NULL DEFAULT 'regex'")
+      add("ALTER TABLE `store_item` ADD COLUMN `linkReview` TEXT")
+      add("CREATE TABLE IF NOT EXISTS `sync_state` (`name` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`name`))")
+
+      add("UPDATE receipt SET uploadedVersion = NULL, remoteId = NULL, uploadError = NULL")
+      add("UPDATE receipt_photo SET uploaded = 0")
+      for (table in listOf("receipt_parsed", "issuer", "product", "store_item", "product_tag", "receipt_line"))
+        add("UPDATE `$table` SET dirty = 1")
+      add("UPDATE product SET categorySource = 'import', categoryReview = 'automatic' WHERE categoryId IS NOT NULL")
+    }
   }
 }

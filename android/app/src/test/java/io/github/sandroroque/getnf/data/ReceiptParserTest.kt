@@ -27,7 +27,6 @@ class ReceiptParserTest {
   // A clock that moves, so fetching a page again changes its pageFetchedAt.
   private val store by lazy { ReceiptStore(tmp.root, db, now = { clock++ }) }
   private val parser by lazy { ReceiptParser(db, tmp.root, now = { 7 }, newId = newId, log = { _, _ -> }) }
-  private val mirror by lazy { ServerMirror(db, now = { 7 }, newId = newId) }
 
   // The fixture's own chave, so the page matches its receipt.
   private val chave = "42260111222333000181651090000000011123456784"
@@ -69,11 +68,10 @@ class ReceiptParserTest {
 
   @Test fun aKnownCodeKeepsItsProductAndCategory() = runTest {
     val r = saved()
-    // The server already knows the apple, categorized.
-    mirror.apply(ServerSnapshot(
-      listOf(ServerCategory("sc1", "food", "Comida", 1, null)), emptyList(),
-      listOf(ServerProduct("sp1", "store:$cnpj:243", "MACA NAC KG", "sc1", emptyList(), null, null, null)), emptyList(), emptyList(),
-    ))
+    // The apple is already known, categorized.
+    dao.insertCategory(CategoryRow("sc1", "food", "Comida", null, 1))
+    dao.insertProduct(ProductRow("sp1", null, "sc1", null, null, null, createdAt = 1))
+    dao.insertStoreItem(StoreItemRow("si1", "store", "243", cnpj, "MACA NAC KG", null, null, "sp1"))
     val appleProduct = dao.storeItems().single().productId
     parser.parse(r)
     val apple = dao.storeItems().single { it.code == "243" }
@@ -131,27 +129,13 @@ class ReceiptParserTest {
     assertEquals(8, dao.lines(chave).size)
   }
 
-  @Test fun theMirrorLeavesPhoneParsedReceiptsAloneButStillCategorizes() = runTest {
+  @Test fun everythingAParseWritesWaitsToBePushed() = runTest {
     parser.parse(saved())
-    val before = dao.lines(chave)
-    val storeItems = dao.storeItems().size
-    // The server parsed the same receipt differently (say, an older parser) and categorized the apple.
-    mirror.apply(ServerSnapshot(
-      listOf(ServerCategory("sc1", "food", "Comida", 1, null)), emptyList(),
-      listOf(ServerProduct("sp1", "store:$cnpj:243", "MACA NAC KG", "sc1", emptyList(), null, null, null)),
-      listOf(ServerReceipt("sr1", chave, "qr", 1, null, null, "page.html", emptyList(), "X", cnpj, 1, 1.0, 0.0, 1.0, 1, "")),
-      listOf(ServerItem("sr1", 1, "sp1", "MACA NAC KG", "243", 1.0, "KG", 1.0, 1.0, 0.0, "prorated")),
-    ))
-    assertEquals(before, dao.lines(chave))
-    assertEquals(3064L, dao.parsed(chave)!!.paidCents)
-    // Store items only the phone knows stay, since its lines use them; the apple now has the server's category.
-    assertEquals(storeItems, dao.storeItems().size)
-    val apple = dao.storeItems().single { it.code == "243" }
-    assertEquals("food", dao.categories().single { it.id == dao.products().single { p -> p.id == apple.productId }.categoryId }.seedPath)
-
-    // A refresh where the server doesn't have the receipt at all doesn't drop the phone's parse either.
-    mirror.apply(ServerSnapshot(emptyList(), emptyList(), emptyList(), emptyList(), emptyList()))
-    assertEquals(before, dao.lines(chave))
+    val sync = db.sync()
+    assertEquals(dao.lines(chave).size, sync.dirtyLines().size)
+    assertEquals(dao.storeItems().size, sync.dirtyStoreItems().size)
+    assertEquals(dao.products().size, sync.dirtyProducts().size)
+    assertTrue(sync.dirtyParsed().single().chave == chave && sync.dirtyIssuers().single().cnpj == cnpj)
   }
 
   @Test fun anOlderParserVersionOrAServerParseIsParsedAgain() = runTest {
@@ -188,23 +172,12 @@ class ReceiptParserTest {
     assertEquals(1, logged.count { it.startsWith("parsed") })
   }
 
-  @Test fun aSizeRemovedByHandOnTheServerBeatsTheDescription() = runTest {
-    parser.parse(saved())
-    // POLPA BRASFRUT 100G reads as 100 g; on the server someone removed its size by hand (manual, no quantity).
-    mirror.apply(ServerSnapshot(emptyList(), emptyList(),
-      listOf(ServerProduct("sp1", "gtin:7896014400287", "POLPA BRASFRUT 100G", null, emptyList(), null, null, "manual")), emptyList(), emptyList()))
-    val item = dao.storeItems().single { it.code == "7896014400287" }
-    assertEquals(100_000L, item.parsedSizeE6)
-    val product = dao.products().single { it.id == item.productId }
-    assertEquals(Triple<Long?, String?, String?>(null, null, "manual"), Triple(product.sizeE6, product.sizeUnit, product.sizeSource))
-  }
-
   @Test fun theDetailScreenSeesLinesWithCategoriesAndTheStoreName() = runTest {
     parser.parse(saved())
-    mirror.apply(ServerSnapshot(
-      listOf(ServerCategory("sc1", "food", "Comida", 1, null), ServerCategory("sc2", "food.produce", "Hortifrúti", 2, "sc1")), emptyList(),
-      listOf(ServerProduct("sp1", "store:$cnpj:243", "MACA NAC KG", "sc2", emptyList(), null, null, null)), emptyList(), emptyList(),
-    ))
+    dao.insertCategory(CategoryRow("sc1", "food", "Comida", null, 1))
+    dao.insertCategory(CategoryRow("sc2", "food.produce", "Hortifrúti", "sc1", 2))
+    val appleItem = dao.storeItems().single { it.code == "243" }
+    dao.updateProduct(dao.products().single { it.id == appleItem.productId }.copy(categoryId = "sc2"))
     val h = dao.header(chave).first()!!
     assertEquals(listOf<Any?>("SUPERMERCADO EXEMPLO LTDA", 3064L, ReceiptParsedRow.SOURCE_PHONE), listOf(h.issuerName, h.paidCents, h.source))
     val lines = dao.lineDetails(chave).first()

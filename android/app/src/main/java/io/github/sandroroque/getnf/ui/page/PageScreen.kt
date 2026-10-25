@@ -42,7 +42,7 @@ import io.github.sandroroque.getnf.GetNFApp
 import io.github.sandroroque.getnf.data.CurrentNetwork
 import io.github.sandroroque.getnf.data.Receipt
 import io.github.sandroroque.getnf.ui.home.waitingForPage
-import io.github.sandroroque.getnf.upload.UploadWorker
+import io.github.sandroroque.getnf.sync.SyncWorker
 import java.io.ByteArrayInputStream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -76,7 +76,7 @@ fun PageScreen(chave: String, onDone: () -> Unit, onNext: (String) -> Unit) {
   var status by remember { mutableStateOf(Status.Loading) }
   LaunchedEffect(chave) { receipt = store.get(chave) }
   // Leaving this screen ends the capture, page or not: push whatever we have.
-  DisposableEffect(Unit) { onDispose { UploadWorker.enqueue(context) } }
+  DisposableEffect(Unit) { onDispose { SyncWorker.enqueue(context) } }
 
   Scaffold(
     topBar = {

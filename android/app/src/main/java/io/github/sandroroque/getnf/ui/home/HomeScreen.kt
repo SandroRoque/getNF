@@ -44,7 +44,7 @@ import io.github.sandroroque.getnf.data.ParsedSummary
 import io.github.sandroroque.getnf.data.Receipt
 import io.github.sandroroque.getnf.theme.GetNFTheme
 import io.github.sandroroque.getnf.ui.Format
-import io.github.sandroroque.getnf.upload.UploadWorker
+import io.github.sandroroque.getnf.sync.SyncWorker
 import java.text.DateFormat
 import java.util.Date
 
@@ -72,7 +72,7 @@ fun HomeScreen(onScan: () -> Unit, onOpenPage: (String) -> Unit, onOpenReceipt: 
     onOpenPage = { chave -> budgetCheck.request(onFetch = { onOpenPage(chave) }, onLater = {}) },
     onOpenReceipt = onOpenReceipt,
     onSettings = onSettings,
-    onUpload = { UploadWorker.enqueue(context) },
+    onUpload = { SyncWorker.enqueue(context) },
   )
   budgetCheck.Dialog()
 }
