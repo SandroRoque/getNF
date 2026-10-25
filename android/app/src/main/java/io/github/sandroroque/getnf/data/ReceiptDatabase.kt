@@ -105,6 +105,7 @@ abstract class ReceiptDatabase : RoomDatabase() {
   abstract fun sync(): SyncDao
   abstract fun edit(): EditDao
   abstract fun categoryEvents(): CategoryEventDao
+  abstract fun spending(): SpendingDao
 
   companion object {
     const val NAME = "getnf.db"

@@ -1,0 +1,120 @@
+package io.github.sandroroque.getnf.ui.spending
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import io.github.sandroroque.getnf.data.Period
+import io.github.sandroroque.getnf.data.Slice
+import java.time.YearMonth
+import java.time.format.TextStyle
+import java.util.Locale
+
+private val BR = Locale.forLanguageTag("pt-BR")
+
+/** Distinct, readable on light and dark backgrounds; top-level categories take them in tree order. */
+val PALETTE = listOf(
+  Color(0xFF4E79A7), Color(0xFFF28E2B), Color(0xFF59A14F), Color(0xFFE15759), Color(0xFF76B7B2),
+  Color(0xFFEDC948), Color(0xFFB07AA1), Color(0xFFFF9DA7), Color(0xFF9C755F), Color(0xFF6B8E23),
+)
+val UNCATEGORIZED = Color(0xFFBAB0AC)
+
+/** "out" for a month, "2026" for a year; with [long], "outubro de 2026". */
+fun label(p: Period, long: Boolean = false): String {
+  if (p.isYear) return p.key
+  val ym = YearMonth.parse(p.key)
+  return if (long) "${ym.month.getDisplayName(TextStyle.FULL, BR)} de ${ym.year}"
+  else ym.month.getDisplayName(TextStyle.SHORT, BR).trimEnd('.') + if (ym.monthValue == 1) "\n${ym.year % 100}" else ""
+}
+
+/**
+ * One bar per period, stacked by top-level category, the selected one full colour and the rest faded. Scrolls when
+ * there are many periods, starting at the newest. Tapping a bar selects its period.
+ */
+@Composable
+fun StackedBars(
+  periods: List<Period>, stacks: Map<Period, List<Slice>>, colorOf: (String?) -> Color, selected: Period?, onSelect: (Period) -> Unit,
+) {
+  val max = stacks.values.maxOfOrNull { s -> s.sumOf { it.netCents } }?.takeIf { it > 0 } ?: 1L
+  val scroll = rememberScrollState()
+  LaunchedEffect(periods.size) { scroll.scrollTo(scroll.maxValue) }
+  Row(Modifier.fillMaxWidth().horizontalScroll(scroll), verticalAlignment = Alignment.Bottom) {
+    for (p in periods) {
+      val faded = selected != null && p != selected
+      Column(Modifier.width(44.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Canvas(Modifier.width(30.dp).height(140.dp).pointerInput(p) { detectTapGestures { onSelect(p) } }) {
+          var y = size.height
+          for (slice in stacks[p].orEmpty().sortedByDescending { it.netCents }) {
+            val h = size.height * slice.netCents / max
+            y -= h
+            drawRect(colorOf(slice.categoryId).copy(alpha = if (faded) .35f else 1f), Offset(0f, y), Size(size.width, h))
+          }
+        }
+        Text(label(p), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
+          color = if (faded) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
+      }
+    }
+  }
+}
+
+/** A thin bar showing a share, for list rows. */
+@Composable
+fun ShareBar(fraction: Float, color: Color, modifier: Modifier = Modifier) {
+  val track = MaterialTheme.colorScheme.surfaceVariant
+  Canvas(modifier.height(6.dp)) {
+    drawRoundRect(track, cornerRadius = CornerRadius(3.dp.toPx()))
+    drawRoundRect(color, size = Size(size.width * fraction.coerceIn(0f, 1f), size.height), cornerRadius = CornerRadius(3.dp.toPx()))
+  }
+}
+
+/**
+ * Points over time joined by lines, one series per name (stores, say), with the lowest and highest value written at
+ * the left. [format] writes a value.
+ */
+@Composable
+fun TimeSeries(series: Map<String, List<Pair<Long, Double>>>, format: (Double) -> String, modifier: Modifier = Modifier) {
+  val all = series.values.flatten()
+  if (all.isEmpty()) return
+  val (x0, x1) = all.minOf { it.first } to all.maxOf { it.first }
+  val (lo, hi) = all.minOf { it.second } to all.maxOf { it.second }
+  val pad = ((hi - lo) * .1).takeIf { it > 0 } ?: (hi * .05 + 1)
+  val (y0, y1) = lo - pad to hi + pad
+  val axis = MaterialTheme.colorScheme.outlineVariant
+  Box(modifier.fillMaxWidth().height(150.dp)) {
+    Canvas(Modifier.fillMaxWidth().height(150.dp)) {
+      fun at(p: Pair<Long, Double>) = Offset(
+        if (x1 == x0) size.width / 2 else size.width * (p.first - x0) / (x1 - x0).toFloat(),
+        size.height * (1 - ((p.second - y0) / (y1 - y0)).toFloat()),
+      )
+      drawLine(axis, Offset(0f, size.height), Offset(size.width, size.height))
+      series.entries.forEachIndexed { i, (_, points) ->
+        val color = PALETTE[i % PALETTE.size]
+        val sorted = points.sortedBy { it.first }.map(::at)
+        sorted.zipWithNext { a, b -> drawLine(color, a, b, strokeWidth = 2.dp.toPx()) }
+        sorted.forEach { drawCircle(color, 4.dp.toPx(), it); drawCircle(Color.White, 4.dp.toPx(), it, style = Stroke(1.dp.toPx())) }
+      }
+    }
+    Text(format(hi), style = MaterialTheme.typography.labelSmall, modifier = Modifier.align(Alignment.TopStart))
+    if (hi != lo) Text(format(lo), style = MaterialTheme.typography.labelSmall, modifier = Modifier.align(Alignment.BottomStart))
+  }
+}

@@ -3,6 +3,10 @@ package io.github.sandroroque.getnf
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
+/** Spending reports (stage 5): the first screen. */
+@Serializable data object Spending : NavKey
+
+/** The receipts list ("Notas"). */
 @Serializable data object Home : NavKey
 
 @Serializable data object Scan : NavKey

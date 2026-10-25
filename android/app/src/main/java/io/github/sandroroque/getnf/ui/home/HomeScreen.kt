@@ -49,15 +49,11 @@ import java.text.DateFormat
 import java.util.Date
 
 @Composable
-fun HomeScreen(
-  onScan: () -> Unit, onOpenPage: (String) -> Unit, onOpenReceipt: (String) -> Unit, onSettings: () -> Unit,
-  onProducts: () -> Unit = {}, onCategories: () -> Unit = {},
-) {
+fun HomeScreen(onScan: () -> Unit, onOpenPage: (String) -> Unit, onOpenReceipt: (String) -> Unit, onSettings: () -> Unit) {
   val context = LocalContext.current
   val app = context.applicationContext as GetNFApp
   val receipts by app.receiptStore.receipts.collectAsStateWithLifecycle()
   val parsed by remember { app.database.catalog().summaries() }.collectAsStateWithLifecycle(emptyList())
-  val products by remember { app.database.edit().products() }.collectAsStateWithLifecycle(emptyList())
   val budgetCheck = rememberBudgetCheck()
   // Re-read the budget every 30 s (slots free up over time; the network may change).
   var budgetLine by remember { mutableStateOf("") }
@@ -77,9 +73,6 @@ fun HomeScreen(
     onOpenReceipt = onOpenReceipt,
     onSettings = onSettings,
     onUpload = { SyncWorker.enqueue(context) },
-    toPick = products.count { it.toPick },
-    onProducts = onProducts,
-    onCategories = onCategories,
   )
   budgetCheck.Dialog()
 }
@@ -98,14 +91,11 @@ internal fun HomeScreen(
   onOpenReceipt: (String) -> Unit,
   onSettings: () -> Unit,
   onUpload: () -> Unit,
-  toPick: Int = 0,
-  onProducts: () -> Unit = {},
-  onCategories: () -> Unit = {},
 ) {
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text("getNF") },
+        title = { Text("Notas") },
         actions = {
           if (receipts.any { it.needsUpload }) TextButton(onClick = onUpload) { Text("Enviar") }
           TextButton(onClick = onSettings) { Text("Ajustes") }
@@ -124,12 +114,6 @@ internal fun HomeScreen(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
-        item(key = "catalog") {
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onProducts) { Text(if (toPick > 0) "Produtos · $toPick para escolher" else "Produtos") }
-            TextButton(onClick = onCategories) { Text("Categorias") }
-          }
-        }
         val waiting = waitingForPage(receipts)
         if (waiting.isNotEmpty()) {
           item(key = "waiting") { WaitingBar(waiting.size, budgetLine, onFetchNext = { onOpenPage(waiting.first().chave) }) }

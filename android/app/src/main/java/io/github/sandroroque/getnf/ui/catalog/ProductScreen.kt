@@ -38,6 +38,9 @@ import io.github.sandroroque.getnf.data.ProductRow
 import io.github.sandroroque.getnf.data.StoreItemDetail
 import io.github.sandroroque.getnf.sync.SyncWorker
 import io.github.sandroroque.getnf.ui.Format
+import io.github.sandroroque.getnf.data.PricePoint
+import io.github.sandroroque.getnf.data.pricePoint
+import io.github.sandroroque.getnf.ui.spending.TimeSeries
 import java.text.DateFormat
 import java.util.Date
 
@@ -67,6 +70,8 @@ fun ProductScreen(productId: String, onOpenProduct: (String) -> Unit) {
   val tags by remember { dao.tags() }.collectAsStateWithLifecycle(emptyList())
   val tagIds by remember(productId) { dao.tagIds(productId) }.collectAsStateWithLifecycle(emptyList())
   val products by remember { dao.products() }.collectAsStateWithLifecycle(emptyList())
+  val allLines by remember { app.database.spending().lines() }.collectAsStateWithLifecycle(emptyList())
+  val prices = remember(allLines, productId) { allLines.filter { it.productId == productId }.mapNotNull(::pricePoint) }
   var dialog by remember { mutableStateOf<Dialog?>(null) }
   val edit = rememberEdit()
   val editor = app.catalogEditor
@@ -106,6 +111,7 @@ fun ProductScreen(productId: String, onOpenProduct: (String) -> Unit) {
         OutlinedButton(onClick = { dialog = Dialog.Join }) { Text("Juntar outro produto a este…") }
         Text("Só o mesmo item, mesma variedade e forma de venda; produtos parecidos ficam separados e se agrupam pela categoria.",
           style = MaterialTheme.typography.bodySmall)
+        PriceSection(prices)
         HorizontalDivider()
         Text("Compras (${purchases.size}) · ${Format.brl(purchases.sumOf { it.netCents })}", style = MaterialTheme.typography.titleSmall)
       }
@@ -151,6 +157,33 @@ fun ProductScreen(productId: String, onOpenProduct: (String) -> Unit) {
     )
     null -> {}
   }
+}
+
+/**
+ * The shelf price over time (stage 5), per kg or litre when it can be, one line per store. Mixed bases (bought by
+ * weight once, by unit another time) show the most common one.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PriceSection(points: List<PricePoint>) {
+  if (points.size < 2) return
+  val basis = points.groupBy { it.basis }.maxBy { it.value.size }
+  val shown = basis.value
+  HorizontalDivider()
+  Text("Preço por ${basis.key}", style = MaterialTheme.typography.titleSmall)
+  TimeSeries(shown.groupBy { it.storeName ?: "?" }.mapValues { (_, ps) -> ps.map { it.at to it.cents.toDouble() } },
+    format = { Format.brl(Math.round(it)) })
+  val stores = shown.map { it.storeName ?: "?" }.distinct()
+  // Same order as TimeSeries gives its series their colours.
+  if (stores.size > 1) FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    stores.forEachIndexed { i, st ->
+      Text("● $st", style = MaterialTheme.typography.bodySmall, color = io.github.sandroroque.getnf.ui.spending.PALETTE[i % 10])
+    }
+  }
+  val first = shown.minBy { it.at }; val last = shown.maxBy { it.at }
+  val change = (last.cents - first.cents) * 100.0 / first.cents
+  Text("${Format.brl(first.cents)} → ${Format.brl(last.cents)} (${if (change >= 0) "+" else ""}${"%.1f".format(change)}%), preço de prateleira, antes de descontos.",
+    style = MaterialTheme.typography.bodySmall)
 }
 
 private suspend fun join(app: GetNFApp, other: String, into: String) {

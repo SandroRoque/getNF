@@ -1660,3 +1660,27 @@ Implements 4c of D70 with D75. Portuguese UI on every new screen; Home, receipt 
   hand discount kept the receipt's total. Server side deployed online (category events, descriptions, function).
 - **Not yet:** installing this build on the user's phone; D69's re-run of automatic assignments after a tree change;
   the LLM's description drafts; undo.
+
+## D77. Stage 5: spending reports on the phone, offline, under bottom tabs (2026-10-25)
+
+Chosen by the user: bottom tabs (Gastos first, Notas, Produtos), month view with a year view, and price evolution
+per product plus a preliminary per-category trend.
+
+- **Computed on the phone** (`data/Spending.kt`) from its own database, so reports work without the server: lines are
+  read once (store-local month, UTC-3 as D19) and aggregated in plain Kotlin. A line counts in its category and every
+  ancestor; a level's slices add up to the level above and the top to the period's total, which matches the receipts'
+  amount paid (tested on the fixture: R$ 30,64). Lines left in a parent category itself show as "(sem subcategoria)";
+  uncategorized ones as "Sem categoria".
+- **Gastos:** Mês/Ano; stacked bars by top-level category (scrolls, newest at the right; a gap means no receipts, not
+  zero spending); the selected period's total and receipt count; a card saying what's estimated or missing (discount
+  spread over lines, spending without category, receipts still waiting for their SEFAZ page, undated lines); the
+  categories with share bars, tap to go down the tree with a breadcrumb; the products there, quantities summed per
+  unit only (D19). "Mais" holds Categorias and Ajustes.
+- **Prices:** a product's shelf price (before discounts) over time, per kg or litre when sold by weight or its size is
+  known, else per unit, one line per store. A category's trend follows each product bought in more than one month
+  against its own first price and averages the ratios per month: marked as a preview, since stage 7 chooses the
+  index method (D64).
+- **Charts** are drawn with Compose's Canvas, no chart library (as the old dashboard's SVG, D19).
+- **Navigation:** the tabs show only on the three top screens; switching tabs starts that tab afresh.
+- **Tested:** JVM tests for the reconciliation at every level, the caveats, the year view, the per-kg prices and the
+  trend; on the emulator, the Gastos screen and the drill-down.

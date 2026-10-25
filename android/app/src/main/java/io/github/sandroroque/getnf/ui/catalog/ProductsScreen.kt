@@ -46,7 +46,7 @@ private enum class Filter(val label: String) { PICK("Para escolher"), AUTOMATIC(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductsScreen(onOpenProduct: (String) -> Unit) {
+fun ProductsScreen(onOpenProduct: (String) -> Unit, onCategories: () -> Unit = {}) {
   val context = LocalContext.current
   val app = context.applicationContext as GetNFApp
   val products by remember { app.database.edit().products() }.collectAsStateWithLifecycle(emptyList())
@@ -65,7 +65,7 @@ fun ProductsScreen(onOpenProduct: (String) -> Unit) {
     when (current) { Filter.PICK -> it.toPick; Filter.AUTOMATIC -> it.unconfirmed && !it.toPick; Filter.ALL -> true }
   }.filter { q.isEmpty() || q in fold(it.title) || q in fold(it.description.orEmpty()) || q in fold(it.categoryLabel.orEmpty()) }
 
-  Scaffold(topBar = { TopAppBar(title = { Text("Produtos") }) }) { padding ->
+  Scaffold(topBar = { TopAppBar(title = { Text("Produtos") }, actions = { TextButton(onClick = onCategories) { Text("Categorias") } }) }) { padding ->
     LazyColumn(
       Modifier.fillMaxSize().padding(padding),
       contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp),
