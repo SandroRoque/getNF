@@ -73,4 +73,9 @@ the person a map of the receipt saying which height bands are captured, need a c
   Next: let the print find the paper. The print block's rows give the receipt's orientation (the ink profile is
   periodic along the receipt, not across it), and its extent and the paper's brightness around it bound the outline;
   the capture's outline becomes a hint to check rather than the truth.
+- 2026-10-25: D84. The paper is found from the on-device OCR's lines (`PaperFinder`), and readability is OCR
+  confidence per zone. OCR for the replay comes from `PhotoOcrDumpTest` run on the emulator (now recording line
+  corners); the replay reads `<photo>.ocr.json` and draws, per frame, the overlay and a trace of how the paper was
+  found. All 10 sessions: paper found on 58 of 62 frames; lengths consistent per receipt (82.9/83.1; 57.7–62.5).
+  Not placed: 8 frames that show neither end (content registration). Next: go live (step 3).
 

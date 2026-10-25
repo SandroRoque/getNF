@@ -2,12 +2,17 @@ package io.github.sandroroque.getnf.ui.scan
 
 import kotlin.math.*
 
-/** Absolute bar for a readable print line (D82); provisional values until calibrated on real frames. */
+/**
+ * Absolute bar for readable print (D82). With OCR, a zone is readable when the median confidence of its lines reaches
+ * [minConfidence] (sharp frames read 0.66–0.80, smeared or soft ones 0.51–0.54 on the replayed sessions). Without
+ * it, the pixel measures of a [PrintLine] stand in; they misjudge faint print.
+ */
 internal data class ReadabilityBar(
   val minHeight: Double = 10.0,
   val maxBlur: Double = .2,
   val minContrast: Double = 60.0,
   val maxGlare: Double = .05,
+  val minConfidence: Double = .6,
 ) {
   fun readable(line: PrintLine): Boolean = line.sourceHeight >= minHeight && line.edgeWidth / line.height <= maxBlur &&
     line.contrast >= minContrast && line.glare <= maxGlare
@@ -48,7 +53,8 @@ internal class CoverageMap(private val bar: ReadabilityBar = ReadabilityBar()) {
   }
 
   /** Places [print] on the receipt; null when it shows neither end (content registration is a later step). */
-  fun place(id: String, print: FramePrint): PlacedFrame? {
+  /** [ocr], when given, is what OCR read in the same frame; it then decides readability instead of the pixel measures. */
+  fun place(id: String, print: FramePrint, ocr: List<OcrQuad>? = null): PlacedFrame? {
     val total = length
     val u: (Double) -> Double
     val row: (Double) -> Double
@@ -65,19 +71,30 @@ internal class CoverageMap(private val bar: ReadabilityBar = ReadabilityBar()) {
     // Focus and scale are judged over zones a few print lines tall, so a dashed rule, the logo or one odd line doesn't
     // punch a hole in an accepted stretch, while a frame that goes soft towards one end (a tilted view) still does.
     val heightShare = print.lines.map { it.height / print.pitch(it.center) }.sorted().let { if (it.isEmpty()) .7 else it[it.size / 2] }
-    val sharpFrame = print.lines.count { bar.readable(it) } >= print.lines.size / 2
-    val positions = print.lines.map { u(it.center) to bar.readable(it) }
+    // Readability is judged on lines of text, not on a logo's few stylized words, which OCR reads less surely.
+    val read = ocr?.filter { it.characters >= 8 }?.map { line ->
+      val centre = line.corners.let { c -> DocumentPoint(c.sumOf { it.x } / 4, c.sumOf { it.y } / 4) }
+      u(print.fromFrame(centre.x, centre.y).y) to line.confidence
+    }
+    val sharpFrame = if (read != null) read.isNotEmpty() && median(read.map { it.second }) >= bar.minConfidence
+      else print.lines.count { bar.readable(it) } >= print.lines.size / 2
+    val positions = read ?: print.lines.map { u(it.center) to if (bar.readable(it)) 1.0 else 0.0 }
+    val zoneReadable: (List<Double>) -> Boolean =
+      if (read != null) { values -> median(values) >= bar.minConfidence } else { values -> values.count { it > 0 } >= values.size * .7 }
     val cells = mutableMapOf<Int, Boolean>()
     // A cell counts as in view when at least 40% of it is (the paper's torn ends are fractions of a line).
     for (k in ceil(from - .6).toInt() until floor(to + .6).toInt()) {
       val near = positions.filter { abs(it.first - (k + .5)) <= ZONE }
-      cells[k] = if (near.size >= 2) near.count { it.second } >= near.size * .7
+      cells[k] = if (near.size >= 2) zoneReadable(near.map { it.second })
       else sharpFrame && row(k + .5).let { print.pitch(it) * heightShare * print.scaleAt(it) } >= bar.minHeight
     }
     return PlacedFrame(id, from, to, cells).also { placed += it }
   }
 
-  private companion object { const val ZONE = 3.0 }
+  private companion object {
+    const val ZONE = 3.0
+    fun median(values: List<Double>) = values.sorted().let { it[(it.size - 1) / 2] }
+  }
 
   fun state(cell: Int): LineState = when {
     placed.any { it.cells[cell] == true } -> LineState.CAPTURED

@@ -1826,3 +1826,30 @@ receipt (print lines from the paper's top edge) and the focus. Coverage is the s
 sides are in view, judged in zones a few print lines tall (±3), so a dashed rule, the logo or one odd line doesn't
 punch a hole, while a tilted view that goes soft towards one end is still marked there. The map shows solid
 stretches. The per-line resolution remains only as the map's grid.
+
+## D84. On-device OCR finds the print, and decides what is readable (2026-10-25)
+
+The replay of the older sessions (D82, step 2) showed the paper outline saved with each photo to be wrong on hard
+backgrounds (a red patterned board, shadows, a sideways receipt), and every measure downstream inherited it. Finding
+the paper from pixel rules alone (ink blobs, projection profiles, alignment filters) didn't converge: each rule fixed
+one session and broke another. The user agreed to use the app's on-device OCR (ML Kit, already used in D37 and D54).
+
+- **The print, from OCR lines.** Each line's corners give the direction it reads in, which settles orientation and
+  which end is the top (a sideways or upside-down receipt included). Lines at other angles (text on the board,
+  keyboard keys) are dropped; the text block is the longest run of lines down the receipt, gaps up to 20 lines
+  bridged (a QR code close up). `PaperFinder` then walks out from the block to the paper's edges: a drop in
+  brightness counts only when longer than a line and a half (a strip of the previous receipt at a torn end is
+  print, not the edge), and the sides are fitted nearly parallel to the print (a bright desk beside the paper
+  lets a few walks run on).
+- **Readability, from OCR confidence.** A zone (±3 print lines) is readable when the median confidence of its text
+  lines (8 characters or more; a logo's stylized words read less surely) reaches 0.6. Sharp frames read 0.66–0.80,
+  smeared or soft ones 0.51–0.54. This replaces the pixel blur and contrast measures, which misjudged faint print;
+  D37's 0.5 would let the smeared frames through.
+- **The pixel line model stays** for the pitch, the coordinate along the receipt and the scale, and is the cheap
+  per-frame measure live, between OCR runs.
+- **Cost:** OCR took 0.3–1.9 s per frame on the emulator and 146–559 ms on the Motorola (D37), so live it runs a
+  couple of times a second on chosen frames, not on every frame.
+
+Replay of all 10 sessions (62 frames): the paper is found on 58. One receipt measures 82.9 and 83.1 print lines in
+its two sessions (OCR line positions suggest about 82); the other 57.7–62.5 across seven sessions, over the board,
+in shadow and sideways. This morning's session still resolves to its frame at 6 s alone.

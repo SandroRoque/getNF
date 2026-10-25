@@ -10,9 +10,15 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.io.File
 import kotlinx.serialization.Serializable
 
-/** One line ML Kit read, with its box in the upright photo's pixels. */
+/**
+ * One line ML Kit read, with its box in the upright photo's pixels; [corners], when recorded, are the line's own
+ * corners (x, y pairs from its top-left, clockwise), which follow the line when the receipt is turned (D82).
+ */
 @Serializable
-data class TextLine(val text: String, val left: Int, val top: Int, val right: Int, val bottom: Int, val confidence: Float) {
+data class TextLine(
+  val text: String, val left: Int, val top: Int, val right: Int, val bottom: Int, val confidence: Float,
+  val corners: List<Int>? = null,
+) {
   val centerY get() = (top + bottom) / 2
   val height get() = bottom - top
 }
@@ -40,7 +46,7 @@ class PhotoOcr(
       if (upright) image.height else image.width,
       text.textBlocks.flatMap { it.lines }.mapNotNull { line ->
         val b = line.boundingBox ?: return@mapNotNull null
-        TextLine(line.text, b.left, b.top, b.right, b.bottom, line.confidence)
+        TextLine(line.text, b.left, b.top, b.right, b.bottom, line.confidence, line.cornerPoints?.flatMap { listOf(it.x, it.y) })
       },
     )
   }

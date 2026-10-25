@@ -55,6 +55,8 @@ internal data class FramePrint(
   val rowScale: DoubleArray = DoubleArray(0),
   /** From the upright paper back to the camera frame, in pixels. */
   val toFrame: (Double, Double) -> DocumentPoint = { x, y -> DocumentPoint(x, y) },
+  /** From the camera frame, in pixels, into the upright paper. */
+  val fromFrame: (Double, Double) -> DocumentPoint = { x, y -> DocumentPoint(x, y) },
 ) {
   fun scaleAt(y: Double): Double = if (rowScale.isEmpty()) 1.0 else rowScale[y.toInt().coerceIn(0, rowScale.lastIndex)]
   fun pitch(y: Double): Double = pitchA + pitchB * y
@@ -78,27 +80,31 @@ internal object PrintLines {
    * paper, not the paper's end. Null when a side is cut (no stretch shows the paper's full width) or the frame shows
    * too few text lines to measure a pitch.
    */
-  fun read(image: GrayImage, polygon: List<DocumentPoint>): FramePrint? {
+  fun read(image: GrayImage, paper: PaperOutline): FramePrint? = read(image, paper.corners, paper.topSeen to paper.bottomSeen)
+
+  /** [ends], when known (from [PaperFinder]), says whether the outline's top and bottom are the paper's own ends. */
+  fun read(image: GrayImage, polygon: List<DocumentPoint>, ends: Pair<Boolean, Boolean>? = null): FramePrint? {
     require(polygon.size == 4)
     val p = polygon.map { DocumentPoint(it.x * image.width, it.y * image.height) }
     fun cut(a: DocumentPoint, b: DocumentPoint) = (a.x <= 2 && b.x <= 2) || (a.x >= image.width - 3 && b.x >= image.width - 3) ||
       (a.y <= 2 && b.y <= 2) || (a.y >= image.height - 3 && b.y >= image.height - 3)
-    if (cut(p[0], p[3]) || cut(p[1], p[2])) return null
+    if (ends == null && (cut(p[0], p[3]) || cut(p[1], p[2]))) return null
     val w = max(ReceiptGeometry.distance(p[0], p[1]), ReceiptGeometry.distance(p[3], p[2])).roundToInt()
     val h = max(ReceiptGeometry.distance(p[0], p[3]), ReceiptGeometry.distance(p[1], p[2])).roundToInt()
     if (w < 40 || h < 40) return null
-    val toFrame = homography(listOf(DocumentPoint(0.0, 0.0), DocumentPoint(w.toDouble(), 0.0), DocumentPoint(w.toDouble(), h.toDouble()), DocumentPoint(0.0, h.toDouble())), p)
+    val upright = listOf(DocumentPoint(0.0, 0.0), DocumentPoint(w.toDouble(), 0.0), DocumentPoint(w.toDouble(), h.toDouble()), DocumentPoint(0.0, h.toDouble()))
+    val toFrame = homography(upright, p); val fromFrame = homography(p, upright)
     val pixels = ByteArray(w * h)
     for (y in 0 until h) for (x in 0 until w) {
       val s = toFrame(x + .5, y + .5)
       pixels[y * w + x] = bilinear(image, s.x - .5, s.y - .5).toByte()
     }
     val rowScale = DoubleArray(h) { ReceiptGeometry.distance(toFrame(w / 2.0, it.toDouble()), toFrame(w / 2.0, it + 1.0)) }
-    val topSeen = !cut(p[0], p[1]) && !continuesPast(image, p[3], p[0], p[2], p[1])
-    val bottomSeen = !cut(p[3], p[2]) && !continuesPast(image, p[0], p[3], p[1], p[2])
+    val topSeen = ends?.first ?: (!cut(p[0], p[1]) && !continuesPast(image, p[3], p[0], p[2], p[1]))
+    val bottomSeen = ends?.second ?: (!cut(p[3], p[2]) && !continuesPast(image, p[0], p[3], p[1], p[2]))
     val print = readUpright(GrayImage(w, h, pixels), topSeen, bottomSeen) ?: return null
     fun scaled(line: PrintLine) = line.copy(scale = rowScale[line.center.toInt().coerceIn(0, h - 1)])
-    return print.copy(lines = print.lines.map(::scaled), blocks = print.blocks.map(::scaled), rowScale = rowScale, toFrame = toFrame)
+    return print.copy(lines = print.lines.map(::scaled), blocks = print.blocks.map(::scaled), rowScale = rowScale, toFrame = toFrame, fromFrame = fromFrame)
   }
 
   /**
