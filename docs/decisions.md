@@ -1401,3 +1401,21 @@ should assume no backups we can download or restore ourselves (Pro has daily one
 - **Health report from the worker:** usage against free-tier limits (500 MB database, 1 GB files), time since the last
   request (the free project pauses after a week), receipts whose lines don't add up to the total, and backup age.
 - **When:** built with the move to Supabase (status item 11).
+
+## D66. Open Food Facts can't name items without barcodes; link them to generic items instead (2026-10-24)
+
+Of the user's 82 items, 24 have no GTIN: 16 foods (produce by kg or bunch, pão francês, beef) and 8 clothes and a
+suitcase, which Open Food Facts doesn't cover. The 16 food descriptions went to Open Food Facts' text search, cleaned
+(KG, MC, GRANEL removed), limited to Brazil, 16 requests; results in `test-media/categorize/off-search.json`.
+
+- **Result: no confident match in any top 3.** Mostly other products sharing a word (onion chips for CEBOLA, banana
+  candy for BANANA, grape soda for UVA, apple tea for MACA). Closest: a packaged branded "Pão Francês", an organic
+  packaged Italian tomato, and a packaged Friboi contra filé; each is a different, barcoded product, not the store's
+  bulk item.
+- **Why:** Open Food Facts catalogs packaged products identified by barcode. Bulk produce, bakery bread and butcher
+  cuts aren't products there, and a match wouldn't give identity anyway.
+- **So:** link barcode-less items to a short list of generic items (banana prata, banana caturra, maçã nacional, pão
+  francês, contrafilé), with the LLM proposing and the user confirming once per store item (D51). Store items in
+  different stores that land on the same generic item become one product (data-model.md, flow 2). A candidate seed
+  for the list is the subitem list of the official IPCA, which would also let the IPCI (D64) be compared with official
+  inflation item by item; to verify when built.
