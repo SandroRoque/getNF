@@ -43,14 +43,17 @@ class VideoIngestTest {
     val saved = mutableListOf<Pair<String, Long>>()
     val hints = mutableListOf<Pair<Long, IngestHint>>()
     val texts = mutableMapOf<String, List<String>>() // frame id → its confidently read lines, normalized
+    val rowTexts = mutableMapOf<String, List<String>>() // frame id → its rows read confidently
     var completeAt: Long? = null
     var offerMs = 0.0
+    // Frames five a second (videos), or as often as the phone analysed them (its dumps): GETNF_INGEST_STEP_MS.
+    val interval = System.getenv("GETNF_INGEST_STEP_MS")?.toLong() ?: 200L
     // The whole video's content, read before playing (the session may finish early).
     for (file in frames) File(file.path + ".ocr.json").takeIf { it.exists() }?.let { json.decodeFromString<PhotoText>(it.readText()) }?.let { o ->
       texts[file.nameWithoutExtension] = o.lines.filter { it.confidence >= .7 }.map { RowAssembly.normalize(it.text) }.filter { it.length >= 10 }
     }
     for ((i, file) in frames.withIndex()) {
-      val at = i * 200L
+      val at = i * interval
       val id = file.nameWithoutExtension
       val image = ImageIO.read(file)
       val gray = BufferedImage(image.width, image.height, BufferedImage.TYPE_BYTE_GRAY).apply { createGraphics().drawImage(image, 0, 0, null) }
@@ -78,28 +81,33 @@ class VideoIngestTest {
         g.dispose()
         ImageIO.write(image, "jpg", File(out, "trace-$id.jpg"))
       }
+      step.paper?.let { p -> rowTexts[id] = RowAssembly.rows(p, grayImage.width, grayImage.height).filter { it.confidence >= .6 }.map { it.text } }
       step.commits.forEach { saved += it to at }
       if (step.hold) held[id] = file
       hints += at to step.hint
       log.appendLine("%5.1fs %s %-16s %s%s%s%s".format(at / 1000.0, id, step.hint, step.view?.let { "rows %3d–%3d of %3d".format(it.first, it.last, session.rows.size) } ?: "not placed",
         if (step.hold) " HOLD" else "", step.commits.joinToString("") { " COMMIT $it" },
-        step.paper?.let { p -> (if (p.topSeen) " ⊤" else "") + (if (p.bottomSeen) " ⊥" else "") } ?: "") + (why?.let { " ($it)" } ?: ""))
+        step.paper?.let { p -> (if (p.topSeen) " ⊤" else "") + (if (p.bottomSeen) " ⊥" else "") } ?: "") + (why?.let { " ($it)" } ?: "") +
+        session.required().withIndex().filter { !session.isCaptured(it.value) }.let { m -> if (m.isEmpty()) "" else " need " + m.take(4).joinToString { "${session.rows.indexOf(it.value)}" } + if (m.size > 4) "…(${m.size})" else "" } +
+        session.rows.withIndex().filter { it.value.printAfter }.let { m -> if (m.isEmpty()) "" else " unread after " + m.joinToString { "${it.index}" } })
       if (step.complete) { completeAt = at; break }
     }
-    session.commitHeld()?.let { saved += it to (frames.size * 200L) }
+    session.commitHeld()?.let { saved += it to (frames.size * interval) }
     // The content check, independent of the geometry: lines read confidently in at least two frames are the receipt as
     // the video shows it; each must be read (confidence 0.6) in a saved frame.
     val content = texts.values.flatten().groupingBy { it }.eachCount().filterValues { it >= 2 }.keys
       .fold(mutableListOf<String>()) { kept, t -> if (kept.none { similarText(it, t) }) kept += t; kept }
-    val savedTexts = saved.flatMap { (id, _) -> held[id]?.let { f ->
+    // A saved frame's text: its lines, and its rows (a line OCR split into two boxes there is whole in its row).
+    val savedTexts = saved.flatMap { (id, _) -> rowTexts[id].orEmpty() + held[id]?.let { f ->
       File(f.path + ".ocr.json").takeIf { it.exists() }?.let { json.decodeFromString<PhotoText>(it.readText()) }?.lines
         ?.filter { it.confidence >= .6 }?.map { RowAssembly.normalize(it.text) }
     }.orEmpty() }
     // OCR splits and joins the same print differently from frame to frame: a line is covered when a saved line matches
     // it, contains it, or makes up most of it.
-    val missing = content.filter { t -> savedTexts.none { saved -> similarText(saved, t) || commonRun(saved, t) >= minOf(t.length, maxOf(10, (t.length * .75).toInt())) } }
+    val missing = content.filter { t -> savedTexts.none { saved -> similarText(saved, t) || commonRun(saved, t) >= minOf(t.length, maxOf(10, (t.length * .75).toInt())) ||
+      containedEdits(t, saved) <= t.length / 6 } }
     val summary = "%s: %d frames over %.1fs; %s; saved %d (%s); %d rows (ends %s), captured %d; content %d of %d lines%s".format(
-      dir.name, frames.size, frames.size / 5.0, completeAt?.let { "complete at %.1fs".format(it / 1000.0) } ?: "NOT complete",
+      dir.name, frames.size, frames.size * interval / 1000.0, completeAt?.let { "complete at %.1fs".format(it / 1000.0) } ?: "NOT complete",
       saved.size, saved.joinToString { it.first }, session.rows.size,
       (if (session.topClosed) "⊤" else "-") + (if (session.bottomClosed) "⊥" else "-"), session.rows.count(session::isCaptured),
       content.size - missing.size, content.size,
@@ -109,6 +117,10 @@ class VideoIngestTest {
     println("  print unread after: " + session.rows.withIndex().filter { it.value.printAfter }.joinToString(" | ") { (i, r) -> "$i:${r.text.take(20)} → ${session.rows.getOrNull(i + 1)?.text?.take(20)}" })
     println("  not captured: " + session.rows.withIndex().filter { !session.isCaptured(it.value) }.joinToString(" | ") { (i, r) -> "$i:${r.text.take(24)}@%.2f".format(r.confidence) })
     File(out, "log.txt").writeText(summary + "\n" + log)
+    File(out, "rows.txt").writeText(session.rows.withIndex().joinToString("\n") { (i, r) ->
+      "%3d %s %.2f c%d s%d i%d%s%s %s".format(i, if (session.isCaptured(r)) "■" else "□", r.confidence, r.confirmed, r.skipped, r.illegible,
+        if (r.doubtful) " doubtful" else "", if (r.gapAfter >= .5) " gap%.1f".format(r.gapAfter) else "", r.text)
+    })
     drawSaved(saved.mapNotNull { (id, _) -> held[id]?.let { id to it } } , session, File(out, "saved.jpg"))
   }
 
@@ -127,6 +139,17 @@ class VideoIngestTest {
     g.color = Color.BLACK; g.fillRect(0, 0, 44, 16); g.color = Color.WHITE; g.font = Font(Font.SANS_SERIF, Font.BOLD, 12); g.drawString(id, 2, 12)
     g.dispose()
     ImageIO.write(small, "jpg", File(dir, "$id.jpg"))
+  }
+
+  /** The fewest edits that make [part] a substring of [whole]. */
+  private fun containedEdits(part: String, whole: String): Int {
+    var previous = IntArray(whole.length + 1) // free start anywhere in whole
+    for (i in 1..part.length) {
+      val current = IntArray(whole.length + 1); current[0] = i
+      for (j in 1..whole.length) current[j] = minOf(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + if (part[i - 1] == whole[j - 1]) 0 else 1)
+      previous = current
+    }
+    return previous.min()
   }
 
   /** The longest run of characters [a] and [b] share. */

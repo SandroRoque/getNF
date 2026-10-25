@@ -19,15 +19,23 @@ internal class RowAssembly {
   class Entry(var text: String, var confidence: Double) {
     /** Blank rows after this one, as frames saw them (the QR code or a blank line). */
     var gapAfter = 0.0
-    /** A frame saw print between this row and the next that OCR didn't read: rows are missing here. */
-    var printAfter = false
+    /**
+     * Frames that saw print between this row and the next that OCR didn't read (rows are missing here), and frames that
+     * saw clean paper there. The check misfires now and then (a shadow, a fold), so the frames vote.
+     */
+    var unreadAfter = 0
+    var clearAfter = 0
+    val printAfter: Boolean get() = unreadAfter > clearAfter
     /** Later frames that matched this row, and that read past it with no row there. */
     var confirmed = 0
     var skipped = 0
     /** Frames that read the rows around this one well but not this one: print that isn't text (a logo, a graphic). */
     var illegible = 0
-    /** Read once, then passed over twice: an artifact (two lines OCR fused into one box), not a printed row. */
-    val doubtful: Boolean get() = confirmed == 0 && skipped >= 2
+    /**
+     * Passed over by later frames far more often than matched (read once, then passed over twice): an artifact (two
+     * lines OCR fused into one box, a piece of a row), not a printed row.
+     */
+    val doubtful: Boolean get() = skipped >= 2 * (confirmed + 1)
   }
 
   private val entries = mutableListOf<Entry>()
@@ -74,13 +82,15 @@ internal class RowAssembly {
       if (twin != null) { ref[i] = twin; continue }
       val created = Entry(frame[i].text, frame[i].confidence)
       entries.add(entries.indexOf(previous) + 1, created)
-      previous.printAfter = false // the rows that were missing there
+      previous.unreadAfter = 0; previous.clearAfter = 0 // the rows that were missing there
       ref[i] = created; previous = created
     }
     val after = (lastI + 1 until frame.size).toList()
     val before = (0 until firstI).toList()
     val tail = entries.subList(entries.indexOf(lastEntry) + 1, entries.size)
-    if (bottomSeen && after.isNotEmpty() && tail.isNotEmpty() &&
+    // Past a closed end, rows read badly are the edge's noise (a logo's strokes, the torn strip), not more receipt.
+    if (bottomClosed && after.all { frame[it].confidence < WEAK }) after.forEach { ref[it] = null }
+    else if (bottomSeen && after.isNotEmpty() && tail.isNotEmpty() &&
       after.map { frame[it].confidence }.average() > tail.map { it.confidence }.average()) {
       // A frame that sees the paper's bottom edge right after its rows sees the receipt's real end: where the
       // assembly's rows after the last match were read worse (earlier frames' partial reads at their edge), its rows
@@ -102,7 +112,8 @@ internal class RowAssembly {
       }
     }
     val head = entries.subList(0, entries.indexOf(firstEntry))
-    if (topSeen && before.isNotEmpty() && head.isNotEmpty() &&
+    if (topClosed && before.all { frame[it].confidence < WEAK }) before.forEach { ref[it] = null }
+    else if (topSeen && before.isNotEmpty() && head.isNotEmpty() &&
       before.map { frame[it].confidence }.average() > head.map { it.confidence }.average()) {
       if (topClosed) topClosed = false
       head.clear()
@@ -115,10 +126,10 @@ internal class RowAssembly {
       before.takeLast(reused.size).forEachIndexed { n, i -> reused[n].text = frame[i].text; reused[n].confidence = frame[i].confidence; ref[i] = reused[n] }
       before.take(fresh).forEachIndexed { n, i -> Entry(frame[i].text, frame[i].confidence).also { entries.add(n, it); ref[i] = it } }
     }
+    closeEnds(frame, ref, topSeen, bottomSeen)
     val at = IntArray(frame.size) { i -> ref[i]?.let(entries::indexOf) ?: -1 }
     gaps(frame, at)
     marks(at, printBetween)
-    closeEnds(frame, at, topSeen, bottomSeen)
     return at
   }
 
@@ -129,7 +140,7 @@ internal class RowAssembly {
   private fun marks(at: IntArray, printBetween: BooleanArray) {
     for (i in 0 until at.size - 1) {
       val j = at[i]; if (j < 0 || at[i + 1] != j + 1) continue
-      entries[j].printAfter = printBetween.getOrElse(i) { false }
+      if (printBetween.getOrElse(i) { false }) entries[j].unreadAfter++ else entries[j].clearAfter++
     }
   }
 
@@ -140,20 +151,29 @@ internal class RowAssembly {
   fun probeEnds(frame: List<Row>, topSeen: Boolean, bottomSeen: Boolean) {
     if (entries.isEmpty() || frame.isEmpty()) return
     val (pairs, _, _) = align(frame) ?: return
-    val at = IntArray(frame.size) { -1 }
-    for ((i, j) in pairs) at[i] = j
-    closeEnds(frame, at, topSeen, bottomSeen)
+    val ref = arrayOfNulls<Entry>(frame.size)
+    for ((i, j) in pairs) ref[i] = entries[j]
+    closeEnds(frame, ref, topSeen, bottomSeen)
   }
 
   /**
    * An end seen right at the frame's first or last row closes the assembly there, if that row is the assembly's first
-   * or last. One unmatched row at the frame's end is allowed: the last row in view is often read in part.
+   * or last. One unmatched row at the frame's end is allowed: the last row in view is often read in part. Rows the
+   * assembly has beyond it that were only ever read badly and never again (a logo's strokes read as letters) are
+   * dropped: the paper ends before them.
    */
-  private fun closeEnds(frame: List<Row>, at: IntArray, topSeen: Boolean, bottomSeen: Boolean) {
-    val first = at.indexOfFirst { it >= 0 }; val last = at.indexOfLast { it >= 0 }
+  private fun closeEnds(frame: List<Row>, ref: Array<Entry?>, topSeen: Boolean, bottomSeen: Boolean) {
+    val first = ref.indexOfFirst { it != null }; val last = ref.indexOfLast { it != null }
     if (first < 0) return
-    if (topSeen && first <= 1 && at[first] == 0) topClosed = true
-    if (bottomSeen && last >= frame.lastIndex - 1 && at[last] == entries.lastIndex) bottomClosed = true
+    fun noise(rows: List<Entry>) = rows.all { it.confidence < WEAK && it.confirmed == 0 && it !in ref }
+    if (topSeen && first <= 1) {
+      val k = entries.indexOf(ref[first])
+      if (k == 0 || noise(entries.subList(0, k))) { entries.subList(0, k).clear(); topClosed = true }
+    }
+    if (bottomSeen && last >= frame.lastIndex - 1) {
+      val k = entries.indexOf(ref[last])
+      if (k == entries.lastIndex || noise(entries.subList(k + 1, entries.size))) { entries.subList(k + 1, entries.size).clear(); bottomClosed = true }
+    }
   }
 
   /**
@@ -208,6 +228,7 @@ internal class RowAssembly {
     private const val SKIP = .6
     private const val EDGE_ROWS = 2
     private const val START_CONFIDENCE = .6
+    private const val WEAK = .5
 
     /**
      * How strongly two rows match: 0 for unlike rows; otherwise growing with their length (a long code or a product
@@ -217,10 +238,13 @@ internal class RowAssembly {
       if (a.isEmpty() || b.isEmpty()) return -1.0
       val shorter = min(a.length, b.length)
       if (shorter < 4) return if (a == b) .5 else -1.0
-      if (abs(a.length - b.length) > max(2, shorter / 3)) return -1.0
+      // One row read with a piece of the same printed line the other lacks (OCR joins a right-hand column to it in
+      // some frames and not others): a weaker match.
+      val part = if (shorter >= 8 && sameRow(a, b)) .5 + min(shorter, 30) / 30.0 else -1.0
+      if (abs(a.length - b.length) > max(2, shorter / 3)) return part
       val d = distance(a, b)
       // Small print is read noisily: up to one edit in four still counts, the alignment's neighbours vouching for it.
-      return if (d <= max(1, shorter / 4)) 1 + min(shorter, 30) / 10.0 - d * .1 else -1.0
+      return if (d <= max(1, shorter / 4)) 1 + min(shorter, 30) / 10.0 - d * .1 else part
     }
 
     /** A line's text for matching between frames: letters and digits only, upper case. */
@@ -253,14 +277,35 @@ internal class RowAssembly {
      * The frame's printed rows, from the OCR boxes in [paper]'s text block, read along its rows and down the receipt:
      * boxes whose centres lie within half a row of each other down the receipt are one row, read across in order.
      */
+    /**
+     * Unit vectors along the print's rows and down the receipt, at right angles, in frame pixels: across is OCR's
+     * lines' typical direction. The outline's sides lean against each other under perspective, and projecting on two
+     * axes that aren't square skews rows into each other.
+     */
+    fun printAxes(paper: PaperOutline, width: Int, height: Int): Pair<DocumentPoint, DocumentPoint> {
+      val c = paper.corners.map { DocumentPoint(it.x * width, it.y * height) }
+      fun unit(a: DocumentPoint, b: DocumentPoint) = hypot(b.x - a.x, b.y - a.y).let { n -> DocumentPoint((b.x - a.x) / n, (b.y - a.y) / n) }
+      val side = unit(c[0], c[1])
+      val angles = paper.lines.filter { it.characters >= 8 }.map { q ->
+        // Each line's direction, turned to agree with the outline's (OCR reads every line the same way round).
+        val a = q.direction
+        if (cos(a) * side.x + sin(a) * side.y < 0) a + PI else a
+      }.map { a -> atan2(sin(a), cos(a)) }
+      val outline = atan2(side.y, side.x)
+      // Relative to the outline's angle, so the median doesn't straddle ±180°.
+      val angle = angles.map { atan2(sin(it - outline), cos(it - outline)) }.sorted().let { if (it.isEmpty()) 0.0 else it[it.size / 2] } + outline
+      val across = DocumentPoint(cos(angle), sin(angle))
+      val toBottom = unit(c[0], c[3])
+      val down = DocumentPoint(-across.y, across.x).let { d -> if (d.x * toBottom.x + d.y * toBottom.y < 0) DocumentPoint(-d.x, -d.y) else d }
+      return across to down
+    }
+
     fun rows(paper: PaperOutline, width: Int, height: Int): List<Row> {
       val lines = paper.lines
       if (lines.isEmpty()) return emptyList()
-      val c = paper.corners.map { DocumentPoint(it.x * width, it.y * height) }
       // A box at the frame's border is text cut by it: read in part, it would match nothing.
       val whole = lines.filter { q -> q.corners.all { it.x > 3 && it.y > 3 && it.x < width - 4 && it.y < height - 4 } }
-      fun unit(a: DocumentPoint, b: DocumentPoint) = hypot(b.x - a.x, b.y - a.y).let { n -> DocumentPoint((b.x - a.x) / n, (b.y - a.y) / n) }
-      val across = unit(c[0], c[1]); val down = unit(c[0], c[3])
+      val (across, down) = printAxes(paper, width, height)
       fun centre(q: OcrQuad) = DocumentPoint(q.corners.sumOf { it.x } / 4, q.corners.sumOf { it.y } / 4)
       val placed = whole.map { q -> val c = centre(q); Triple(q, c.x * down.x + c.y * down.y, c.x * across.x + c.y * across.y) }.sortedBy { it.second }
       if (placed.isEmpty()) return emptyList()

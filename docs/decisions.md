@@ -1918,3 +1918,33 @@ The capture screen now runs D85's flow on the camera:
 On the emulator, with a recorded video as its camera, the flow runs end to end (outline, rows, map, QR, keyframes,
 photos), at one frame every 4–5 s; the emulator crops the 16:9 video to 4:3, hiding the receipt's end, so completion
 is to be judged on the phone.
+
+## D87. Lessons from the first phone sessions: square axes, text size, keyframes by movement (2026-10-25)
+
+Two captures on the phone (debug frame dump, replayed with `VideoIngestTest` at the phone's pace) completed, in 42 s
+with 11 photos and in 16 s with 3. The replay reproduced both exactly, and showed where the time went:
+
+- **Logo noise reopened the top.** The logo's strokes, read as short low-confidence "rows", were added above the
+  first row after the top had closed, reopening it; the session waited 20 s for the top again. Now rows read under
+  0.5 past a closed end aren't added, and a frame that sees an end drops such rows the assembly has beyond it.
+- **False unread print.** The check between rows (D85) judged dark against one paper level for the whole gap, so the
+  phone's shadow on the paper read as ink; and it sampled along the outline's sides, which under perspective aren't
+  square, so a dashed rule between sections spread over many pixel lines and passed for text. Now dark is against
+  the paper in the same column of the gap, the axes are square to the print (across along OCR's lines, down at a
+  right angle; the row grouping uses them too, which also merges fewer neighbouring lines into one row), and the
+  frames vote (a gap is unread while more frames saw print there than clean paper).
+- **Small text read confidently wrong.** With those false alarms gone, a far view of half the receipt (text 15–18 px)
+  completed a capture with garbled rows that OCR still scored 0.6–0.85. Measured on the receipts' access keys
+  (checksummed, so a read is verifiably right or wrong): reads under 21 px carry errors at any confidence. A row now
+  needs 20 px to count as read, and the "come closer" hint uses the same size.
+- **Keyframes by movement.** Committing the held frame whenever a frame read a row it couldn't saved a photo per frame
+  while a view's readable rows flickered. Now a frame replaces the held one when it reads more of the same view, and
+  commits it only when the view has moved along the receipt (a third of its rows new) and reads rows past it.
+- Smaller rules: a row passed over far more often than matched is an artifact (not only one never confirmed); a row
+  frames read more often than they fail on isn't "illegible"; a row matching most of another counts as a weak match
+  (OCR joins a right-hand column to a line in some frames and not others).
+
+Replayed: the phone sessions complete at 22 s with 6 photos and 11 s with 2; the videos at 13.4 s (4 photos), 15 s
+(7), 9.6 s (3); one video now waits for a short row ("LOJA - 306") it read twice, when the video ends with the camera
+at the top, and the blurred one stays incomplete. In every completed one, all lines read confidently anywhere in the
+session are in the saved photos.

@@ -31,11 +31,12 @@ internal data class IngestStep(
  * ([RowAssembly]), and only the frames that read rows not captured yet, joined to what is captured, are kept.
  *
  * - Readable: a row whose own OCR confidence is at least 0.5 in a stretch (three rows either side) whose median is at
- *   least 0.6 (D83, D84): stretches are accepted as a whole, while a row read badly inside one still counts against.
- * - Keyframes: while the view moves along the receipt, the frame reading the most rows not captured yet, and touching
- *   what is captured, is held; a frame reading all it would add and more replaces it, and a frame reading rows it
- *   can't has it committed and is held in turn. The held frame is committed when the view no longer shares rows with
- *   it (the person moved on), when nothing better came for a while, or when it completes the capture.
+ *   least 0.6 (D83, D84), printed at least 20 pixels tall (D87): stretches are accepted as a whole, while a row read
+ *   badly inside one still counts against.
+ * - Keyframes: the frame reading the most rows not captured yet, and touching what is captured, is held; the same
+ *   view read better replaces it, and a view moved along the receipt that reads rows past it has it committed and is
+ *   held in turn (D87). The held frame is committed when the view no longer shares rows with it (the person moved
+ *   on), when nothing better came for a while, or when it completes the capture.
  * - Done: both ends of the paper seen right at the receipt's first and last rows, and every row captured.
  */
 internal class IngestSession {
@@ -65,11 +66,14 @@ internal class IngestSession {
       if (paper.topSeen || paper.bottomSeen) { pendingEnds += Triple(frameRows, paper.topSeen, paper.bottomSeen); if (pendingEnds.size > MAX_PENDING) pendingEnds.removeAt(0) }
       return skip(paper, if (assembly.rows.isEmpty()) closerOrStill(frameRows) else IngestHint.BACK_TO_CAPTURED, frame, down)
     }
+    // By reference: closing an end on a pending frame may drop rows and shift the indices.
+    val placed = at.map { j -> if (j >= 0) assembly.rows[j] else null }
     for ((rows, top, bottom) in pendingEnds) assembly.probeEnds(rows, top, bottom)
-    for (i in at.indices) if (at[i] >= 0 && !readable[i] && zoneMedian(frameRows, i) >= MIN_ZONE) assembly.rows[at[i]].illegible++
-    val shows = at.filter { it >= 0 }.map { assembly.rows[it] }.toSet()
-    val reads = at.indices.filter { at[it] >= 0 && readable[it] }.map { assembly.rows[at[it]] }.toSet()
-    val view = at.filter { it >= 0 }.let { if (it.isEmpty()) null else it.min()..it.max() }
+    // A row unreadable among neighbours read well, at a size OCR reads, is print that isn't text (a logo).
+    for (i in placed.indices) if (!readable[i] && frameRows[i].height >= MIN_TEXT_PX && neighboursReadable(readable, i)) placed[i]?.let { it.illegible++ }
+    val shows = placed.filterNotNull().filter { it in assembly.rows }.toSet()
+    val reads = placed.indices.filter { readable[it] }.mapNotNull { placed[it] }.filter { it in assembly.rows }.toSet()
+    val view = shows.map(assembly.rows::indexOf).let { if (it.isEmpty()) null else it.min()..it.max() }
 
     val commits = mutableListOf<String>()
     candidate?.let { held -> if ((shows intersect held.shows).size < MIN_SHARED || frame.atMs - held.at > PATIENCE_MS) commitHeld()?.let(commits::add) }
@@ -79,11 +83,15 @@ internal class IngestSession {
     if (gain.isNotEmpty() && joins) {
       val held = candidate
       val heldGain = held?.reads?.filter { it !in captured }?.toSet().orEmpty()
+      val moved = held != null && shows.count { it !in held.shows } >= max(MIN_SHARED, held.shows.size / 3)
       when {
-        // The new frame reads everything the held one would add, and more: it takes its place.
-        held == null || (gain.containsAll(heldGain) && gain.size > heldGain.size) -> { candidate = Held(frame.id, reads, shows, frame.atMs); hold = true }
-        // It reads rows the held one can't: the held one is saved now, and this one held for what it adds.
-        !heldGain.containsAll(gain) -> { commitHeld()?.let(commits::add); candidate = Held(frame.id, reads, shows, frame.atMs); hold = true }
+        held == null -> { candidate = Held(frame.id, reads, shows, frame.atMs); hold = true }
+        // The view moved along the receipt and reads rows past the held one's: the held one is saved now (its rows
+        // may not be in view again), and this one held for what it adds.
+        moved && gain.count { it !in heldGain } >= MIN_SHARED -> { commitHeld()?.let(commits::add); candidate = Held(frame.id, reads, shows, frame.atMs); hold = true }
+        // The same view read better (focus, a steadier hand): it takes the held one's place. What the frames read
+        // differs a little from one to the next; a row it loses is read again while the view stays.
+        gain.size > heldGain.size -> { candidate = Held(frame.id, reads, shows, frame.atMs); hold = true }
       }
     }
     // The frame that completes the capture is committed at once.
@@ -118,17 +126,22 @@ internal class IngestSession {
    * paper's torn edge (a strip of the previous receipt, or a last line the cut went through); rows under six
    * characters, which are OCR's splinters of other rows (an amount read apart), their print in the stretch around;
    * rows later frames passed over as not there ([RowAssembly.Entry.doubtful]); and rows three frames failed to read
-   * while reading the rows around them well, which are print that isn't text (a logo).
+   * while reading the rows around them well, which are print that isn't text (a logo), unless more frames read them.
    */
   fun required(): List<RowAssembly.Entry> {
-    var rows = assembly.rows.filter { it.text.length >= 6 && !it.doubtful && (it.illegible < ILLEGIBLE || it in captured) }
+    var rows = assembly.rows.filter { it.text.length >= 6 && !it.doubtful && (it.illegible < ILLEGIBLE || it.illegible * 2 <= it.confirmed || it in captured) }
     if (assembly.topClosed && rows.size > 2 && rows.first().confidence < MIN_ZONE && rows.first() !in captured) rows = rows.drop(1)
     if (assembly.bottomClosed && rows.size > 2 && rows.last().confidence < MIN_ZONE && rows.last() !in captured) rows = rows.dropLast(1)
     return rows
   }
 
   /** Each row: its own confidence at least 0.5, and the median over three rows either side at least 0.6. */
-  private fun readable(rows: List<Row>): BooleanArray = BooleanArray(rows.size) { i -> rows[i].confidence >= MIN_ROW && zoneMedian(rows, i) >= MIN_ZONE }
+  private fun readable(rows: List<Row>): BooleanArray = BooleanArray(rows.size) { i -> rows[i].confidence >= MIN_ROW && zoneMedian(rows, i) >= MIN_ZONE && rows[i].height >= MIN_TEXT_PX }
+
+  private fun neighboursReadable(readable: BooleanArray, i: Int): Boolean {
+    val around = (max(0, i - ZONE) until min(readable.size, i + ZONE + 1)).filter { it != i }
+    return around.isNotEmpty() && around.count { readable[it] } * 2 >= around.size
+  }
 
   private fun zoneMedian(rows: List<Row>, i: Int): Double =
     rows.subList(max(0, i - ZONE), min(rows.size, i + ZONE + 1)).map { it.confidence }.sorted().let { it[(it.size - 1) / 2] }
@@ -141,52 +154,55 @@ internal class IngestSession {
   private fun unreadPrint(image: GrayImage, paper: PaperOutline, rows: List<Row>): BooleanArray {
     val result = BooleanArray(max(0, rows.size - 1))
     if (rows.size < 3 || paper.lines.isEmpty()) return result
-    val c = paper.corners.map { DocumentPoint(it.x * image.width, it.y * image.height) }
-    fun unit(a: DocumentPoint, b: DocumentPoint) = hypot(b.x - a.x, b.y - a.y).let { n -> DocumentPoint((b.x - a.x) / n, (b.y - a.y) / n) }
-    val across = unit(c[0], c[1]); val down = unit(c[0], c[3])
+    val (across, down) = RowAssembly.printAxes(paper, image.width, image.height)
     val spans = paper.lines.flatMap { q -> q.corners.map { it.x * across.x + it.y * across.y } }
     val a0 = spans.min(); val a1 = spans.max()
     val pitch = rows.zipWithNext().map { (p, q) -> q.down - p.down }.filter { it > 0 }.sorted().let { if (it.isEmpty()) return result else it[it.size / 2] }
     for (i in 0 until rows.lastIndex) {
       val top = rows[i].down + rows[i].height / 2; val bottom = rows[i + 1].down - rows[i + 1].height / 2
       if (rows[i + 1].down - rows[i].down < pitch * 1.6 || bottom - top < 4) continue
-      // Per line of pixels across the block: the share of dark pixels. Text makes a band of such lines nearly a row
-      // tall; a dashed rule between sections is a band of two or three pixels.
-      val lines = mutableListOf<DoubleArray>()
-      val all = mutableListOf<Int>()
-      var d = top + 1
-      while (d < bottom - 1) {
-        val values = mutableListOf<Int>()
-        var a = a0
-        while (a < a1) {
-          val x = (a * across.x + d * down.x).toInt(); val y = (a * across.y + d * down.y).toInt()
-          if (x in 0 until image.width && y in 0 until image.height) values += image[x, y]
-          a += 2.0
-        }
-        all += values
-        lines += values.map { it.toDouble() }.toDoubleArray()
-        d += 1.0
-      }
-      if (all.size < 20) continue
-      val paperLevel = all.sorted()[all.size * 9 / 10]
-      val shares = lines.map { l -> if (l.isEmpty()) 0.0 else l.count { it < paperLevel * .6 }.toDouble() / l.size }
-      val total = shares.average()
-      // A band touching either edge of the gap is the row above or below spilling past its box (a slight tilt, a
-      // tight box); missed print sits inside, clear of both.
-      var run = 0; var longest = 0
-      for ((k, share) in shares.withIndex()) {
-        if (share >= .03) run++
-        else { if (run > 0 && k - run > 0) longest = max(longest, run); run = 0 }
-      }
       val rowHeight = (rows[i].height + rows[i + 1].height) / 2
+      val (total, longest) = band(image, across, down, a0, a1, top, bottom)
       // Letters fill about 60% of OCR's box; a rule, however thick it renders, stays under half of it.
       result[i] = total in UNREAD_PRINT_MIN..UNREAD_PRINT_MAX && longest >= rowHeight * .5
     }
     return result
   }
 
+  /**
+   * The paper between [top] and [bottom] down the block, read line by line across it: the mean share of dark pixels
+   * per line, and the longest band of lines with dark pixels clear of both edges (a band touching an edge is the row
+   * above or below spilling past its box). Dark is against the paper in the same column: a shadow darkens a whole
+   * column, ink only its strokes.
+   */
+  private fun band(image: GrayImage, across: DocumentPoint, down: DocumentPoint, a0: Double, a1: Double, top: Double, bottom: Double): Pair<Double, Int> {
+    val columns = ceil((a1 - a0) / 2.0).toInt()
+    val lines = mutableListOf<IntArray>()
+    var d = top + 1
+    while (d < bottom - 1) {
+      lines += IntArray(columns) { n ->
+        val a = a0 + n * 2.0
+        val x = (a * across.x + d * down.x).toInt(); val y = (a * across.y + d * down.y).toInt()
+        if (x in 0 until image.width && y in 0 until image.height) image[x, y] else -1
+      }
+      d += 1.0
+    }
+    if (lines.size < 2 || columns < 10) return 0.0 to 0
+    val paperLevel = IntArray(columns) { n -> lines.maxOf { it[n] } }
+    val shares = lines.map { l ->
+      val inside = l.indices.filter { l[it] >= 0 && paperLevel[it] > 0 }
+      if (inside.isEmpty()) 0.0 else inside.count { l[it] < paperLevel[it] * .6 }.toDouble() / inside.size
+    }
+    var run = 0; var longest = 0
+    for ((k, share) in shares.withIndex()) {
+      if (share >= .03) run++
+      else { if (run > 0 && k - run > 0) longest = max(longest, run); run = 0 }
+    }
+    return shares.average() to longest
+  }
+
   private fun closerOrStill(rows: List<Row>): IngestHint =
-    if (rows.isEmpty() || rows.map { it.height }.sorted()[rows.size / 2] < CLOSE_ENOUGH_PX) IngestHint.CLOSER else IngestHint.HOLD_STILL
+    if (rows.isEmpty() || rows.map { it.height }.sorted()[rows.size / 2] < MIN_TEXT_PX) IngestHint.CLOSER else IngestHint.HOLD_STILL
 
   /** Toward the nearest row not captured yet, or toward an end not seen yet. */
   private fun direction(view: IntRange?): IngestHint {
@@ -222,7 +238,8 @@ internal class IngestSession {
     const val ZONE = 3
     const val MIN_ROW = .5
     const val MIN_ZONE = .6
-    const val CLOSE_ENOUGH_PX = 14.0
+    // Text smaller than this (OCR box height, pixels) is read with errors at any confidence OCR reports.
+    const val MIN_TEXT_PX = 20.0
     const val MAX_PENDING = 20
     const val ILLEGIBLE = 3
     // Dark share of the paper between two rows that means text OCR didn't read (a blank line has almost none; a QR
