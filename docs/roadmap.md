@@ -78,6 +78,8 @@ ser processadas offline; buscar uma nova página da SEFAZ continua exigindo inte
 
 ## 4. Entregar cadastro e categorização manual
 
+*Replanejada em 2026-10-25 (D70): ver [stage-4-plan.md](stage-4-plan.md). O texto abaixo é o plano original.*
+
 Construir os fluxos de cadastro, edição, exclusão e categorização de produtos, bem como revisão dos itens novos
 e correção das associações com o catálogo. Incluir os fluxos de categorias conforme o escopo definido na etapa 1.
 Mostrar as consequências da exclusão quando houver referências e permitir resolver duplicatas conforme a política escolhida.

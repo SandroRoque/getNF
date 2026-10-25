@@ -1493,3 +1493,21 @@ History heals itself: lines point to products and reports compute categories at 
 category fixes every past month. The routine only has to keep errors from going unnoticed.
 
 - **When:** with stage 4's review screen (provenance, review states) and the worker (audit, gate, metrics).
+
+## D70. Stage 4 plan: Supabase first, then Jev suggestions and full editing on the phone (2026-10-25)
+
+Chosen by the user while planning stage 4; details in [stage-4-plan.md](stage-4-plan.md). Replaces the roadmap's
+manual-only stage 4 with PocketBase as the catalog's owner.
+
+- **Supabase first (4a).** Today PocketBase owns categories and the phone's mirror overwrites local values on every
+  refresh (D46), so a phone edit would be lost. The owner moves straight to Supabase (D62) instead of building sync
+  twice: schema by migrations with Row Level Security, provenance fields (D51, D69), one account, Room plus an
+  outbox on the phone, D61's small photos, a one-time migration of the real data (receipts from the phone,
+  categories from PocketBase), and D65's nightly backup from the first day.
+- **Jev from the start (4b),** not manual-only first: new store items get a suggestion with confidence (D67);
+  ≥0.9 becomes "automatic, not confirmed", the rest go to review. Manual picking stays complete on its own.
+- **Jev runs in a Supabase Edge Function,** since it's a plain HTTP API: suggestions appear with the PC off. The local
+  LLM's review (D69) stays on the PC worker.
+- **Edit scope (4c):** category, product identity (rename, link and unlink store items across stores), size and
+  discounts (manual correction, back to prorated), and the category tree itself (create, rename, move, delete).
+- **Unchanged:** Portuguese UI; the review list comes first in the phone's work.

@@ -1,7 +1,7 @@
 # Status and next steps
 
-Last updated 2026-10-24. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D54). For the portal's behaviour, read `docs/sefaz-sc.md`.
+Last updated 2026-10-25. A handoff for picking the project up again. For *why* things are the way they are, read
+`docs/decisions.md` (D1–D70). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14
@@ -128,7 +128,8 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
    discount receipts and verified on the phone. Not yet: confirming against the photo snippet, and undo. Capture on a
    dark, unevenly lit surface: the mask stops at the receipt's straight sides (D52), and a frame that fills the last
    coverage gap is saved (D53); verified live on the phone (2026-10-24). Next:
-   stage 4 moves categorizing and line editing onto the phone. Installing an APK older than D45 shows an empty list; restore from backup.
+   stage 4, planned in [stage-4-plan.md](stage-4-plan.md) (D70): 4a Supabase foundation and data migration, then
+   4b Jev suggestions (Edge Function) and 4c review and editing on the phone. Installing an APK older than D45 shows an empty list; restore from backup.
 0. Photos upload append-only to `receipt_photos` with masks and metadata (D42); all 51 phone photos are on the live
    server. A restore onto a new machine needs one restart after the first start (D42).
 1. **Uploads only on home Wi‑Fi with the PC on** (D18). Fine for now. Pending, by the user: reserve `192.168.4.4` for
