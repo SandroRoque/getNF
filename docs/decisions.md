@@ -1948,3 +1948,18 @@ Replayed: the phone sessions complete at 22 s with 6 photos and 11 s with 2; the
 (7), 9.6 s (3); one video now waits for a short row ("LOJA - 306") it read twice, when the video ends with the camera
 at the top, and the blurred one stays incomplete. In every completed one, all lines read confidently anywhere in the
 session are in the saved photos.
+
+## D88. Frames are read on one thread and planned on another; photos are made only when saved (2026-10-25)
+
+On the phone the capture analysed 1.4 frames a second: each frame was turned into an upright colour bitmap (2.7 MP,
+converted and rotated), read by OCR, given to the session, and (debug) written to the dump, all one after the other
+on one thread, and the next frame waited for all of it.
+
+- OCR runs on the analysis thread and the session on its own: the next frame's OCR starts as soon as the last one's
+  is read, alongside its session. A frame waiting for the session is replaced by a newer one (the session wants the
+  view as it is now, not a backlog).
+- A frame keeps a copy of the camera's YUV planes; its colour photo is made from them only when the session commits
+  it (a few frames per capture), instead of for every frame. The upright luminance for the paper finder is made
+  while OCR runs.
+- The debug dump writes on a thread of its own.
+- Debug builds log each frame's conversion, OCR and session times (tag `ReceiptCapture`).
