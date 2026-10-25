@@ -151,6 +151,7 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
     discounts, and remove the 55 duplicated photos on the server.
 11. **Move to Supabase (D62, D63):** online service in São Paulo, free tier for now, photos online from the start in
     D61's small form (so item 10 comes first or together). PocketBase stays for local development until then.
+    Database health comes with it (D65): nightly backup to the PC, restore drills, migrations only.
 
 ## Gotchas
 

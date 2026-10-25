@@ -1385,3 +1385,19 @@ receipt lines point to store items, store items to products, and linked store it
   Grouping different brands ("coffee 500 g, any brand") stays out of this, as in data-model.md.
 - **Still open:** the index method (fixed basket vs chained monthly) and how to treat promotion prices. Decide when
   stage 7 (reports) is built.
+
+## D65. Database health on Supabase: our own nightly backup, restore drills, migrations only (planned, 2026-10-24)
+
+Today's safety net is manual: PocketBase backups before risky migrations (copied to `~/getnf-backups/`), the phone's
+export/restore zip (D47), migrations in the repo, and the parser's total checks. On Supabase's free tier (D63) we
+should assume no backups we can download or restore ourselves (Pro has daily ones; not rechecked).
+
+- **Nightly backup off Supabase:** the categorization worker on the user's PC (D62) dumps the database (`pg_dump`)
+  and copies new photos into `~/getnf-backups/`, keeping a few generations. It keeps doing so on Pro: a copy outside
+  the provider.
+- **Restore drills:** now and then, restore a backup into a local Supabase (CLI, Docker) and compare counts and
+  totals with the live project. A backup is trusted only after a restore worked.
+- **Schema only through migrations** in the repo (Supabase CLI), never edited by hand in the dashboard.
+- **Health report from the worker:** usage against free-tier limits (500 MB database, 1 GB files), time since the last
+  request (the free project pauses after a week), receipts whose lines don't add up to the total, and backup age.
+- **When:** built with the move to Supabase (status item 11).
