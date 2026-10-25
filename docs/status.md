@@ -149,6 +149,8 @@ blank paper, upload that replaces server photos, the photo-cap dead-end, then ro
 10. **Smaller photos online (D61, planned):** once the camera and ingest flow settle, upload receipt-cropped grayscale
     WebP copies instead of full JPEGs, delete phone originals after confirmation, upload photos only when they prove
     discounts, and remove the 55 duplicated photos on the server.
+11. **Move to Supabase (D62):** online service in São Paulo; PocketBase stays for local development until then.
+    Still to choose: photos online from the start or later, free tier vs Pro.
 
 ## Gotchas
 

@@ -1,7 +1,7 @@
 # Onde hospedar o serviço online
 
-Comparação de 2026-10-24, depois de D55 (serviço online primeiro, sem banco no computador do usuário). Ainda não é
-decisão: a escolha fica com o usuário e entra no registro quando for feita. Preços e limites conferidos na data, em
+Comparação de 2026-10-24, depois de D55 (serviço online primeiro, sem banco no computador do usuário). Decidido em
+D62: Supabase. Preços e limites conferidos na data, em
 fontes públicas listadas no fim; mudam com frequência.
 
 ## O que o serviço precisa fazer
@@ -28,7 +28,6 @@ fontes públicas listadas no fim; mudam com frequência.
 | Contas e isolamento | Auth pronto + Row Level Security no banco | Auth e regras de API prontos | Auth + regras de segurança |
 | Fotos | Storage pronto | Arquivos prontos | Cloud Storage (exige plano pago desde 02/2026) |
 | Relatórios SQL | Sim | Sim (views, como hoje) | Não; agregações viram código ou exportação |
-| Busca por semelhança (exemplos para o LLM, D58) | pgvector incluído | Não | Não nativo |
 | Rodar Laya/LLM | Não: precisa de um worker à parte | Sim, na mesma máquina, se tiver RAM | Não: worker à parte |
 | Região no Brasil | São Paulo (sa-east-1) | Depende do VPS: Hetzner não tem; Vultr, Linode, AWS Lightsail e provedores locais têm | São Paulo (southamerica-east1) |
 | Operação | Quase nenhuma (backups, atualizações por eles) | Nossa: atualizações, backups, segurança, disco | Quase nenhuma |
@@ -55,18 +54,36 @@ sugestões. Isso combina com o momento atual:
 **Supabase na região de São Paulo, com o worker de categorização à parte.**
 
 - Contas, isolamento por usuário, fotos e SQL vêm prontos, e o beta com amigos não exige trabalho de segurança extra.
-- O pgvector serve diretamente para "itens parecidos já confirmados", o recurso que levou o LLM de 87% a 95% (D58).
-- Pouca operação, e o risco de ficar preso é baixo: é Postgres.
+- Pouca operação: backups e atualizações ficam com eles. O ganho é tempo, não preço.
+- Sem prisão: o Supabase é open source e pode ser auto-hospedado. Se a conta crescer, o mesmo banco vai para uma
+  máquina própria ou um VPS.
 - O plano grátis basta para começar. O Pro (US$25/mês) passa a valer quando os amigos entrarem, ou antes, se a pausa
   por inatividade ou o 1 GB de arquivos (~5 meses de fotos de um usuário) atrapalharem.
 
 **PocketBase em VPS** é a alternativa se o custo ou o controle pesarem mais: reaproveita o servidor atual e roda o Laya
-na mesma máquina, mas a operação fica conosco e falta busca por semelhança. **Firebase** não combina com relatórios em
+na mesma máquina, mas backups, disponibilidade e o isolamento entre usuários ficam conosco. **Firebase** não combina com relatórios em
 SQL nem com preços ao longo do tempo.
+
+## Busca por semelhança não pesa
+
+Os exemplos de itens parecidos levaram o LLM de 87% a 95% (D58), mas pelo D57 o LLM só revisa em lote. O worker acha
+os itens parecidos em memória (milhares de itens se varrem em instantes); o banco não precisa fazer isso.
+
+## Custo se o app crescer
+
+Estimativa grosseira, de memória, não reconferida: 1.000 usuários ativos com as fotos pequenas do D61 (~10 GB de fotos
+por mês).
+
+- **Supabase:** US$25/mês, mais ~US$0,02/GB/mês de arquivos acima de 100 GB e ~US$0,09/GB de saída acima de 250 GB;
+  servidor de banco maior por ~US$15–110/mês. Provavelmente abaixo de US$100/mês.
+- **VPS:** ~US$20–40/mês para a mesma carga. Mais barato, mas o tempo de operação é nosso.
+- **Firebase:** cobra por leitura e escrita; o mais difícil de prever e o que mais cresce com relatórios.
+
+Se as fotos virarem o grosso da conta, só elas vão para um armazenamento barato e sem custo de saída (Cloudflare R2).
 
 ## O que decidir
 
-1. Supabase (recomendado) ou PocketBase em VPS.
+1. ~~Supabase ou PocketBase em VPS~~: Supabase (D62).
 2. Fotos no serviço online desde o início, ou só os dados primeiro e as fotos depois.
 3. Começar no plano grátis ou já no Pro.
 

@@ -1344,3 +1344,18 @@ to read per-item discounts (D54), and that already happens on the phone before u
 - **Also found:** the current server stores 55 photos twice (old `receipts` photo field and `receipt_photos`), half of
   its 250 MB, apparently left by the migration to `receipt_photos`. Clean up when this is built.
 - **When:** after the camera and ingest flow settle; not built yet. Archive quality (50 vs 70) to choose then.
+
+## D62. Host the online service on Supabase, São Paulo region (2026-10-24)
+
+Chosen by the user from [hosting-options.md](hosting-options.md) (D55: data online, nothing on the user's computer).
+
+- **Why:** accounts, per-user isolation (Row Level Security), file storage, SQL and backups come managed. What we buy
+  is not running a server, not a lower price.
+- **Not a reason:** pgvector. Similar-item examples help the LLM (D58), but the LLM only reviews in batches (D57) and
+  the worker can find similar items in memory.
+- **Cost if it grows:** rough estimate, not rechecked: under ~US$100/month for 1,000 active users with D61's small
+  photos; a VPS would be ~US$20–40 plus our time; Firebase is the hardest to predict. Exits if the bill grows:
+  Supabase is open source and self-hostable (same Postgres), and photos alone can move to cheaper storage (R2).
+- **Unchanged:** categorization runs in a separate worker (on the user's PC for now). PocketBase stays for local
+  development until the move. Still open: photos online from the start or later (D61 makes them cheap), and the free
+  tier vs Pro.
