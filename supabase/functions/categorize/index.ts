@@ -5,6 +5,9 @@
 // shared lexicon and, for a barcode, Open Food Facts' name. Confidence at or above THRESHOLD becomes the category
 // ("automatic", not confirmed); below, a suggestion for the review list. A failure retries with backoff.
 //
+// A POST with {"check": {"user_id", "items": [{description, code_kind, code}]}} answers those items with the same
+// code and writes nothing: the regression check (D69) runs through exactly what production runs.
+//
 // Sent to TypeSafe: the translated item description and Open Food Facts' name and categories. Nothing else.
 // Secrets (supabase secrets set): JEV_API_KEY, CATEGORIZE_SECRET. Optional: JEV_URL, JEV_MODEL, THRESHOLD, BATCH.
 
@@ -27,6 +30,9 @@ Deno.serve(async (req) => {
   if (req.headers.get("x-categorize-secret") !== Deno.env.get("CATEGORIZE_SECRET")) {
     return new Response("forbidden", { status: 403 });
   }
+  const body = await req.json().catch(() => ({}));
+  if (body.check) return json(await check(body.check.user_id, body.check.items));
+
   const { data: jobs, error } = await db.rpc("claim_categorize_jobs", { batch: BATCH });
   if (error) return json({ error: error.message }, 500);
   if (!jobs?.length) return json({ done: 0 });
@@ -37,15 +43,10 @@ Deno.serve(async (req) => {
   for (const job of jobs as Job[]) {
     try {
       if (!options.has(job.user_id)) options.set(job.user_id, await leafCategories(job.user_id));
-      const choices = options.get(job.user_id)!;
-      const state: Record<string, string> = { item: expand(job.description) };
-      if (job.code_kind === "gtin") Object.assign(state, await openFoodFacts(job.code));
-      const answer = await jev(state, choices);
-      const chosen = choices.find((o) => o.key === answer.choice);
-      if (!chosen) throw new Error(`Jev chose an unknown option: ${answer.choice}`);
+      const { chosen, confidence } = await answer(job, options.get(job.user_id)!, expand);
       const { data: outcome, error } = await db.rpc("apply_categorization", {
         uid: job.user_id, item: job.store_item_id, product: job.product_id, category: chosen.id,
-        confidence: answer.confidence, model: JEV_MODEL, threshold: THRESHOLD,
+        confidence, model: JEV_MODEL, threshold: THRESHOLD,
       });
       if (error) throw new Error(error.message);
       outcomes[outcome] = (outcomes[outcome] ?? 0) + 1;
@@ -58,6 +59,31 @@ Deno.serve(async (req) => {
   }
   return json({ done: jobs.length, ...outcomes });
 });
+
+type Item = { description: string; code_kind: string; code: string };
+
+async function answer(item: Item, choices: Option[], expand: (t: string) => string) {
+  const state: Record<string, string> = { item: expand(item.description) };
+  if (item.code_kind === "gtin") Object.assign(state, await openFoodFacts(item.code));
+  const a = await jev(state, choices);
+  const chosen = choices.find((o) => o.key === a.choice);
+  if (!chosen) throw new Error(`Jev chose an unknown option: ${a.choice}`);
+  return { chosen, confidence: a.confidence };
+}
+
+async function check(userId: string, items: Item[]) {
+  const [expand, choices] = await Promise.all([lexicon(), leafCategories(userId)]);
+  const out = [];
+  for (const item of items) {
+    try {
+      const { chosen, confidence } = await answer(item, choices, expand);
+      out.push({ category: chosen.key.replaceAll("__", "."), confidence });
+    } catch (e) {
+      out.push({ error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  return { model: JEV_MODEL, threshold: THRESHOLD, answers: out };
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -129,6 +155,6 @@ async function jev(state: Record<string, string>, choices: Option[]): Promise<{ 
     }),
   });
   if (!r.ok) throw new Error(`Jev ${r.status}: ${(await r.text()).slice(0, 200)}`);
-  const answer = (await r.json()).answers.c;
-  return { choice: answer.choice, confidence: Number(answer.confidence ?? 0) };
+  const c = (await r.json()).answers.c;
+  return { choice: c.choice, confidence: Number(c.confidence ?? 0) };
 }

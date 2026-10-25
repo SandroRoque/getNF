@@ -1580,3 +1580,32 @@ it. Bringing it back: `docker compose -f server/compose.yaml up -d`.
 The nightly backup (D65) runs as a systemd user timer at 03:30 (`tools/systemd/`), from the main checkout's
 `tools/supabase-backup.py`. Check with `systemctl --user list-timers getnf-backup` and
 `python3 tools/supabase-backup.py --check`.
+
+## D74. Stage 4b live: Jev categorizes new items online; 94% on the 82 items, every automatic one right (2026-10-25)
+
+Implements 4b of D70. Live Jev calls with the user's go-ahead.
+
+- **How it runs:** a store item of an uncategorized product queues a `categorize_job` (trigger). `pg_cron` checks every
+  minute and, only if jobs wait, calls the `categorize` Edge Function through `pg_net`, with a shared secret kept in
+  Vault (`categorize_url`, `categorize_secret`) and in the function's secrets (with `JEV_API_KEY`); nothing of it
+  is in git. The function claims a batch (`for update skip locked`), translates each description with the shared
+  `lexicon` table, adds Open Food Facts' name and categories for a barcode (`barcode_lookup`, once per code), asks
+  Jev one choice over the user's leaf categories described by `taxonomy/descriptions-en.txt`, and writes back
+  through `apply_categorization`: ≥ 0.9 becomes the category (`jev`/`automatic`), below it a suggestion
+  (`suggestion_*` columns) that counts nowhere until the user takes it. Failures retry with backoff, six times.
+- **Rules:** a product with a category or a suggestion isn't touched; the user's choice is final (D51); and a write
+  without a source (a phone that hadn't pulled the answer yet) can't clear a sourced category. The phone (Room v5)
+  pulls suggestions and never pushes them.
+- **Check mode:** a POST with `{"check": {user_id, items}}` answers items through the same code and writes nothing:
+  the regression check of D69. On the user's 82 items: 77 right (94%, as D68's 95%); at ≥ 0.9, 73 assigned
+  automatically and all 73 right; the 5 misses all fell below and would go to review (chicken breast and smoked loin
+  as cold cuts, the detergent, the unknown brand, and a T-shirt whose `DET FRONTAL`, "frontal detail", the lexicon
+  read as detergent: the conflicting abbreviation the user warned about in D59).
+- **First real run:** the two products that had no category (pharmacy items) got suggestions (over-the-counter
+  medicine, 0.66 and 0.80).
+- **Bug found on deploy:** the online project grants new tables to no role (D70's choice), and the service role had
+  none on the new tables, so the function failed with a 500 while all local tests passed (the local Supabase grants
+  everything). Fixed by a migration granting the service role on `public`, now and by default.
+- **Costs:** Jev ~US$0.0001 per item; the cron job runs SQL only, and calls the function only when there is work.
+- **Data to TypeSafe:** the translated description and Open Food Facts' name and categories. Not the store, prices
+  or chave.
