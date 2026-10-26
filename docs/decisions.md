@@ -2037,3 +2037,12 @@ kept until the other way weighs twice as much, so rows left behind are collected
 inside the view mean holding still. Replayed, that session's hints are one sweep down then one up; no session's hints
 change direction more than twice. The benchmark scores what is saved, not hints, so it shows no change; whether the
 person follows faster can only be seen live.
+
+## D93. The torch comes on by itself when it's too dark to read (2026-10-26)
+
+The user asked for the LED to turn on without having to press it. Auto exposure holds frames near a mean luminance of
+140: the benchmark's phone sessions, in ordinary light, measured 111–160. When it runs out (long exposure, high gain),
+frames get dark and grainy and print blurs. When a frame's mean luminance stays under 70 (about half the usual) for a
+second, the torch comes on, once. It isn't turned off by itself (the frames are bright once it's on), and once the
+person has touched the torch button the capture leaves it alone. The threshold is set from frames in good light only;
+it needs a session in dim light to confirm.

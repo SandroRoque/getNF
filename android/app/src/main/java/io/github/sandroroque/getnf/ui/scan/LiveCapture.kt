@@ -51,6 +51,8 @@ internal data class CaptureUiState(
   val exited: Boolean = false,
   val saving: Boolean = false,
   val error: String? = null,
+  /** Too dark for long enough that the torch should come on (D93). */
+  val dark: Boolean = false,
 )
 
 internal data class RowMark(val captured: Boolean, val gapAfter: Double)
@@ -74,7 +76,10 @@ internal enum class ExitChoice { KEEP_CODE, DISCARD }
  * to make its photo from when it is saved ([pixels]; most frames never are, and converting each would slow every
  * frame).
  */
-internal class CameraFrame(val image: GrayImage, val pixels: FramePixels, val mapping: FrameMapping, val atMs: Long)
+internal class CameraFrame(val image: GrayImage, val pixels: FramePixels, val mapping: FrameMapping, val atMs: Long) {
+  /** The frame's mean luminance (0–255): auto exposure holds it near 140 while there is light enough. */
+  val luma: Int by lazy { image.pixels.let { p -> var sum = 0L; var n = 0; var i = 0; while (i < p.size) { sum += p[i].toInt() and 0xff; n++; i += 61 }; if (n == 0) 0 else (sum / n).toInt() } }
+}
 
 /** A copy of a YUV_420_888 camera frame's planes and how to turn them upright. */
 internal class FramePixels(
@@ -248,6 +253,14 @@ internal class CaptureController(
   private var state = CaptureUiState()
   private var done = false
   private var frames = 0
+  private var darkSince: Long? = null
+  /** Dark: the frame's mean luminance under [DARK_LUMA] (auto exposure has run out) for [DARK_MS] in a row. */
+  private fun dark(frame: CameraFrame): Boolean {
+    if (frame.luma >= DARK_LUMA) { darkSince = null; return false }
+    val since = darkSince ?: frame.atMs.also { darkSince = it }
+    return frame.atMs - since >= DARK_MS
+  }
+
   /** The photo each committed frame was saved as. */
   private val savedAs = mutableMapOf<String, CaptureSegment>()
   /** The debug dump writes on a thread of its own, off the session's. */
@@ -285,6 +298,7 @@ internal class CaptureController(
       rows = ingest.rows.map { RowMark(ingest.isCaptured(it), it.gapAfter) },
       view = step.view, topClosed = ingest.topClosed, bottomClosed = ingest.bottomClosed,
       saved = manifest.segments.size, qr = manifest.chave != null,
+      dark = dark(frame),
     )
     if (step.complete && manifest.chave != null) finish() else publish(state)
   }
@@ -427,5 +441,9 @@ internal class CaptureController(
 
   private companion object {
     const val MAX_PHOTOS = 30
+    // Frames in normal light measured 111–160 (the benchmark's phone sessions); half the usual level means the camera
+    // can't expose any longer, and print turns grainy and blurred.
+    const val DARK_LUMA = 70
+    const val DARK_MS = 1000L
   }
 }

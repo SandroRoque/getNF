@@ -76,6 +76,8 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
   val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
   var showExit by remember { mutableStateOf(false) }
   var torch by remember { mutableStateOf(false) }
+  // Once the person touches the torch, it is theirs: the capture no longer turns it on by itself.
+  var torchTouched by remember { mutableStateOf(false) }
   var showMore by remember { mutableStateOf(false) }
   val currentState by rememberUpdatedState(state)
   val exitDialogVisible by rememberUpdatedState(showExit)
@@ -118,6 +120,14 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
       controller.clearImageAnalysisAnalyzer()
       controller.unbind()
       preview.keepScreenOn = false
+    }
+  }
+  // Too dark to read the print: the torch comes on by itself, once, unless the person has used it (D93). It isn't
+  // turned off by itself: the frames are bright once it is on.
+  LaunchedEffect(state.dark) {
+    if (state.dark && !torch && !torchTouched && controller.cameraInfo?.hasFlashUnit() == true) {
+      val result = controller.enableTorch(true)
+      result.addListener({ if (runCatching { result.get() }.isSuccess) torch = true }, ContextCompat.getMainExecutor(context))
     }
   }
   LaunchedEffect(state.completed, state.exited) {
@@ -173,6 +183,7 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
         Spacer(Modifier.weight(1f))
         RoundButton(io.github.sandroroque.getnf.ui.calmo.Icons.Torch, if (torch) "Apagar a lanterna" else "Acender a lanterna", selected = torch) {
           if (controller.cameraInfo?.hasFlashUnit() == true) {
+            torchTouched = true
             val next = !torch
             val result = controller.enableTorch(next)
             result.addListener({ if (runCatching { result.get() }.isSuccess) torch = next }, ContextCompat.getMainExecutor(context))

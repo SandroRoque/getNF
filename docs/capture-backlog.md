@@ -1,13 +1,12 @@
 # Capture: ideas waiting their turn
 
-Done and waiting for a live check: guidance toward the most unseen content (D92).
+Done and waiting for a live check: guidance toward the most unseen content (D92); the torch by itself (D93).
 
 Each idea goes through the benchmark loop in [capture-bench.md](capture-bench.md) when it's picked up: one at a time,
 kept only without regressions.
 
-- **Torch by itself.** Turn the LED on when the paper is dark: when the paper level the finder measures, or OCR
-  confidence, stays low for about a second. Turn it off on glare (a blown-out patch on the paper). The user's toggle
-  overrides. The bench can't judge this; it needs phone sessions in dim light.
+- **Torch off on glare.** D93 turns the torch on in the dark and never off. If glare on the paper turns out to hurt
+  (a blown-out patch where print was readable), turn it off again, or don't turn it on for glossy paper.
 - **Session time on the phone.** D91 halved the paper finder (PC: 30 → 17 ms a frame in all). Next: the working
   copy (about 3.5 ms a frame on the PC) and `required()`, which the decisions recompute several times a frame.
 - **Rows on curled receipts.** OCR boxes are grouped into rows by their position down the print. On a curled, tilted
