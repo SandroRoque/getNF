@@ -2014,3 +2014,13 @@ item lost and no regression.
 Also from the held-out sessions: a replay can disagree with the phone on a paper end right at the frame's border (the
 replay finds it on the dumped JPEG). The dump now saves at JPEG quality 97, and `live.tsv` logs the ends the phone
 saw, so the benchmark names the frames where they differ.
+
+## D91. The paper finder's walks without allocations (2026-10-26)
+
+Profiled on the phone sessions in the benchmark, the session spends about 70% of its time in the paper finder, most
+of it walking out from the print to the paper's sides (on the phone, about 330 ms a frame in all). Each sample of a
+walk allocated a point and a boxed value, the paper's level was computed twice per band (once per side), and the
+working copy was made through per-pixel accessors. Now the walks sample by coordinates into a plain array, each
+band's level is computed once, and the copy reads the arrays directly. Results are identical on every session
+(benchmark: no change), and the paper finder is about twice as fast (6.2 → 2.9 s over 306 phone frames on the PC;
+the session as a whole, about 30 → 17 ms a frame).

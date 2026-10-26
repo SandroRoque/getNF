@@ -104,6 +104,11 @@ internal object PaperFinder {
       val x = p.x / k; val y = p.y / k
       return if (x < 0 || y < 0 || x > small.width - 1 || y > small.height - 1) null else bilinear(small, x, y)
     }
+    /** The working copy at (u, v), NaN outside: the walks' inner loop, without allocating a point per sample. */
+    fun grayUv(uu: Double, vv: Double): Double {
+      val x = (uu * c - vv * s) / k; val y = (uu * s + vv * c) / k
+      return if (x < 0 || y < 0 || x > small.width - 1 || y > small.height - 1) Double.NaN else bilinear(small, x, y)
+    }
     fun level(u0: Double, u1: Double, v0: Double, v1: Double): Double {
       val values = mutableListOf<Double>()
       val step = k * 2.0
@@ -125,43 +130,46 @@ internal object PaperFinder {
     /** The last walk reached the frame's border too soon to tell (rather than finding no step on the way). */
     var lastShort = false
     fun walk(u0: Double, v0: Double, du: Double, dv: Double, paper: Double, sliver: Boolean = false): Double? {
-      val samples = mutableListOf<Double>()
+      val reach = width * 1.2 + lineHeight * 20
+      val samples = DoubleArray(max(1, ((reach - 2.0 * k) / k).toInt() + 2))
+      var count = 0
       var t = 2.0 * k
-      while (t < width * 1.2 + lineHeight * 20) {
+      while (t < reach) {
         var sum = 0.0; var inside = true
-        for (o in -4..4) { val g = gray(xy(u0 + du * t - dv * o * k, v0 + dv * t + du * o * k)); if (g == null) { inside = false; break }; sum += g }
+        for (o in -4..4) { val g = grayUv(u0 + du * t - dv * o * k, v0 + dv * t + du * o * k); if (g.isNaN()) { inside = false; break }; sum += g }
         if (!inside) break
-        samples += sum / 9
+        samples[count++] = sum / 9
         t += k
       }
       lastBorder = t
       val w = max(3, (lineHeight * 1.5 / k).toInt())
       val after = if (sliver) 3 else w
-      lastShort = samples.size < 3 + after + w
+      lastShort = count < 3 + after + w
       // The margin between the print and the edge can be short: the window before the step is what there is (3 at
       // least) up to a line and a half.
-      if (samples.size < 3 + after) return null
-      val prefix = DoubleArray(samples.size + 1).also { for (i in samples.indices) it[i + 1] = it[i] + samples[i] }
+      if (count < 3 + after) return null
+      val prefix = DoubleArray(count + 1).also { for (i in 0 until count) it[i + 1] = it[i] + samples[i] }
       fun mean(a: Int, b: Int) = (prefix[b] - prefix[a]) / (b - a)
       var best = -1; var bestDrop = 0.0
-      for (i in 3..samples.size - after) {
-        val drop = mean(max(0, i - w), i) - mean(i, min(samples.size, i + w))
+      for (i in 3..count - after) {
+        val drop = mean(max(0, i - w), i) - mean(i, min(count, i + w))
         if (drop > bestDrop) { bestDrop = drop; best = i }
       }
       if (best < 0 || bestDrop < max(10.0, paper * .08)) return null
       // The step is spread over the averaging window; its foot is where the brightness first falls below halfway.
-      val half = (mean(max(0, best - w), best) + mean(best, min(samples.size, best + w))) / 2
-      val foot = (max(0, best - w) until min(samples.size, best + w)).firstOrNull { samples[it] < half } ?: best
+      val half = (mean(max(0, best - w), best) + mean(best, min(count, best + w))) / 2
+      val foot = (max(0, best - w) until min(count, best + w)).firstOrNull { samples[it] < half } ?: best
       lastDrop = bestDrop
       return 2.0 * k + foot * k
     }
     val bands = (0..20).map { blockV0 + (blockV1 - blockV0) * it / 20.0 }
     val sideDrops = mutableListOf<Double>()
+    val bandLevels = mutableMapOf<Double, Double>() // the paper's level per band, the same for both sides
     /** Edge points of one side; where the frame cuts the paper with blank paper still beside the print, the border. */
     fun side(u0: Double, du: Double): Triple<List<Pair<Double, Double>>, List<Pair<Double, Double>>, Int> {
       val found = mutableListOf<Pair<Double, Double>>(); val border = mutableListOf<Pair<Double, Double>>(); var cut = 0
       for (vv in bands) {
-        val paper = level(blockU0, blockU1, vv - lineHeight, vv + lineHeight)
+        val paper = bandLevels.getOrPut(vv) { level(blockU0, blockU1, vv - lineHeight, vv + lineHeight) }
         val t = walk(u0, vv, du, 0.0, paper, sliver = true)
         when {
           t != null && t < width * .5 -> { found += vv to u0 + du * t; sideDrops += lastDrop; trace?.edges?.add(xy(u0 + du * t, vv)) }
@@ -260,9 +268,13 @@ internal object PaperFinder {
   private fun downscale(image: GrayImage, k: Int): GrayImage {
     val w = image.width / k; val h = image.height / k
     val out = ByteArray(w * h)
+    val pixels = image.pixels; val chroma = image.chroma
     for (y in 0 until h) for (x in 0 until w) {
       var sum = 0; var colour = 0
-      for (dy in 0 until k) for (dx in 0 until k) { sum += image[x * k + dx, y * k + dy]; colour += image.chroma(x * k + dx, y * k + dy) }
+      for (dy in 0 until k) {
+        var i = (y * k + dy) * image.width + x * k
+        for (dx in 0 until k) { sum += pixels[i].toInt() and 0xff; if (chroma != null) colour += chroma[i].toInt() and 0xff; i++ }
+      }
       out[y * w + x] = ((sum - colour * 3 / 2) / (k * k)).coerceIn(0, 255).toByte()
     }
     return GrayImage(w, h, out)
