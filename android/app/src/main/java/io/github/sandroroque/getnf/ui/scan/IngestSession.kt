@@ -43,10 +43,12 @@ internal class IngestSession {
   private val assembly = RowAssembly()
   val rows: List<RowAssembly.Entry> get() = assembly.rows
   private val captured = mutableSetOf<RowAssembly.Entry>()
-  private class Held(val id: String, val reads: Set<RowAssembly.Entry>, val shows: Set<RowAssembly.Entry>, val at: Long)
+  /** [quality]: the confidence of this frame's read of each row it reads. */
+  private class Held(val id: String, val reads: Set<RowAssembly.Entry>, val shows: Set<RowAssembly.Entry>, val at: Long, val quality: Map<RowAssembly.Entry, Double>)
   private var candidate: Held? = null
   private val pendingEnds = mutableListOf<Triple<List<Row>, Boolean, Boolean>>()
   private val committedIds = mutableListOf<String>()
+  private val committedReads = mutableMapOf<String, Map<RowAssembly.Entry, Double>>()
   val committed: List<String> get() = committedIds
   private var done = false
   val topClosed: Boolean get() = assembly.topClosed
@@ -73,6 +75,7 @@ internal class IngestSession {
     for (i in placed.indices) if (!readable[i] && frameRows[i].height >= MIN_TEXT_PX && neighboursReadable(readable, i)) placed[i]?.let { it.illegible++ }
     val shows = placed.filterNotNull().filter { it in assembly.rows }.toSet()
     val reads = placed.indices.filter { readable[it] }.mapNotNull { placed[it] }.filter { it in assembly.rows }.toSet()
+    val quality = placed.indices.filter { readable[it] && placed[it] in reads }.associate { placed[it]!! to frameRows[it].confidence }
     val view = shows.map(assembly.rows::indexOf).let { if (it.isEmpty()) null else it.min()..it.max() }
 
     val commits = mutableListOf<String>()
@@ -85,20 +88,20 @@ internal class IngestSession {
       val heldGain = held?.reads?.filter { it !in captured }?.toSet().orEmpty()
       val moved = held != null && shows.count { it !in held.shows } >= max(MIN_SHARED, held.shows.size / 3)
       when {
-        held == null -> { candidate = Held(frame.id, reads, shows, frame.atMs); hold = true }
+        held == null -> { candidate = Held(frame.id, reads, shows, frame.atMs, quality); hold = true }
         // The view moved along the receipt and reads rows past the held one's: the held one is saved now (its rows
         // may not be in view again), and this one held for what it adds.
-        moved && gain.count { it !in heldGain } >= MIN_SHARED -> { commitHeld()?.let(commits::add); candidate = Held(frame.id, reads, shows, frame.atMs); hold = true }
+        moved && gain.count { it !in heldGain } >= MIN_SHARED -> { commitHeld()?.let(commits::add); candidate = Held(frame.id, reads, shows, frame.atMs, quality); hold = true }
         // The same view read better (focus, a steadier hand): it takes the held one's place. What the frames read
         // differs a little from one to the next; a row it loses is read again while the view stays.
-        gain.size > heldGain.size -> { candidate = Held(frame.id, reads, shows, frame.atMs); hold = true }
+        gain.size > heldGain.size -> { candidate = Held(frame.id, reads, shows, frame.atMs, quality); hold = true }
       }
     }
     // The frame that completes the capture is committed at once; so are the held one and this one, when together
     // they complete it.
     candidate?.let { held ->
       if (held.id != frame.id && joins && !completeWith(held.reads) && completeWith(held.reads + reads)) {
-        commitHeld()?.let(commits::add); candidate = Held(frame.id, reads, shows, frame.atMs); hold = true
+        commitHeld()?.let(commits::add); candidate = Held(frame.id, reads, shows, frame.atMs, quality); hold = true
       }
     }
     candidate?.let { held -> if (completeWith(held.reads)) commitHeld()?.let(commits::add) }
@@ -118,7 +121,27 @@ internal class IngestSession {
     candidate = null
     captured += held.reads
     committedIds += held.id
+    committedReads[held.id] = held.quality
     return held.id
+  }
+
+  /**
+   * The committed frames worth keeping once the capture is done: the fewest that still read every row that had to be
+   * captured about as well as the best of them did (greedy set cover, the frame covering most of what is left first).
+   * Frames saved on the way (an overview a closer frame later read better) are redundant.
+   */
+  fun keep(): List<String> {
+    val best = mutableMapOf<RowAssembly.Entry, Double>()
+    for (q in committedReads.values) for ((row, c) in q) best[row] = max(best[row] ?: 0.0, c)
+    fun covers(id: String) = committedReads[id].orEmpty().filter { (row, c) -> c >= best.getValue(row) - KEEP_MARGIN }.keys
+    val left = required().filter { it in best }.toMutableSet()
+    val kept = mutableSetOf<String>()
+    while (left.isNotEmpty()) {
+      val pick = committedIds.filter { it !in kept }.maxByOrNull { id -> covers(id).count { it in left } } ?: break
+      if (covers(pick).none { it in left }) break
+      kept += pick; left -= covers(pick)
+    }
+    return committedIds.filter { it in kept }
   }
 
   fun isComplete(): Boolean = completeWith(emptySet())
@@ -249,6 +272,8 @@ internal class IngestSession {
 
   private companion object {
     const val PATIENCE_MS = 1500L
+    // A kept photo covers a row when it read it nearly as surely as the best saved read of it.
+    const val KEEP_MARGIN = .05
     const val MIN_SHARED = 3
     const val ZONE = 3
     const val MIN_ROW = .5

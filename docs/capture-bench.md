@@ -19,8 +19,9 @@ run, so a fix for one session can't silently break another.
 
 ## The loop
 
-1. **Record.** On the phone (debug build, `files/capture-dump/enabled` present), scan receipts. Prefer receipts the
-   capture hasn't seen; the app keeps a list of them under `files/receipts/`.
+1. **Record.** On the phone (debug build, `files/capture-dump/enabled` present), scan receipts. They needn't be new
+   receipts: a new session of a known receipt is new footage (angle, motion, light, timing), and what is held out is
+   the session, until it has been measured.
 2. **Pull.** `tools/pull-capture-dumps.sh` copies the new sessions and adds them to the corpus as `holdout`.
 3. **Measure blind.** `tools/capture-bench.sh --holdout` gives totals only for the held-out sessions. This is the
    honest number for the current version, because nothing was tuned on them. Note it in the log below.
@@ -44,4 +45,7 @@ run, so a fix for one session can't silently break another.
 | 2026-10-25 | every OCR box inside the paper counts | 7 of 9 | 0 | all | the item numbers' column was dropped |
 | 2026-10-25 | (dropped) rows grouped along each line's own axis | 7 of 9 | 1 | | 5 regressions; in the backlog |
 | 2026-10-25 | unread print only between required rows; hint toward it | 7 of 9 | 0 | all | 23.8 → 13.7 s on one phone session |
-| 2026-10-25 | held and current frame saved when together they complete | 9 of 9 | 0 | all | the blurred video still can't, as expected |
+| 2026-10-25 | held and current frame saved when together they complete | 8 of 9 | 0 | all | the blurred video still can't, as expected |
+| 2026-10-25 | **holdout**: 3 new phone sessions, measured blind | 2 of 3 | 0 | 73 of 73 | 15.4 s, 4.3 photos; then promoted to dev |
+| 2026-10-25 | (dropped) at the end, keep the fewest photos covering every row | 10 of 12 | 1 | | lost an item read well only in a dropped photo |
+| 2026-10-25 | at the end, keep the fewest photos covering every row read near its best | 10 of 12 | 0 | all | photos down on 5 sessions (7 → 3, 7 → 4, 6 → 4) |

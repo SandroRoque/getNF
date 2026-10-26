@@ -1997,3 +1997,20 @@ The first runs, one change at a time (log in capture-bench.md):
 
 All 9 development sessions now score at least as well as the D88 baseline: 8 complete with every item legible. The
 ninth is the video whose bottom is blurred throughout.
+
+## D90. A finished capture keeps the fewest photos that read the receipt (2026-10-25)
+
+The first held-out phone sessions (D89 loop, measured blind: 2 of 3 complete, no false completion, every item
+legible, 15.4 s, 4.3 photos) showed photos saved on the way that later ones made redundant: an overview saved for the
+few rows it read, then close-ups that read those rows too. Keyframe decisions are made live without knowing what comes
+next; the end of the capture does know.
+
+When the capture is done, the session picks the fewest committed photos that read every required row about as surely
+(within 0.05 confidence) as the best saved read of it, greedily, and the others are deleted before the photos become
+the receipt's. Covering a row with any passable read was tried first and lost an item read exactly only in a photo
+it dropped. With the confidence margin: photos fall on 5 of 12 sessions (7 → 3, 7 → 4, 6 → 4, 5 → 4, 4 → 3), with no
+item lost and no regression.
+
+Also from the held-out sessions: a replay can disagree with the phone on a paper end right at the frame's border (the
+replay finds it on the dumped JPEG). The dump now saves at JPEG quality 97, and `live.tsv` logs the ends the phone
+saw, so the benchmark names the frames where they differ.

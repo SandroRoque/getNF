@@ -120,6 +120,7 @@ class CaptureBenchTest {
     var completeAt: Long? = null
     var completeFrame: String? = null
     var divergence: String? = null
+    val endsDiffer = mutableListOf<String>()
     for ((i, file) in frames.withIndex()) {
       val id = file.nameWithoutExtension
       val at = live?.get(id)?.let { it[1].toLong() - start!! } ?: (i * entry.stepMs)
@@ -146,6 +147,9 @@ class CaptureBenchTest {
       live?.get(id)?.let { l ->
         val liveCommits = l[4].split(',').filter { it.isNotEmpty() }
         if (divergence == null && (liveCommits != step.commits || l[5].toBoolean() != step.complete)) divergence = id
+        // Where the replay found the paper's ends differently (it finds them on the dumped JPEG, the phone on the camera's frame).
+        val ends = step.paper?.let { (if (it.topSeen) "T" else "") + (if (it.bottomSeen) "B" else "") + "-" } ?: ""
+        if (l.size > 6 && l[6] != ends) endsDiffer += "$id ${l[6].ifEmpty { "none" }}→${ends.ifEmpty { "none" }}"
       }
       log.appendLine("%5.1fs %s %-16s %s%s%s%s".format(at / 1000.0, id, step.hint, step.view?.let { "rows %3d–%3d of %3d".format(it.first, it.last, session.rows.size) } ?: "not placed",
         if (step.hold) " HOLD" else "", step.commits.joinToString("") { " COMMIT $it" },
@@ -155,12 +159,14 @@ class CaptureBenchTest {
       if (step.complete) { completeAt = at; completeFrame = id; break }
     }
     if (completeAt == null) session.commitHeld()?.let { saved += it }
+    // Done: only the photos the app keeps (the fewest that read every row) count, and are scored.
+    else session.keep().let { kept -> saved.retainAll(kept.toSet()) }
     val liveDone = live?.values?.firstOrNull { it[5].toBoolean() }?.get(0)
     val fidelity = when {
       live == null -> "no live log"
       divergence == null && liveDone == completeFrame -> "matches live"
       else -> "diverges at ${divergence ?: completeFrame}"
-    }
+    } + if (endsDiffer.isEmpty()) "" else " (paper ends found differently: ${endsDiffer.take(3).joinToString()})"
 
     // Scored against the answer key: an item is legible when a saved frame read its text (rows and OCR's lines, read
     // with confidence 0.6; a line OCR split into boxes is whole in its row).

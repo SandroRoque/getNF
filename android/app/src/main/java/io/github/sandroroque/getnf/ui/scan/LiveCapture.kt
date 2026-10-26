@@ -248,6 +248,8 @@ internal class CaptureController(
   private var state = CaptureUiState()
   private var done = false
   private var frames = 0
+  /** The photo each committed frame was saved as. */
+  private val savedAs = mutableMapOf<String, CaptureSegment>()
   /** The debug dump writes on a thread of its own, off the session's. */
   private val dumping by lazy { java.util.concurrent.Executors.newSingleThreadExecutor() }
 
@@ -292,7 +294,8 @@ internal class CaptureController(
     val name = "f%04d.jpg".format(id.removePrefix("f").toInt() + 1)
     dir.mkdirs()
     val bitmap = frame.pixels.toBitmap()
-    try { FileOutputStream(File(dir, name)).use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) } } finally { bitmap.recycle() }
+    // Near-lossless: the replay finds the paper's edges on this copy, and a borderline edge must come out the same.
+    try { FileOutputStream(File(dir, name)).use { bitmap.compress(Bitmap.CompressFormat.JPEG, 97, it) } } finally { bitmap.recycle() }
     val text = io.github.sandroroque.getnf.discounts.PhotoText(name, frame.pixels.uprightWidth, frame.pixels.uprightHeight, lines.map { q ->
       io.github.sandroroque.getnf.discounts.TextLine(q.text, q.corners.minOf { it.x }.toInt(), q.corners.minOf { it.y }.toInt(),
         q.corners.maxOf { it.x }.toInt(), q.corners.maxOf { it.y }.toInt(), q.confidence.toFloat(), q.corners.flatMap { listOf(it.x.toInt(), it.y.toInt()) })
@@ -301,12 +304,15 @@ internal class CaptureController(
   }
 
   /**
-   * Appends the session's decision on a frame to `live.tsv` (frame, its camera time, hint, held, committed, complete),
+   * Appends the session's decision on a frame to `live.tsv` (frame, its camera time, hint, held, committed, complete,
+   * the paper's ends seen: `T`, `B`, `TB` or none, then `-`; empty when no paper was found),
    * so the replay can use the frames' real timing and show where it would decide differently.
    */
   private fun logDecision(dir: File, id: String, atMs: Long, step: IngestStep) {
     fun name(id: String) = "f%04d".format(id.removePrefix("f").toInt() + 1)
-    File(dir, "live.tsv").appendText(listOf(name(id), atMs, step.hint, step.hold, step.commits.joinToString(",", transform = ::name), step.complete).joinToString("\t") + "\n")
+    val ends = step.paper?.let { (if (it.topSeen) "T" else "") + (if (it.bottomSeen) "B" else "") + "-" } ?: ""
+    File(dir, "live.tsv").appendText(listOf(name(id), atMs, step.hint, step.hold, step.commits.joinToString(",", transform = ::name), step.complete, ends)
+      .joinToString("\t") + "\n")
   }
 
   /** The receipt's code: a QR code read inside the paper found (another receipt's code beside it doesn't count). */
@@ -365,12 +371,21 @@ internal class CaptureController(
       if (frame.paper.topSeen) 0.0 else null, if (frame.paper.bottomSeen) frame.view?.last?.toDouble() else null,
       frame.score, System.currentTimeMillis(), manifest.id)
     manifest = manifest.copy(segments = manifest.segments + segment)
+    savedAs[frame.id] = segment
     sessions.write(manifest)
     if (BuildConfig.DEBUG) Log.d(TAG, "saved ${frame.id} as ${image.name}: rows ${frame.view}")
   }
 
   private fun finish() {
     publish(state.copy(saving = true))
+    // Photos saved on the way that the rest read entirely (an overview a closer frame read better) are dropped.
+    val keep = ingest.keep().mapNotNull(savedAs::get).toSet()
+    if (keep.isNotEmpty()) {
+      val dir = sessions.dir(manifest.id)
+      for (s in manifest.segments - keep) { File(dir, s.photo).delete(); File(dir, s.mask).delete() }
+      manifest = manifest.copy(segments = manifest.segments.filter { it in keep })
+      sessions.write(manifest)
+    }
     held = null
     manifest = manifest.copy(committing = true)
     sessions.write(manifest)
