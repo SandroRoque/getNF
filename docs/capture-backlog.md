@@ -1,22 +1,22 @@
 # Capture: ideas waiting their turn
 
+Done and waiting for a live check: guidance toward the most unseen content (D92).
+
 Each idea goes through the benchmark loop in [capture-bench.md](capture-bench.md) when it's picked up: one at a time,
 kept only without regressions.
 
-- **Guide toward the most unseen content.** The hint now points to the nearest row not captured. Instead, point to
-  where a frame would add the most: the stretch with the most rows not captured, or the end not seen yet, weighed by
-  distance. Each clean frame should read as many rows as it can (the user's suggestion, 2026-10-25).
 - **Torch by itself.** Turn the LED on when the paper is dark: when the paper level the finder measures, or OCR
   confidence, stays low for about a second. Turn it off on glare (a blown-out patch on the paper). The user's toggle
   overrides. The bench can't judge this; it needs phone sessions in dim light.
-- **Session time on the phone.** About 330 ms a frame on the Motorola (OCR is about 500 ms, in parallel since D88). The
-  paper finder walks the full frame; the unread-print check samples every gap. Profile before changing.
+- **Session time on the phone.** D91 halved the paper finder (PC: 30 → 17 ms a frame in all). Next: the working
+  copy (about 3.5 ms a frame on the PC) and `required()`, which the decisions recompute several times a frame.
 - **Rows on curled receipts.** OCR boxes are grouped into rows by their position down the print. On a curled, tilted
   receipt, a short box far from a long line's centre (a price, an item's number) can land a row off. Grouping along
   each line's own axis was tried and dropped: 5 regressions. Another try: let the assembly match a row read whole
   against the same row read in pieces.
 - **More than one stretch at a time.** A frame that doesn't overlap what's assembled (the user jumped from the bottom to
-  the top) is lost until a frame joins them. Keep separate stretches and join them when a frame overlaps both.
+  the top) is lost until a frame joins them. Keep separate stretches and join them when a frame overlaps both. Measured
+  2026-10-26: only one dev session loses frames this way (10 frames, about 7 s); worth it when more sessions do.
 - **Full-resolution photos.** Saved photos are analysis frames (1440×1920). A still from ImageCapture at the moment of
   commit would give the OCR afterwards more to work with.
 - **Answer key for the receipt without a page.** One of the three receipts in the corpus was never fetched, so its

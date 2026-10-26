@@ -2024,3 +2024,16 @@ working copy was made through per-pixel accessors. Now the walks sample by coord
 band's level is computed once, and the copy reads the arrays directly. Results are identical on every session
 (benchmark: no change), and the paper finder is about twice as fast (6.2 → 2.9 s over 306 phone frames on the PC;
 the session as a whole, about 30 → 17 ms a frame).
+
+## D92. The hint goes where the next frame adds the most, and keeps the sweep (2026-10-26)
+
+The user's idea: direct the person to where the most unseen content is. The hint pointed to the nearest row not yet
+captured, so a few header rows left behind turned the person back while they were sweeping down (one held-out phone
+session: down, up, down, up within 10 s, then a second pass for 5 rows).
+
+Now the rows still to capture above and below the view, and an end not yet seen (counted as a view's worth of rows),
+are each weighed by 1 / (1 + distance in views), and the hint goes the heavier way. Once a direction is given it is
+kept until the other way weighs twice as much, so rows left behind are collected on the way back. Rows to capture
+inside the view mean holding still. Replayed, that session's hints are one sweep down then one up; no session's hints
+change direction more than twice. The benchmark scores what is saved, not hints, so it shows no change; whether the
+person follows faster can only be seen live.

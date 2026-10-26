@@ -51,6 +51,8 @@ internal class IngestSession {
   private val committedReads = mutableMapOf<String, Map<RowAssembly.Entry, Double>>()
   val committed: List<String> get() = committedIds
   private var done = false
+  /** The direction the hint last sent the person along the receipt. */
+  private var sweep: IngestHint? = null
   val topClosed: Boolean get() = assembly.topClosed
   val bottomClosed: Boolean get() = assembly.bottomClosed
   fun isCaptured(row: RowAssembly.Entry) = row in captured
@@ -242,19 +244,33 @@ internal class IngestSession {
   private fun closerOrStill(rows: List<Row>): IngestHint =
     if (rows.isEmpty() || rows.map { it.height }.sorted()[rows.size / 2] < MIN_TEXT_PX) IngestHint.CLOSER else IngestHint.HOLD_STILL
 
-  /** Toward the nearest row not captured yet, or toward an end not seen yet. */
+  /**
+   * Where the next frame would add the most (D92): the rows still to capture above and below the view, and an end not
+   * seen yet (counted as a view's worth of rows), each weighed down by its distance in views. The sweep keeps its
+   * direction until the other way has clearly more (twice), so a few rows left behind don't turn the person around
+   * mid-sweep; they're collected on the way back. Rows to capture inside the view: hold still for them.
+   */
   private fun direction(view: IntRange?): IngestHint {
     if (view == null) return IngestHint.BACK_TO_CAPTURED
-    val middle = (view.first + view.last) / 2.0
     val required = required().toSet()
-    val missing = assembly.rows.indices.filter { assembly.rows[it] in required && assembly.rows[it] !in captured && candidate?.reads?.contains(assembly.rows[it]) != true }
-    val nearest = (missing + unreadGaps()).minByOrNull { abs(it - middle) }
-    return when {
-      nearest != null -> if (nearest < middle) IngestHint.MOVE_UP else IngestHint.MOVE_DOWN
-      !assembly.bottomClosed -> IngestHint.MOVE_DOWN
-      !assembly.topClosed -> IngestHint.MOVE_UP
-      else -> IngestHint.HOLD_STILL
+    val missing = assembly.rows.indices.filter { assembly.rows[it] in required && assembly.rows[it] !in captured && candidate?.reads?.contains(assembly.rows[it]) != true } + unreadGaps()
+    if (missing.isEmpty() && assembly.topClosed && assembly.bottomClosed) return IngestHint.HOLD_STILL
+    val span = max(1, view.last - view.first + 1).toDouble()
+    fun weight(distance: Int) = 1 / (1 + distance / span)
+    var up = missing.filter { it < view.first }.sumOf { weight(view.first - it) }
+    var down = missing.filter { it > view.last }.sumOf { weight(it - view.last) }
+    val inside = missing.count { it in view }
+    if (!assembly.topClosed) up += span * weight(view.first)
+    if (!assembly.bottomClosed) down += span * weight(assembly.rows.lastIndex - view.last)
+    if (inside > 0 && inside >= up + down) return IngestHint.HOLD_STILL
+    val choice = when (sweep) {
+      IngestHint.MOVE_UP -> if (down > 2 * up) IngestHint.MOVE_DOWN else IngestHint.MOVE_UP
+      IngestHint.MOVE_DOWN -> if (up > 2 * down) IngestHint.MOVE_UP else IngestHint.MOVE_DOWN
+      else -> if (up > down) IngestHint.MOVE_UP else IngestHint.MOVE_DOWN
     }
+    if (up == 0.0 && down == 0.0) return IngestHint.HOLD_STILL
+    sweep = choice
+    return choice
   }
 
   private fun down(paper: PaperOutline, image: GrayImage): DocumentPoint {
