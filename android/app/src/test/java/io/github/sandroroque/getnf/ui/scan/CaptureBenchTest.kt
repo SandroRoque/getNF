@@ -47,7 +47,12 @@ class CaptureBenchTest {
   )
 
   private class Entry(val path: String, val split: String, val stepMs: Long)
-  private class Truth(val source: String, val items: List<Pair<String, String>>) // label → text to find
+  /**
+   * An item to find: [text] is its code and description; [numbered] the same after its printed number, which only an
+   * item rung up more than once ([repeats] > 1) needs, since its copies differ by it alone (D54 anchors by the code).
+   */
+  private class Key(val label: String, val text: String, val numbered: String?, val repeats: Int)
+  private class Truth(val source: String, val items: List<Key>)
 
   @Test fun bench() {
     val bench = System.getenv("GETNF_BENCH")?.let(::File)
@@ -170,12 +175,21 @@ class CaptureBenchTest {
 
     // Scored against the answer key: an item is legible when a saved frame read its text (rows and OCR's lines, read
     // with confidence 0.6; a line OCR split into boxes is whole in its row).
-    val savedTexts = saved.flatMap { id -> rowTexts[id].orEmpty() + ocr[id]?.lines.orEmpty().filter { it.confidence >= .6 }.map { RowAssembly.normalize(it.text) } }
-    val missing = truth?.items?.filter { (label, text) -> savedTexts.none { saved ->
-      containedEdits(text, saved) <= maxOf(1, text.length / 8) && (label == "chave" || truth.source != "page" || text.take(6) in saved)
-    } }?.map { it.first }.orEmpty()
+    // OCR's letter-for-digit slips ("S133" for 5133), undone on both sides as D54's reader does.
+    fun plain(t: String) = t.map { mapOf('O' to '0', 'Q' to '0', 'D' to '0', 'I' to '1', 'L' to '1', 'S' to '5', 'B' to '8', 'Z' to '2', 'G' to '6')[it] ?: it }.joinToString("")
+    val saves = saved.map { id -> (rowTexts[id].orEmpty() + ocr[id]?.lines.orEmpty().filter { it.confidence >= .6 }.map { RowAssembly.normalize(it.text) }).map(::plain) }
+    fun found(text: String, inSaved: String) = containedEdits(text, inSaved) <= maxOf(1, text.length / 8)
+    val missing = truth?.items?.filter { key ->
+      val text = plain(key.text)
+      val legible = if (key.repeats <= 1) saves.any { frame -> frame.any { found(text, it) } } else {
+        // Rung up more than once: its own number with it ("01" or "1"), or as many readings as copies in one photo.
+        val numbered = plain(key.numbered!!).let { if (it.startsWith("0")) listOf(it, it.drop(1)) else listOf(it) }
+        saves.any { frame -> frame.any { t -> numbered.any { n -> found(n, t) && n.take(6) in t } } || frame.count { found(text, it) } >= key.repeats }
+      }
+      !legible
+    }?.map { it.label }.orEmpty()
     val items = truth?.items?.size ?: 0
-    if (System.getenv("GETNF_BENCH_KEY") != null) truth?.items?.forEach { (label, text) -> println("key $label: $text ${if (label in missing) "MISSING" else ""}") }
+    if (System.getenv("GETNF_BENCH_KEY") != null) truth?.items?.forEach { k -> println("key ${k.label}: ${k.text} x${k.repeats} ${if (k.label in missing) "MISSING" else ""}") }
     val result = Result(dir.relativeTo(media).path, entry.split, receipt ?: "?", truth?.source ?: "none", frames.size, completeAt != null,
       completeAt?.let { (it - (engagedAt ?: 0)) / 1000.0 }, saved.size, items, items - missing.size,
       completeAt != null && missing.isNotEmpty(), missing, fidelity)
@@ -198,11 +212,13 @@ class CaptureBenchTest {
     val page = File(media, "truth/$chave/page.html")
     if (page.exists()) {
       val parsed = runCatching { NfcePage.parse(page.readText()) }.getOrNull()
-      if (parsed != null && parsed.items.isNotEmpty()) return Truth("page", parsed.items.map { item ->
-        // The item's printed line: its number (exactly: repeated items differ only by it), code and description.
-        val text = "%02d".format(item.line) + RowAssembly.normalize((item.code ?: "") + (item.description ?: "")).take(24)
-        "${item.line}:${item.description?.take(20)}" to text
-      })
+      if (parsed != null && parsed.items.isNotEmpty()) {
+        val codes = parsed.items.groupingBy { it.code }.eachCount()
+        return Truth("page", parsed.items.map { item ->
+          val text = RowAssembly.normalize((item.code ?: "") + (item.description ?: "")).take(24)
+          Key("${item.line}:${item.description?.take(20)}", text, "%02d".format(item.line) + text, codes[item.code] ?: 1)
+        })
+      }
     }
     // No page: the item codes (EAN-13, check digit right) read in at least three frames of this receipt's sessions.
     val codes = media.resolve("bench").let { bench -> File(bench, "corpus.tsv").readLines().filter { it.isNotBlank() && !it.startsWith("#") } }
@@ -212,7 +228,7 @@ class CaptureBenchTest {
       .flatMap { o -> o.lines.mapNotNull { l -> Regex("^\\d{1,3}\\s*(\\d{13})\\b").find(l.text.trim())?.groupValues?.get(1) } }
       .filter { c -> checkDigit(c.take(12), listOf(1, 3)) == c.last().digitToInt() }
       .groupingBy { it }.eachCount().filterValues { it >= 3 }.keys
-    return Truth("consensus", codes.map { it to it })
+    return Truth("consensus", codes.map { Key(it, it, null, 1) })
   }
 
   /** Mod-10 (EAN, weights alternating from the right) or mod-11 (access key, weights 2–9) check digit. */

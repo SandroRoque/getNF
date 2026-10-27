@@ -11,7 +11,9 @@ run, so a fix for one session can't silently break another.
   `test-media/bench/corpus.tsv` (path, `dev` or `holdout`, frame interval when there's no `live.tsv`).
 - **Answer key**: the receipt's page the app saved when it was fetched, copied from the phone to
   `test-media/truth/<chave>/page.html`. The capture never sees it, and nothing here makes a request to SEFAZ. An item
-  is legible when a saved photo reads its number, code and description. A receipt with no saved page is keyed by the
+  is legible when a saved photo reads its code and description, OCR's letter-for-digit slips undone (as D54's reader
+  anchors items); an item rung up more than once also needs its printed number ("01" or "1") or as many readings as
+  copies in one photo. A receipt with no saved page is keyed by the
   item codes OCR read in its sessions whose check digit is right (marked `*`, weaker).
 - **Score per session**: completed, seconds from the first frame placed on the receipt to done, photos, items
   legible, false completion (done while an item isn't legible), and whether the replay matches the live run.
@@ -63,3 +65,4 @@ run, so a fix for one session can't silently break another.
 | 2026-10-26 | answer key: the printed access key no longer asked for (the QR code gives it, D97) | 20 of 22 | 1 | all but 1 | re-baselined; not a capture change |
 | 2026-10-26 | (dropped) only the lines the app needs must be read, the rest in view (D97) | 21 of 22 | 4 | | 7.3 s, but overviews' garbled reads now completed captures |
 | 2026-10-26 | the same, with every box of a read row at 0.6 or more (D97) | 18 of 22 | 0 | all | 8.2 s (was 9.1), 2.5 photos (was 2.9); the 2 lost end before a closer frame |
+| 2026-10-26 | answer key: the last receipt's page fetched; items judged as D54 reads them (code, slips undone; number only for repeats) | 18 of 22 | 0 | all | re-baselined; not a capture change |
