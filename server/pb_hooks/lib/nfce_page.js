@@ -4,7 +4,7 @@
 //
 // Money values are reais as numbers with 2 decimals; quantities as numbers. Brazilian "1.234,56" is converted.
 
-const VERSION = 1
+const VERSION = 2
 
 // UTC offsets by UF code (first 2 digits of the chave). No DST in Brazil since 2019.
 const UF_OFFSET = { 11: "-04:00", 12: "-05:00", 13: "-04:00", 14: "-04:00", 50: "-04:00", 51: "-04:00" }
@@ -109,6 +109,31 @@ function toIso(date, time, offset) {
   return `${y}-${mo}-${d}T${time}${offset}`
 }
 
+// The taxes, from wherever the page states them: SEFAZ's "Tributos Totais Incidentes" total, and the store's own text,
+// which words each part its own way ("FEDERAL R$ 37,70 ESTADUAL R$ 42,63", "FEDERAIS: R$ 28,07 - ESTADUAIS: R$ 35,46",
+// "Trib aprox R$: 47,95 Federal e 28,88 Estadual"). Parts are read only near a mention of taxes. Same as the phone's.
+function parseTaxes(all) {
+  const t = /Tributos Totais Incidentes\s*\(Lei Federal 12\.741\/2012\)\s*R\$\s*(\d[\d.]*,\d{2})/i.exec(all)
+  const total = t ? num(t[1]) : null
+  const part = (text, label) => {
+    const a = new RegExp(label + "\\w*\\s*:?\\s*R\\$\\s*:?\\s*(\\d[\\d.]*,\\d{2})", "i").exec(text)
+    if (a) return num(a[1])
+    const b = new RegExp("(\\d[\\d.]*,\\d{2})\\s*" + label, "i").exec(text)
+    return b ? num(b[1]) : null
+  }
+  const context = /\btrib|IBPT|12\.741/gi
+  let m
+  while ((m = context.exec(all))) {
+    const near = all.slice(Math.max(0, m.index - 160), Math.min(all.length, m.index + m[0].length + 200))
+    const federal = part(near, "FEDERA"), state = part(near, "ESTADUA"), municipal = part(near, "MUNICIPA")
+    if (federal != null || state != null) {
+      const sum = [federal, state, municipal].filter((x) => x != null).reduce((a, b) => Math.round((a + b) * 100) / 100, 0)
+      return { federal, state, municipal, total: total != null ? total : sum }
+    }
+  }
+  return total != null ? { federal: null, state: null, municipal: null, total } : null
+}
+
 function parse(html) {
   const items = parseItems(html)
   if (items.length === 0) throw new Error("no items found: not an NFC-e details page?")
@@ -121,7 +146,6 @@ function parse(html) {
 
   const info = /Número:\s*(\d+)\s*Série:\s*(\d+)\s*Emissão:\s*(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})/.exec(all)
   const prot = /Protocolo de Autorização:\s*(\d+)\s+(\d{2}\/\d{2}\/\d{4})\s+às\s+(\d{2}:\d{2}:\d{2})/.exec(all)
-  const ibpt = /FEDERAL R\$\s*([\d.,]+)\s*ESTADUAL R\$\s*([\d.,]+)\s*MUNICIPAL R\$\s*([\d.,]+)/i.exec(all)
   const { totals, payments } = parseTotals(html)
 
   // Pages without a discount omit "Valor total" and "Descontos": fill them in so consumers don't have to.
@@ -149,7 +173,7 @@ function parse(html) {
     items,
     totals,
     payments,
-    taxes_estimate: ibpt ? { federal: num(ibpt[1]), state: num(ibpt[2]), municipal: num(ibpt[3]) } : null,
+    taxes_estimate: parseTaxes(all),
     warnings,
   }
 }

@@ -55,7 +55,7 @@ object NfceParity {
       })
       put("payments", buildJsonArray { p.payments.forEach { add(buildJsonObject { put("method", it.method); put("amountCents", it.amountCents) }) } })
       put("taxesEstimate", p.taxesEstimate?.let {
-        buildJsonObject { put("federalCents", it.federalCents); put("stateCents", it.stateCents); put("municipalCents", it.municipalCents) }
+        buildJsonObject { put("federalCents", it.federalCents); put("stateCents", it.stateCents); put("municipalCents", it.municipalCents); put("totalCents", it.totalCents) }
       } ?: JsonNull)
       put("warnings", buildJsonArray { p.warnings.forEach { add(JsonPrimitive(it)) } })
     }

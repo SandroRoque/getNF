@@ -60,7 +60,7 @@ for (const name of fs.readdirSync(fixtures).filter((f) => f.endsWith(".html")).s
     },
     payments: p.payments.map((x) => ({ method: x.method, amountCents: cents(x.amount) })),
     taxesEstimate: p.taxes_estimate
-      ? { federalCents: cents(p.taxes_estimate.federal), stateCents: cents(p.taxes_estimate.state), municipalCents: cents(p.taxes_estimate.municipal) }
+      ? { federalCents: cents(p.taxes_estimate.federal), stateCents: cents(p.taxes_estimate.state), municipalCents: cents(p.taxes_estimate.municipal), totalCents: cents(p.taxes_estimate.total) }
       : null,
     warnings: p.warnings,
   }

@@ -42,7 +42,11 @@ data class ParsedTotals(
 
 data class ParsedPayment(val method: String, val amountCents: Long?)
 
-data class ParsedTaxes(val federalCents: Long?, val stateCents: Long?, val municipalCents: Long?)
+/**
+ * The taxes the receipt says are in its price (Lei 12.741/2012, IBPT's estimate). Stores word it freely; any part may
+ * be missing. [totalCents] is SEFAZ's own field when the page has it, else the parts' sum.
+ */
+data class ParsedTaxes(val federalCents: Long?, val stateCents: Long?, val municipalCents: Long?, val totalCents: Long?)
 
 data class ParsedReceipt(
   val chave: String?,
@@ -63,8 +67,8 @@ data class ParsedReceipt(
 class NfceParseException(message: String) : Exception(message)
 
 object NfcePage {
-  /** Same as the JS parser's VERSION: both read a page the same way. */
-  const val VERSION = 1
+  /** Same as the JS parser's VERSION: both read a page the same way. 2: taxes in any store's wording, with a total. */
+  const val VERSION = 2
 
   // UTC offsets by UF code (first 2 digits of the chave). No DST in Brazil since 2019.
   private val UF_OFFSET = mapOf("11" to -4, "12" to -5, "13" to -4, "14" to -4, "50" to -4, "51" to -4)
@@ -85,7 +89,8 @@ object NfcePage {
   private val CHAVE = Regex("class=\"chave\"[^>]*>([\\d\\s]+)<")
   private val INFO = Regex("Número:\\s*(\\d+)\\s*Série:\\s*(\\d+)\\s*Emissão:\\s*(\\d{2}/\\d{2}/\\d{4})\\s+(\\d{2}:\\d{2}:\\d{2})")
   private val PROTOCOL = Regex("Protocolo de Autorização:\\s*(\\d+)\\s+(\\d{2}/\\d{2}/\\d{4})\\s+às\\s+(\\d{2}:\\d{2}:\\d{2})")
-  private val IBPT = Regex("FEDERAL R\\$\\s*([\\d.,]+)\\s*ESTADUAL R\\$\\s*([\\d.,]+)\\s*MUNICIPAL R\\$\\s*([\\d.,]+)", RegexOption.IGNORE_CASE)
+  private val TAX_TOTAL = Regex("Tributos Totais Incidentes\\s*\\(Lei Federal 12\\.741/2012\\)\\s*R\\$\\s*(\\d[\\d.]*,\\d{2})", RegexOption.IGNORE_CASE)
+  private val TAX_CONTEXT = Regex("\\btrib|IBPT|12\\.741", RegexOption.IGNORE_CASE)
   private val DATE_TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
 
   private enum class Total { ITEMS_COUNT, GROSS, DISCOUNT, SURCHARGE, PAYABLE, CHANGE }
@@ -169,6 +174,25 @@ object NfcePage {
   /** Writes cents like the JS parser's warnings print reais: 31.15, 31.1, 30. */
   private fun reais(cents: Long) = BigDecimal.valueOf(cents, 2).stripTrailingZeros().toPlainString()
 
+  /**
+   * The taxes, from wherever the page states them: SEFAZ's "Tributos Totais Incidentes" total, and the store's own
+   * text, which words each part its own way ("FEDERAL R$ 37,70 ESTADUAL R$ 42,63", "FEDERAIS: R$ 28,07 - ESTADUAIS:
+   * R$ 35,46", "Trib aprox R$: 47,95 Federal e 28,88 Estadual"). Parts are read only near a mention of taxes, so a
+   * "Lei Federal" elsewhere isn't one.
+   */
+  fun parseTaxes(all: String): ParsedTaxes? {
+    val total = TAX_TOTAL.find(all)?.let { cents(it.groupValues[1]) }
+    fun part(text: String, label: String): Long? =
+      Regex("$label\\w*\\s*:?\\s*R\\$\\s*:?\\s*(\\d[\\d.]*,\\d{2})", RegexOption.IGNORE_CASE).find(text)?.let { cents(it.groupValues[1]) }
+        ?: Regex("(\\d[\\d.]*,\\d{2})\\s*$label", RegexOption.IGNORE_CASE).find(text)?.let { cents(it.groupValues[1]) }
+    for (m in TAX_CONTEXT.findAll(all)) {
+      val near = all.substring(maxOf(0, m.range.first - 160), minOf(all.length, m.range.last + 200))
+      val federal = part(near, "FEDERA"); val state = part(near, "ESTADUA"); val municipal = part(near, "MUNICIPA")
+      if (federal != null || state != null) return ParsedTaxes(federal, state, municipal, total ?: listOfNotNull(federal, state, municipal).sum())
+    }
+    return total?.let { ParsedTaxes(null, null, null, it) }
+  }
+
   fun parse(html: String): ParsedReceipt {
     val items = parseItems(html)
     if (items.isEmpty()) throw NfceParseException("no items found: not an NFC-e details page?")
@@ -179,7 +203,6 @@ object NfcePage {
 
     val info = INFO.find(all)?.groupValues
     val prot = PROTOCOL.find(all)?.groupValues
-    val ibpt = IBPT.find(all)?.groupValues
     val block = parseTotals(html)
     val v = block.values
 
@@ -213,7 +236,7 @@ object NfcePage {
       items = items,
       totals = totals,
       payments = block.payments,
-      taxesEstimate = ibpt?.let { ParsedTaxes(cents(it[1]), cents(it[2]), cents(it[3])) },
+      taxesEstimate = parseTaxes(all),
       warnings = warnings,
     )
   }

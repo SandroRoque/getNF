@@ -40,6 +40,34 @@ class NfcePageTest {
     assertEquals(emptyList<String>(), p.warnings)
   }
 
+  @Test fun twoPaymentMethodsAndChange() {
+    // No real receipt paid two ways yet: the committed page with cash and a card, and change from the cash.
+    val card = "<div id=\"linhaTotal\"><label class=\"tx\">\n\t\t\t\t\t\t\t\t\t\t\tCartão de Crédito\n\t\t\t\t\t\t\t\t\t\t</label><span class=\"totalNumb\">30,64</span></div>"
+    val html = fixture("sc-detalhes-server-html.html")
+    assertTrue("the fixture's payment line changed", card in html)
+    val p = NfcePage.parse(html.replace(card,
+      "<div id=\"linhaTotal\"><label class=\"tx\">Dinheiro</label><span class=\"totalNumb\">20,00</span></div>" +
+        "<div id=\"linhaTotal\"><label class=\"tx\">Cartão de Débito</label><span class=\"totalNumb\">15,00</span></div>" +
+        "<div id=\"linhaTotal\"><label>Troco R$:</label><span class=\"totalNumb\">4,36</span></div>"))
+    assertEquals(listOf(ParsedPayment("Dinheiro", 2000), ParsedPayment("Cartão de Débito", 1500)), p.payments)
+    assertEquals(436L, p.totals.changeCents)
+    assertEquals(3064L, p.totals.payableCents)
+  }
+
+  @Test fun taxesInEachStoresWording() {
+    fun taxes(text: String) = NfcePage.parseTaxes(text)
+    assertEquals(ParsedTaxes(3770, 4263, 0, 8033),
+      taxes("[##TRIBUTOS TOTAIS INCIDENTES (LEI FEDERAL 12.7412012) - FEDERAL R$ 37,70 ESTADUAL R$ 42,63 MUNICIPAL R$ 0,00 ; COO: 22063, PDV: 105]"))
+    assertEquals(ParsedTaxes(2807, 3546, null, 6353),
+      taxes("Informação dos Tributos Totais Incidentes (Lei Federal 12.741/2012) R$ 63,53 Informações gerais da Nota " +
+        "PDV: 9 VALOR APROXIMADO TRIBUTOS (Lei 12.741/2012) - FEDERAIS: R$ 28,07 - ESTADUAIS: R$ 35,46. Fonte: IBPT."))
+    assertEquals(ParsedTaxes(4795, 2888, null, 7683),
+      taxes("Consumidor nao identificado #DAV 0001|Trib aprox R$: 47,95 Federal e 28,88 Estadual|Fonte: IBPT 09/10/2026"))
+    // Only SEFAZ's total; and "Lei Federal" outside the tax text isn't an amount.
+    assertEquals(ParsedTaxes(null, null, null, 6353), taxes("Tributos Totais Incidentes (Lei Federal 12.741/2012) R$ 63,53"))
+    assertNull(taxes("Lei Federal 8.078, de 11/09/1990, R$ 10,00 de desconto"))
+  }
+
   @Test fun warnsWhenItemsDontAddUpToTheTotal() {
     val html = fixture("sc-detalhes-server-html.html").replace("<span class=\"valor\">5,62</span>", "<span class=\"valor\">5,63</span>")
     assertTrue(NfcePage.parse(html).warnings.joinToString(), NfcePage.parse(html).warnings.any { "items sum to 31.15" in it })

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "chave": "42260111222333000181651090000000011123456784",
   "store": {
     "name": "SUPERMERCADO EXEMPLO LTDA",
@@ -118,7 +118,8 @@
   "taxesEstimate": {
     "federalCents": 123,
     "stateCents": 234,
-    "municipalCents": 0
+    "municipalCents": 0,
+    "totalCents": 357
   },
   "warnings": []
 }
