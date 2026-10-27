@@ -35,7 +35,10 @@ class WebpArchiver(private val quality: Int = 70, private val blanks: (File) -> 
         canvas.drawBitmap(source, crop, android.graphics.Rect(0, 0, crop.width(), crop.height()), paint)
         // Read from the photo itself (upright, like the source here); a photo that can't be read isn't uploaded.
         val black = Paint().apply { color = android.graphics.Color.BLACK }
-        for (b in blanks(photo)) canvas.drawRect((b.left - crop.left).toFloat(), (b.top - crop.top).toFloat(), (b.right - crop.left).toFloat(), (b.bottom - crop.top).toFloat(), black)
+        for (b in blanks(photo)) canvas.drawPath(android.graphics.Path().apply {
+          b.corners.forEachIndexed { i, (x, y) -> val px = (x - crop.left).toFloat(); val py = (y - crop.top).toFloat(); if (i == 0) moveTo(px, py) else lineTo(px, py) }
+          close()
+        }, black)
         val out = ByteArrayOutputStream()
         @Suppress("DEPRECATION")
         val format = if (Build.VERSION.SDK_INT >= 30) Bitmap.CompressFormat.WEBP_LOSSY else Bitmap.CompressFormat.WEBP

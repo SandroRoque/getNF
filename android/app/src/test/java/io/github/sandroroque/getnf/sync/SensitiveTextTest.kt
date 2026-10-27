@@ -12,7 +12,17 @@ import org.junit.Test
 /** What the uploaded copy of a photo blanks (D98), on a synthetic receipt laid out like the supermarket's. */
 class SensitiveTextTest {
   private fun receipt(vararg texts: String) = PhotoText("p.jpg", 1000, 2000, texts.mapIndexed { i, t -> TextLine(t, 100, 100 + i * 30, 100 + t.length * 12, 125 + i * 30, .9f) })
-  private fun blanked(p: PhotoText) = SensitiveText.blanks(p).flatMap { b -> p.lines.filter { it.top >= b.top && it.bottom <= b.bottom && it.left >= b.left && it.right <= b.right }.map { it.text } }.toSet()
+  private fun blanked(p: PhotoText) = SensitiveText.blanks(p).flatMap { b ->
+    p.lines.filter { l -> listOf(l.left to l.top, l.right to l.top, l.right to l.bottom, l.left to l.bottom).all { (x, y) -> b.contains(x.toDouble(), y.toDouble()) } }.map { it.text }
+  }.toSet()
+
+  /** The same receipt photographed sideways (turned a quarter, reading downwards): lines carry their corners. */
+  private fun sideways(p: PhotoText) = p.copy(lines = p.lines.map { l ->
+    // (x, y) → (2000 - y, x): the print runs down the photo.
+    fun turn(x: Int, y: Int) = listOf(2000 - y, x)
+    val c = turn(l.left, l.top) + turn(l.right, l.top) + turn(l.right, l.bottom) + turn(l.left, l.bottom)
+    TextLine(l.text, 2000 - l.bottom, l.left, 2000 - l.top, l.right, l.confidence, c)
+  })
 
   private val sample = receipt(
     "01 7891000100103 MACA NAC KG 0,875 KG 6,49 5,68",
@@ -49,6 +59,12 @@ class SensitiveTextTest {
       assertTrue("$t should stay", t !in gone)
   }
 
+  @Test fun aSidewaysReceiptIsBlankedAlongItsPrint() {
+    // Upright boxes around sideways lines would cover the totals beside the slip; blocks follow the print instead.
+    val turned = sideways(sample)
+    assertEquals(blanked(sample), blanked(turned))
+  }
+
   @Test fun aReceiptWithoutASlipBlanksNothing() {
     assertEquals(emptyList<Blank>(), SensitiveText.blanks(receipt("01 7891000100103 MACA NAC KG 5,68", "Valor total R$ 5,68", "Forma de pagamento Dinheiro 10,00", "Troco 4,32")))
   }
@@ -61,6 +77,14 @@ class SensitiveTextTest {
     for (f in dir!!.walk().filter { it.name.endsWith(".ocr.json") }.sortedBy { it.path }) {
       val p = json.decodeFromString<PhotoText>(f.readText())
       println("== ${f.parentFile.name}/${f.name}: " + blanked(p).joinToString(" | "))
+      // Beside each frame's JPEG, a preview of the copy as it would go up (GETNF_SENSITIVE_OUT).
+      val jpg = File(f.path.removeSuffix(".ocr.json")).takeIf { it.isFile } ?: continue
+      val out = System.getenv("GETNF_SENSITIVE_OUT")?.let(::File) ?: continue
+      val image = javax.imageio.ImageIO.read(jpg)
+      val g = image.createGraphics(); g.color = java.awt.Color.BLACK
+      for (b in SensitiveText.blanks(p)) g.fillPolygon(b.corners.map { it.first.toInt() }.toIntArray(), b.corners.map { it.second.toInt() }.toIntArray(), b.corners.size)
+      g.dispose()
+      javax.imageio.ImageIO.write(image, "jpg", File(out.apply { mkdirs() }, "${f.parentFile.name}-${jpg.nameWithoutExtension}.jpg"))
     }
   }
 }

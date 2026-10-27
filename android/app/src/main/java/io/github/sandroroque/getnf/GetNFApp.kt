@@ -28,6 +28,7 @@ class GetNFApp : Application() {
   val photoDiscounts by lazy { PhotoDiscountReader(database, File(filesDir, "receipts")) { photoOcr.read(it) } }
   val captureSessions by lazy { CaptureSessionStore(File(filesDir, "capture-sessions")) }
   val accountSettings by lazy { AccountSettings(this) }
+  val devSettings by lazy { io.github.sandroroque.getnf.data.DevSettings(this) }
   val catalogEditor by lazy { io.github.sandroroque.getnf.data.CatalogEditor(database) }
   val syncEngine by lazy { SyncEngine(database, receiptStore, WebpArchiver { io.github.sandroroque.getnf.sync.SensitiveText.blanks(photoOcr.read(it)) }) }
   val lookupBudget by lazy {
@@ -51,6 +52,8 @@ class GetNFApp : Application() {
       restore.cleanUp()
       // Pages saved before D49, or read by an older parser (D49).
       receiptParser.parsePending(receiptStore.receipts.value).let { if (it > 0) android.util.Log.i("ReceiptParser", "parsed $it saved page(s)") }
+      // Receipts waiting for their page are named by what their photos say (D99); older ones are read once here.
+      runCatching { receiptStore.readPendingPhotos { photoOcr.read(it) } }.onFailure { android.util.Log.w("ReceiptStore", "reading pending photos", it) }
       // Push anything left over from a previous run (e.g. the app was killed mid-sync) and pull the server's changes
       // (D70). Not under instrumented tests: debug builds point at the real project.
       if (!underInstrumentation()) SyncWorker.enqueue(this@GetNFApp)

@@ -8,7 +8,19 @@ import kotlinx.coroutines.flow.Flow
 data class ReceiptListItem(
   val chave: String, val capturedAt: Long, val issuedAt: Long?, val storeName: String?, val paidCents: Long?, val lines: Int,
   val hasPage: Boolean, val photos: Int,
-)
+  /** The issue date the photos show, while the page isn't fetched (D99). */
+  val photoIssuedAt: Long? = null,
+) {
+  /**
+   * How lists name it: its store once the page is read; until then "Nota de 16/10/2026" from the photos, or the
+   * month the access key carries ("Nota de 10/2026").
+   */
+  val title: String get() = if (hasPage && storeName != null) storeName else "Nota de " + (photoIssuedAt?.let(::dayOf)
+    ?: PhotoRead.keyMonth(chave)?.let { (y, m) -> "%02d/%d".format(m, y) } ?: dayOf(capturedAt))
+}
+
+private fun dayOf(millis: Long) = java.time.Instant.ofEpochMilli(millis).atOffset(java.time.ZoneOffset.ofHours(-3)).toLocalDate()
+  .let { "%02d/%02d/%d".format(it.dayOfMonth, it.monthValue, it.year) }
 
 /** A receipt whose photo-read discounts haven't been checked against the photos yet (D54). */
 data class PhotoDiscountCheck(val chave: String, val storeName: String?, val issuedAt: Long?, val lines: Int, val cents: Long)
@@ -17,12 +29,16 @@ data class PhotoDiscountCheck(val chave: String, val storeName: String?, val iss
 abstract class ListsDao {
   @Query(
     """
-    SELECT r.chave, r.capturedAt, rp.issuedAt, i.name AS storeName, rp.paidCents,
+    SELECT r.chave, r.capturedAt, COALESCE(rp.issuedAt, pr.issuedAt) AS issuedAt, COALESCE(i.name, ik.name) AS storeName, rp.paidCents,
       (SELECT COUNT(*) FROM receipt_line l WHERE l.receipt = r.chave) AS lines,
       r.pageFile IS NOT NULL AS hasPage,
-      (SELECT COUNT(*) FROM receipt_photo ph WHERE ph.receipt = r.chave) AS photos
+      (SELECT COUNT(*) FROM receipt_photo ph WHERE ph.receipt = r.chave) AS photos,
+      pr.issuedAt AS photoIssuedAt
     FROM receipt r LEFT JOIN receipt_parsed rp ON rp.chave = r.chave LEFT JOIN issuer i ON i.cnpj = rp.issuerCnpj
-    ORDER BY COALESCE(rp.issuedAt, r.capturedAt) DESC
+      -- Before the page: the store by the CNPJ the access key carries (digits 7-20), when its receipts are known.
+      LEFT JOIN issuer ik ON ik.cnpj = substr(r.chave, 7, 14)
+      LEFT JOIN receipt_photo_read pr ON pr.chave = r.chave
+    ORDER BY COALESCE(rp.issuedAt, pr.issuedAt, r.capturedAt) DESC
     """,
   )
   abstract fun receipts(): Flow<List<ReceiptListItem>>

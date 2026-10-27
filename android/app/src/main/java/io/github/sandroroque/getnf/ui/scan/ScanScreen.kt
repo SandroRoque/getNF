@@ -50,12 +50,12 @@ import java.util.concurrent.TimeUnit
 
 /** Continuous local capture: quality, coverage and QR run independently. */
 @Composable
-fun ScanScreen(onCaptured: () -> Unit, onCancel: () -> Unit) {
+fun ScanScreen(onCaptured: () -> Unit, onCancel: () -> Unit, onOpenPage: (String) -> Unit) {
   val context = LocalContext.current
   var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
   val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
   LaunchedEffect(Unit) { if (!granted) permission.launch(Manifest.permission.CAMERA) }
-  if (granted) ContinuousCapture(onCaptured, onCancel)
+  if (granted) ContinuousCapture(onCaptured, onCancel, onOpenPage)
   else Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
     io.github.sandroroque.getnf.ui.calmo.ScreenTitle("A câmera lê a nota")
     io.github.sandroroque.getnf.ui.calmo.Sub("O getNF usa a câmera para ler o QR Code e fotografar a nota. As fotos ficam no celular e, se você entrar numa conta, numa cópia pequena no servidor.")
@@ -68,7 +68,7 @@ fun ScanScreen(onCaptured: () -> Unit, onCancel: () -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
+private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOpenPage: (String) -> Unit) {
   val context = LocalContext.current
   val model = viewModel { CaptureViewModel(context.applicationContext as android.app.Application) }
   val lifecycle = LocalLifecycleOwner.current
@@ -130,8 +130,14 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit) {
       result.addListener({ if (runCatching { result.get() }.isSuccess) torch = true }, ContextCompat.getMainExecutor(context))
     }
   }
+  val app = context.applicationContext as io.github.sandroroque.getnf.GetNFApp
   LaunchedEffect(state.completed, state.exited) {
-    if (state.completed) onCaptured() else if (state.exited) onCancel()
+    // Testing the capture (D99): straight home, the page isn't offered.
+    if (state.completed && (state.chave == null || app.devSettings.testingCapture)) onCaptured() else if (state.exited) onCancel()
+  }
+  if (state.completed && state.chave != null && !app.devSettings.testingCapture) {
+    Saved(state.chave!!, onFetch = { onOpenPage(state.chave!!) }, onLater = onCaptured)
+    return
   }
   fun focusOnReceipt() {
     val points = currentState.outline.orEmpty()
@@ -302,4 +308,39 @@ private fun RoundLabel(text: String, onClick: () -> Unit) {
   Box(Modifier.size(48.dp).clip(CircleShape).background(Color.Black.copy(alpha = .45f)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
     Text(text, color = Color.White, style = MaterialTheme.typography.labelLarge)
   }
+}
+
+/**
+ * The scan is done (D99): the page is offered now, while the receipt is in hand and the person ready for SEFAZ's
+ * check. "Depois" leaves it queued ("Para você", the home list) and asks for a reminder in a few hours.
+ */
+@Composable
+private fun Saved(chave: String, onFetch: () -> Unit, onLater: () -> Unit) {
+  val context = LocalContext.current
+  val budgetCheck = io.github.sandroroque.getnf.ui.page.rememberBudgetCheck()
+  val budget = remember {
+    val network = io.github.sandroroque.getnf.data.CurrentNetwork.of(context)
+    io.github.sandroroque.getnf.ui.page.budgetText(network, (context.applicationContext as io.github.sandroroque.getnf.GetNFApp).lookupBudget.status(network.key))
+  }
+  fun remindLater() { io.github.sandroroque.getnf.sync.PageReminderWorker.schedule(context); onLater() }
+  val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { remindLater() }
+  fun later() {
+    if (android.os.Build.VERSION.SDK_INT >= 33 &&
+      ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+    ) notifications.launch(Manifest.permission.POST_NOTIFICATIONS) else remindLater()
+  }
+  androidx.activity.compose.BackHandler { later() }
+  Column(Modifier.fillMaxSize().background(io.github.sandroroque.getnf.theme.Calmo.bg).safeDrawingPadding().padding(24.dp),
+    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
+    io.github.sandroroque.getnf.ui.calmo.ScreenTitle("Nota salva")
+    io.github.sandroroque.getnf.ui.calmo.Sub("As fotos estão no celular. Falta a página da SEFAZ, com os itens e os valores: buscar agora leva um instante, e às vezes a SEFAZ pede uma verificação.")
+    io.github.sandroroque.getnf.ui.calmo.Sub(budget)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      io.github.sandroroque.getnf.ui.calmo.Pill("Buscar a página agora", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Solid) {
+        budgetCheck.request(onFetch = onFetch, onLater = ::later)
+      }
+      io.github.sandroroque.getnf.ui.calmo.Pill("Depois", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Ghost, onClick = ::later)
+    }
+  }
+  budgetCheck.Dialog()
 }

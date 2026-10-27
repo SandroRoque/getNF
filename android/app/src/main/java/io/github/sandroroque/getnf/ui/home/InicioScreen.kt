@@ -110,8 +110,9 @@ fun InicioScreen(
       item { SectionLabel("Últimas notas") }
       items(receipts.take(3), key = { it.chave }) { r ->
         AmountRow(
-          title = r.storeName ?: "Nota sem página",
-          subtitle = Format.date(r.issuedAt ?: r.capturedAt) + if (r.hasPage) " · ${r.lines} itens" else " · busque a página",
+          title = r.title,
+          subtitle = if (r.hasPage) Format.date(r.issuedAt ?: r.capturedAt) + " · ${r.lines} itens"
+            else listOfNotNull(r.storeName, "busque a página").joinToString(" · "),
           amount = r.paidCents?.let(Format::brl), onClick = { onReceipt(r.chave) },
         )
       }

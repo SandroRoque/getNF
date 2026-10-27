@@ -115,9 +115,9 @@ private fun ReceiptList(onOpenReceipt: (String) -> Unit, onOpenPage: (String) ->
     if (receipts.isEmpty()) item { EmptyState("Nenhuma nota ainda. Toque no botão do meio para escanear o QR Code de uma nota fiscal.") }
     items(receipts, key = { it.chave }) { r ->
       AmountRow(
-        title = r.storeName ?: "Nota sem página",
-        subtitle = Format.date(r.issuedAt ?: r.capturedAt) +
-          if (r.hasPage) " · ${r.lines} itens" + if (r.photos > 0) " · ${r.photos} fotos" else "" else " · toque para buscar a página",
+        title = r.title,
+        subtitle = if (r.hasPage) Format.date(r.issuedAt ?: r.capturedAt) + " · ${r.lines} itens" + if (r.photos > 0) " · ${r.photos} fotos" else ""
+          else listOfNotNull(r.storeName, "toque para buscar a página").joinToString(" · "),
         amount = r.paidCents?.let(Format::brl),
         onClick = { if (r.hasPage) onOpenReceipt(r.chave) else budgetCheck.request(onFetch = { onOpenPage(r.chave) }, onLater = {}) },
       )

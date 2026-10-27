@@ -2129,3 +2129,27 @@ isn't uploaded; it waits for the next sync (a sync isn't stopped by it). The ful
 
 Photos already online went up before this, with their slips: the database's move to version 8 marks every photo as
 not uploaded, and the next sync replaces each online copy with the blanked one (the upload overwrites the same path).
+
+## D99. A scan offers the page at once, reminds later, and names what waits; OCR is kept; blanks follow the print (2026-10-26)
+
+Two receipts scanned while testing waited on the home screen as "Nota sem página": the page was never fetched, and
+the app only listed them ("Para você" had a card; nothing reminded). Real users would end up the same way.
+
+- **At the end of a scan**, "Nota salva": "Buscar a página agora" (through the lookup-budget check, D17), or "Depois",
+  which leaves it queued and schedules a reminder (`PageReminderWorker`, 3 h later, a notification "1 nota esperando a
+  página da SEFAZ"; Android asks for the permission the first time). The receipt is in hand and the person ready for
+  SEFAZ's check now, not later.
+- **Developer switch** (Settings, debug builds only): "Testando a captura" ends scans straight home, without the offer
+  or the reminder, so testing doesn't spend the shared IP's lookups on receipts already known.
+- **Naming**: until its page is read, a receipt is "Nota de 16/10/2026": the issue date its photos show, accepted only
+  in the month and year its access key carries (a misread date is dropped), the date printed most often; else the key's
+  month ("Nota de 10/2026"). Under it, the store, by the CNPJ the key carries, when its receipts are known.
+- **OCR is kept**: the frames a scan saves were read by OCR already; that reading is now kept next to each photo as its
+  OCR cache (`<photo>.ocr1.json`, the one D54's discount reading uses), whole, lines read badly included with their
+  confidence: raw like the photo, for whatever reads it later. Photos of receipts waiting for a page that have none are
+  read once at start. The date read is kept locally (`receipt_photo_read`, Room v9); the page replaces it.
+- **D98's blanks follow the print.** The first online copies (D98) were blanked with upright boxes around lines ordered
+  top to bottom on the photo; on a receipt photographed sideways that ordering mixed the lines, and the slip's block
+  covered totals and items too (seen on the copies online). Lines are now ordered down the print (its direction from
+  OCR's own line corners) and blocks are drawn along it. Checked on the sideways frames: the slip and the operator only.
+  The move to v9 sends every photo up again, replacing those copies.

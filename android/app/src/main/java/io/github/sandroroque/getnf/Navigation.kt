@@ -106,7 +106,7 @@ fun MainNavigation() {
           StoreScreen(key.cnpj, onBack = ::back, onOpenReceipt = { open(ReceiptDetail(it)) }, onOpenProduct = { open(ProductDetail(it)) })
         }
         entry<IpciKey> { key -> IpciScreen(key.categoryId, onOpenProduct = { open(ProductDetail(it)) }, onBack = ::back) }
-        entry<Scan> { ScanScreen(onCaptured = ::back, onCancel = ::back) }
+        entry<Scan> { ScanScreen(onCaptured = ::back, onCancel = ::back, onOpenPage = { back(); open(Page(it)) }) }
         entry<Page> { key ->
           PageScreen(chave = key.chave, onDone = ::back, onNext = { next -> back(); open(Page(next)) })
         }

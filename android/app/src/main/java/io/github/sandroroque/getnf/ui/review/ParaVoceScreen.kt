@@ -83,7 +83,8 @@ fun ParaVoceScreen(onOpenPage: (String) -> Unit, onOpenProduct: (String) -> Unit
     items(queue, key = { it.key }) { d ->
       when (d) {
         is Decision.FetchPage -> DecisionCard(
-          title = "Nota de ${Format.date(d.receipt.capturedAt)} sem página da SEFAZ", amount = null, why = budget,
+          title = "${d.receipt.title} sem página da SEFAZ", amount = null,
+          why = listOfNotNull(d.receipt.storeName, budget.ifEmpty { null }).joinToString(" · "),
         ) {
           Pill("Buscar agora", ButtonKind.Solid) { budgetCheck.request(onFetch = { onOpenPage(d.receipt.chave) }, onLater = {}) }
         }

@@ -56,7 +56,7 @@ class WebpArchiverTest {
     // A box on the receipt (photo pixels 1100–1900 × 1000–1100) comes out black, offset by the crop; the rest doesn't.
     val segment = CaptureSegment("p.jpg", "p.mask.png", listOf(listOf(1 / 3.0, 0.0), listOf(2 / 3.0, 0.0), listOf(2 / 3.0, 1.0), listOf(1 / 3.0, 1.0)),
       emptyList(), score = 1.0, capturedAt = 0, sessionId = "s")
-    val webp = WebpArchiver { listOf(Blank(1100, 1000, 1900, 1100)) }.archive(photo(), segment)
+    val webp = WebpArchiver { listOf(Blank(listOf(1100.0 to 1000.0, 1900.0 to 1000.0, 1900.0 to 1100.0, 1100.0 to 1100.0))) }.archive(photo(), segment)
     val out = BitmapFactory.decodeByteArray(webp, 0, webp.size)
     val left = 1024 - 61
     for (x in listOf(1110, 1500, 1890)) assertTrue("blanked at $x", Color.red(out.getPixel(x - left, 1050)) < 30)

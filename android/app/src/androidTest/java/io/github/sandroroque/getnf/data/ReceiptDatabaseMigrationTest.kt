@@ -85,4 +85,16 @@ class ReceiptDatabaseMigrationTest {
       }
     }
   }
+
+  @Test fun version8PhotosGoUpAgainWithBlanksAlongThePrint() {
+    val name = "migration-test-9.db"
+    helper.createDatabase(name, 8).use { db ->
+      db.execSQL("INSERT INTO receipt (chave, qrUrl, capturedAt, pageUrl, pageFile, pageFetchedAt, version, uploadedVersion, remoteId, uploadError) VALUES ('k', 'qr', 1, NULL, NULL, NULL, 3, 3, 'supabase', NULL)")
+      db.execSQL("INSERT INTO receipt_photo (receipt, localName, position, uploaded, segment) VALUES ('k', 'a.jpg', 0, 1, NULL)")
+    }
+    helper.runMigrationsAndValidate(name, 9, true).use { db ->
+      db.query("SELECT uploaded FROM receipt_photo").use { c -> c.moveToFirst(); assertEquals(0, c.getInt(0)) }
+      db.query("SELECT COUNT(*) FROM receipt_photo_read").use { c -> c.moveToFirst(); assertEquals(0, c.getInt(0)) }
+    }
+  }
 }

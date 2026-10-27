@@ -53,6 +53,8 @@ internal data class CaptureUiState(
   val error: String? = null,
   /** Too dark for long enough that the torch should come on (D93). */
   val dark: Boolean = false,
+  /** The receipt's access key, once its QR code is read. */
+  val chave: String? = null,
 )
 
 internal data class RowMark(val captured: Boolean, val gapAfter: Double)
@@ -249,7 +251,7 @@ internal class CaptureController(
 ) {
   private val ingest = IngestSession()
   private var manifest: CaptureSessionManifest = sessions.create()
-  private class Held(val id: String, val pixels: FramePixels, val paper: PaperOutline, val view: IntRange?, val score: Double)
+  private class Held(val id: String, val pixels: FramePixels, val paper: PaperOutline, val view: IntRange?, val score: Double, val lines: List<OcrQuad>)
   private var held: Held? = null
   private var state = CaptureUiState()
   private var done = false
@@ -280,7 +282,7 @@ internal class CaptureController(
     dump?.let { dir -> dumping.execute { logDecision(dir, id, frame.atMs, step, codesSeen) } }
     identify(step.paper, codes, frame)
     val score = lines.map { it.confidence }.sorted().let { if (it.isEmpty()) 0.0 else it[it.size / 2] }
-    val current = step.paper?.let { Held(id, frame.pixels, it, step.view, score) }
+    val current = step.paper?.let { Held(id, frame.pixels, it, step.view, score, lines) }
     for (commit in step.commits) when (commit) {
       held?.id -> held?.let(::save)
       id -> current?.let(::save)
@@ -301,7 +303,7 @@ internal class CaptureController(
       hint = hint,
       rows = ingest.rows.map { RowMark(ingest.isCaptured(it), it.gapAfter) },
       view = step.view, topClosed = ingest.topClosed, bottomClosed = ingest.bottomClosed,
-      saved = manifest.segments.size, qr = manifest.chave != null,
+      saved = manifest.segments.size, qr = manifest.chave != null, chave = manifest.chave,
       dark = dark(frame),
     )
     if (step.complete && manifest.chave != null) finish() else publish(state)
@@ -314,11 +316,7 @@ internal class CaptureController(
     val bitmap = frame.pixels.toBitmap()
     // Near-lossless: the replay finds the paper's edges on this copy, and a borderline edge must come out the same.
     try { FileOutputStream(File(dir, name)).use { bitmap.compress(Bitmap.CompressFormat.JPEG, 97, it) } } finally { bitmap.recycle() }
-    val text = io.github.sandroroque.getnf.discounts.PhotoText(name, frame.pixels.uprightWidth, frame.pixels.uprightHeight, lines.map { q ->
-      io.github.sandroroque.getnf.discounts.TextLine(q.text, q.corners.minOf { it.x }.toInt(), q.corners.minOf { it.y }.toInt(),
-        q.corners.maxOf { it.x }.toInt(), q.corners.maxOf { it.y }.toInt(), q.confidence.toFloat(), q.corners.flatMap { listOf(it.x.toInt(), it.y.toInt()) })
-    })
-    File(dir, "$name.ocr.json").writeText(kotlinx.serialization.json.Json.encodeToString(text))
+    File(dir, "$name.ocr.json").writeText(kotlinx.serialization.json.Json.encodeToString(photoText(name, frame.pixels, lines)))
   }
 
   /**
@@ -366,7 +364,17 @@ internal class CaptureController(
     return Math.toDegrees(atan2(-(b.x - a.x), b.y - a.y)).toFloat()
   }
 
-  /** Writes a committed frame as the attempt's next photo, with a mask of the paper and its segment metadata. */
+  /** What OCR read in a frame, every line with its confidence, as the photos' OCR is kept (PhotoText). */
+  private fun photoText(name: String, pixels: FramePixels, lines: List<OcrQuad>) =
+    io.github.sandroroque.getnf.discounts.PhotoText(name, pixels.uprightWidth, pixels.uprightHeight, lines.map { q ->
+      io.github.sandroroque.getnf.discounts.TextLine(q.text, q.corners.minOf { it.x }.toInt(), q.corners.minOf { it.y }.toInt(),
+        q.corners.maxOf { it.x }.toInt(), q.corners.maxOf { it.y }.toInt(), q.confidence.toFloat(), q.corners.flatMap { listOf(it.x.toInt(), it.y.toInt()) })
+    })
+
+  /**
+   * Writes a committed frame as the attempt's next photo, with a mask of the paper, its segment metadata, and what OCR
+   * read in it (D99: kept whole, lines read badly too, next to the photo as its OCR cache, `<photo>.ocr1.json`).
+   */
   private fun save(frame: Held) {
     if (manifest.segments.size >= MAX_PHOTOS) return
     val name = "capture-${manifest.id}-${manifest.segments.size}"
@@ -374,6 +382,7 @@ internal class CaptureController(
     val image = File(dir, "$name.jpg"); val mask = File(dir, "$name.mask.png")
     val bitmap = frame.pixels.toBitmap()
     try { FileOutputStream(image).use { bitmap.compress(Bitmap.CompressFormat.JPEG, 92, it); it.fd.sync() } } finally { bitmap.recycle() }
+    runCatching { File(dir, image.name + io.github.sandroroque.getnf.data.PhotoDiscountReader.CACHE_SUFFIX).writeText(kotlinx.serialization.json.Json.encodeToString(photoText(image.name, frame.pixels, frame.lines))) }
     // The mask: the paper's outline filled, at a quarter of the photo's size (the upload crops by the polygon, D61).
     val small = Bitmap.createBitmap(frame.pixels.uprightWidth / 4, frame.pixels.uprightHeight / 4, Bitmap.Config.ARGB_8888)
     try {

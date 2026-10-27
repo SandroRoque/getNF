@@ -3,15 +3,29 @@ package io.github.sandroroque.getnf.sync
 import io.github.sandroroque.getnf.discounts.PhotoText
 import io.github.sandroroque.getnf.discounts.TextLine
 import java.text.Normalizer
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 
-/** A box to blank, in the upright photo's pixels. */
-data class Blank(val left: Int, val top: Int, val right: Int, val bottom: Int)
+/** A region to blank: a quadrilateral in the upright photo's pixels, following the print (which may lie at any angle). */
+data class Blank(val corners: List<Pair<Double, Double>>) {
+  /** Whether (x, y) lies inside. */
+  fun contains(x: Double, y: Double): Boolean {
+    var inside = false
+    for (i in corners.indices) {
+      val (ax, ay) = corners[i]; val (bx, by) = corners[(i + 1) % corners.size]
+      if ((ay > y) != (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) inside = !inside
+    }
+    return inside
+  }
+}
 
 /**
  * What a receipt photo shows that shouldn't leave the phone (D98): the card slip (masked card number, the
  * transaction's codes: authorization, NSU, DOC, SiTef, the acquirer), a CPF, and the operator. The phone keeps the
  * full photo; the copy uploaded has these blanked. Read from the photo's OCR; when in doubt, blank more: a slip's
- * lines are blanked as one block from its first to its last line, so a line OCR garbled inside it goes too.
+ * lines are blanked as one block from its first to its last line, so a line OCR garbled inside it goes too. Lines are
+ * ordered down the print and blocks follow it, whatever the receipt's angle in the photo (D99).
  */
 object SensitiveText {
   // OCR reads the masking stars as *, +, x, # or a mix ("559876++e***6759").
@@ -26,13 +40,41 @@ object SensitiveText {
   private val ITEM = Regex("^\\d{1,3}\\s+\\d{4,}")
   private const val MAX_SLIP_LINES = 14
 
+  /** A line in the print's axes: across it (u) and down the receipt (v). */
+  private class Placed(val line: TextLine, val u0: Double, val u1: Double, val v0: Double, val v1: Double) {
+    val v get() = (v0 + v1) / 2
+    val height get() = v1 - v0
+  }
+
   fun blanks(text: PhotoText): List<Blank> {
-    val lines = text.lines.sortedBy { it.centerY }
+    if (text.lines.isEmpty()) return emptyList()
+    // The print's direction: the lines' own, from their corners (left to right as read), the median of them.
+    val angles = text.lines.mapNotNull { l ->
+      l.corners?.takeIf { it.size == 8 }?.let { c -> atan2((c[3] + c[5] - c[1] - c[7]) / 2.0, (c[2] + c[4] - c[0] - c[6]) / 2.0) }
+    }.sorted()
+    val angle = if (angles.isEmpty()) 0.0 else angles[angles.size / 2]
+    val ax = cos(angle); val ay = sin(angle); val dx = -ay; val dy = ax
+    fun points(l: TextLine) = l.corners?.takeIf { it.size == 8 }?.chunked(2)?.map { it[0].toDouble() to it[1].toDouble() }
+      ?: listOf(l.left.toDouble() to l.top.toDouble(), l.right.toDouble() to l.top.toDouble(), l.right.toDouble() to l.bottom.toDouble(), l.left.toDouble() to l.bottom.toDouble())
+    val lines = text.lines.map { l ->
+      val p = points(l)
+      val us = p.map { (x, y) -> x * ax + y * ay }; val vs = p.map { (x, y) -> x * dx + y * dy }
+      Placed(l, us.min(), us.max(), vs.min(), vs.max())
+    }.sortedBy { it.v }
+    /** The lines' extent in the print's axes, a little larger: a stroke left showing can still be read. */
+    fun block(span: List<Placed>): Blank {
+      val pad = span.map { it.height }.sorted()[span.size / 2] * .35 + 2
+      val u0 = span.minOf { it.u0 } - pad; val u1 = span.maxOf { it.u1 } + pad
+      val v0 = span.minOf { it.v0 } - pad; val v1 = span.maxOf { it.v1 } + pad
+      fun xy(u: Double, v: Double) = (u * ax + v * dx) to (u * ay + v * dy)
+      return Blank(listOf(xy(u0, v0), xy(u1, v0), xy(u1, v1), xy(u0, v1)))
+    }
     fun plain(l: TextLine) = Normalizer.normalize(l.text.uppercase(), Normalizer.Form.NFD).replace(Regex("\\p{M}"), "").trim()
+
     val result = mutableListOf<Blank>()
-    // The card slip: from its first to its last line, the width of everything printed on those lines.
+    // The card slip: from its first to its last line down the receipt, the width of everything printed on those lines.
     val slip = lines.indices.filter { i ->
-      val t = plain(lines[i])
+      val t = plain(lines[i].line)
       !NOT_SLIP.containsMatchIn(t) && !ITEM.containsMatchIn(t) && (MASKED_CARD.containsMatchIn(t) || SLIP.containsMatchIn(t))
     }
     if (slip.isNotEmpty()) {
@@ -43,19 +85,13 @@ object SensitiveText {
       }
       for (run in runs) {
         val span = lines.subList(run.first(), run.last() + 1)
-        if (span.size <= MAX_SLIP_LINES) result += box(span) else run.forEach { result += box(listOf(lines[it])) }
+        if (span.size <= MAX_SLIP_LINES) result += block(span) else run.forEach { result += block(listOf(lines[it])) }
       }
     }
-    for (l in lines) {
-      val t = plain(l)
-      if (CPF.containsMatchIn(t) || (t.contains("CPF") && t.count(Char::isDigit) >= 9) || OPERATOR.containsMatchIn(t)) result += box(listOf(l))
+    for (p in lines) {
+      val t = plain(p.line)
+      if (CPF.containsMatchIn(t) || (t.contains("CPF") && t.count(Char::isDigit) >= 9) || OPERATOR.containsMatchIn(t)) result += block(listOf(p))
     }
     return result
-  }
-
-  /** The lines' extent, a little larger: OCR's boxes are tight, and a stroke left showing can still be read. */
-  private fun box(lines: List<TextLine>): Blank {
-    val pad = (lines.map { it.height }.sorted()[lines.size / 2] * .35).toInt() + 2
-    return Blank(lines.minOf { it.left } - pad, lines.minOf { it.top } - pad, lines.maxOf { it.right } + pad, lines.maxOf { it.bottom } + pad)
   }
 }

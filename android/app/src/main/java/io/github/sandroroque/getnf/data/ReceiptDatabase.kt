@@ -39,6 +39,13 @@ data class ReceiptRow(
   val uploadError: String?,
 )
 
+/**
+ * What a receipt's photos say before its page is fetched (D99): its issue date, read by OCR (local midnight, epoch
+ * millis), so a receipt waiting for its page is named by it. Not synced: the page replaces it.
+ */
+@Entity(tableName = "receipt_photo_read", foreignKeys = [ForeignKey(ReceiptRow::class, ["chave"], ["chave"], onDelete = ForeignKey.CASCADE)])
+data class PhotoReadRow(@PrimaryKey val chave: String, val issuedAt: Long?)
+
 @Entity(
   tableName = "receipt_photo",
   primaryKeys = ["receipt", "localName"],
@@ -66,6 +73,8 @@ data class CaptureSessionRow(val receipt: String, val sessionId: String, val pos
 @Dao
 abstract class ReceiptDao {
   @Query("SELECT * FROM receipt") abstract suspend fun receipts(): List<ReceiptRow>
+  @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putPhotoRead(row: PhotoReadRow)
+  @Query("SELECT chave FROM receipt_photo_read") abstract suspend fun photoReadChaves(): List<String>
   @Query("SELECT * FROM receipt_photo ORDER BY receipt, position") abstract suspend fun photos(): List<PhotoRow>
   @Query("SELECT * FROM capture_session ORDER BY receipt, position") abstract suspend fun sessions(): List<CaptureSessionRow>
 
@@ -92,14 +101,14 @@ abstract class ReceiptDao {
 
 @Database(
   entities = [
-    ReceiptRow::class, PhotoRow::class, CaptureSessionRow::class,
+    ReceiptRow::class, PhotoRow::class, CaptureSessionRow::class, PhotoReadRow::class,
     ReceiptParsedRow::class, IssuerRow::class, CategoryRow::class, TagRow::class, ProductRow::class, StoreItemRow::class,
     ProductTagRow::class, ReceiptLineRow::class, SyncStateRow::class, CategoryEventRow::class, LinkSuggestionRow::class, WorkerReportRow::class,
   ],
   version = ReceiptDatabase.VERSION,
   // Every version ships a migration from the one before; schemas are exported to android/app/schemas.
   autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7),
-    AutoMigration(from = 7, to = 8, spec = ReceiptDatabase.ReuploadBlanked::class)],
+    AutoMigration(from = 7, to = 8, spec = ReceiptDatabase.ReuploadBlanked::class), AutoMigration(from = 8, to = 9, spec = ReceiptDatabase.ReuploadBlanked::class)],
 )
 abstract class ReceiptDatabase : RoomDatabase() {
   abstract fun receipts(): ReceiptDao
@@ -112,7 +121,8 @@ abstract class ReceiptDatabase : RoomDatabase() {
 
   /**
    * 7 → 8 (D96, D98): payments and taxes on the parsed receipt; and every photo goes up again, its online copy now with
-   * the card slip, a CPF and the operator blanked (the upload replaces the copy at the same path).
+   * the card slip, a CPF and the operator blanked (the upload replaces the copy at the same path). 8 → 9 (D99): again,
+   * since 8's blanks were upright boxes that, on receipts photographed sideways, covered far more than the slip.
    */
   class ReuploadBlanked : AutoMigrationSpec {
     override fun onPostMigrate(db: SupportSQLiteDatabase) = db.execSQL(REUPLOAD)
@@ -122,7 +132,7 @@ abstract class ReceiptDatabase : RoomDatabase() {
   companion object {
     private const val REUPLOAD = "UPDATE `receipt_photo` SET `uploaded` = 0"
     const val NAME = "getnf.db"
-    const val VERSION = 8
+    const val VERSION = 9
     fun open(context: Context): ReceiptDatabase =
       Room.databaseBuilder(context, ReceiptDatabase::class.java, NAME).addMigrations(MIGRATION_3_4).build()
 

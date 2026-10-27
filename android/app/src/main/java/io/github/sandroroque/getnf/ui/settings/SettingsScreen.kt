@@ -58,6 +58,24 @@ fun SettingsScreen(onDone: () -> Unit) {
       HealthSection(app)
       HorizontalDivider()
       BackupSection(app)
+      if (io.github.sandroroque.getnf.BuildConfig.DEBUG) {
+        HorizontalDivider()
+        DeveloperSection(app)
+      }
+  }
+}
+
+/** Debug builds only (D99). */
+@Composable
+private fun DeveloperSection(app: GetNFApp) {
+  var testing by remember { mutableStateOf(app.devSettings.testingCapture) }
+  io.github.sandroroque.getnf.ui.calmo.SectionLabel("Desenvolvimento")
+  Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+    Column(Modifier.weight(1f)) {
+      Text("Testando a captura", style = MaterialTheme.typography.bodyLarge)
+      io.github.sandroroque.getnf.ui.calmo.Sub("Ao terminar, não oferece a página da SEFAZ nem lembra dela depois: as consultas não se gastam em notas já conhecidas.")
+    }
+    androidx.compose.material3.Switch(checked = testing, onCheckedChange = { testing = it; app.devSettings.testingCapture = it })
   }
 }
 

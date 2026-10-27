@@ -1,6 +1,7 @@
 package io.github.sandroroque.getnf.data
 
 import android.util.Log
+import io.github.sandroroque.getnf.discounts.PhotoText
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -133,10 +134,37 @@ class ReceiptStore(
         listOf(CaptureSessionRow(key, session.id, old.captureSessions.size)),
       )
       committed = true
+      // The OCR each photo came with (D99): optional, and not evidence; copied after the photos are in.
+      for (segment in session.segments) {
+        val name = segment.photo + PhotoDiscountReader.CACHE_SUFFIX
+        runCatching { File(source, name).takeIf { it.isFile }?.copyTo(File(destination, name), overwrite = true) }
+      }
+      notePhotoRead(key)
       publish()
       read(key)!!
     } finally { temporary.forEach { it.delete() }; if (!committed) created.forEach { it.delete() } }
   } }
+
+  /**
+   * Reads what a receipt's photos say while it waits for its page (D99): its issue date, from the photos' OCR (cached
+   * next to each; [ocr] reads a photo that has none yet). Every receipt without a page and not yet read.
+   */
+  suspend fun readPendingPhotos(ocr: (File) -> PhotoText) = io {
+    val done = dao.photoReadChaves().toSet()
+    for (r in receipts.value.filter { it.pageFile == null && it.chave !in done && it.photos.isNotEmpty() }) {
+      for (photo in r.photos) {
+        val file = File(dir(r.chave), photo); val cache = File(file.path + PhotoDiscountReader.CACHE_SUFFIX)
+        if (file.isFile && !cache.isFile) runCatching { cache.writeText(json.encodeToString(ocr(file))) }
+      }
+      mutex.withLock { notePhotoRead(r.chave) }
+    }
+  }
+
+  private suspend fun notePhotoRead(chave: String) {
+    val texts = dir(chave).listFiles { f -> f.name.endsWith(PhotoDiscountReader.CACHE_SUFFIX) }.orEmpty()
+      .mapNotNull { runCatching { json.decodeFromString<PhotoText>(it.readText()) }.getOrNull() }
+    dao.putPhotoRead(PhotoReadRow(chave, PhotoRead.issueDate(chave, texts)))
+  }
 
   /**
    * Creates a receipt that only the server had (D46), with its already-downloaded [photos] pending for receipt_photos.
