@@ -2187,3 +2187,20 @@ only ran from "Mais".
 - The benchmark's answer key now has that receipt's page, and judges an item as the discount reader finds it: code and
   description with OCR's letter-for-digit slips undone; the printed number ("01" or "1") only for an item rung up more
   than once. Re-baselined; no capture change.
+
+## D102: Every reader of photo text is tested at every angle
+
+**Context.** D98/D99 (blanking) and D101 (discounts) each broke on sideways photos for one reason: they read boxes'
+top and bottom as "up" and "down" the receipt, and the scan saves the receipt at whatever angle the phone was held.
+Both were found only on the user's phone, because their tests had upright photos.
+
+**Decision.**
+- Audit: the only code reading photo text by position is `PhotoDiscounts`, `SensitiveText` and the receipt
+  thumbnail; `PhotoRead` (dates) reads text alone. All three now take the print's direction from one place,
+  `PhotoText.printAngle()` (the median of the lines' own corners). The capture (D87) always measured along the print.
+- Tests: `TurnedPhoto.turnedBy(degrees)` turns a made-up photo as OCR would report it (corners kept in reading order,
+  boxes their bounding boxes). Discount and blanking tests run at `PHOTO_ANGLES` (0, 15, -20, 90, 100, 180, 270, -10),
+  and photos of one receipt at different angles are read together, as in the failing case. Without the D101 turn,
+  the discount test fails.
+- Rule for new readers of photo text by position: work in `alongPrint()` coordinates, and add the reader to the angle
+  tests.

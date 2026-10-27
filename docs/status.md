@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-25. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D101). For the portal's behaviour, read `docs/sefaz-sc.md`.
+`docs/decisions.md` (D1–D102). For the portal's behaviour, read `docs/sefaz-sc.md`.
 For the data flow and analytical semantics, read `docs/architecture.md`.
 
 ## Product direction recorded 2026-10-14

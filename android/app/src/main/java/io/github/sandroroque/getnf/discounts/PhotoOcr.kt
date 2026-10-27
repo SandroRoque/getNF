@@ -27,17 +27,24 @@ data class TextLine(
 @Serializable
 data class PhotoText(val photo: String, val width: Int, val height: Int, val lines: List<TextLine>) {
   /**
+   * The direction the print runs in the photo, in radians (0 = left to right, positive = turned clockwise on the image):
+   * the median of the lines' own, from their corners as OCR gives them (left to right as read). Null without corners.
+   */
+  fun printAngle(): Double? {
+    val angles = lines.mapNotNull { l ->
+      l.corners?.takeIf { it.size == 8 }?.let { c -> kotlin.math.atan2((c[3] + c[5] - c[1] - c[7]) / 2.0, (c[2] + c[4] - c[0] - c[6]) / 2.0) }
+    }.sorted()
+    return angles.getOrNull(angles.size / 2)
+  }
+
+  /**
    * The same lines turned so the print runs left to right and down (D101): readers that look "above" or "on the same
    * line" by the boxes' top and bottom would otherwise go across the receipt when it was photographed sideways. The
    * print's direction is the median of the lines' own (their corners, left to right as read); without corners, or
    * already upright, it's unchanged. Coordinates are in a turned frame; only their relations mean anything.
    */
   fun alongPrint(): PhotoText {
-    val angles = lines.mapNotNull { l ->
-      l.corners?.takeIf { it.size == 8 }?.let { c -> kotlin.math.atan2((c[3] + c[5] - c[1] - c[7]) / 2.0, (c[2] + c[4] - c[0] - c[6]) / 2.0) }
-    }.sorted()
-    if (angles.isEmpty()) return this
-    val angle = angles[angles.size / 2]
+    val angle = printAngle() ?: return this
     if (kotlin.math.abs(angle) < Math.toRadians(3.0)) return this
     val cos = kotlin.math.cos(-angle); val sin = kotlin.math.sin(-angle)
     fun turn(x: Int, y: Int) = listOf((x * cos - y * sin).toInt(), (x * sin + y * cos).toInt())

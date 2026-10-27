@@ -3,7 +3,6 @@ package io.github.sandroroque.getnf.sync
 import io.github.sandroroque.getnf.discounts.PhotoText
 import io.github.sandroroque.getnf.discounts.TextLine
 import java.text.Normalizer
-import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -49,10 +48,7 @@ object SensitiveText {
   fun blanks(text: PhotoText): List<Blank> {
     if (text.lines.isEmpty()) return emptyList()
     // The print's direction: the lines' own, from their corners (left to right as read), the median of them.
-    val angles = text.lines.mapNotNull { l ->
-      l.corners?.takeIf { it.size == 8 }?.let { c -> atan2((c[3] + c[5] - c[1] - c[7]) / 2.0, (c[2] + c[4] - c[0] - c[6]) / 2.0) }
-    }.sorted()
-    val angle = if (angles.isEmpty()) 0.0 else angles[angles.size / 2]
+    val angle = text.printAngle() ?: 0.0
     val ax = cos(angle); val ay = sin(angle); val dx = -ay; val dy = ax
     fun points(l: TextLine) = l.corners?.takeIf { it.size == 8 }?.chunked(2)?.map { it[0].toDouble() to it[1].toDouble() }
       ?: listOf(l.left.toDouble() to l.top.toDouble(), l.right.toDouble() to l.top.toDouble(), l.right.toDouble() to l.bottom.toDouble(), l.left.toDouble() to l.bottom.toDouble())

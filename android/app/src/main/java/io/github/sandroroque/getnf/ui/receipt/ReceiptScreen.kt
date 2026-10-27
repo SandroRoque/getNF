@@ -290,8 +290,7 @@ private fun thumbnail(file: java.io.File, polygon: List<List<Double>>?): android
   val turn = runCatching {
     val text = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
       .decodeFromString<io.github.sandroroque.getnf.discounts.PhotoText>(java.io.File(file.path + PhotoDiscountReader.CACHE_SUFFIX).readText())
-    val angles = text.lines.mapNotNull { l -> l.corners?.takeIf { it.size == 8 }?.let { c -> Math.toDegrees(kotlin.math.atan2((c[3] + c[5] - c[1] - c[7]) / 2.0, (c[2] + c[4] - c[0] - c[6]) / 2.0)) } }.sorted()
-    if (angles.isEmpty()) 0f else -(Math.round(angles[angles.size / 2] / 90.0) * 90).toFloat()
+    text.printAngle()?.let { -(Math.round(Math.toDegrees(it) / 90.0) * 90).toFloat() } ?: 0f
   }.getOrDefault(0f)
   val out = android.graphics.Bitmap.createBitmap(small, crop.left, crop.top, crop.width(), crop.height(), android.graphics.Matrix().apply { postRotate(turn) }, true)
   if (out !== small) small.recycle()

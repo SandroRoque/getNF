@@ -1,7 +1,9 @@
 package io.github.sandroroque.getnf.sync
 
+import io.github.sandroroque.getnf.discounts.PHOTO_ANGLES
 import io.github.sandroroque.getnf.discounts.PhotoText
 import io.github.sandroroque.getnf.discounts.TextLine
+import io.github.sandroroque.getnf.discounts.turnedBy
 import java.io.File
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -13,16 +15,8 @@ import org.junit.Test
 class SensitiveTextTest {
   private fun receipt(vararg texts: String) = PhotoText("p.jpg", 1000, 2000, texts.mapIndexed { i, t -> TextLine(t, 100, 100 + i * 30, 100 + t.length * 12, 125 + i * 30, .9f) })
   private fun blanked(p: PhotoText) = SensitiveText.blanks(p).flatMap { b ->
-    p.lines.filter { l -> listOf(l.left to l.top, l.right to l.top, l.right to l.bottom, l.left to l.bottom).all { (x, y) -> b.contains(x.toDouble(), y.toDouble()) } }.map { it.text }
+    p.lines.filter { l -> (l.corners?.chunked(2)?.map { it[0] to it[1] } ?: listOf(l.left to l.top, l.right to l.top, l.right to l.bottom, l.left to l.bottom)).all { (x, y) -> b.contains(x.toDouble(), y.toDouble()) } }.map { it.text }
   }.toSet()
-
-  /** The same receipt photographed sideways (turned a quarter, reading downwards): lines carry their corners. */
-  private fun sideways(p: PhotoText) = p.copy(lines = p.lines.map { l ->
-    // (x, y) → (2000 - y, x): the print runs down the photo.
-    fun turn(x: Int, y: Int) = listOf(2000 - y, x)
-    val c = turn(l.left, l.top) + turn(l.right, l.top) + turn(l.right, l.bottom) + turn(l.left, l.bottom)
-    TextLine(l.text, 2000 - l.bottom, l.left, 2000 - l.top, l.right, l.confidence, c)
-  })
 
   private val sample = receipt(
     "01 7891000100103 MACA NAC KG 0,875 KG 6,49 5,68",
@@ -59,10 +53,9 @@ class SensitiveTextTest {
       assertTrue("$t should stay", t !in gone)
   }
 
-  @Test fun aSidewaysReceiptIsBlankedAlongItsPrint() {
-    // Upright boxes around sideways lines would cover the totals beside the slip; blocks follow the print instead.
-    val turned = sideways(sample)
-    assertEquals(blanked(sample), blanked(turned))
+  @Test fun aReceiptIsBlankedAlongItsPrintAtAnyAngle() {
+    // Upright boxes around turned lines would cover the totals beside the slip; blocks follow the print instead.
+    for (angle in PHOTO_ANGLES) assertEquals("at $angle°", blanked(sample), blanked(sample.turnedBy(angle)))
   }
 
   @Test fun aReceiptWithoutASlipBlanksNothing() {

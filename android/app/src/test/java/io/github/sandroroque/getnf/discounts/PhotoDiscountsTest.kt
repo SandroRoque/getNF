@@ -37,14 +37,22 @@ class PhotoDiscountsTest {
     assertEquals(emptyList<String>(), r.problems)
   }
 
-  @Test fun aReceiptPhotographedSidewaysIsReadAlongItsPrint() {
-    // Turned a quarter (reading downwards), with the corners OCR gives: "above" a discount is to its right on the image.
-    fun turn(x: Int, y: Int) = listOf(4096 - y, x)
-    val sideways = PhotoText("s.jpg", 4096, 3072, receipt.lines.map { l ->
-      TextLine(l.text, 4096 - l.bottom, l.left, 4096 - l.top, l.right, l.confidence,
-        turn(l.left, l.top) + turn(l.right, l.top) + turn(l.right, l.bottom) + turn(l.left, l.bottom))
-    })
-    val r = PhotoDiscounts.read(listOf(sideways), items, 360)
+  @Test fun aReceiptIsReadAlongItsPrintAtAnyAngle() {
+    // Turned about, with the corners OCR gives: "above" a discount may be to its right, below it, or up a slope.
+    for (angle in PHOTO_ANGLES) {
+      val r = PhotoDiscounts.read(listOf(receipt.turnedBy(angle)), items, 360)
+      assertEquals("at $angle°", Verdict.COMPLETE, r.verdict)
+      assertEquals("at $angle°", listOf(3 to 156L, 4 to 204L), r.discounts.map { it.lineNo to it.cents })
+    }
+  }
+
+  @Test fun photosAtDifferentAnglesOfOneReceiptAgree() {
+    // The 2026-10-26 bug: the upright photos gave a discount to one item, the sideways ones to another, and the two sums
+    // counted as a conflict. Turned or not, every photo gives it to the same item.
+    val upright = receipt
+    val sideways = receipt.turnedBy(90.0).copy(photo = "b.jpg")
+    val slanted = receipt.turnedBy(-20.0).copy(photo = "c.jpg")
+    val r = PhotoDiscounts.read(listOf(upright, sideways, slanted), items, 360)
     assertEquals(Verdict.COMPLETE, r.verdict)
     assertEquals(listOf(3 to 156L, 4 to 204L), r.discounts.map { it.lineNo to it.cents })
   }
