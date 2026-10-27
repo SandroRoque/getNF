@@ -2188,7 +2188,7 @@ only ran from "Mais".
   description with OCR's letter-for-digit slips undone; the printed number ("01" or "1") only for an item rung up more
   than once. Re-baselined; no capture change.
 
-## D102: Every reader of photo text is tested at every angle
+## D102. Every reader of photo text is tested at every angle (2026-10-27)
 
 **Context.** D98/D99 (blanking) and D101 (discounts) each broke on sideways photos for one reason: they read boxes'
 top and bottom as "up" and "down" the receipt, and the scan saves the receipt at whatever angle the phone was held.
