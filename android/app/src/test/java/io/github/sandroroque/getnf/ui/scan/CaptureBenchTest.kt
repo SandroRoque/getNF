@@ -202,7 +202,7 @@ class CaptureBenchTest {
         // The item's printed line: its number (exactly: repeated items differ only by it), code and description.
         val text = "%02d".format(item.line) + RowAssembly.normalize((item.code ?: "") + (item.description ?: "")).take(24)
         "${item.line}:${item.description?.take(20)}" to text
-      } + ("chave" to chave))
+      })
     }
     // No page: the item codes (EAN-13, check digit right) read in at least three frames of this receipt's sessions.
     val codes = media.resolve("bench").let { bench -> File(bench, "corpus.tsv").readLines().filter { it.isNotBlank() && !it.startsWith("#") } }
@@ -212,7 +212,7 @@ class CaptureBenchTest {
       .flatMap { o -> o.lines.mapNotNull { l -> Regex("^\\d{1,3}\\s*(\\d{13})\\b").find(l.text.trim())?.groupValues?.get(1) } }
       .filter { c -> checkDigit(c.take(12), listOf(1, 3)) == c.last().digitToInt() }
       .groupingBy { it }.eachCount().filterValues { it >= 3 }.keys
-    return Truth("consensus", codes.map { it to it } + ("chave" to chave))
+    return Truth("consensus", codes.map { it to it })
   }
 
   /** Mod-10 (EAN, weights alternating from the right) or mod-11 (access key, weights 2–9) check digit. */

@@ -30,32 +30,57 @@ internal data class IngestStep(
  * The capture planned from the receipt's print (D82–D85): every frame's rows are assembled into the receipt
  * ([RowAssembly]), and only the frames that read rows not captured yet, joined to what is captured, are kept.
  *
- * - Readable: a row whose own OCR confidence is at least 0.5 in a stretch (three rows either side) whose median is at
- *   least 0.6 (D83, D84), printed at least 20 pixels tall (D87): stretches are accepted as a whole, while a row read
- *   badly inside one still counts against.
+ * - Readable: a row whose own OCR confidence is at least 0.5, each of its boxes at least 0.6 (D97), in a stretch
+ *   (three rows either side) whose median is at least 0.6 (D83, D84), printed at least 20 pixels tall (D87):
+ *   stretches are accepted as a whole, while a row read badly inside one still counts against.
  * - Keyframes: the frame reading the most rows not captured yet, and touching what is captured, is held; the same
  *   view read better replaces it, and a view moved along the receipt that reads rows past it has it committed and is
  *   held in turn (D87). The held frame is committed when the view no longer shares rows with it (the person moved
  *   on), when nothing better came for a while, or when it completes the capture.
- * - Done: both ends of the paper seen right at the receipt's first and last rows, and every row captured.
+ * - Done: both ends of the paper seen right at the receipt's first and last rows, and every row captured: read, for
+ *   the rows the app needs ([toRead]: items, discounts, totals, payment, taxes), in view in a photo for the rest,
+ *   which is archived (D97).
  */
 internal class IngestSession {
   private val assembly = RowAssembly()
   val rows: List<RowAssembly.Entry> get() = assembly.rows
   private val captured = mutableSetOf<RowAssembly.Entry>()
+  /** Rows in view in a committed frame, read or not: enough for the rows only archived (D97). */
+  private val shown = mutableSetOf<RowAssembly.Entry>()
   /** [quality]: the confidence of this frame's read of each row it reads. */
   private class Held(val id: String, val reads: Set<RowAssembly.Entry>, val shows: Set<RowAssembly.Entry>, val at: Long, val quality: Map<RowAssembly.Entry, Double>)
   private var candidate: Held? = null
   private val pendingEnds = mutableListOf<Triple<List<Row>, Boolean, Boolean>>()
   private val committedIds = mutableListOf<String>()
   private val committedReads = mutableMapOf<String, Map<RowAssembly.Entry, Double>>()
+  private val committedShows = mutableMapOf<String, Set<RowAssembly.Entry>>()
   val committed: List<String> get() = committedIds
   private var done = false
   /** The direction the hint last sent the person along the receipt. */
   private var sweep: IngestHint? = null
   val topClosed: Boolean get() = assembly.topClosed
   val bottomClosed: Boolean get() = assembly.bottomClosed
-  fun isCaptured(row: RowAssembly.Entry) = row in captured
+  /** Captured: a row to read, read in a committed frame; any other row, in view in one (D97). */
+  fun isCaptured(row: RowAssembly.Entry) = row in captured || (row in shown && row !in toRead())
+
+  /**
+   * The rows whose text the app needs read (D97): the items, their discounts, the totals and how it was paid, from the
+   * items' column header down to "Consulte pela Chave de Acesso", which every NFC-e prints in that order; and the taxes
+   * line wherever it is. Where a marker isn't read (yet), the stretch runs to that end of the receipt: not knowing
+   * which part a row is in must never make the capture less careful. The rest (the store's header, the access key and
+   * QR code's block, the card slip, the footer) is archived: in view in a photo is enough.
+   */
+  fun toRead(): Set<RowAssembly.Entry> {
+    val rows = assembly.rows
+    val header = rows.indexOfFirst { "DESCRICAO" in it.text && ("COD" in it.text || "QT" in it.text) }
+    val start = if (header >= 0) header else 0
+    val consult = rows.indexOfFirst { "CONSULTEPELA" in it.text }
+    val end = if (consult > start) consult else rows.size
+    return (rows.subList(start, end) + rows.filter { r -> TAX_MARKERS.any { it in r.text } }).toSet()
+  }
+
+  /** What a frame would capture: the rows it reads, and the archived rows it shows. */
+  private fun covers(reads: Set<RowAssembly.Entry>, shows: Set<RowAssembly.Entry>, read: Set<RowAssembly.Entry>) = reads + (shows - read)
 
   fun offer(frame: IngestFrame): IngestStep {
     // Done, the paper is still found: the receipt's QR code is only taken from inside it, and may be read after.
@@ -83,12 +108,13 @@ internal class IngestSession {
 
     val commits = mutableListOf<String>()
     candidate?.let { held -> if ((shows intersect held.shows).size < MIN_SHARED || frame.atMs - held.at > PATIENCE_MS) commitHeld()?.let(commits::add) }
-    val gain = reads.filter { it !in captured }.toSet()
+    val read = toRead()
+    val gain = covers(reads, shows, read).filter { !isCaptured(it) }.toSet()
     val joins = captured.isEmpty() || shows.any { it in captured }
     var hold = false
     if (gain.isNotEmpty() && joins) {
       val held = candidate
-      val heldGain = held?.reads?.filter { it !in captured }?.toSet().orEmpty()
+      val heldGain = held?.let { covers(it.reads, it.shows, read) }?.filter { !isCaptured(it) }?.toSet().orEmpty()
       val moved = held != null && shows.count { it !in held.shows } >= max(MIN_SHARED, held.shows.size / 3)
       when {
         held == null -> { candidate = Held(frame.id, reads, shows, frame.atMs, quality); hold = true }
@@ -103,11 +129,11 @@ internal class IngestSession {
     // The frame that completes the capture is committed at once; so are the held one and this one, when together
     // they complete it.
     candidate?.let { held ->
-      if (held.id != frame.id && joins && !completeWith(held.reads) && completeWith(held.reads + reads)) {
+      if (held.id != frame.id && joins && !completeWith(held.reads, held.shows) && completeWith(held.reads + reads, held.shows + shows)) {
         commitHeld()?.let(commits::add); candidate = Held(frame.id, reads, shows, frame.atMs, quality); hold = true
       }
     }
-    candidate?.let { held -> if (completeWith(held.reads)) commitHeld()?.let(commits::add) }
+    candidate?.let { held -> if (completeWith(held.reads, held.shows)) commitHeld()?.let(commits::add) }
     if (isComplete()) done = true
 
     val hint = when {
@@ -123,8 +149,10 @@ internal class IngestSession {
     val held = candidate ?: return null
     candidate = null
     captured += held.reads
+    shown += held.shows
     committedIds += held.id
     committedReads[held.id] = held.quality
+    committedShows[held.id] = held.shows
     return held.id
   }
 
@@ -136,8 +164,10 @@ internal class IngestSession {
   fun keep(): List<String> {
     val best = mutableMapOf<RowAssembly.Entry, Double>()
     for (q in committedReads.values) for ((row, c) in q) best[row] = max(best[row] ?: 0.0, c)
-    fun covers(id: String) = committedReads[id].orEmpty().filter { (row, c) -> c >= best.getValue(row) - KEEP_MARGIN }.keys
-    val left = required().filter { it in best }.toMutableSet()
+    val read = toRead()
+    fun covers(id: String) = committedReads[id].orEmpty().filter { (row, c) -> c >= best.getValue(row) - KEEP_MARGIN }.keys +
+      committedShows[id].orEmpty().filter { it !in read }
+    val left = required().filter { it in best || (it !in read && it in shown) }.toMutableSet()
     val kept = mutableSetOf<String>()
     while (left.isNotEmpty()) {
       val pick = committedIds.filter { it !in kept }.maxByOrNull { id -> covers(id).count { it in left } } ?: break
@@ -147,11 +177,14 @@ internal class IngestSession {
     return committedIds.filter { it in kept }
   }
 
-  fun isComplete(): Boolean = completeWith(emptySet())
+  fun isComplete(): Boolean = completeWith(emptySet(), emptySet())
 
-  private fun completeWith(extra: Set<RowAssembly.Entry>): Boolean =
-    assembly.topClosed && assembly.bottomClosed && assembly.rows.isNotEmpty() && required().all { it in captured || it in extra } &&
-      unreadGaps().isEmpty()
+  /** Complete, counting also the rows a frame not yet committed reads ([reads]) and shows ([shows]). */
+  private fun completeWith(reads: Set<RowAssembly.Entry>, shows: Set<RowAssembly.Entry>): Boolean {
+    if (!assembly.topClosed || !assembly.bottomClosed || assembly.rows.isEmpty()) return false
+    val read = toRead()
+    return required().all { isCaptured(it) || it in reads || (it !in read && it in shows) } && unreadGaps().isEmpty()
+  }
 
   /**
    * Rows after which print lies unread, between two rows that must be captured: beside a row that needn't be (the
@@ -170,14 +203,16 @@ internal class IngestSession {
    * while reading the rows around them well, which are print that isn't text (a logo), unless more frames read them.
    */
   fun required(): List<RowAssembly.Entry> {
-    var rows = assembly.rows.filter { it.text.length >= 6 && !it.doubtful && (it.illegible < ILLEGIBLE || it.illegible * 2 <= it.confirmed || it in captured) }
-    if (assembly.topClosed && rows.size > 2 && rows.first().confidence < MIN_ZONE && rows.first() !in captured) rows = rows.drop(1)
-    if (assembly.bottomClosed && rows.size > 2 && rows.last().confidence < MIN_ZONE && rows.last() !in captured) rows = rows.dropLast(1)
+    var rows = assembly.rows.filter { it.text.length >= 6 && !it.doubtful && (it.illegible < ILLEGIBLE || it.illegible * 2 <= it.confirmed || isCaptured(it)) }
+    if (assembly.topClosed && rows.size > 2 && rows.first().confidence < MIN_ZONE && !isCaptured(rows.first())) rows = rows.drop(1)
+    if (assembly.bottomClosed && rows.size > 2 && rows.last().confidence < MIN_ZONE && !isCaptured(rows.last())) rows = rows.dropLast(1)
     return rows
   }
 
   /** Each row: its own confidence at least 0.5, and the median over three rows either side at least 0.6. */
-  private fun readable(rows: List<Row>): BooleanArray = BooleanArray(rows.size) { i -> rows[i].confidence >= MIN_ROW && zoneMedian(rows, i) >= MIN_ZONE && rows[i].height >= MIN_TEXT_PX }
+  private fun readable(rows: List<Row>): BooleanArray = BooleanArray(rows.size) { i ->
+    rows[i].confidence >= MIN_ROW && rows[i].weakest >= MIN_BOX && zoneMedian(rows, i) >= MIN_ZONE && rows[i].height >= MIN_TEXT_PX
+  }
 
   private fun neighboursReadable(readable: BooleanArray, i: Int): Boolean {
     val around = (max(0, i - ZONE) until min(readable.size, i + ZONE + 1)).filter { it != i }
@@ -254,7 +289,9 @@ internal class IngestSession {
   private fun direction(view: IntRange?): IngestHint {
     if (view == null) return IngestHint.BACK_TO_CAPTURED
     val required = required().toSet()
-    val missing = assembly.rows.indices.filter { assembly.rows[it] in required && assembly.rows[it] !in captured && candidate?.reads?.contains(assembly.rows[it]) != true } + unreadGaps()
+    val read = toRead()
+    val pending = candidate?.let { covers(it.reads, it.shows, read) }.orEmpty()
+    val missing = assembly.rows.indices.filter { assembly.rows[it] in required && !isCaptured(assembly.rows[it]) && assembly.rows[it] !in pending } + unreadGaps()
     if (missing.isEmpty() && assembly.topClosed && assembly.bottomClosed) return IngestHint.HOLD_STILL
     val span = max(1, view.last - view.first + 1).toDouble()
     fun weight(distance: Int) = 1 / (1 + distance / span)
@@ -291,10 +328,14 @@ internal class IngestSession {
     const val PATIENCE_MS = 1500L
     // A kept photo covers a row when it read it nearly as surely as the best saved read of it.
     const val KEEP_MARGIN = .05
+    /** A row that states the taxes (D96, D97). */
+    val TAX_MARKERS = listOf("TRIBUTO", "IBPT", "12741")
     const val MIN_SHARED = 3
     const val ZONE = 3
     const val MIN_ROW = .5
     const val MIN_ZONE = .6
+    // Every box of the row (three characters or more): a row read whole at 0.75 can hold a garbled code at 0.56 (D97).
+    const val MIN_BOX = .6
     // Text smaller than this (OCR box height, pixels) is read with errors at any confidence OCR reports.
     const val MIN_TEXT_PX = 20.0
     const val MAX_PENDING = 20

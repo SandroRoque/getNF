@@ -2088,3 +2088,25 @@ one wording only: of the 9 pages the phone holds, 2 lost them.
 - **Stored**: on the phone's parsed receipt (Room v8: `payments` as a JSON list, `changeCents`, four tax columns) and
   on Supabase's `receipt` (`payments` jsonb array, `change_cents`, `tax_*_cents`), synced both ways.
 - The receipt's XML, when the app has it, would give exact taxes per item; not read yet.
+
+## D97. The capture reads the lines the app needs and archives the rest (2026-10-26)
+
+The user's decisions on what a capture is for: archive the whole receipt (how long to keep it, later), blank its
+sensitive parts in the copies that go online (next), and read what the app needs: the items, their discounts, the
+totals, how it was paid (D96) and the taxes. The store's header, the access key's block (the QR code gives the key),
+the card slip and the footer (redundant with the CNPJ and address) only need to be in a photo.
+
+- **Groups**, from the markers every NFC-e prints in that order: rows to read run from the items' column header
+  ("Cód … Descrição … Qt") to "Consulte pela Chave de Acesso", plus any row stating the taxes ("Tributos", "IBPT",
+  "12.741"). A marker not read (yet) extends the stretch to that end: not knowing where a row is never makes the
+  capture less careful. A row to read is captured when a committed frame reads it; any other, when one shows it.
+- **Read means every box read.** With the groups alone, captures finished early on whole-receipt overviews that read
+  item rows "well" as a whole (row confidence 0.75) while a box in them was garbled ("16 7891962051333 ERIITAP SUPER
+  FANI", 0.61): 4 false completions. Before, the footer rows had forced the person closer, and the items were read
+  properly on the way. Now each box of a row (three characters or more) must reach 0.6. Tried and dropped: 0.6 for the
+  row as a whole (5 regressions); 0.65 per box (9).
+- **Benchmark** (22 sessions): 18 complete, none falsely (was 20, one false), 8.2 s (was 9.1) and 2.5 photos (was
+  2.9) on average. The two that no longer complete end recorded before a closer frame came: a video that ends at the
+  receipt's top, and a phone session that completed live in 3.7 s on an overview. One phone session that waited 9 s
+  for the date line at the bottom now finishes in 7 s instead of 16.5.
+- The answer key no longer asks for the printed access key (the QR code gives it); re-baselined before measuring.

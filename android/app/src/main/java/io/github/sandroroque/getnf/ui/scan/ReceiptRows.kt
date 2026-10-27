@@ -7,7 +7,7 @@ import kotlin.math.*
  * normalized for matching; [confidence] is the boxes' length-weighted mean; [down] is where it sits down the receipt
  * in frame pixels, [height] its height.
  */
-internal data class Row(val text: String, val confidence: Double, val down: Double, val height: Double)
+internal data class Row(val text: String, val confidence: Double, val down: Double, val height: Double, val weakest: Double = confidence)
 
 /**
  * The receipt as the sequence of its printed rows, assembled from frames that each see part of it (D82): every frame's
@@ -317,7 +317,8 @@ internal class RowAssembly {
         val ordered = g.sortedBy { it.third }
         val text = normalize(ordered.joinToString("") { it.first.text })
         val weight = ordered.sumOf { max(1, it.first.text.length) }.toDouble()
-        Row(text, ordered.sumOf { it.first.confidence * max(1, it.first.text.length) } / weight, g.map { it.second }.average(), ordered.maxOf { it.first.height })
+        Row(text, ordered.sumOf { it.first.confidence * max(1, it.first.text.length) } / weight, g.map { it.second }.average(), ordered.maxOf { it.first.height },
+          ordered.filter { normalize(it.first.text).length >= 3 }.ifEmpty { ordered }.minOf { it.first.confidence })
       }.filter { it.text.isNotEmpty() }
     }
   }

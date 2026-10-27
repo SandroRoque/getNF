@@ -60,3 +60,6 @@ run, so a fix for one session can't silently break another.
 | 2026-10-26 | (dropped) save the held frame when it read rows clearly better | | 1 | | fixes this one, makes another |
 | 2026-10-26 | (dropped) a row counts only with the digits most frames agree on | | | | 13 regressions |
 | 2026-10-26 | **holdout**: 3 new phone sessions, measured blind | 3 of 3 | 0 | 73 of 73 | 8.6 s, 2.7 photos; the QR code read with no wait in all (D95 confirmed) |
+| 2026-10-26 | answer key: the printed access key no longer asked for (the QR code gives it, D97) | 20 of 22 | 1 | all but 1 | re-baselined; not a capture change |
+| 2026-10-26 | (dropped) only the lines the app needs must be read, the rest in view (D97) | 21 of 22 | 4 | | 7.3 s, but overviews' garbled reads now completed captures |
+| 2026-10-26 | the same, with every box of a read row at 0.6 or more (D97) | 18 of 22 | 0 | all | 8.2 s (was 9.1), 2.5 photos (was 2.9); the 2 lost end before a closer frame |
