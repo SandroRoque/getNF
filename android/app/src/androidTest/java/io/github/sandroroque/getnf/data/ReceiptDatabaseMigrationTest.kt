@@ -69,4 +69,20 @@ class ReceiptDatabaseMigrationTest {
       db.query("SELECT dirty FROM category").use { c -> c.moveToFirst(); assertEquals(0, c.getInt(0)) }
     }
   }
+
+  @Test fun version7PhotosGoUpAgainBlankedAndParsedRowsGainPaymentsAndTaxes() {
+    val name = "migration-test-8.db"
+    helper.createDatabase(name, 7).use { db ->
+      db.execSQL("INSERT INTO receipt (chave, qrUrl, capturedAt, pageUrl, pageFile, pageFetchedAt, version, uploadedVersion, remoteId, uploadError) VALUES ('k', 'qr', 1, NULL, 'page.html', 2, 3, 3, 'supabase', NULL)")
+      db.execSQL("INSERT INTO receipt_photo (receipt, localName, position, uploaded, segment) VALUES ('k', 'a.jpg', 0, 1, NULL)")
+      db.execSQL("INSERT INTO receipt_parsed (chave, issuerCnpj, issuedAt, grossCents, discountCents, paidCents, parserVersion, parseError, source, pageFetchedAt, dirty) VALUES ('k', NULL, 5, 100, 0, 100, 1, NULL, 'phone', 2, 0)")
+    }
+    helper.runMigrationsAndValidate(name, 8, true).use { db ->
+      // D98: the copy online had the card slip; it goes up again, blanked.
+      db.query("SELECT uploaded FROM receipt_photo").use { c -> c.moveToFirst(); assertEquals(0, c.getInt(0)) }
+      db.query("SELECT grossCents, payments, taxTotalCents FROM receipt_parsed").use { c ->
+        c.moveToFirst(); assertEquals(Triple(100L, true, true), Triple(c.getLong(0), c.isNull(1), c.isNull(2)))
+      }
+    }
+  }
 }

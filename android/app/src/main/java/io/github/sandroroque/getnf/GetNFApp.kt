@@ -29,7 +29,7 @@ class GetNFApp : Application() {
   val captureSessions by lazy { CaptureSessionStore(File(filesDir, "capture-sessions")) }
   val accountSettings by lazy { AccountSettings(this) }
   val catalogEditor by lazy { io.github.sandroroque.getnf.data.CatalogEditor(database) }
-  val syncEngine by lazy { SyncEngine(database, receiptStore, WebpArchiver()) }
+  val syncEngine by lazy { SyncEngine(database, receiptStore, WebpArchiver { io.github.sandroroque.getnf.sync.SensitiveText.blanks(photoOcr.read(it)) }) }
   val lookupBudget by lazy {
     val prefs = getSharedPreferences("sefaz", MODE_PRIVATE)
     LookupBudget(load = { prefs.getString("lookups", "") ?: "" }, save = { prefs.edit().putString("lookups", it).apply() })

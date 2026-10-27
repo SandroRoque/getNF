@@ -2110,3 +2110,22 @@ the card slip and the footer (redundant with the CNPJ and address) only need to 
   receipt's top, and a phone session that completed live in 3.7 s on an overview. One phone session that waited 9 s
   for the date line at the bottom now finishes in 7 s instead of 16.5.
 - The answer key no longer asks for the printed access key (the QR code gives it); re-baselined before measuring.
+
+## D98. Copies that go online have the card slip, a CPF and the operator blanked (2026-10-26)
+
+The user's decision (D97): archive the whole receipt, keep the full photo on the phone, blank what's private in the
+copies that leave it. The archive copy (D61, `WebpArchiver`: the receipt's crop, grey, WebP) now reads the photo with
+on-device OCR (`PhotoOcr`) and fills black boxes over:
+
+- **The card slip**: lines with a masked card number (OCR reads the stars as *, +, x, # or a mix: "559876++e***6759"),
+  the transaction's codes (DOC, NSU, AUT, SiTef), the acquirer and card brand, and lines naming the card ("03 CARTAO
+  CREDITO"). They're blanked as one block from the slip's first line to its last, so a line OCR garbled inside it
+  goes too. Not blanked: SEFAZ's "Protocolo de autorização" and its date, the totals' payment line (even misspelled,
+  "Forna de paganento"), and item lines (a product named "REDE …" isn't the acquirer).
+- **A CPF** (000.000.000-00, or a "CPF" line with its digits) and **the operator** ("Oper. 900193033").
+
+Checked on six real frames showing the slip: all of it blanked, and nothing else. If a photo can't be read, its copy
+isn't uploaded; it waits for the next sync (a sync isn't stopped by it). The full photo stays on the phone.
+
+Photos already online went up before this, with their slips: the database's move to version 8 marks every photo as
+not uploaded, and the next sync replaces each online copy with the blanked one (the upload overwrites the same path).

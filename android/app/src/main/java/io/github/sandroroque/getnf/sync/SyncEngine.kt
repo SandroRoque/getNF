@@ -195,6 +195,12 @@ class SyncEngine(
           n++
         } catch (e: SupabaseException) {
           errors += "${r.chave}/$name: ${e.message}"
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+          throw e
+        } catch (e: Exception) {
+          // The copy couldn't be made (the photo couldn't be read to blank what's private, D98): it waits for the
+          // next run rather than going up as it is.
+          errors += "${r.chave}/$name: could not prepare its copy: ${e.message}"
         }
       }
     }

@@ -36,7 +36,7 @@ class WebpArchiverTest {
     val jpeg = photo()
     val segment = CaptureSegment("p.jpg", "p.mask.png", listOf(listOf(1 / 3.0, 0.0), listOf(2 / 3.0, 0.0), listOf(2 / 3.0, 1.0), listOf(1 / 3.0, 1.0)),
       emptyList(), score = 1.0, capturedAt = 0, sessionId = "s")
-    val webp = WebpArchiver().archive(jpeg, segment)
+    val webp = WebpArchiver { emptyList() }.archive(jpeg, segment)
     val out = BitmapFactory.decodeByteArray(webp, 0, webp.size)
     // The outline is the middle third, plus a 2% margin on each side.
     assertEquals(1024 + 2 * 61, out.width, 2f)
@@ -47,9 +47,20 @@ class WebpArchiverTest {
   }
 
   @Test fun aPhotoWithoutAnOutlineIsKeptWhole() {
-    val webp = WebpArchiver().archive(photo(), null)
+    val webp = WebpArchiver { emptyList() }.archive(photo(), null)
     val out = BitmapFactory.decodeByteArray(webp, 0, webp.size)
     assertEquals(3072 to 4096, out.width to out.height)
+  }
+
+  @Test fun whatIsPrivateIsBlankedInTheCopy() {
+    // A box on the receipt (photo pixels 1100–1900 × 1000–1100) comes out black, offset by the crop; the rest doesn't.
+    val segment = CaptureSegment("p.jpg", "p.mask.png", listOf(listOf(1 / 3.0, 0.0), listOf(2 / 3.0, 0.0), listOf(2 / 3.0, 1.0), listOf(1 / 3.0, 1.0)),
+      emptyList(), score = 1.0, capturedAt = 0, sessionId = "s")
+    val webp = WebpArchiver { listOf(Blank(1100, 1000, 1900, 1100)) }.archive(photo(), segment)
+    val out = BitmapFactory.decodeByteArray(webp, 0, webp.size)
+    val left = 1024 - 61
+    for (x in listOf(1110, 1500, 1890)) assertTrue("blanked at $x", Color.red(out.getPixel(x - left, 1050)) < 30)
+    assertTrue("the paper elsewhere stays light", Color.red(out.getPixel(1500 - left, 1300)) > 120 || Color.red(out.getPixel(1500 - left, 1330)) > 120)
   }
 
   private fun assertEquals(expected: Int, actual: Int, tolerance: Float) =

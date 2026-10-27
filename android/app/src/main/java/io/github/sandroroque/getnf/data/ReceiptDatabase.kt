@@ -15,6 +15,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.Update
+import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -97,7 +98,8 @@ abstract class ReceiptDao {
   ],
   version = ReceiptDatabase.VERSION,
   // Every version ships a migration from the one before; schemas are exported to android/app/schemas.
-  autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7), AutoMigration(from = 7, to = 8)],
+  autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7),
+    AutoMigration(from = 7, to = 8, spec = ReceiptDatabase.ReuploadBlanked::class)],
 )
 abstract class ReceiptDatabase : RoomDatabase() {
   abstract fun receipts(): ReceiptDao
@@ -108,7 +110,17 @@ abstract class ReceiptDatabase : RoomDatabase() {
   abstract fun spending(): SpendingDao
   abstract fun lists(): ListsDao
 
+  /**
+   * 7 → 8 (D96, D98): payments and taxes on the parsed receipt; and every photo goes up again, its online copy now with
+   * the card slip, a CPF and the operator blanked (the upload replaces the copy at the same path).
+   */
+  class ReuploadBlanked : AutoMigrationSpec {
+    override fun onPostMigrate(db: SupportSQLiteDatabase) = db.execSQL(REUPLOAD)
+    override fun onPostMigrate(connection: SQLiteConnection) = connection.execSQL(REUPLOAD)
+  }
+
   companion object {
+    private const val REUPLOAD = "UPDATE `receipt_photo` SET `uploaded` = 0"
     const val NAME = "getnf.db"
     const val VERSION = 8
     fun open(context: Context): ReceiptDatabase =

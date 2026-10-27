@@ -18,11 +18,11 @@ import kotlin.math.roundToInt
 
 /**
  * The archive copy of a receipt photo (D61): cropped to the receipt's outline when the capture recorded one, grey,
- * WebP. Discounts are read from the full-quality original on the phone before this; the copy is for a person looking
+ * WebP, with what shouldn't leave the phone blanked ([blanks]: the card slip, a CPF, the operator, D98). Discounts are read from the full-quality original on the phone before this; the copy is for a person looking
  * back. On a real 4096×3072 photo (5.7 MB) a receipt crop came to ~390 KB at quality 70, and the discount lines
  * stayed clearly legible.
  */
-class WebpArchiver(private val quality: Int = 70) : PhotoArchiver {
+class WebpArchiver(private val quality: Int = 70, private val blanks: (File) -> List<Blank>) : PhotoArchiver {
   override fun archive(photo: File, segment: CaptureSegment?): ByteArray {
     val source = upright(photo, BitmapFactory.decodeFile(photo.path) ?: error("can't decode ${photo.name}"))
     try {
@@ -31,7 +31,11 @@ class WebpArchiver(private val quality: Int = 70) : PhotoArchiver {
       val grey = Bitmap.createBitmap(crop.width(), crop.height(), Bitmap.Config.ARGB_8888)
       try {
         val paint = Paint().apply { colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) }) }
-        Canvas(grey).drawBitmap(source, crop, android.graphics.Rect(0, 0, crop.width(), crop.height()), paint)
+        val canvas = Canvas(grey)
+        canvas.drawBitmap(source, crop, android.graphics.Rect(0, 0, crop.width(), crop.height()), paint)
+        // Read from the photo itself (upright, like the source here); a photo that can't be read isn't uploaded.
+        val black = Paint().apply { color = android.graphics.Color.BLACK }
+        for (b in blanks(photo)) canvas.drawRect((b.left - crop.left).toFloat(), (b.top - crop.top).toFloat(), (b.right - crop.left).toFloat(), (b.bottom - crop.top).toFloat(), black)
         val out = ByteArrayOutputStream()
         @Suppress("DEPRECATION")
         val format = if (Build.VERSION.SDK_INT >= 30) Bitmap.CompressFormat.WEBP_LOSSY else Bitmap.CompressFormat.WEBP
