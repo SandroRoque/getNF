@@ -91,6 +91,17 @@ class PaperFinderTest {
     assertEquals(lines, session.rows.size)
   }
 
+  @Test fun theFinishedCaptureStillFindsThePaperForItsCode() {
+    // The QR code is only taken from inside the paper, and may be read after the rows are all captured.
+    val (image, quads) = frame()
+    val session = IngestSession()
+    assertTrue(session.offer(IngestFrame("whole", gray(image), quads, 0)).complete)
+    val after = session.offer(IngestFrame("again", gray(image), quads, 400))
+    assertTrue(after.complete)
+    assertNotNull(after.paper)
+    assertTrue(after.commits.isEmpty())
+  }
+
   @Test fun aReceiptReadUnsurelyIsNeverComplete() {
     val (image, quads) = frame()
     val session = IngestSession()

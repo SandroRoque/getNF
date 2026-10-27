@@ -58,7 +58,8 @@ internal class IngestSession {
   fun isCaptured(row: RowAssembly.Entry) = row in captured
 
   fun offer(frame: IngestFrame): IngestStep {
-    if (done) return IngestStep(null, null, false, emptyList(), IngestHint.DONE, true, null)
+    // Done, the paper is still found: the receipt's QR code is only taken from inside it, and may be read after.
+    if (done) return IngestStep(PaperFinder.find(frame.image, frame.ocr), null, false, emptyList(), IngestHint.DONE, true, null)
     val paper = PaperFinder.find(frame.image, frame.ocr) ?: return skip(null, IngestHint.FIND_RECEIPT, frame)
     val down = down(paper, frame.image)
     val frameRows = RowAssembly.rows(paper, frame.image.width, frame.image.height)

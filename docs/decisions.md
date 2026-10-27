@@ -2046,3 +2046,17 @@ frames get dark and grainy and print blurs. When a frame's mean luminance stays 
 second, the torch comes on, once. It isn't turned off by itself (the frames are bright once it's on), and once the
 person has touched the torch button the capture leaves it alone. The threshold is set from frames in good light only;
 it needs a session in dim light to confirm.
+
+## D94. A finished capture keeps looking for its QR code (2026-10-26)
+
+Second blind round (4 phone sessions, D89 loop): all complete, no false completion, every item legible, 7.0 s and 2.0
+photos on average (the first round: 2 of 3, 15.4 s, 4.3 photos). The torch came on by itself in one: the first
+frames were dark (mean luminance 9, then about 90), and the torch was on by the ninth (199).
+
+One session had all its rows by 3.6 s and then showed "Mostre o QR Code" for 34 s until the person gave up and
+scanned again. The QR code is only taken from inside the paper found (another receipt's code beside it doesn't
+count), and once the session was done it no longer looked for the paper, so a code not read before the last row could
+never be read. The finished session now still finds the paper in each frame.
+
+The benchmark scores the rows, and treats the QR code as read; it couldn't see this. The phone now logs the codes it
+reads per frame (and how many inside the paper) in `live.tsv`, so the next sessions can be scored on the code too.

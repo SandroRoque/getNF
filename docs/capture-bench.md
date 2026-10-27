@@ -49,3 +49,6 @@ run, so a fix for one session can't silently break another.
 | 2026-10-25 | **holdout**: 3 new phone sessions, measured blind | 2 of 3 | 0 | 73 of 73 | 15.4 s, 4.3 photos; then promoted to dev |
 | 2026-10-25 | (dropped) at the end, keep the fewest photos covering every row | 10 of 12 | 1 | | lost an item read well only in a dropped photo |
 | 2026-10-25 | at the end, keep the fewest photos covering every row read near its best | 10 of 12 | 0 | all | photos down on 5 sessions (7 → 3, 7 → 4, 6 → 4) |
+| 2026-10-26 | paper finder walks without allocations (D91), guidance (D92), torch (D93) | 10 of 12 | 0 | all | no change in scores, as intended |
+| 2026-10-26 | **holdout**: 4 new phone sessions, measured blind | 4 of 4 | 0 | 67 of 67 | 7.0 s, 2.0 photos; one waited 34 s for the QR code (D94) |
+| 2026-10-26 | the QR code can be read after the rows are all captured (D94) | 14 of 16 | 0 | all | the benchmark doesn't model the QR code yet |

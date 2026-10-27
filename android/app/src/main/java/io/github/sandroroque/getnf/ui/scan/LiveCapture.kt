@@ -273,7 +273,9 @@ internal class CaptureController(
     val started = System.nanoTime()
     val step = ingest.offer(IngestFrame(id, frame.image, lines, frame.atMs))
     if (BuildConfig.DEBUG) Log.d(TAG, "frame $id: session %d ms".format((System.nanoTime() - started) / 1_000_000))
-    dump?.let { dir -> dumping.execute { logDecision(dir, id, frame.atMs, step) } }
+    // The codes read: as many as the scanner saw, and how many of them inside the paper.
+    val codesSeen = "${codes.size}/${step.paper?.let { p -> codes.count { it.second.isNotEmpty() && contains(p, it.second, frame.image) } } ?: 0}"
+    dump?.let { dir -> dumping.execute { logDecision(dir, id, frame.atMs, step, codesSeen) } }
     identify(step.paper, codes, frame)
     val score = lines.map { it.confidence }.sorted().let { if (it.isEmpty()) 0.0 else it[it.size / 2] }
     val current = step.paper?.let { Held(id, frame.pixels, it, step.view, score) }
@@ -319,13 +321,13 @@ internal class CaptureController(
 
   /**
    * Appends the session's decision on a frame to `live.tsv` (frame, its camera time, hint, held, committed, complete,
-   * the paper's ends seen: `T`, `B`, `TB` or none, then `-`; empty when no paper was found),
+   * the paper's ends seen: `T`, `B`, `TB` or none, then `-`; empty when no paper was found; QR codes read / inside it),
    * so the replay can use the frames' real timing and show where it would decide differently.
    */
-  private fun logDecision(dir: File, id: String, atMs: Long, step: IngestStep) {
+  private fun logDecision(dir: File, id: String, atMs: Long, step: IngestStep, codes: String) {
     fun name(id: String) = "f%04d".format(id.removePrefix("f").toInt() + 1)
     val ends = step.paper?.let { (if (it.topSeen) "T" else "") + (if (it.bottomSeen) "B" else "") + "-" } ?: ""
-    File(dir, "live.tsv").appendText(listOf(name(id), atMs, step.hint, step.hold, step.commits.joinToString(",", transform = ::name), step.complete, ends)
+    File(dir, "live.tsv").appendText(listOf(name(id), atMs, step.hint, step.hold, step.commits.joinToString(",", transform = ::name), step.complete, ends, codes)
       .joinToString("\t") + "\n")
   }
 
