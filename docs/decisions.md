@@ -2070,3 +2070,21 @@ position logged: its centre came out as the true position turned a quarter turn 
 some negative). ML Kit's text recogniser reports its boxes in the camera buffer's orientation, which D86 turns
 upright; its barcode scanner reports corners already upright, and they were turned a second time. They are now used
 as given: on the emulator the code is inside the paper from the second frame.
+
+## D96. Payments and taxes are stored as data, read in every store's wording (2026-10-26)
+
+The user wants the payment method (it affects the price) and the taxes stored right. Both were parsed but kept only in
+PocketBase's raw parser output, which D71 retired; nothing on the phone or Supabase had them. And taxes were read in
+one wording only: of the 9 pages the phone holds, 2 lost them.
+
+- **Taxes** (Lei 12.741/2012, the estimate the receipt states): stores word them freely. Seen so far: "FEDERAL R$
+  37,70 ESTADUAL R$ 42,63 MUNICIPAL R$ 0,00" (the supermarket), "FEDERAIS: R$ 28,07 - ESTADUAIS: R$ 35,46" with SEFAZ's
+  own "Tributos Totais Incidentes … R$ 63,53", and "Trib aprox R$: 47,95 Federal e 28,88 Estadual". Each part is read
+  next to its label in either order, only near a mention of taxes (a "Lei Federal" elsewhere isn't an amount); the
+  total is SEFAZ's field when present, else the parts' sum. All 9 pages now give their taxes. Both parsers (phone and
+  the server's JS, kept for the parity tests) read the same; parser version 2, so the phone re-reads every page.
+- **Payments**: every method the page lists, in order, with its amount, and the change. No real receipt was paid two
+  ways yet; a test makes one (cash and debit card with change) from the committed fixture.
+- **Stored**: on the phone's parsed receipt (Room v8: `payments` as a JSON list, `changeCents`, four tax columns) and
+  on Supabase's `receipt` (`payments` jsonb array, `change_cents`, `tax_*_cents`), synced both ways.
+- The receipt's XML, when the app has it, would give exact taxes per item; not read yet.

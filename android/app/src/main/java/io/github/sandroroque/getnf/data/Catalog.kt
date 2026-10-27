@@ -41,6 +41,14 @@ data class ReceiptParsedRow(
   /** The receipt's pageFetchedAt when the phone parsed it: a re-fetched page is parsed again. */
   val pageFetchedAt: Long? = null,
   @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
+  /** How it was paid: a JSON list of `{"method": "Cartão de Crédito", "cents": 26852}`, in the page's order (D96). */
+  val payments: String? = null,
+  val changeCents: Long? = null,
+  /** The taxes the price includes (Lei 12.741/2012), as the receipt states them; any may be missing (D96). */
+  val taxFederalCents: Long? = null,
+  val taxStateCents: Long? = null,
+  val taxMunicipalCents: Long? = null,
+  val taxTotalCents: Long? = null,
 ) {
   companion object {
     const val SOURCE_SERVER = "server"

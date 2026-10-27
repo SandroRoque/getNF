@@ -97,7 +97,7 @@ abstract class ReceiptDao {
   ],
   version = ReceiptDatabase.VERSION,
   // Every version ships a migration from the one before; schemas are exported to android/app/schemas.
-  autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7)],
+  autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7), AutoMigration(from = 7, to = 8)],
 )
 abstract class ReceiptDatabase : RoomDatabase() {
   abstract fun receipts(): ReceiptDao
@@ -110,7 +110,7 @@ abstract class ReceiptDatabase : RoomDatabase() {
 
   companion object {
     const val NAME = "getnf.db"
-    const val VERSION = 7
+    const val VERSION = 8
     fun open(context: Context): ReceiptDatabase =
       Room.databaseBuilder(context, ReceiptDatabase::class.java, NAME).addMigrations(MIGRATION_3_4).build()
 

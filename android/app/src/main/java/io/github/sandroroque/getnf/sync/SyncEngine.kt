@@ -316,6 +316,9 @@ class SyncEngine(
         dao.upsertParsed(ReceiptParsedRow(
           chave, o.string("issuer_cnpj"), o.millis("issued_at"), o.long("gross_cents"), o.long("discount_cents"),
           o.long("paid_cents"), o.long("parser_version")?.toInt(), o.string("parse_error"), source = ReceiptParsedRow.SOURCE_SERVER,
+          payments = o["payments"]?.takeIf { it !is JsonNull }?.toString(), changeCents = o.long("change_cents"),
+          taxFederalCents = o.long("tax_federal_cents"), taxStateCents = o.long("tax_state_cents"),
+          taxMunicipalCents = o.long("tax_municipal_cents"), taxTotalCents = o.long("tax_total_cents"),
         ))
       }
     }
@@ -332,6 +335,9 @@ class SyncEngine(
       put("issuer_cnpj", h.issuerCnpj); put("issued_at", h.issuedAt?.let(::iso)); put("gross_cents", h.grossCents)
       put("discount_cents", h.discountCents); put("paid_cents", h.paidCents); put("parser_version", h.parserVersion)
       put("parse_error", h.parseError)
+      put("payments", h.payments?.let(Json::parseToJsonElement) ?: JsonNull); put("change_cents", h.changeCents)
+      put("tax_federal_cents", h.taxFederalCents); put("tax_state_cents", h.taxStateCents)
+      put("tax_municipal_cents", h.taxMunicipalCents); put("tax_total_cents", h.taxTotalCents)
     }
   }
 

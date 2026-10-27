@@ -13,6 +13,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /**
  * Reads a receipt's saved page into its header, lines and store items, on the phone (D49), with the same rules as the
@@ -145,6 +148,10 @@ class ReceiptParser(
       // The server's wording, so both sides read the same.
       parseError = if (p.warnings.isEmpty()) null else "warnings: " + p.warnings.joinToString("; "),
       source = ReceiptParsedRow.SOURCE_PHONE, pageFetchedAt = receipt.pageFetchedAt, dirty = true,
+      payments = Json.encodeToString(p.payments.map { buildJsonObject { put("method", it.method); put("cents", it.amountCents) } }),
+      changeCents = t.changeCents,
+      taxFederalCents = p.taxesEstimate?.federalCents, taxStateCents = p.taxesEstimate?.stateCents,
+      taxMunicipalCents = p.taxesEstimate?.municipalCents, taxTotalCents = p.taxesEstimate?.totalCents,
     ))
     dao.deleteUnusedIssuers()
     rows.size
