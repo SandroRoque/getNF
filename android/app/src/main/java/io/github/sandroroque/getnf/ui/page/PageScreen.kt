@@ -8,13 +8,14 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -57,11 +58,12 @@ private enum class Status(val text: String) {
 
 /**
  * Step 3 of the capture flow: open the QR URL in a WebView, let the user pass a Turnstile if SEFAZ
- * shows one, and save the details page's DOM as soon as it loads.
+ * shows one, and save the details page's DOM as soon as it loads. The portal itself is only shown while SEFAZ asks
+ * for its check: otherwise a panel says what's happening, and once the page is saved the receipt opens (D101).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PageScreen(chave: String, onDone: () -> Unit, onNext: (String) -> Unit) {
+fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
   val context = LocalContext.current
   val app = context.applicationContext as GetNFApp
   val store = app.receiptStore
@@ -69,7 +71,6 @@ fun PageScreen(chave: String, onDone: () -> Unit, onNext: (String) -> Unit) {
   val network = remember { CurrentNetwork.of(context) }
   val budgetCheck = rememberBudgetCheck()
   val receipts by store.receipts.collectAsStateWithLifecycle()
-  val next = waitingForPage(receipts).firstOrNull { it.chave != chave }
   val scope = rememberCoroutineScope()
   var receipt by remember { mutableStateOf<Receipt?>(null) }
   var status by remember { mutableStateOf(Status.Loading) }
@@ -82,26 +83,22 @@ fun PageScreen(chave: String, onDone: () -> Unit, onNext: (String) -> Unit) {
       TopAppBar(
         title = { Text("Página da nota") },
         actions = {
-          if (status == Status.Saved && next != null) {
-            TextButton(onClick = { budgetCheck.request(onFetch = { onNext(next.chave) }, onLater = onDone) }) { Text("Próxima") }
-          }
           TextButton(onClick = onDone) { Text(if (status == Status.Saved) "Pronto" else "Pular") }
         },
       )
     },
   ) { padding ->
     Column(Modifier.fillMaxSize().padding(padding)) {
-      Surface(color = if (status == Status.Challenge || status == Status.RateLimited) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer) {
+      if (status == Status.Challenge) Surface(color = MaterialTheme.colorScheme.errorContainer) {
         Text(status.text, Modifier.fillMaxWidth().padding(12.dp), style = MaterialTheme.typography.bodyMedium)
       }
-      if (status == Status.Loading) LinearProgressIndicator(Modifier.fillMaxWidth())
 
       val url = receipt?.qrUrl
       if (url == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
           if (receipt != null) Text("Esta nota não tem o endereço do QR Code.")
         }
-      } else {
+      } else Box(Modifier.fillMaxSize()) {
         SefazWebView(
           url = url,
           onLookup = { app.lookupBudget.record(network.key) },
@@ -122,13 +119,29 @@ fun PageScreen(chave: String, onDone: () -> Unit, onNext: (String) -> Unit) {
             } else {
               scope.launch {
                 store.savePage(chave, finalUrl, html)
-                // Items on the phone right away, server or not (D49).
+                // Items on the phone right away, server or not (D49), and the discounts its photos show (D101).
                 store.get(chave)?.let { app.receiptParser.parse(it) }
+                store.get(chave)?.let { r -> runCatching { app.photoDiscounts.readIfPending(r) } }
                 status = Status.Saved
+                onSaved(chave)
               }
             }
           },
         )
+        // The portal's own page is for SEFAZ's check only: the rest of the time, what's happening, in plain words. A
+        // check the app doesn't recognize would stay hidden: after a while loading, the portal shows anyway.
+        var slow by remember { mutableStateOf(false) }
+        LaunchedEffect(status) { slow = false; if (status == Status.Loading) { kotlinx.coroutines.delay(12_000); slow = true } }
+        if (status != Status.Challenge && !(status == Status.Loading && slow)) Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+          Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            when (status) {
+              Status.Loading -> { CircularProgressIndicator(); Text("Buscando a página da SEFAZ…", style = MaterialTheme.typography.bodyLarge) }
+              Status.Saved -> { CircularProgressIndicator(); Text("Página salva. Lendo os itens…", style = MaterialTheme.typography.bodyLarge) }
+              else -> { Text(status.text, style = MaterialTheme.typography.bodyLarge); TextButton(onClick = onDone) { Text("Voltar") } }
+            }
+          }
+        }
       }
     }
   }
@@ -217,6 +230,3 @@ private fun SefazWebView(url: String, onLookup: () -> Unit, onKind: (SefazPage.K
   )
 }
 
-/** Receipts still missing their SEFAZ page, oldest first: the order "Next" works through. */
-fun waitingForPage(receipts: List<io.github.sandroroque.getnf.data.Receipt>) =
-  receipts.filter { it.pageFile == null }.sortedBy { it.capturedAt }

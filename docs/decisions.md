@@ -2166,3 +2166,24 @@ required a page). The person reasonably took it for the way to get the page.
   so the print runs upright (its direction from the photos' kept OCR), large enough to read at a glance. "Mais" offers
   fetching the page, not re-reading it.
 - **The parser** returns "a página ainda não foi buscada" for a receipt without a page instead of throwing.
+
+## D101. After the page: the receipt opens, its photos' discounts are read by themselves, sideways photos too (2026-10-26)
+
+Fetching a page left the person on the portal's own page (badly rendered in the WebView) until they found "Pronto";
+and the receipt's discount stayed prorated over every line although its photos show which item had it: D54's reading
+only ran from "Mais".
+
+- **The portal is shown only for SEFAZ's check.** While it loads and while the page is saved, a panel says so
+  ("Buscando a página da SEFAZ…", "Página salva. Lendo os itens…"); a block or failure says what happened, with
+  "Voltar". If loading drags on past 12 s, the portal shows anyway (a check the app doesn't recognize must not stay
+  hidden). Once saved, the receipt opens in the page's place. "Próxima" is gone: "Para você" lists what's left.
+- **Discounts read by themselves**: after a page is saved, and at start for receipts that have a discount, photos, and
+  every line still at its prorated share. A conflict or nothing found leaves the lines as they were, as before.
+- **Sideways photos.** The first automatic reading of a fetched receipt was a conflict: two of its five photos were
+  taken sideways, and "the item line above the Desconto line" was found across the image, on another item; with the
+  others right, the readings added up to twice the page's discount. Photos are now read along their print (turned by
+  the lines' own direction, from OCR's corners) before pairing discounts with items. That receipt: R$ 0,56 on its
+  biscuit, found in all five photos.
+- The benchmark's answer key now has that receipt's page, and judges an item as the discount reader finds it: code and
+  description with OCR's letter-for-digit slips undone; the printed number ("01" or "1") only for an item rung up more
+  than once. Re-baselined; no capture change.

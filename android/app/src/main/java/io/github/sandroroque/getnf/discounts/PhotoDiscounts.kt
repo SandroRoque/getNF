@@ -122,7 +122,8 @@ object PhotoDiscounts {
   }
 
   fun read(photos: List<PhotoText>, items: List<Item>, totalDiscountCents: Long): Result {
-    val readings = photos.map { readPhoto(it, items) }
+    // Read along the print: a photo taken sideways has its lines' "above" across the image (D101).
+    val readings = photos.map { readPhoto(it.alongPrint(), items) }
     val problems = readings.flatMap { it.conflicts }.toMutableList()
     val values = HashMap<Int, MutableList<Pair<Long, Evidence>>>()
     for (r in readings) for ((line, v) in r.byLine) values.getOrPut(line) { mutableListOf() } += v

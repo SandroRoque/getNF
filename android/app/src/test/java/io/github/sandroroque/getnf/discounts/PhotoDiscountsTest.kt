@@ -37,6 +37,18 @@ class PhotoDiscountsTest {
     assertEquals(emptyList<String>(), r.problems)
   }
 
+  @Test fun aReceiptPhotographedSidewaysIsReadAlongItsPrint() {
+    // Turned a quarter (reading downwards), with the corners OCR gives: "above" a discount is to its right on the image.
+    fun turn(x: Int, y: Int) = listOf(4096 - y, x)
+    val sideways = PhotoText("s.jpg", 4096, 3072, receipt.lines.map { l ->
+      TextLine(l.text, 4096 - l.bottom, l.left, 4096 - l.top, l.right, l.confidence,
+        turn(l.left, l.top) + turn(l.right, l.top) + turn(l.right, l.bottom) + turn(l.left, l.bottom))
+    })
+    val r = PhotoDiscounts.read(listOf(sideways), items, 360)
+    assertEquals(Verdict.COMPLETE, r.verdict)
+    assertEquals(listOf(3 to 156L, 4 to 204L), r.discounts.map { it.lineNo to it.cents })
+  }
+
   @Test fun lessThanTheTotalIsPartial() {
     val r = PhotoDiscounts.read(listOf(receipt), items, 500)
     assertEquals(Verdict.PARTIAL, r.verdict)

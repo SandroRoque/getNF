@@ -14,7 +14,7 @@ import kotlinx.serialization.json.Json
  * Reads a receipt's per-item discounts from its photos and applies them (D54). OCR text is cached next to each photo
  * (`<photo>.ocr1.json`), so reading again is quick. Discounts found become `photo` (unreviewed); the rest of the
  * receipt's discount is prorated over the other lines. A discount set by hand is never replaced. On a conflict, or
- * when nothing is found, the lines stay as they were.
+ * when nothing is found, the lines stay as they were. It runs by itself once a page is read ([readIfPending], D101).
  */
 class PhotoDiscountReader(
   private val database: ReceiptDatabase,
@@ -36,6 +36,19 @@ class PhotoDiscountReader(
     val apply = result.verdict == PhotoDiscounts.Verdict.COMPLETE || result.verdict == PhotoDiscounts.Verdict.PARTIAL
     if (apply) write(receipt.chave, parsed.discountCents ?: 0, result.discounts)
     return Outcome(result, apply, texts.size)
+  }
+
+  /**
+   * Reads the photos' discounts by itself (D101) when there's something to find and nothing found yet: the receipt has
+   * a discount and photos, and every line's share is still the prorated one. Null when there's nothing to do.
+   */
+  suspend fun readIfPending(receipt: Receipt): Outcome? {
+    if (receipt.photos.isEmpty() || receipt.pageFile == null) return null
+    val parsed = dao.parsed(receipt.chave) ?: return null
+    if ((parsed.discountCents ?: 0) <= 0) return null
+    val lines = dao.lines(receipt.chave)
+    if (lines.isEmpty() || lines.any { it.discountSource == "photo" || it.discountSource == "manual" }) return null
+    return read(receipt)
   }
 
   private fun text(chave: String, photo: String): PhotoText {

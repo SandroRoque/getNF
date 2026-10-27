@@ -54,6 +54,10 @@ class GetNFApp : Application() {
       receiptParser.parsePending(receiptStore.receipts.value).let { if (it > 0) android.util.Log.i("ReceiptParser", "parsed $it saved page(s)") }
       // Receipts waiting for their page are named by what their photos say (D99); older ones are read once here.
       runCatching { receiptStore.readPendingPhotos { photoOcr.read(it) } }.onFailure { android.util.Log.w("ReceiptStore", "reading pending photos", it) }
+      // Discounts the photos show, not yet read from them (D101).
+      for (r in receiptStore.receipts.value) runCatching { photoDiscounts.readIfPending(r) }
+        .onSuccess { o -> if (o != null) android.util.Log.i("PhotoDiscounts", "${r.chave}: ${o.result.verdict}, ${o.result.discounts.size} found") }
+        .onFailure { android.util.Log.w("PhotoDiscounts", "reading ${r.chave}", it) }
       // Push anything left over from a previous run (e.g. the app was killed mid-sync) and pull the server's changes
       // (D70). Not under instrumented tests: debug builds point at the real project.
       if (!underInstrumentation()) SyncWorker.enqueue(this@GetNFApp)

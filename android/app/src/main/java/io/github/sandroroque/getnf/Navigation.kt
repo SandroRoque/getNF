@@ -108,7 +108,8 @@ fun MainNavigation() {
         entry<IpciKey> { key -> IpciScreen(key.categoryId, onOpenProduct = { open(ProductDetail(it)) }, onBack = ::back) }
         entry<Scan> { ScanScreen(onCaptured = ::back, onCancel = ::back, onOpenPage = { back(); open(Page(it)) }) }
         entry<Page> { key ->
-          PageScreen(chave = key.chave, onDone = ::back, onNext = { next -> back(); open(Page(next)) })
+          // Saved: the receipt opens in its place, Back returning to where the fetch began.
+          PageScreen(chave = key.chave, onDone = ::back, onSaved = { back(); open(ReceiptDetail(it)) })
         }
         entry<ReceiptDetail> { key ->
           ReceiptScreen(chave = key.chave, onOpenProduct = { open(ProductDetail(it)) }, onBack = ::back, onOpenPage = { back(); open(Page(it)) })
