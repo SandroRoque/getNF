@@ -2153,3 +2153,16 @@ the app only listed them ("Para você" had a card; nothing reminded). Real users
   covered totals and items too (seen on the copies online). Lines are now ordered down the print (its direction from
   OCR's own line corners) and blocks are drawn along it. Checked on the sideways frames: the slip and the operator only.
   The move to v9 sends every photo up again, replacing those copies.
+
+## D100. A receipt waiting for its page has its own screen; re-reading a page that isn't there no longer crashes (2026-10-26)
+
+Opening a receipt without its page showed the full receipt screen empty: "Nota", "0 itens · 5 fotos", a "?" for the
+amount, and nothing to do but "Mais", whose "ler de novo (sem consultar a SEFAZ)" crashed the app (the parser
+required a page). The person reasonably took it for the way to get the page.
+
+- **Its own screen**: named as the lists name it (D99: "Nota de 16/10/2026", the store), "Falta a página da SEFAZ"
+  with what the page brings and that SEFAZ may ask for a check, the lookups left on this network, and "Buscar a
+  página" (through the budget check, D17). Below, the photos the scan took: cropped to the receipt's outline, turned
+  so the print runs upright (its direction from the photos' kept OCR), large enough to read at a glance. "Mais" offers
+  fetching the page, not re-reading it.
+- **The parser** returns "a página ainda não foi buscada" for a receipt without a page instead of throwing.

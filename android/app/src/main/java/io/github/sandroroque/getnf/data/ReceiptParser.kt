@@ -63,7 +63,8 @@ class ReceiptParser(
   suspend fun parse(receipt: Receipt): Outcome = mutex.withLock { parseLocked(receipt) }
 
   private suspend fun parseLocked(receipt: Receipt): Outcome {
-    val pageFile = requireNotNull(receipt.pageFile) { "no page for ${receipt.chave}" }
+    // No page yet (it hasn't been fetched): nothing to read, and nothing wrong to record.
+    val pageFile = receipt.pageFile ?: return Outcome.Failed("a página ainda não foi buscada")
     val parsed = try {
       withContext(Dispatchers.IO) { NfcePage.parse(readPage(File(File(root, receipt.chave), pageFile))) }
     } catch (e: CancellationException) {

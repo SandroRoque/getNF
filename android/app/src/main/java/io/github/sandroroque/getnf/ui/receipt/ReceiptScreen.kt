@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,6 +26,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -55,14 +60,20 @@ import kotlinx.coroutines.launch
 /**
  * A receipt as you'd read it (D81): the store, when, the amount paid, and its lines. Tapping a line opens a sheet to
  * correct its discount or which product it is. "Mais" holds reading the photos' discounts and re-reading the page.
+ * Before its page is fetched, it says what's missing and offers to fetch it, and shows the photos the scan took (D100).
  */
 @Composable
-fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> Unit = {}) {
+fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> Unit = {}, onOpenPage: (String) -> Unit = {}) {
   val app = LocalContext.current.applicationContext as GetNFApp
   val header by remember(chave) { app.database.catalog().header(chave) }.collectAsStateWithLifecycle(null)
   val lines by remember(chave) { app.database.catalog().lineDetails(chave) }.collectAsStateWithLifecycle(emptyList())
   val receipts by app.receiptStore.receipts.collectAsStateWithLifecycle()
-  val photos = receipts.firstOrNull { it.chave == chave }?.photos?.size ?: 0
+  val receipt = receipts.firstOrNull { it.chave == chave }
+  val photos = receipt?.photos?.size ?: 0
+  if (receipt != null && receipt.pageFile == null) {
+    WaitingForPage(chave, receipt.photos, onBack, onOpenPage)
+    return
+  }
   val scope = rememberCoroutineScope()
   var status by remember { mutableStateOf<String?>(null) }
   var editing by remember { mutableStateOf<LineDetail?>(null) }
@@ -190,4 +201,99 @@ private fun LineSheet(chave: String, l: LineDetail, onOpenProduct: (String) -> U
   if (pickProduct) ProductPickerDialog("Esta linha é…", products.filter { it.productId != l.productId },
     onPick = { id -> pickProduct = false; edit { app.catalogEditor.overrideProduct(chave, l.lineNo, id); done() } },
     onDismiss = { pickProduct = false })
+}
+
+/**
+ * A receipt whose page hasn't been fetched (D100): named as the lists name it ("Nota de 16/10/2026", the store), what's
+ * missing and why, the button that fetches it (through the lookup-budget check, D17), and the photos the scan took.
+ */
+@Composable
+private fun WaitingForPage(chave: String, photos: List<String>, onBack: () -> Unit, onOpenPage: (String) -> Unit) {
+  val context = LocalContext.current
+  val app = context.applicationContext as GetNFApp
+  val item by remember(chave) { app.database.lists().receipts() }.collectAsStateWithLifecycle(emptyList())
+  val listed = item.firstOrNull { it.chave == chave }
+  val budgetCheck = io.github.sandroroque.getnf.ui.page.rememberBudgetCheck()
+  val budget = remember {
+    val network = io.github.sandroroque.getnf.data.CurrentNetwork.of(context)
+    io.github.sandroroque.getnf.ui.page.budgetText(network, app.lookupBudget.status(network.key))
+  }
+  var more by remember { mutableStateOf(false) }
+  LazyColumn(
+    Modifier.fillMaxSize().statusBarsPadding(),
+    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
+    verticalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    item {
+      BackHeader("Voltar", onBack) {
+        Text("Mais", style = MaterialTheme.typography.bodyMedium, color = Calmo.acc, modifier = Modifier.clickable { more = true }.padding(8.dp))
+      }
+    }
+    item {
+      Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        ScreenTitle(listed?.title ?: "Nota")
+        Sub(listOfNotNull(listed?.storeName, Format.count(photos.size, "foto", "fotos")).joinToString(" · "))
+      }
+    }
+    item {
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Falta a página da SEFAZ", style = MaterialTheme.typography.titleMedium)
+        Sub("É ela que traz os itens, os valores, a forma de pagamento e os impostos. As fotos já estão salvas; às vezes a SEFAZ pede uma verificação antes de mostrar a página.")
+        Sub(budget)
+        Pill("Buscar a página", ButtonKind.Solid) { budgetCheck.request(onFetch = { onOpenPage(chave) }, onLater = {}) }
+      }
+    }
+    if (photos.isNotEmpty()) item {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Fotos", style = MaterialTheme.typography.titleMedium)
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          val segments = app.receiptStore.receipts.value.firstOrNull { it.chave == chave }?.captureSegments.orEmpty()
+          items(photos) { name -> PhotoThumb(java.io.File(app.receiptStore.dir(chave), name), segments.find { it.photo == name }?.polygon) }
+        }
+      }
+    }
+  }
+  if (more) CalmoSheet("Esta nota", onDismiss = { more = false }) {
+    Column {
+      FactRow("Página", "buscar na SEFAZ", onClick = { more = false; budgetCheck.request(onFetch = { onOpenPage(chave) }, onLater = {}) })
+      FactRow("Chave", io.github.sandroroque.getnf.data.Chave.pretty(chave))
+    }
+  }
+  budgetCheck.Dialog()
+}
+
+/**
+ * A photo, small and readable at a glance: cropped to the receipt's outline when the scan recorded one, turned so the
+ * print runs upright (its direction from the photo's kept OCR, D99), decoded at a fraction of its size off the main
+ * thread.
+ */
+@Composable
+private fun PhotoThumb(file: java.io.File, polygon: List<List<Double>>?) {
+  val bitmap by androidx.compose.runtime.produceState<android.graphics.Bitmap?>(null, file) {
+    value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { thumbnail(file, polygon) }.getOrNull() }
+  }
+  val b = bitmap
+  if (b != null) androidx.compose.foundation.Image(b.asImageBitmap(), contentDescription = "Foto da nota",
+    modifier = Modifier.height(280.dp).aspectRatio(b.width.toFloat() / b.height).clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp)),
+    contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+  else androidx.compose.foundation.layout.Box(Modifier.height(280.dp).width(120.dp))
+}
+
+private fun thumbnail(file: java.io.File, polygon: List<List<Double>>?): android.graphics.Bitmap? {
+  val small = android.graphics.BitmapFactory.decodeFile(file.path, android.graphics.BitmapFactory.Options().apply { inSampleSize = 4 }) ?: return null
+  val crop = polygon?.takeIf { it.size >= 3 }?.let { p ->
+    val xs = p.map { it[0] }; val ys = p.map { it[1] }; val m = .02
+    android.graphics.Rect(((xs.min() - m).coerceAtLeast(0.0) * small.width).toInt(), ((ys.min() - m).coerceAtLeast(0.0) * small.height).toInt(),
+      ((xs.max() + m).coerceAtMost(1.0) * small.width).toInt(), ((ys.max() + m).coerceAtMost(1.0) * small.height).toInt())
+  }?.takeIf { it.width() > 8 && it.height() > 8 } ?: android.graphics.Rect(0, 0, small.width, small.height)
+  // The print's direction, from the lines' corners in the kept OCR: turned by the nearest quarter so it reads upright.
+  val turn = runCatching {
+    val text = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+      .decodeFromString<io.github.sandroroque.getnf.discounts.PhotoText>(java.io.File(file.path + PhotoDiscountReader.CACHE_SUFFIX).readText())
+    val angles = text.lines.mapNotNull { l -> l.corners?.takeIf { it.size == 8 }?.let { c -> Math.toDegrees(kotlin.math.atan2((c[3] + c[5] - c[1] - c[7]) / 2.0, (c[2] + c[4] - c[0] - c[6]) / 2.0)) } }.sorted()
+    if (angles.isEmpty()) 0f else -(Math.round(angles[angles.size / 2] / 90.0) * 90).toFloat()
+  }.getOrDefault(0f)
+  val out = android.graphics.Bitmap.createBitmap(small, crop.left, crop.top, crop.width(), crop.height(), android.graphics.Matrix().apply { postRotate(turn) }, true)
+  if (out !== small) small.recycle()
+  return out
 }
