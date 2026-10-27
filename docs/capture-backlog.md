@@ -22,3 +22,6 @@ kept only without regressions.
   sessions are scored against their own reads (`*`). Fetching it is one SEFAZ lookup, only with the user's go-ahead.
 - **Footer line at the bottom edge.** The software line under the last row is required like any row. A
   session that never shows it again stays incomplete. Decide whether it matters.
+- **Score the QR code.** Since D94 `live.tsv` logs the codes read per frame and how many inside the paper (since D95
+  with the right corners). The benchmark could take a session as done only from the first frame with the code read
+  inside the paper as well as all rows.

@@ -216,7 +216,8 @@ internal class IngestAnalyzer(
           } else emptyList()
           val found = if (codes.isSuccessful) codes.result.mapNotNull { code ->
             val raw = code.rawValue ?: return@mapNotNull null
-            raw to code.cornerPoints.orEmpty().map { upright(it.x, it.y, image.width, image.height, rotation) }
+            // Unlike text, the barcode scanner reports its corners already turned upright.
+            raw to code.cornerPoints.orEmpty().map { DocumentPoint(it.x.toDouble(), it.y.toDouble()) }
           } else emptyList()
           if (BuildConfig.DEBUG) Log.d(TAG, "frame: convert %d ms, OCR done at %d ms".format((converted - started) / 1_000_000, (System.nanoTime() - started) / 1_000_000))
           // The session runs on its own thread: the next frame's OCR starts now, alongside it.
@@ -274,7 +275,8 @@ internal class CaptureController(
     val step = ingest.offer(IngestFrame(id, frame.image, lines, frame.atMs))
     if (BuildConfig.DEBUG) Log.d(TAG, "frame $id: session %d ms".format((System.nanoTime() - started) / 1_000_000))
     // The codes read: as many as the scanner saw, and how many of them inside the paper.
-    val codesSeen = "${codes.size}/${step.paper?.let { p -> codes.count { it.second.isNotEmpty() && contains(p, it.second, frame.image) } } ?: 0}"
+    val codesSeen = "${codes.size}/${step.paper?.let { p -> codes.count { it.second.isNotEmpty() && contains(p, it.second, frame.image) } } ?: 0}" +
+      codes.firstOrNull()?.second?.takeIf { it.isNotEmpty() }?.let { c -> " @%.0f,%.0f".format(c.sumOf { it.x } / c.size, c.sumOf { it.y } / c.size) }.orEmpty()
     dump?.let { dir -> dumping.execute { logDecision(dir, id, frame.atMs, step, codesSeen) } }
     identify(step.paper, codes, frame)
     val score = lines.map { it.confidence }.sorted().let { if (it.isEmpty()) 0.0 else it[it.size / 2] }

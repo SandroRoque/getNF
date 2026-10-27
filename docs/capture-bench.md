@@ -52,3 +52,5 @@ run, so a fix for one session can't silently break another.
 | 2026-10-26 | paper finder walks without allocations (D91), guidance (D92), torch (D93) | 10 of 12 | 0 | all | no change in scores, as intended |
 | 2026-10-26 | **holdout**: 4 new phone sessions, measured blind | 4 of 4 | 0 | 67 of 67 | 7.0 s, 2.0 photos; one waited 34 s for the QR code (D94) |
 | 2026-10-26 | the QR code can be read after the rows are all captured (D94) | 14 of 16 | 0 | all | the benchmark doesn't model the QR code yet |
+| 2026-10-26 | **holdout**: 3 new phone sessions, measured blind | 3 of 3 | 1 | 78 of 79 | 8.5 s, 3.0 photos; the QR code waited up to 16 frames (D95) |
+| 2026-10-26 | QR code corners no longer turned twice (D95) | 17 of 19 | 1 | | the false completion: next |

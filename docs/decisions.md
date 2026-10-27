@@ -2060,3 +2060,13 @@ never be read. The finished session now still finds the paper in each frame.
 
 The benchmark scores the rows, and treats the QR code as read; it couldn't see this. The phone now logs the codes it
 reads per frame (and how many inside the paper) in `live.tsv`, so the next sessions can be scored on the code too.
+
+## D95. The QR code's corners are used as the scanner gives them (2026-10-26)
+
+Third blind round (3 phone sessions): all complete, 8.5 s and 3.0 photos on average, one false completion (next
+entry). The codes logged since D94 showed the QR code read in frames that saw the whole receipt yet judged outside
+the paper, and waiting up to 16 frames for a frame where it counted as inside. On the emulator, with the code's
+position logged: its centre came out as the true position turned a quarter turn (true (200, 800) logged as (161, 206);
+some negative). ML Kit's text recogniser reports its boxes in the camera buffer's orientation, which D86 turns
+upright; its barcode scanner reports corners already upright, and they were turned a second time. They are now used
+as given: on the emulator the code is inside the paper from the second frame.
