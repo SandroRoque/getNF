@@ -25,3 +25,10 @@ kept only without regressions.
 - **Score the QR code.** Since D94 `live.tsv` logs the codes read per frame and how many inside the paper (since D95
   with the right corners). The benchmark could take a session as done only from the first frame with the code read
   inside the paper as well as all rows.
+- **A digit misread at a confident score.** One session (2026-10-26T21-19-03) completes with an item whose only saved
+  read has its code one digit off ("7360" for "7380", row confidence 0.74), while earlier frames read it right at
+  0.81–0.86 and were replaced as the held frame by one reading more rows. Tried and dropped (each broke more sessions
+  than it fixed): requiring the surest read's digits; 0.8 for rows with codes; saving the held frame when it read rows
+  clearly better; requiring the digits most frames agree on. Ideas left: score the confidence of the digits' own
+  boxes (OCR's elements) rather than the row's; or, at the end, check each kept row's digits against the reads of all
+  frames and keep a second photo only for rows whose kept read disagrees.

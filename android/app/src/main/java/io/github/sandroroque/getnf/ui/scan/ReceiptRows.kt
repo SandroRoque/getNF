@@ -247,8 +247,9 @@ internal class RowAssembly {
       return if (d <= max(1, shorter / 4)) 1 + min(shorter, 30) / 10.0 - d * .1 else part
     }
 
-    /** A line's text for matching between frames: letters and digits only, upper case. */
-    fun normalize(text: String): String = text.uppercase().filter { it in 'A'..'Z' || it in '0'..'9' }
+    /** A line's text for matching between frames: letters and digits only, upper case, accents off (Ô is O). */
+    fun normalize(text: String): String =
+      java.text.Normalizer.normalize(text.uppercase(), java.text.Normalizer.Form.NFD).filter { it in 'A'..'Z' || it in '0'..'9' }
 
     /** One text mostly contained in the other: a row and a piece of it. */
     fun sameRow(a: String, b: String): Boolean {

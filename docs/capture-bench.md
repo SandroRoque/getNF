@@ -54,3 +54,8 @@ run, so a fix for one session can't silently break another.
 | 2026-10-26 | the QR code can be read after the rows are all captured (D94) | 14 of 16 | 0 | all | the benchmark doesn't model the QR code yet |
 | 2026-10-26 | **holdout**: 3 new phone sessions, measured blind | 3 of 3 | 1 | 78 of 79 | 8.5 s, 3.0 photos; the QR code waited up to 16 frames (D95) |
 | 2026-10-26 | QR code corners no longer turned twice (D95) | 17 of 19 | 1 | | the false completion: next |
+| 2026-10-26 | accents off when matching rows (PAÔ is PAO) | 17 of 19 | 1 | | no change in scores |
+| 2026-10-26 | (dropped) a row counts only with the surest read's digits | | | | 15 regressions |
+| 2026-10-26 | (dropped) rows with 8+ digits need 0.8 | | | | 23 regressions |
+| 2026-10-26 | (dropped) save the held frame when it read rows clearly better | | 1 | | fixes this one, makes another |
+| 2026-10-26 | (dropped) a row counts only with the digits most frames agree on | | | | 13 regressions |
