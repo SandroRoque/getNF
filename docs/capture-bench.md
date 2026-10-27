@@ -59,3 +59,4 @@ run, so a fix for one session can't silently break another.
 | 2026-10-26 | (dropped) rows with 8+ digits need 0.8 | | | | 23 regressions |
 | 2026-10-26 | (dropped) save the held frame when it read rows clearly better | | 1 | | fixes this one, makes another |
 | 2026-10-26 | (dropped) a row counts only with the digits most frames agree on | | | | 13 regressions |
+| 2026-10-26 | **holdout**: 3 new phone sessions, measured blind | 3 of 3 | 0 | 73 of 73 | 8.6 s, 2.7 photos; the QR code read with no wait in all (D95 confirmed) |
