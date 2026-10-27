@@ -32,3 +32,6 @@ kept only without regressions.
   clearly better; requiring the digits most frames agree on. Ideas left: score the confidence of the digits' own
   boxes (OCR's elements) rather than the row's; or, at the end, check each kept row's digits against the reads of all
   frames and keep a second photo only for rows whose kept read disagrees.
+- **Photos for improvement (D103).** Missing: (1) turning the setting off deletes what was sent (sync needs a storage
+  delete; the photos already online fall under the same question); (2) keep an abandoned capture's photos for users
+  who opted in, since those are failures too; (3) the small sample of receipts the app read fine, and how to pick it.

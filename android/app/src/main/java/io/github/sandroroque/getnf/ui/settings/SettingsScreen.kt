@@ -58,10 +58,26 @@ fun SettingsScreen(onDone: () -> Unit) {
       HealthSection(app)
       HorizontalDivider()
       BackupSection(app)
+      HorizontalDivider()
+      ContributionSection(app)
       if (io.github.sandroroque.getnf.BuildConfig.DEBUG) {
         HorizontalDivider()
         DeveloperSection(app)
       }
+  }
+}
+
+/** Photos for improving the app (D103): off until the user turns it on. */
+@Composable
+private fun ContributionSection(app: GetNFApp) {
+  var enabled by remember { mutableStateOf(app.photoContribution.enabled) }
+  io.github.sandroroque.getnf.ui.calmo.SectionLabel("Ajudar a melhorar o app")
+  Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+    Column(Modifier.weight(1f)) {
+      Text("Enviar fotos das notas que o app não leu bem", style = MaterialTheme.typography.bodyLarge)
+      io.github.sandroroque.getnf.ui.calmo.Sub("Só dessas notas, com os dados do cartão e o CPF cobertos.")
+    }
+    androidx.compose.material3.Switch(checked = enabled, onCheckedChange = { enabled = it; app.photoContribution.enabled = it })
   }
 }
 

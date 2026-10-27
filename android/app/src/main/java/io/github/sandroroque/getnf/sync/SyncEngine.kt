@@ -68,6 +68,8 @@ class SyncEngine(
   private val database: ReceiptDatabase,
   private val store: ReceiptStore,
   private val archiver: PhotoArchiver,
+  /** Whether a receipt's photos may go up (D103): nothing is uploaded unless the user allowed it and the app failed with it. */
+  private val contribute: suspend (Receipt) -> Boolean = { false },
   private val log: (String) -> Unit = { Log.i(LOG_TAG, it) },
 ) {
   private val dao = database.sync()
@@ -176,6 +178,7 @@ class SyncEngine(
     var n = 0
     for (r in store.receipts.value) {
       if (r.uploadedVersion != r.version) continue // the receipt row isn't up yet: its photos would have no parent
+      if (!contribute(r)) continue
       for ((position, name) in r.photos.withIndex()) {
         if (name in r.uploadedPhotos) continue
         val file = File(store.dir(r.chave), name)

@@ -2204,3 +2204,24 @@ Both were found only on the user's phone, because their tests had upright photos
   the discount test fails.
 - Rule for new readers of photo text by position: work in `alongPrint()` coordinates, and add the reader to the angle
   tests.
+
+## D103. Photos go up only if the user opts in, and then only the receipts the app failed with (2026-10-27)
+
+**Context.** Photos were uploaded for every receipt as soon as it synced. They are the user's data and cost storage; the
+developer wants some for improving the app (capture and discount reading) but doesn't want to hold them indefinitely.
+A photo is working material: once the page is saved and the discounts read, the app has no use for it.
+
+**Decision.**
+- Nothing is uploaded unless the user turns on "Enviar fotos das notas que o app não leu bem" in Ajustes. Off by default.
+- The app mentions it once, only after a failure it would need the data for: a receipt whose discounts it couldn't
+  read from the photos (it has a discount and photos, and its lines are still prorated). A dialog on that receipt,
+  asked once ever, whatever the answer. Otherwise it's never mentioned; the toggle is the only trace.
+- With it on, the photos of such receipts go up (blanked copies, D98), and a small sample of the others should too.
+  How to sample is undecided; `PhotoContribution.wants` is where it goes.
+- Not decided, still open: what the user's own copy is for and how long it stays on the phone (the storage prompt:
+  a size or an expiry the user picks).
+
+**Not built yet, in the backlog.** Turning it off should delete what was sent (consent has to be withdrawable). The
+sync has no storage delete yet, so the setting's text doesn't promise it. A capture the user abandons is discarded
+with its photos, so those failures aren't kept; keeping them for opted-in users is the other missing failure.
+The photos already online (uploaded before this) stay until the user says what to do with them.

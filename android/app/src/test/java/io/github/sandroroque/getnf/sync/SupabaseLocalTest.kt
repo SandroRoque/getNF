@@ -47,7 +47,7 @@ class SupabaseLocalTest {
     val db = testDatabase()
     val store = ReceiptStore(File(root, "receipts"), db)
     val parser = ReceiptParser(db, File(root, "receipts"), log = { _, _ -> })
-    val engine = SyncEngine(db, store, { _, _ -> byteArrayOf(82, 73, 70, 70) }, log = {})
+    val engine = SyncEngine(db, store, { _, _ -> byteArrayOf(82, 73, 70, 70) }, contribute = { true }, log = {})
   }
 
   @Test fun aReceiptGoesUpFromOnePhoneAndDownToAnother() = runTest {

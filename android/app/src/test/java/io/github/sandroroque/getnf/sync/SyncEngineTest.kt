@@ -34,7 +34,7 @@ class SyncEngineTest {
   private val store by lazy { ReceiptStore(File(tmp.root, "receipts"), db) }
   private val parser by lazy { ReceiptParser(db, File(tmp.root, "receipts"), now = { 7 }, newId = { "local${ids++}" }, log = { _, _ -> }) }
   private val archived = mutableListOf<String>()
-  private val engine by lazy { SyncEngine(db, store, { photo, _ -> archived += photo.name; byteArrayOf(1, 2, 3) }, log = {}) }
+  private val engine by lazy { SyncEngine(db, store, { photo, _ -> archived += photo.name; byteArrayOf(1, 2, 3) }, contribute = { true }, log = {}) }
   private val server = FakeServer()
 
   private val chave = "42260111222333000181651090000000011123456784"

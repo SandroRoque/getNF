@@ -79,6 +79,20 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
   var editing by remember { mutableStateOf<LineDetail?>(null) }
   var more by remember { mutableStateOf(false) }
   val h = header
+  // The app couldn't read this receipt's discounts from its photos: once, ask whether they may help improve it (D103).
+  var offerPhotos by remember { mutableStateOf(false) }
+  val failed = io.github.sandroroque.getnf.data.PhotoContribution.isFailure(h?.discountCents ?: 0, photos, lines.map { it.discountSource })
+  androidx.compose.runtime.LaunchedEffect(failed) {
+    val c = app.photoContribution
+    if (failed && !c.enabled && !c.asked) { c.asked = true; offerPhotos = true }
+  }
+  if (offerPhotos) androidx.compose.material3.AlertDialog(
+    onDismissRequest = { offerPhotos = false },
+    title = { Text("Não consegui ler os descontos") },
+    text = { Text("Posso enviar as fotos desta nota para melhorar o app? O número do cartão e o CPF vão cobertos. Dá para mudar depois em Ajustes.") },
+    confirmButton = { androidx.compose.material3.TextButton(onClick = { app.photoContribution.enabled = true; offerPhotos = false }) { Text("Enviar") } },
+    dismissButton = { androidx.compose.material3.TextButton(onClick = { offerPhotos = false }) { Text("Agora não") } },
+  )
 
   LazyColumn(
     Modifier.fillMaxSize().statusBarsPadding(),
