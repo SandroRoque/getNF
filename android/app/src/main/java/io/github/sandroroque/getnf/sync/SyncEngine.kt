@@ -17,6 +17,8 @@ import io.github.sandroroque.getnf.data.ReceiptParsedRow
 import io.github.sandroroque.getnf.data.ReceiptStore
 import io.github.sandroroque.getnf.data.StoreItemRow
 import io.github.sandroroque.getnf.data.SyncParkedRow
+import io.github.sandroroque.getnf.data.MemberRow
+import io.github.sandroroque.getnf.data.ReceiptScanRow
 import io.github.sandroroque.getnf.data.SyncStateRow
 import io.github.sandroroque.getnf.data.TagRow
 import java.io.File
@@ -43,6 +45,8 @@ import kotlinx.serialization.json.put
  */
 interface SyncRemote {
   val ledgerId: String
+  /** The signed-in person. */
+  val userId: String
   fun rpc(function: String, args: JsonObject = JsonObject(emptyMap())): JsonElement
   fun upsert(table: String, rows: List<JsonObject>, onConflict: String, ignoreDuplicates: Boolean = false)
   fun delete(table: String, filters: List<Pair<String, String>>)
@@ -88,6 +92,7 @@ class SyncEngine(
     var pulled = pull(remote, listOf(CATEGORY, TAG_TABLE))
     val (pushed, photos) = push(remote, errors)
     pulled += pull(remote, TABLES)
+    pullMembers(remote)
     Report(pushed, pulled, photos, errors).also { log("sync: $it") }
   }
 
@@ -292,6 +297,13 @@ class SyncEngine(
     return n
   }
 
+  /** The whole member list each run (it's small, and a member who left must disappear, D104). */
+  private suspend fun pullMembers(remote: SyncRemote) {
+    val members = io { remote.select("ledger_member", listOf("ledger_id" to "eq.${remote.ledgerId}")) }
+      .map { MemberRow(it.string("user_id")!!, it.string("display_name").orEmpty(), it.string("user_id") == remote.userId) }
+    transaction { dao.clearMembers(); dao.putMembers(members) }
+  }
+
   private suspend fun apply(remote: SyncRemote, table: String, rows: List<JsonObject>) = when (table) {
     CATEGORY -> applyCategories(rows)
     TAG_TABLE -> applyTags(rows)
@@ -317,6 +329,7 @@ class SyncEngine(
           o.string("product_id")!!, o.double("confidence"), o.string("reason"), o.string("status") ?: "pending"))
       }
     }
+    "receipt_scan" -> dao.putScans(rows.mapNotNull { o -> o.string("user_id")?.let { ReceiptScanRow(o.string("chave")!!, it) } })
     "worker_report" -> transaction {
       for (o in rows) dao.putWorkerReport(WorkerReportRow(o.long("id")!!, o.millis("at") ?: 0, o["report"].toString()))
     }
@@ -520,7 +533,7 @@ class SyncEngine(
     private const val BY_ID = "ledger_id,id"
     private const val TAG_TABLE = "tag"
     // Parents before children, so a pulled row's references already exist locally.
-    val TABLES = listOf("issuer", "receipt", "category", "tag", "product", "store_item", "product_tag", "receipt_line",
+    val TABLES = listOf("issuer", "receipt", "receipt_scan", "category", "tag", "product", "store_item", "product_tag", "receipt_line",
       "link_suggestion", "worker_report")
     private const val PAGE = 1000
     private const val OVERLAP_SECONDS = 60L

@@ -10,6 +10,8 @@ data class ReceiptListItem(
   val hasPage: Boolean, val photos: Int,
   /** The issue date the photos show, while the page isn't fetched (D99). */
   val photoIssuedAt: Long? = null,
+  /** Who brought it, when only other members scanned it (D104): "Ana", "Ana e Bia". */
+  val scannedBy: String? = null,
 ) {
   /**
    * How lists name it: its store once the page is read; until then "Nota de 16/10/2026" from the photos, or the
@@ -18,6 +20,14 @@ data class ReceiptListItem(
   val title: String get() = if (hasPage && storeName != null) storeName else "Nota de " + (photoIssuedAt?.let(::dayOf)
     ?: PhotoRead.keyMonth(chave)?.let { (y, m) -> "%02d/%d".format(m, y) } ?: dayOf(capturedAt))
 }
+
+/**
+ * The members who scanned receipt `r`, for a receipt this person didn't scan themselves (not on this phone, nor on
+ * another of theirs). Members who left aren't in `member`, so their mark goes with them (D104).
+ */
+internal const val SCANNED_BY = """(CASE WHEN r.scannedHere OR EXISTS (SELECT 1 FROM receipt_scan s JOIN member m ON m.userId = s.userId
+      WHERE s.chave = r.chave AND m.you) THEN NULL
+      ELSE (SELECT GROUP_CONCAT(m.name, ' e ') FROM receipt_scan s JOIN member m ON m.userId = s.userId WHERE s.chave = r.chave) END)"""
 
 private fun dayOf(millis: Long) = java.time.Instant.ofEpochMilli(millis).atOffset(java.time.ZoneOffset.ofHours(-3)).toLocalDate()
   .let { "%02d/%02d/%d".format(it.dayOfMonth, it.monthValue, it.year) }
@@ -33,7 +43,8 @@ abstract class ListsDao {
       (SELECT COUNT(*) FROM receipt_line l WHERE l.receipt = r.chave) AS lines,
       r.pageFile IS NOT NULL AS hasPage,
       (SELECT COUNT(*) FROM receipt_photo ph WHERE ph.receipt = r.chave) AS photos,
-      pr.issuedAt AS photoIssuedAt
+      pr.issuedAt AS photoIssuedAt,
+      $SCANNED_BY AS scannedBy
     FROM receipt r LEFT JOIN receipt_parsed rp ON rp.chave = r.chave LEFT JOIN issuer i ON i.cnpj = rp.issuerCnpj
       -- Before the page: the store by the CNPJ the access key carries (digits 7-20), when its receipts are known.
       LEFT JOIN issuer ik ON ik.cnpj = substr(r.chave, 7, 14)
@@ -42,6 +53,9 @@ abstract class ListsDao {
     """,
   )
   abstract fun receipts(): Flow<List<ReceiptListItem>>
+
+  @Query("SELECT $SCANNED_BY FROM receipt r WHERE r.chave = :chave")
+  abstract fun scannedBy(chave: String): Flow<String?>
 
   @Query(
     """

@@ -2292,3 +2292,7 @@ receipt, Ana opens Casa (its own database), the receipt arrives with its page an
 stay, her scan mark goes); Ana leaves as the last member (Casa and its files deleted, the phone back on Pessoal);
 "Apagar minha conta" (login and her caderneta gone). Two bugs found and fixed: the open caderneta was saved
 asynchronously and lost on restart; the last member leaving left the folder's files behind.
+
+**"por Ana" (2026-10-27).** The phone pulls the caderneta's scan marks and its member list (the whole list each sync,
+so someone who left disappears; Room v11). A receipt nobody using this login scanned shows "POR ANA" in Notas and
+"escaneada por Ana" on the receipt; one this person scanned too shows nothing. Checked on the emulator.

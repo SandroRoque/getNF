@@ -67,6 +67,7 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
   val app = LocalContext.current.applicationContext as GetNFApp
   val header by remember(chave) { app.database.catalog().header(chave) }.collectAsStateWithLifecycle(null)
   val lines by remember(chave) { app.database.catalog().lineDetails(chave) }.collectAsStateWithLifecycle(emptyList())
+  val scannedBy by remember(chave) { app.database.lists().scannedBy(chave) }.collectAsStateWithLifecycle(null)
   val receipts by app.receiptStore.receipts.collectAsStateWithLifecycle()
   val receipt = receipts.firstOrNull { it.chave == chave }
   val photos = receipt?.photos?.size ?: 0
@@ -111,6 +112,7 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
           h?.issuedAt?.let { DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.SHORT, java.util.Locale.forLanguageTag("pt-BR")).format(Date(it)) },
           Format.count(lines.size, "item", "itens"),
           photos.takeIf { it > 0 }?.let { Format.count(it, "foto", "fotos") },
+          scannedBy?.let { "escaneada por $it" },
         ).joinToString(" · "))
       }
     }

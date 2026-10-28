@@ -119,6 +119,7 @@ private fun ReceiptList(onOpenReceipt: (String) -> Unit, onOpenPage: (String) ->
         subtitle = if (r.hasPage) Format.date(r.issuedAt ?: r.capturedAt) + " · ${r.lines} itens" + if (r.photos > 0) " · ${r.photos} fotos" else ""
           else listOfNotNull(r.storeName, "toque para buscar a página").joinToString(" · "),
         amount = r.paidCents?.let(Format::brl),
+        trailingMark = r.scannedBy?.let { "por $it" },
         onClick = { if (r.hasPage) onOpenReceipt(r.chave) else budgetCheck.request(onFetch = { onOpenPage(r.chave) }, onLater = {}) },
       )
     }

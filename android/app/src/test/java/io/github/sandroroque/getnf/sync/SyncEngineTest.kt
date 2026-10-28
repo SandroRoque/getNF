@@ -7,6 +7,7 @@ import io.github.sandroroque.getnf.data.ReceiptStore
 import io.github.sandroroque.getnf.data.testDatabase
 import java.io.File
 import java.time.Instant
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -251,11 +252,39 @@ class SyncEngineTest {
     assertTrue(parser.needsParse(r))
   }
 
+  @Test fun aReceiptOnlyAnotherMemberScannedSaysWho() = runTest {
+    // Bia scanned a receipt in the caderneta; this phone (Ana's) only pulls it (D104).
+    server.objects["ledger-1/$chave/page.html"] = html.toByteArray()
+    server.put("receipt", "ledger_id,chave", buildJsonObject {
+      put("chave", chave); put("qr_url", "qr"); put("captured_at", "2026-10-01T10:00:00+00:00"); put("page_path", "ledger-1/$chave/page.html")
+    })
+    server.put("receipt_scan", "ledger_id,chave,user_id", buildJsonObject { put("chave", chave); put("user_id", "bia"); put("scanned_at", "2026-10-01T10:00:00+00:00") })
+    for ((id, name) in listOf("me" to "Ana", "bia" to "Bia")) server.put("ledger_member", "ledger_id,user_id", buildJsonObject {
+      put("user_id", id); put("display_name", name); put("role", "member")
+    })
+    engine.sync(server)
+    val lists = db.lists()
+    assertEquals("Bia", lists.scannedBy(chave).first())
+    assertEquals("Bia", lists.receipts().first().single().scannedBy)
+
+    // Once Bia leaves, her mark goes with her.
+    server.tables.getValue("ledger_member").entries.removeIf { it.value.str("user_id") == "bia" }
+    engine.sync(server)
+    assertNull(lists.scannedBy(chave).first())
+
+    // A receipt Ana scanned too is hers: no mark.
+    server.put("ledger_member", "ledger_id,user_id", buildJsonObject { put("user_id", "bia"); put("display_name", "Bia"); put("role", "member") })
+    engine.sync(server)
+    store.open(chave, "qr")
+    assertNull(lists.scannedBy(chave).first())
+  }
+
   private fun JsonObject.str(name: String) = (this[name] as? JsonPrimitive)?.takeUnless { it is kotlinx.serialization.json.JsonNull }?.content
 
   /** The Data API for the caderneta "ledger-1": rows keyed like the real tables, updated_at stamped on every write. */
   private class FakeServer : SyncRemote {
     override val ledgerId = "ledger-1"
+    override val userId = "me"
     val tables = mutableMapOf<String, MutableMap<String, JsonObject>>()
     val objects = mutableMapOf<String, ByteArray>()
     var writes = 0
@@ -281,8 +310,10 @@ class SyncEngineTest {
     }
 
     fun put(table: String, key: String, row: JsonObject) {
-      val owned = JsonObject(row + ("ledger_id" to JsonPrimitive(ledgerId)))
-      val k = key.split(",").filter { it != "user_id" }.joinToString("|") { owned.str(it)!! }
+      // Like the server's defaults: the caderneta, and who wrote a scan mark.
+      val owned = JsonObject(row + ("ledger_id" to JsonPrimitive(ledgerId)) +
+        (if (table == "receipt_scan" && "user_id" !in row) mapOf("user_id" to JsonPrimitive(userId)) else emptyMap()))
+      val k = key.split(",").joinToString("|") { owned.str(it)!! }
       val old = tables.getOrPut(table) { mutableMapOf() }[k]
       clock = clock.plusMillis(1)
       tables.getValue(table)[k] = JsonObject((old ?: emptyMap()) + owned + ("updated_at" to JsonPrimitive(clock.toString().replace("Z", "+00:00"))))
@@ -309,7 +340,7 @@ class SyncEngineTest {
 
     override fun select(table: String, filters: List<Pair<String, String>>): List<JsonObject> {
       val since = filters.firstOrNull { it.first == "updated_at" }?.second?.removePrefix("gt.")?.let(Instant::parse)
-      val limit = filters.single { it.first == "limit" }.second.toInt()
+      val limit = filters.firstOrNull { it.first == "limit" }?.second?.toInt() ?: Int.MAX_VALUE
       return rows(table).filter { since == null || java.time.OffsetDateTime.parse(it.str("updated_at")).toInstant() > since }
         .sortedBy { it.str("updated_at") }.take(limit)
     }

@@ -21,8 +21,20 @@ import androidx.room.Update
 @Entity(tableName = "sync_parked", primaryKeys = ["tableName", "rowKey"])
 data class SyncParkedRow(val tableName: String, val rowKey: String, val payload: String, val error: String, val at: Long)
 
+/** Who scanned a receipt (D104), pulled from the caderneta; a receipt can have several scanners. */
+@Entity(tableName = "receipt_scan", primaryKeys = ["chave", "userId"])
+data class ReceiptScanRow(val chave: String, val userId: String)
+
+/** The open caderneta's members as they last synced, for naming who scanned what ("por Ana", D104). */
+@Entity(tableName = "member")
+data class MemberRow(@androidx.room.PrimaryKey val userId: String, val name: String, val you: Boolean)
+
 @Dao
 abstract class SyncDao {
+  @Insert(onConflict = OnConflictStrategy.IGNORE) abstract suspend fun putScans(rows: List<ReceiptScanRow>)
+  @Query("DELETE FROM member") abstract suspend fun clearMembers()
+  @Insert abstract suspend fun putMembers(rows: List<MemberRow>)
+
   @Query("SELECT * FROM sync_parked WHERE tableName = :table") abstract suspend fun parked(table: String): List<SyncParkedRow>
   @Query("SELECT * FROM sync_parked ORDER BY at DESC") abstract suspend fun parked(): List<SyncParkedRow>
   @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun park(row: SyncParkedRow)

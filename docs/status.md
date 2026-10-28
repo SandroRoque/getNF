@@ -31,7 +31,7 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 - **App (`android/`):** four tabs (D81): **Início** (this month), **Gastos** (period › category › product › purchase ›
   receipt, with Lojas as a second lens), **Para você** (every pending decision as a card), **Catálogo** (Produtos,
   Categorias, Lojas, Notas; all editing starts here), with scan in the middle of the bar and Ajustes behind the account
-  icon on Início. The "Calmo" look in light and dark, Portuguese throughout. Room database (v10), export/restore to one
+  icon on Início. The "Calmo" look in light and dark, Portuguese throughout. Room database (v11), export/restore to one
   zip in Ajustes. Works without an account; with one it syncs the open caderneta (`sync/SyncEngine`).
 - **Capture (D82–D95, D97):** planned live from OCR of the print: the receipt is assembled from its rows as the camera
   moves, only frames that add rows are saved, and a finished capture keeps the fewest photos that read it. Changes go
@@ -68,8 +68,7 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 
 ## Open items
 
-- **Cadernetas, not built yet:** the "por Ana" mark on receipts another member scanned (scan marks are on the server,
-  not pulled yet); syncing cadernetas other than the open one in the background; cleaning buyer data from pages already
+- **Cadernetas, not built yet:** syncing cadernetas other than the open one in the background; cleaning buyer data from pages already
   online (new pages are clean); a screen for the setup history (`ledger_event`).
 - **Photos (D103):** turning the opt-in off should delete what was sent; abandoned captures aren't kept for opted-in
   users; the photos uploaded before D103 stay until the user decides. How long the phone keeps its own copies is open.
