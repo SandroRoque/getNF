@@ -46,7 +46,7 @@ work; look at them before editing and don't discard them. Don't deploy or change
 
 ## Follow-up (2026-10-28): link to the project's site
 
-Already applied once (roqlab `a682d81`). Paste this part into a new session in roqlab.
+The handoff above was applied in roqlab `a682d81`. This part is new: paste it into a session in roqlab.
 
 ---
 
