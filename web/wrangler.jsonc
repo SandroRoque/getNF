@@ -1,0 +1,15 @@
+// The project's site (D105): web/dist/ served by a static Cloudflare Worker at caderneta.roqlab.com.br, like the
+// roqlab portfolio. Build first (tools/build-web.py), then from web/: npx wrangler@4.150.0 deploy
+{
+  "$schema": "https://unpkg.com/wrangler@4.150.0/config-schema.json",
+  "name": "caderneta",
+  "compatibility_date": "2026-10-28",
+  "assets": {
+    "directory": "./dist"
+  },
+  "routes": [
+    { "pattern": "caderneta.roqlab.com.br", "custom_domain": true }
+  ],
+  "workers_dev": false,
+  "preview_urls": false
+}

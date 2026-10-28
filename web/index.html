@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>%APP% · notas fiscais, gastos e inflação pessoal</title>
+  <meta name="description" content="Um app Android que lê o QR Code da NFC-e e transforma cada item em histórico: quanto você gasta, em quê, onde, e quanto os preços que você paga subiram.">
+  <link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+<main class="wide">
+  <header class="top">
+    <a class="brand" href="/">%APP%</a>
+    <nav><a href="/privacidade/">Privacidade</a><a href="https://roqlab.com.br">roqlab</a></nav>
+  </header>
+
+  <section class="hero">
+    <p class="eyebrow">Em desenvolvimento · Santa Catarina</p>
+    <h1>Da nota fiscal no papel ao preço de cada coisa que você compra.</h1>
+    <p class="lead">Um app Android que lê o QR Code da NFC-e, busca a nota na SEFAZ e transforma cada item em
+      histórico: quanto você gasta, em quê, onde, e quanto os preços que você paga subiram. Para uma pessoa ou para
+      a casa toda.</p>
+    <span class="badge">Em breve no Google Play</span>
+  </section>
+
+  <div class="shots">
+    <figure>
+      <picture><source srcset="/assets/inicio-dark.webp" media="(prefers-color-scheme: dark)">
+        <img src="/assets/inicio-light.webp" width="540" height="1200" alt="Tela inicial com os gastos de outubro por categoria e a inflação pessoal do mês."></picture>
+      <figcaption>O mês, por categoria.</figcaption>
+    </figure>
+    <figure>
+      <picture><source srcset="/assets/ipci-dark.webp" media="(prefers-color-scheme: dark)">
+        <img src="/assets/ipci-light.webp" width="540" height="1200" alt="Inflação pessoal com o gráfico do índice e a variação de cada mês." loading="lazy"></picture>
+      <figcaption>Sua inflação, não a média.</figcaption>
+    </figure>
+    <figure>
+      <picture><source srcset="/assets/produto-dark.webp" media="(prefers-color-scheme: dark)">
+        <img src="/assets/produto-light.webp" width="540" height="1200" alt="Histórico de preço de um café por quilo, com uma linha por loja." loading="lazy"></picture>
+      <figcaption>O preço de cada produto, loja a loja.</figcaption>
+    </figure>
+  </div>
+  <p class="small">Interface real, dados fictícios.</p>
+
+  <section class="features">
+    <div><span class="index">01</span><h3>A captura se planeja sozinha</h3>
+      <p>Enquanto a câmera passa pela nota, o app lê as linhas impressas e guarda só as fotos que acrescentam algo.</p></div>
+    <div><span class="index">02</span><h3>Funciona sem servidor</h3>
+      <p>A página da SEFAZ é lida no próprio celular, e as fotos ficam nele. Com uma conta, a caderneta sincroniza e
+        pode ser dividida com a família.</p></div>
+    <div><span class="index">03</span><h3>Inflação pessoal honesta</h3>
+      <p>Cada produto é comparado com o próprio preço anterior. Trocar de marca muda o gasto, não a inflação; mês com
+        poucos dados não tem leitura.</p></div>
+  </section>
+
+  <section class="block">
+    <h2>Seus dados</h2>
+    <ul>
+      <li>Sem conta, tudo fica só no seu celular.</li>
+      <li>O CPF e o nome do comprador são removidos das notas antes de serem guardadas.</li>
+      <li>Sem anúncios. Nenhum dado é vendido.</li>
+    </ul>
+    <p><a href="/privacidade/">Política de privacidade</a> · <a href="/apagar-conta/">Apagar sua conta</a></p>
+  </section>
+
+  <footer>
+    <span>%APP% é um projeto do <a href="https://roqlab.com.br">roqlab</a>. Só lê notas de Santa Catarina por enquanto.</span>
+    <a href="mailto:%CONTACT%">%CONTACT%</a>
+  </footer>
+</main>
+</body>
+</html>

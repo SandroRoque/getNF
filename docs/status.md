@@ -70,8 +70,8 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
    caderneta, screenshots ([screenshots/](screenshots/)) and the brief for the roqlab entry
    ([portfolio-brief.md](portfolio-brief.md)). Still being discussed.
    Drafts of the privacy policy ([privacy-policy.md](privacy-policy.md)) and Play's Data safety answers
-   ([play-data-safety.md](play-data-safety.md)); before publishing: hosting the account deletion page (`web/`) and the
-   privacy policy, with a contact e-mail, the legal read.
+   ([play-data-safety.md](play-data-safety.md)); before publishing: deploying the site (`web/`, caderneta.roqlab.com.br:
+   landing page, privacy policy, account deletion) with a contact e-mail, the legal read.
 3. **Cadernetas with a second real person:** only checked with a test user played through the API on the emulator.
    The first real member (a second phone) will be the first live test of invites, claims and "por".
 

@@ -36,3 +36,35 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .note { background: var(--note); border-radius: 10px; padding: .75rem .9rem; }
 #estado { min-height: 1.5rem; }
 #estado.erro { color: var(--danger); }
+
+/* Site pages (D105): the landing page and the privacy policy. */
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: 2.5rem; }
+.brand { font-family: Georgia, "Times New Roman", serif; font-size: 1.3rem; color: var(--ink); text-decoration: none; }
+.top nav a { color: var(--muted); text-decoration: none; margin-left: 1rem; font-size: .95rem; }
+.top nav a:hover { color: var(--accent); }
+main.wide { max-width: 64rem; }
+.hero { max-width: 40rem; }
+.hero h1 { font-size: clamp(2rem, 5vw, 3rem); }
+.lead { font-size: 1.15rem; color: var(--muted); }
+.badge { display: inline-block; margin-top: .6rem; padding: .45rem .9rem; border: 1px solid var(--line); border-radius: 999px; font-size: .9rem; color: var(--muted); }
+.shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 2.5rem 0; }
+.shots figure { margin: 0; }
+.shots img { width: 100%; height: auto; display: block; border-radius: 22px; border: 1px solid var(--line); background: var(--surface); }
+.shots figcaption { font-size: .85rem; color: var(--muted); margin-top: .5rem; }
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+.features h3 { font-size: 1rem; margin: 0 0 .4rem; }
+.features p { margin: 0; color: var(--muted); font-size: .95rem; }
+.index { color: var(--accent); font-size: .8rem; letter-spacing: .08em; }
+section.block { border-top: 1px solid var(--line); padding-top: 1.5rem; margin-top: 2.5rem; }
+section.block ul { padding-left: 1.1rem; }
+footer { border-top: 1px solid var(--line); margin-top: 3rem; padding-top: 1rem; font-size: .9rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; }
+footer a { color: var(--muted); }
+.policy h1 { margin-top: 0; }
+.policy h2 { margin-top: 2rem; }
+.policy h3 { margin-top: 1.4rem; font-size: 1rem; }
+.policy li { margin: .3rem 0; }
+@media (max-width: 720px) {
+  .shots { grid-template-columns: repeat(3, 70%); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: .5rem; }
+  .shots figure { scroll-snap-align: start; }
+  .features { grid-template-columns: 1fr; }
+}

@@ -2383,3 +2383,11 @@ the next sign-in (Ajustes says so); deleting the account clears it, since that r
 photos uploaded before D103 carry the user as `created_by`, so the same switch takes them back. Checked against the
 local Supabase (Ana and Bia each send a photo of one receipt; Ana's withdrawal removes only hers, rows and files) and
 on the emulator.
+
+**The project's site: caderneta.roqlab.com.br (2026-10-28).** The deletion page and the privacy policy need a home,
+and the project a page of its own. Chosen by the user: a roqlab subdomain named after the working name (a redirect
+fixes it if the name changes), with a short landing page besides what Play needs, and their Gmail as the public
+contact for now. `web/` holds it: the landing page (the D105 brief's copy, three demo screenshots that follow the
+system's light or dark mode), `/privacidade/` built from `docs/privacy-policy.md` so the policy has one source, and
+`/apagar-conta/`. A static Cloudflare Worker serves it with a custom domain, as roqlab does; `_headers` adds what a
+page can't set. The site says "Caderneta"; the app's launcher still says getNF until the name is settled.

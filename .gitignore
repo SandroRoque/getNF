@@ -21,3 +21,4 @@ upload-key.properties
 
 # Built web pages carry the project URL and key (tools/build-web.py).
 /web/dist/
+/web/.wrangler/
