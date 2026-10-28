@@ -138,8 +138,9 @@ abstract class ReceiptDatabase : RoomDatabase() {
     private const val REUPLOAD = "UPDATE `receipt_photo` SET `uploaded` = 0"
     const val NAME = "getnf.db"
     const val VERSION = 10
-    fun open(context: Context): ReceiptDatabase =
-      Room.databaseBuilder(context, ReceiptDatabase::class.java, NAME).addMigrations(MIGRATION_3_4).build()
+    /** [name]: each caderneta has its own database on the phone (D104, [LocalFiles]). */
+    fun open(context: Context, name: String = NAME): ReceiptDatabase =
+      Room.databaseBuilder(context, ReceiptDatabase::class.java, name).addMigrations(MIGRATION_3_4).build()
 
     /**
      * Supabase replaces PocketBase (D70): everything goes up again, to the new server. Sync columns; receipts and

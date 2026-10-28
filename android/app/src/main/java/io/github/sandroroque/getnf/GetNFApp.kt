@@ -20,12 +20,15 @@ import kotlinx.coroutines.launch
 
 /** App-wide singletons. Small enough that a DI framework isn't worth it yet. */
 class GetNFApp : Application() {
-  val database by lazy { ReceiptDatabase.open(this) }
-  val receiptStore by lazy { ReceiptStore(File(filesDir, "receipts"), database) }
-  val backup by lazy { BackupService(this, database, File(filesDir, "receipts")) }
-  val receiptParser by lazy { ReceiptParser(database, File(filesDir, "receipts")) }
+  /** The open caderneta's files (D104); another caderneta opens with a restart. */
+  val localFiles by lazy { accountSettings.localFiles() }
+  val receiptsDir by lazy { File(filesDir, localFiles.receipts) }
+  val database by lazy { ReceiptDatabase.open(this, localFiles.database) }
+  val receiptStore by lazy { ReceiptStore(receiptsDir, database) }
+  val backup by lazy { BackupService(this, database, receiptsDir, getDatabasePath(localFiles.database)) }
+  val receiptParser by lazy { ReceiptParser(database, receiptsDir) }
   private val photoOcr by lazy { PhotoOcr(this) }
-  val photoDiscounts by lazy { PhotoDiscountReader(database, File(filesDir, "receipts")) { photoOcr.read(it) } }
+  val photoDiscounts by lazy { PhotoDiscountReader(database, receiptsDir) { photoOcr.read(it) } }
   val captureSessions by lazy { CaptureSessionStore(File(filesDir, "capture-sessions")) }
   val accountSettings by lazy { AccountSettings(this) }
   val devSettings by lazy { io.github.sandroroque.getnf.data.DevSettings(this) }
@@ -42,7 +45,7 @@ class GetNFApp : Application() {
     // RestartActivity's process only relaunches the app: it must not swap a restore or open the database.
     if (processName().endsWith(RestartActivity.PROCESS_SUFFIX)) return
     // A restore staged by Settings is swapped in before anything opens the database (D47).
-    val restore = PendingRestore(filesDir, getDatabasePath(ReceiptDatabase.NAME))
+    val restore = PendingRestore(filesDir, getDatabasePath(localFiles.database), receiptsDir)
     // A failure leaves it staged: the next start finishes it (each step skips what's done) instead of crash-looping.
     runCatching { if (restore.applyIfReady()) android.util.Log.i("Backup", "restored a backup") }
       .onFailure { android.util.Log.e("Backup", "restore swap failed; will retry on the next start", it) }

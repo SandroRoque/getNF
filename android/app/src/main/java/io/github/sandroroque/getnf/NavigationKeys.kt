@@ -27,6 +27,9 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object Settings : NavKey
 
+/** One caderneta in Ajustes (D104). */
+@Serializable data class LedgerDetail(val ledgerId: String) : NavKey
+
 @Serializable data class ProductDetail(val productId: String) : NavKey
 
 /** The personal price index (stage 7), for everything or a category subtree. */

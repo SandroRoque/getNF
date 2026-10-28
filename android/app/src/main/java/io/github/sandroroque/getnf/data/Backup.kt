@@ -122,7 +122,7 @@ object BackupArchive {
  * (D47). Every step is skipped when already done, so a start interrupted halfway finishes the swap on the next one.
  * The replaced data stays in `restore/previous` until [cleanUp], after the restored database opened.
  */
-class PendingRestore(private val filesDir: File, private val database: File) {
+class PendingRestore(filesDir: File, private val database: File, private val receipts: File = File(filesDir, "receipts")) {
   private val root = File(filesDir, "restore")
   val staged = File(root, "staged")
   private val ready = File(root, "READY")
@@ -133,7 +133,6 @@ class PendingRestore(private val filesDir: File, private val database: File) {
   /** Returns true when a restore was applied. */
   fun applyIfReady(): Boolean {
     if (!ready.isFile) return false
-    val receipts = File(filesDir, "receipts")
     previous.mkdirs()
     // Current data out of the way. Once previous holds it, never again: by then the live paths hold restored data.
     if (!File(previous, "getnf.db").exists() && !File(previous, "getnf.db.none").exists()) {

@@ -177,6 +177,33 @@ class ReceiptStore(
   }
 
   /**
+   * A receipt copied from another caderneta on this phone (D104): its page, photos, masks and their OCR, as a scan of
+   * this phone's, to upload here. Returns false if this caderneta already has it (its photos are then added).
+   */
+  suspend fun importCopy(source: Receipt, sourceDir: File): Boolean = io { mutex.withLock {
+    val old = read(source.chave)
+    val target = dir(source.chave).apply { mkdirs() }
+    val newPhotos = source.photos.filter { old == null || it !in old.photos }
+    val files = sourceDir.listFiles().orEmpty().filter { f ->
+      f.isFile && (f.name == source.pageFile && old?.pageFile == null || newPhotos.any { f.name.startsWith(it) } ||
+        source.captureSegments.any { it.photo in newPhotos && it.mask == f.name })
+    }
+    for (f in files) f.copyTo(File(target, f.name), overwrite = true)
+    val base = old ?: source.copy(photos = emptyList(), uploadedPhotos = emptyList(), version = 0, uploadedVersion = null,
+      remoteId = null, uploadError = null, captureSessions = emptyList(), captureSegments = emptyList())
+    val merged = base.copy(
+      pageUrl = base.pageUrl ?: source.pageUrl, pageFile = base.pageFile ?: source.pageFile,
+      pageFetchedAt = base.pageFetchedAt ?: source.pageFetchedAt, version = base.version + 1, scannedHere = true,
+    )
+    dao.save(merged.row(), newPhotos.mapIndexed { i, name ->
+      PhotoRow(source.chave, name, (old?.photos?.size ?: 0) + i, uploaded = false,
+        segment = source.captureSegments.find { it.photo == name }?.let { json.encodeToString(it) })
+    })
+    publish()
+    old == null
+  } }
+
+  /**
    * Creates a receipt that only the server had (D46), with its already-downloaded [photos] pending for receipt_photos.
    * The receipt itself counts as uploaded. A receipt the phone already has is left alone.
    */

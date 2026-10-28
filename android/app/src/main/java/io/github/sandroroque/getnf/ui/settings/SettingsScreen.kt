@@ -47,14 +47,19 @@ import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onDone: () -> Unit) {
+fun SettingsScreen(onDone: () -> Unit, onOpenLedger: (String) -> Unit = {}) {
   val app = LocalContext.current.applicationContext as GetNFApp
+  var signedIn by remember { mutableStateOf(app.accountSettings.account() != null) }
   Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp)) {
       io.github.sandroroque.getnf.ui.calmo.BackHeader("Voltar", onDone)
       io.github.sandroroque.getnf.ui.calmo.ScreenTitle("Ajustes")
-      AccountSection(app, onDone)
+      AccountSection(app, onDone) { signedIn = it }
       HorizontalDivider()
+      if (signedIn) {
+        CadernetasSection(app, onOpenLedger)
+        HorizontalDivider()
+      }
       HealthSection(app)
       HorizontalDivider()
       BackupSection(app)
@@ -100,7 +105,7 @@ private fun DeveloperSection(app: GetNFApp) {
  * and publishable key come with the build; they can be changed here (say, to a local Supabase for development).
  */
 @Composable
-private fun AccountSection(app: GetNFApp, onDone: () -> Unit) {
+private fun AccountSection(app: GetNFApp, onDone: () -> Unit, onSignedIn: (Boolean) -> Unit) {
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
   val initial = remember { app.accountSettings.project() }
@@ -110,6 +115,9 @@ private fun AccountSection(app: GetNFApp, onDone: () -> Unit) {
   var email by remember { mutableStateOf(account?.email ?: "") }
   var password by remember { mutableStateOf("") }
   var showProject by remember { mutableStateOf(!initial.isComplete) }
+  var creating by remember { mutableStateOf(false) }
+  var name by remember { mutableStateOf("") }
+  var deleting by remember { mutableStateOf<List<String>?>(null) }
   var status by remember { mutableStateOf<String?>(null) }
   var busy by remember { mutableStateOf(false) }
 
@@ -119,34 +127,53 @@ private fun AccountSection(app: GetNFApp, onDone: () -> Unit) {
     Text("Conectado como ${current.email}. As notas e o catálogo sincronizam com o servidor.")
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
       Button(onClick = { SyncWorker.enqueue(context); onDone() }) { Text("Sincronizar agora") }
-      OutlinedButton(onClick = { app.accountSettings.signOut(); account = null; status = "Desconectado. Nada foi apagado do celular." }) { Text("Sair") }
+      OutlinedButton(onClick = { app.accountSettings.signOut(); account = null; onSignedIn(false); status = "Desconectado. Nada foi apagado do celular." }) { Text("Sair") }
     }
+    TextButton(enabled = !busy, onClick = {
+      busy = true
+      scope.launch {
+        runCatching { io.github.sandroroque.getnf.sync.LedgerService(app.accountSettings).toHandOver() }
+          .onSuccess { deleting = it }.onFailure { status = "Não deu certo: ${it.message}" }
+        busy = false
+      }
+    }) { Text("Apagar minha conta") }
   } else {
-    Text("Sem conta, tudo fica só neste celular.", style = MaterialTheme.typography.bodySmall)
+    Text("Sem conta, tudo fica só neste celular. Com uma, você pode dividir uma caderneta com outras pessoas.", style = MaterialTheme.typography.bodySmall)
+    if (creating) OutlinedTextField(name, { name = it }, label = { Text("Seu nome (como os outros vão te ver)") }, singleLine = true,
+      modifier = Modifier.fillMaxWidth())
     OutlinedTextField(email, { email = it }, label = { Text("E-mail") }, singleLine = true,
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
     OutlinedTextField(password, { password = it }, label = { Text("Senha") }, singleLine = true,
       visualTransformation = PasswordVisualTransformation(),
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
-    Button(enabled = !busy && email.isNotBlank() && password.isNotEmpty(), onClick = {
-      busy = true; status = "Entrando…"
-      scope.launch {
-        val project = ProjectConfig(url, key)
-        status = withContext(Dispatchers.IO) {
-          runCatching { SupabaseClient(project.url.trim(), project.key.trim()).signIn(email.trim(), password) }
-        }.fold(
-          { session ->
-            app.accountSettings.setProject(project)
-            app.accountSettings.signedIn(session)
-            account = app.accountSettings.account(); password = ""
-            SyncWorker.enqueue(context)
-            "Conectado ✓ Sincronizando…"
-          },
-          { "Não deu certo: ${it.message}" },
-        )
-        busy = false
-      }
-    }) { Text("Entrar") }
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+      Button(enabled = !busy && email.isNotBlank() && password.isNotEmpty() && (!creating || name.isNotBlank()), onClick = {
+        busy = true; status = if (creating) "Criando a conta…" else "Entrando…"
+        scope.launch {
+          val project = ProjectConfig(url, key)
+          status = withContext(Dispatchers.IO) {
+            runCatching {
+              val client = SupabaseClient(project.url.trim(), project.key.trim())
+              if (creating) client.signUp(email.trim(), password, name.trim()) else client.signIn(email.trim(), password)
+            }
+          }.fold(
+            { session ->
+              if (session == null) "Conta criada. Confirme pelo link no seu e-mail e depois entre aqui."
+              else {
+                app.accountSettings.setProject(project)
+                app.accountSettings.signedIn(session)
+                account = app.accountSettings.account(); password = ""; onSignedIn(true)
+                SyncWorker.enqueue(context)
+                "Conectado ✓ Sincronizando…"
+              }
+            },
+            { "Não deu certo: ${it.message}" },
+          )
+          busy = false
+        }
+      }) { Text(if (creating) "Criar conta" else "Entrar") }
+      TextButton(onClick = { creating = !creating }) { Text(if (creating) "Já tenho conta" else "Criar conta") }
+    }
   }
   TextButton(onClick = { showProject = !showProject }) { Text(if (showProject) "Ocultar servidor" else "Servidor…") }
   if (showProject) {
@@ -159,6 +186,34 @@ private fun AccountSection(app: GetNFApp, onDone: () -> Unit) {
     }) { Text("Salvar servidor") }
   }
   status?.let { Text(it) }
+
+  deleting?.let { blocked ->
+    AlertDialog(
+      onDismissRequest = { deleting = null },
+      title = { Text(if (blocked.isEmpty()) "Apagar sua conta?" else "Antes, passe suas cadernetas") },
+      text = {
+        Text(
+          if (blocked.isNotEmpty()) "Você é a única pessoa responsável por ${blocked.joinToString(", ")}, que têm outras pessoas. " +
+            "Torne alguém responsável (Ajustes › Cadernetas) e volte aqui."
+          else "Sua conta sai do servidor, e você sai de todas as cadernetas: as fotos que você enviou saem com você; as notas e o " +
+            "catálogo ficam com quem continua. Cadernetas só suas são apagadas do servidor.\n\nNeste celular nada é apagado. " +
+            "Se quiser guardar tudo num arquivo, use \"Exportar\" em Cópia de segurança antes.",
+        )
+      },
+      confirmButton = {
+        if (blocked.isEmpty()) TextButton(onClick = {
+          deleting = null; busy = true; status = "Apagando a conta…"
+          scope.launch {
+            runCatching { io.github.sandroroque.getnf.sync.LedgerService(app.accountSettings).deleteMe() }
+              .onSuccess { app.accountSettings.signOut(); account = null; onSignedIn(false); status = "Conta apagada. O que está neste celular continua aqui." }
+              .onFailure { status = "Não deu certo: ${it.message}" }
+            busy = false
+          }
+        }) { Text("Apagar a conta") }
+      },
+      dismissButton = { TextButton(onClick = { deleting = null }) { Text(if (blocked.isEmpty()) "Cancelar" else "Entendi") } },
+    )
+  }
 }
 
 /** The LLM worker's last health report (D65, D69, stage 8), in plain words. */

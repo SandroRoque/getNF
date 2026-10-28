@@ -5,7 +5,9 @@ import java.io.IOException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -36,6 +38,17 @@ class SupabaseClient(val url: String, private val key: String, private val http:
 
   fun signIn(email: String, password: String): SupabaseSession =
     session(auth("password", buildJsonObject { put("email", email); put("password", password) }))
+
+  /**
+   * A new login, with the [name] others in a caderneta will see (D104). Null when the project asks to confirm the
+   * e-mail first: the person signs in after confirming.
+   */
+  fun signUp(email: String, password: String, name: String): SupabaseSession? {
+    val target = base.newBuilder().addPathSegments("auth/v1/signup").build()
+    val body = buildJsonObject { put("email", email); put("password", password); put("data", buildJsonObject { put("name", name) }) }
+    val o = call(Request.Builder().url(target).header("apikey", key).post(body.toString().toRequestBody(JSON)).build()).jsonObject
+    return if (o["access_token"] != null) session(o) else null
+  }
 
   fun refresh(refreshToken: String): SupabaseSession =
     session(auth("refresh_token", buildJsonObject { put("refresh_token", refreshToken) }))
@@ -88,6 +101,33 @@ class SupabaseClient(val url: String, private val key: String, private val http:
   fun upload(session: SupabaseSession, path: String, body: RequestBody) {
     val target = base.newBuilder().addPathSegments("storage/v1/object/$BUCKET").addPathSegments(path).build()
     call(authorized(session, target).header("x-upsert", "true").post(body).build())
+  }
+
+  /** Deletes objects from the bucket; a path that isn't there is skipped. */
+  fun deleteObjects(session: SupabaseSession, paths: List<String>) {
+    for (chunk in paths.chunked(500)) {
+      val target = base.newBuilder().addPathSegments("storage/v1/object/$BUCKET").build()
+      val body = buildJsonObject { put("prefixes", JsonArray(chunk.map(::JsonPrimitive))) }
+      call(authorized(session, target).delete(body.toString().toRequestBody(JSON)).build())
+    }
+  }
+
+  /** Every object under [folder] (`<caderneta>/`), at any depth. */
+  fun listObjects(session: SupabaseSession, folder: String): List<String> {
+    val target = base.newBuilder().addPathSegments("storage/v1/object/list/$BUCKET").build()
+    val found = mutableListOf<String>()
+    var offset = 0
+    while (true) {
+      val body = buildJsonObject { put("prefix", folder); put("limit", 1000); put("offset", offset) }
+      val page = call(authorized(session, target).post(body.toString().toRequestBody(JSON)).build()).jsonArray.map { it.jsonObject }
+      for (o in page) {
+        val name = o["name"]!!.jsonPrimitive.content
+        // Folders come back without an id.
+        if (o["id"] is JsonNull || o["id"] == null) found += listObjects(session, "$folder$name/") else found += "$folder$name"
+      }
+      if (page.size < 1000) return found
+      offset += page.size
+    }
   }
 
   fun upload(session: SupabaseSession, path: String, file: File, type: String) = upload(session, path, file.asRequestBody(type.toMediaType()))

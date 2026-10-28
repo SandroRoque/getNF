@@ -19,7 +19,7 @@ class BackupService(
   filesDir: File = context.filesDir,
 ) {
   private val json = Json { ignoreUnknownKeys = true }
-  val pending = PendingRestore(filesDir, dbFile)
+  val pending = PendingRestore(filesDir, dbFile, receiptsRoot)
 
   /** Database, photos, masks and pages, consistent with each other. Not server credentials or open captures. */
   suspend fun export(target: Uri, progress: (Int, Int) -> Unit): BackupManifest = withContext(Dispatchers.IO) {

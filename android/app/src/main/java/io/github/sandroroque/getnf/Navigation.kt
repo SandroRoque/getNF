@@ -119,7 +119,8 @@ fun MainNavigation() {
           ProductScreen(key.productId, onOpenProduct = { back(); open(ProductDetail(it)) }, onBack = ::back,
             onOpenReceipt = { open(ReceiptDetail(it)) })
         }
-        entry<Settings> { SettingsScreen(onDone = ::back) }
+        entry<Settings> { SettingsScreen(onDone = ::back, onOpenLedger = { open(LedgerDetail(it)) }) }
+        entry<LedgerDetail> { key -> io.github.sandroroque.getnf.ui.settings.CadernetaScreen(key.ledgerId, onBack = ::back) }
       },
     )
   }

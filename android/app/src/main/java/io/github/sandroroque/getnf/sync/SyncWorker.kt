@@ -34,9 +34,13 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     val client = SupabaseClient(project.url, project.key)
     try {
       val session = client.refresh(account.refreshToken).also { app.accountSettings.signedIn(it) }
-      val ledger = Ledgers.pick(Ledgers.mine(client, session), app.accountSettings.ledgerId(), session.userId)
-        ?: return@withContext Result.success()
-      app.accountSettings.openLedger(ledger)
+      val open = app.accountSettings.ledgerId()
+      val mine = Ledgers.mine(client, session)
+      // The phone's files belong to the open caderneta: never push them into another (D104). One the person no longer
+      // belongs to (they left, or another person signed in) waits for them to open another in Ajustes.
+      val ledger = if (open == null) Ledgers.pick(mine, null, session.userId)?.also { app.accountSettings.openLedger(it) }
+        else open.takeIf { mine.any { m -> m.id == open } }
+      if (ledger == null) return@withContext Result.success()
       val remote = SupabaseRemote(client, session, ledger)
       val report = app.syncEngine.sync(remote)
       report.errors.forEach { Log.w(TAG, it) }

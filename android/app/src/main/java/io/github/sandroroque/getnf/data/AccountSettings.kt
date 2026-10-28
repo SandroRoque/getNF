@@ -10,6 +10,17 @@ data class ProjectConfig(val url: String, val key: String) {
   val isComplete: Boolean get() = url.isNotBlank() && key.isNotBlank()
 }
 
+/**
+ * Where a caderneta's data lives on this phone (D104): its own database and receipts folder, so cadernetas never mix
+ * and joining one starts empty. The phone's original files belong to the first caderneta it opened.
+ */
+data class LocalFiles(val database: String, val receipts: String) {
+  companion object {
+    fun of(open: String?, legacy: String?): LocalFiles =
+      if (open == null || open == legacy) LocalFiles(ReceiptDatabase.NAME, "receipts") else LocalFiles("getnf-$open.db", "receipts-$open")
+  }
+}
+
 /** The signed-in account: kept is the refresh token, never the password (D70). */
 data class Account(val userId: String, val email: String, val refreshToken: String)
 
@@ -24,7 +35,7 @@ class AccountSettings(context: Context) {
 
   /** Another project means another account: signs out. */
   fun setProject(config: ProjectConfig) = prefs.edit {
-    if (config != project()) { remove(USER); remove(EMAIL); remove(REFRESH); remove(LEDGER) }
+    if (config != project()) { remove(USER); remove(EMAIL); remove(REFRESH) }
     putString(URL, config.url.trim().trimEnd('/')); putString(KEY, config.key.trim())
   }
 
@@ -38,12 +49,25 @@ class AccountSettings(context: Context) {
     putString(USER, session.userId); putString(EMAIL, session.email); putString(REFRESH, session.refreshToken)
   }
 
-  fun signOut() = prefs.edit { remove(USER); remove(EMAIL); remove(REFRESH); remove(LEDGER) }
+  /** Signing out leaves the open caderneta's data on the phone, and open: nothing is deleted. */
+  fun signOut() = prefs.edit { remove(USER); remove(EMAIL); remove(REFRESH) }
 
   /** The caderneta this phone has open (D104); null until the first sync picks one. */
   fun ledgerId(): String? = prefs.getString(LEDGER, null)
 
-  fun openLedger(id: String) = prefs.edit { putString(LEDGER, id) }
+  /**
+   * Opens [id]; takes effect on the next start (the app restarts). The first caderneta ever opened takes the data the
+   * phone already had (D104): it keeps the original files.
+   */
+  fun openLedger(id: String) = prefs.edit {
+    putString(LEDGER, id)
+    if (prefs.getString(LEGACY, null) == null) putString(LEGACY, id)
+  }
+
+  /** Where the open caderneta's data lives on this phone. */
+  fun localFiles(): LocalFiles = filesFor(ledgerId())
+
+  fun filesFor(ledger: String?): LocalFiles = LocalFiles.of(ledger, prefs.getString(LEGACY, null))
 
   private companion object {
     const val URL = "url"
@@ -52,5 +76,6 @@ class AccountSettings(context: Context) {
     const val EMAIL = "email"
     const val REFRESH = "refresh"
     const val LEDGER = "ledger"
+    const val LEGACY = "legacy_ledger"
   }
 }
