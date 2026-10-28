@@ -2391,3 +2391,8 @@ contact for now. `web/` holds it: the landing page (the D105 brief's copy, three
 system's light or dark mode), `/privacidade/` built from `docs/privacy-policy.md` so the policy has one source, and
 `/apagar-conta/`. A static Cloudflare Worker serves it with a custom domain, as roqlab does; `_headers` adds what a
 page can't set. The site says "Caderneta"; the app's launcher still says getNF until the name is settled.
+
+**Live (2026-10-28).** Deployed with the user's go-ahead: https://caderneta.roqlab.com.br, with `/privacidade/` and
+`/apagar-conta/` (the URLs for Play Console). Checked: every page answers, the headers are sent, the deletion page
+carries the online project's publishable key, and the project accepts the site's requests (CORS). The published
+policy is still the draft awaiting the legal read; redeploy after editing `docs/privacy-policy.md`.

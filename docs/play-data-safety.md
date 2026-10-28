@@ -9,10 +9,11 @@ The matching privacy policy is [privacy-policy.md](privacy-policy.md).
 1. ~~Cleartext traffic allowed app-wide~~: done 2026-10-28. Release builds are HTTPS only; debug builds also allow
    plain HTTP to a local Supabase (`10.0.2.2`, `localhost`, `127.0.0.1`).
    ~~Release builds have no server built in~~: done 2026-10-28. The release build carries the online project.
-2. **A web page for account deletion:** built 2026-10-28 (`web/apagar-conta/`, see `web/README.md`); still to be
-   hosted. Its URL goes in "Delete account URL" below and in the policy.
+2. ~~A web page for account deletion~~: live since 2026-10-28 at https://caderneta.roqlab.com.br/apagar-conta/.
+   The privacy policy is at https://caderneta.roqlab.com.br/privacidade/ (Play Console › App content › Privacy
+   policy).
 3. ~~Turning the photo opt-in off should delete what was sent~~: done 2026-10-28 (`sync/PhotoWithdrawal`).
-4. Fill in the policy's contact e-mail and publish it on the web (the roqlab subdomain).
+4. ~~Publish the policy with a contact e-mail~~: done (see item 2).
 5. The LGPD legal read (D104), mainly on data that stays in a shared caderneta after a member deletes their account.
 
 ## Overview questions
@@ -23,7 +24,7 @@ The matching privacy policy is [privacy-policy.md](privacy-policy.md).
 | Is all of the user data collected by your app encrypted in transit? | **Yes** (after item 1) | Supabase and the SDKs use HTTPS. |
 | Do you provide a way for users to request that their data is deleted? | **Yes** | In the app and on the web page (item 2). |
 | Account creation methods | **Username and password** (e-mail and password) | Supabase Auth. The account is optional. |
-| Delete account URL | [the web page from item 2] | |
+| Delete account URL | https://caderneta.roqlab.com.br/apagar-conta/ | |
 | Is your app's data deleted when the account is deleted? | Yes, with the caveat in the policy | Data in a caderneta others remain in stays with the caderneta; backups expire in 14 days. |
 
 Neither "Committed to Play Families Policy" nor "Independent security review" applies.
