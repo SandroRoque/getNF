@@ -72,18 +72,29 @@ fun SettingsScreen(onDone: () -> Unit, onOpenLedger: (String) -> Unit = {}) {
   }
 }
 
-/** Photos for improving the app (D103): off until the user turns it on. */
+/** Photos for improving the app (D103): off until the user turns it on; turning it off takes them back (D105). */
 @Composable
 private fun ContributionSection(app: GetNFApp) {
+  val context = LocalContext.current
   var enabled by remember { mutableStateOf(app.photoContribution.enabled) }
+  var withdrawing by remember { mutableStateOf(app.photoContribution.withdrawPending) }
   io.github.sandroroque.getnf.ui.calmo.SectionLabel("Ajudar a melhorar o app")
   Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
     Column(Modifier.weight(1f)) {
       Text("Enviar fotos das notas que o app não leu bem", style = MaterialTheme.typography.bodyLarge)
       io.github.sandroroque.getnf.ui.calmo.Sub("Só dessas notas, com os dados do cartão e o CPF cobertos.")
     }
-    androidx.compose.material3.Switch(checked = enabled, onCheckedChange = { enabled = it; app.photoContribution.enabled = it })
+    androidx.compose.material3.Switch(checked = enabled, onCheckedChange = {
+      enabled = it
+      app.photoContribution.enabled = it
+      withdrawing = app.photoContribution.withdrawPending
+      if (withdrawing) SyncWorker.enqueue(context)
+    })
   }
+  if (withdrawing) io.github.sandroroque.getnf.ui.calmo.Sub(
+    if (app.accountSettings.account() != null) "As fotos já enviadas serão apagadas do servidor na próxima sincronização."
+    else "As fotos já enviadas serão apagadas do servidor quando você entrar na conta de novo."
+  )
 }
 
 /** Debug builds only (D99). */
@@ -205,7 +216,7 @@ private fun AccountSection(app: GetNFApp, onDone: () -> Unit, onSignedIn: (Boole
           deleting = null; busy = true; status = "Apagando a conta…"
           scope.launch {
             runCatching { io.github.sandroroque.getnf.sync.LedgerService(app.accountSettings).deleteMe() }
-              .onSuccess { app.accountSettings.signOut(); account = null; onSignedIn(false); status = "Conta apagada. O que está neste celular continua aqui." }
+              .onSuccess { app.accountSettings.signOut(); app.photoContribution.withdrawPending = false; account = null; onSignedIn(false); status = "Conta apagada. O que está neste celular continua aqui." }
               .onFailure { status = "Não deu certo: ${it.message}" }
             busy = false
           }

@@ -102,8 +102,8 @@ consentimento e pedir a exclusão.
 - **Apagar a conta:** Ajustes › Conta › Apagar minha conta, ou pela página **[endereço da página de exclusão]**, ou
   por e-mail para **[e-mail de contato]**. Se você for o único responsável por uma caderneta com outros membros, será
   preciso passá-la a outro membro antes.
-- **Envio de fotos:** desligue em Ajustes a qualquer momento. [Ao desligar, as fotos já enviadas são apagadas: a
-  implementar antes da publicação.]
+- **Envio de fotos:** desligue em Ajustes a qualquer momento. Ao desligar, as fotos que você já enviou são apagadas
+  do servidor na sincronização seguinte (ou quando você entrar na conta de novo, se estiver desconectado).
 
 Respondemos pedidos em até 15 dias. Você também pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD).
 

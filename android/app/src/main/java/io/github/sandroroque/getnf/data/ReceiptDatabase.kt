@@ -93,6 +93,10 @@ abstract class ReceiptDao {
   @Query("UPDATE receipt_photo SET uploaded = 1 WHERE receipt = :chave AND localName = :photo")
   abstract suspend fun markPhotoUploaded(chave: String, photo: String)
 
+  /** The photos were taken back from the server (D105): none counts as sent any more. */
+  @Query("UPDATE receipt_photo SET uploaded = 0 WHERE uploaded = 1")
+  abstract suspend fun forgetUploadedPhotos(): Int
+
   /** One receipt with new photos and sessions, all or nothing. */
   @Transaction
   open suspend fun save(receipt: ReceiptRow, photos: List<PhotoRow> = emptyList(), sessions: List<CaptureSessionRow> = emptyList()) {

@@ -128,6 +128,9 @@ class ReceiptStore(
   suspend fun markUploaded(chave: String, version: Long, remoteId: String) =
     update(chave, bump = false) { it.copy(uploadedVersion = version, remoteId = remoteId, uploadError = null) }
 
+  /** After the photos were taken back from the server (D105). Not a local change either. */
+  suspend fun forgetUploadedPhotos() = io { mutex.withLock { dao.forgetUploadedPhotos(); publish() } }
+
   /** Not a local change: doesn't bump [Receipt.version]. */
   suspend fun markPhotoUploaded(chave: String, photo: String) = io {
     mutex.withLock { dao.markPhotoUploaded(chave, photo); publish() }

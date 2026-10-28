@@ -113,4 +113,33 @@ class SupabaseLocalTest {
     // Each scan is marked, once per person.
     assertEquals(setOf(ana.userId, bia.userId), client.select(bia, "receipt_scan", byLedger).map { it["user_id"]!!.jsonPrimitive.content }.toSet())
   }
+
+  @Test fun turningPhotosOffTakesBackYourOwnAndLeavesOthers() = runTest {
+    assumeTrue("set GETNF_SUPABASE_LOCAL to run against a local Supabase", keys != null)
+    val client = SupabaseClient(url, keys!![0])
+    val ana = newUser().let { (e, p) -> client.signIn(e, p) }
+    val bia = newUser().let { (e, p) -> client.signIn(e, p) }
+    val casa = client.rpc(ana, "create_ledger", buildJsonObject { put("name", "Casa") }).jsonPrimitive.content
+    val code = client.rpc(ana, "create_invite", buildJsonObject { put("lid", casa) }).jsonPrimitive.content
+    client.rpc(bia, "join_ledger", buildJsonObject { put("code", code) })
+
+    // Both send a photo of the same receipt (they opted in, D103).
+    for ((who, s) in listOf("ana" to ana, "bia" to bia)) {
+      val p = Phone(tmp.newFolder(who))
+      p.store.open(chave, "qr")
+      p.store.addPhoto(chave, File(p.store.dir(chave), "photo-$who.jpg").apply { writeBytes(byteArrayOf(1, 2, 3)) })
+      repeat(2) { assertEquals(emptyList<String>(), p.engine.sync(SupabaseRemote(client, s, casa)).errors) }
+    }
+    val byLedger = listOf("ledger_id" to "eq.$casa")
+    assertEquals(2, client.select(ana, "receipt_photo", byLedger).size)
+    assertEquals(2, client.listObjects(ana, "$casa/").size)
+
+    // Ana turns it off: her photo goes, rows and file; Bia's stays.
+    assertEquals(1, PhotoWithdrawal.withdraw(client, ana))
+    val left = client.select(bia, "receipt_photo", byLedger)
+    assertEquals(listOf(bia.userId), left.map { it["created_by"]!!.jsonPrimitive.content })
+    assertEquals(listOf(left.single()["object_path"]!!.jsonPrimitive.content), client.listObjects(bia, "$casa/"))
+    // Running it again finds nothing.
+    assertEquals(0, PhotoWithdrawal.withdraw(client, ana))
+  }
 }

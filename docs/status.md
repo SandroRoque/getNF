@@ -71,7 +71,7 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
    ([portfolio-brief.md](portfolio-brief.md)). Still being discussed.
    Drafts of the privacy policy ([privacy-policy.md](privacy-policy.md)) and Play's Data safety answers
    ([play-data-safety.md](play-data-safety.md)); before publishing: hosting the account deletion page (`web/`) and the
-   privacy policy, with a contact e-mail, the photo opt-in deleting what was sent, the legal read.
+   privacy policy, with a contact e-mail, the legal read.
 3. **Cadernetas with a second real person:** only checked with a test user played through the API on the emulator.
    The first real member (a second phone) will be the first live test of invites, claims and "por".
 
@@ -84,8 +84,8 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
   - No screen for a caderneta's setup history (`ledger_event`).
   - Leaving a caderneta (or being removed) leaves its database and receipts folder on the phone; nothing clears them.
   - LGPD: get a legal read before opening cadernetas to people outside the family (D104).
-- **Photos (D103):** turning the opt-in off should delete what was sent; abandoned captures aren't kept for opted-in
-  users; the photos uploaded before D103 stay until the user decides. How long the phone keeps its own copies is open.
+- **Photos (D103):** abandoned captures aren't kept for opted-in users; the photos uploaded before D103 stay until the
+  user turns the opt-in on and off again, which takes them back too (D105). How long the phone keeps its own copies is open.
 - **Discounts from photos:** confirming each value against its photo snippet, and undo back to prorated.
 - **Stage 4 leftovers:** automatic assignments aren't re-run after a category tree change (D69).
 - **Manual-chave fallback** for damaged QR codes (D3/D13): not built.

@@ -11,10 +11,21 @@ import androidx.core.content.edit
 class PhotoContribution(context: Context, private val database: ReceiptDatabase) {
   private val prefs = context.getSharedPreferences("contribution", Context.MODE_PRIVATE)
 
-  /** The setting in Ajustes. */
+  /**
+   * The setting in Ajustes. Turning it off asks the next sync to take back what was sent ([withdrawPending]); turning
+   * it on again before that happens keeps the photos up, since they're allowed again.
+   */
   var enabled: Boolean
     get() = prefs.getBoolean(ENABLED, false)
-    set(value) = prefs.edit { putBoolean(ENABLED, value) }
+    set(value) = prefs.edit {
+      if (value != enabled) putBoolean(WITHDRAW, !value)
+      putBoolean(ENABLED, value)
+    }
+
+  /** Photos already sent wait to be deleted from the server (sync/PhotoWithdrawal), done by the next sync. */
+  var withdrawPending: Boolean
+    get() = prefs.getBoolean(WITHDRAW, false)
+    set(value) = prefs.edit { putBoolean(WITHDRAW, value) }
 
   /** The one time the app offered it after a failure; whatever the answer, it isn't offered again. */
   var asked: Boolean
@@ -31,6 +42,7 @@ class PhotoContribution(context: Context, private val database: ReceiptDatabase)
   companion object {
     private const val ENABLED = "photos"
     private const val ASKED = "asked"
+    private const val WITHDRAW = "withdraw"
 
     /**
      * The app couldn't read a receipt's discounts from its photos: the receipt has a discount and photos, and no line

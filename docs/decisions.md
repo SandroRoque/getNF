@@ -2372,3 +2372,14 @@ the page and `LedgerService.deleteMe` must change together. `tools/build-web.py`
 publishable key (refusing a secret key) into `web/dist/`, gitignored. Checked against the local Supabase in the
 browser: someone alone in their caderneta is deleted with their file; someone who owns a shared one is stopped and
 nothing changes. Hosting is open (the roqlab subdomain).
+
+**Turning photos off takes them back (2026-10-28).** D103 left open what happens to photos already sent when the user
+turns "Enviar fotos" off; the privacy policy promises they're deleted. Turning it off marks a withdrawal as pending,
+and the next sync, before anything else, deletes every photo this person uploaded, in every caderneta and from any of
+their phones (Storage files first, then the `receipt_photo` rows, so a run cut halfway still finds the paths), then
+marks this phone's photos in every caderneta's database as not sent. Photos other members sent stay. Turning it on
+again before the sync cancels the withdrawal; after it, only new failures go up. Signed out, the withdrawal waits for
+the next sign-in (Ajustes says so); deleting the account clears it, since that removes the photos anyway. The
+photos uploaded before D103 carry the user as `created_by`, so the same switch takes them back. Checked against the
+local Supabase (Ana and Bia each send a photo of one receipt; Ana's withdrawal removes only hers, rows and files) and
+on the emulator.

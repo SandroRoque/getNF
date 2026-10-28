@@ -46,5 +46,13 @@ class OtherLedgers(
     }
   }
 
+  /** The other cadernetas' photos no longer count as sent, after they were taken back from the server (D105). */
+  suspend fun forgetUploadedPhotos(mine: List<Ledger>, open: String?) {
+    for (ledger in onPhone(mine, open)) {
+      val database = ReceiptDatabase.open(context, settings.filesFor(ledger).database)
+      try { database.receipts().forgetUploadedPhotos() } finally { database.close() }
+    }
+  }
+
   private companion object { const val TAG = "OtherLedgers" }
 }

@@ -48,6 +48,22 @@ class ReceiptStoreTest {
   }
 
   @Test
+  fun photosTakenBackFromTheServerNoLongerCountAsSent() = runTest {
+    val store = store()
+    store.open(chave, "qr")
+    val photo = store.newPhotoFile(chave).apply { writeBytes(byteArrayOf(1, 2, 3)) }
+    store.addPhoto(chave, photo)
+    store.markPhotoUploaded(chave, photo.name)
+    val version = store.get(chave)!!.version
+    assertEquals(emptyList<String>(), store.get(chave)!!.pendingPhotos)
+
+    store.forgetUploadedPhotos()
+    assertEquals(listOf(photo.name), store.receipts.value.single().pendingPhotos)
+    // Not a change of the receipt: nothing new to push for it.
+    assertEquals(version, store.get(chave)!!.version)
+  }
+
+  @Test
   fun photosAndPageArePersisted() = runTest {
     val store = store()
     store.open(chave, "qr")
