@@ -40,12 +40,15 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
       // belongs to (they left, or another person signed in) waits for them to open another in Ajustes.
       val ledger = if (open == null) Ledgers.pick(mine, null, session.userId)?.also { app.accountSettings.openLedger(it) }
         else open.takeIf { mine.any { m -> m.id == open } }
-      if (ledger == null) return@withContext Result.success()
-      val remote = SupabaseRemote(client, session, ledger)
-      val report = app.syncEngine.sync(remote)
-      report.errors.forEach { Log.w(TAG, it) }
-      // Receipts adopted from the server came with their page: read it on the phone too (D49), and push the result.
-      if (app.receiptParser.parsePending(store.receipts.value) > 0) app.syncEngine.sync(remote)
+      if (ledger != null) {
+        val remote = SupabaseRemote(client, session, ledger)
+        val report = app.syncEngine.sync(remote)
+        report.errors.forEach { Log.w(TAG, it) }
+        // Receipts adopted from the server came with their page: read it on the phone too (D49), and push the result.
+        if (app.receiptParser.parsePending(store.receipts.value) > 0) app.syncEngine.sync(remote)
+      }
+      // Then the other cadernetas this phone holds, each from its own files.
+      OtherLedgers(app, app.accountSettings, app.photoArchiver).sync(client, session, mine, app.accountSettings.ledgerId())
       Result.success()
     } catch (e: IOException) {
       Log.w(TAG, "server unreachable, will retry", e)

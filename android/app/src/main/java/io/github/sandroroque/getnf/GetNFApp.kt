@@ -34,7 +34,9 @@ class GetNFApp : Application() {
   val devSettings by lazy { io.github.sandroroque.getnf.data.DevSettings(this) }
   val catalogEditor by lazy { io.github.sandroroque.getnf.data.CatalogEditor(database) }
   val photoContribution by lazy { io.github.sandroroque.getnf.data.PhotoContribution(this, database) }
-  val syncEngine by lazy { SyncEngine(database, receiptStore, WebpArchiver { io.github.sandroroque.getnf.sync.SensitiveText.blanks(photoOcr.read(it)) }, contribute = photoContribution::wants) }
+  /** Photos' online copies, with what's private blanked (D61, D98). */
+  val photoArchiver by lazy { WebpArchiver { io.github.sandroroque.getnf.sync.SensitiveText.blanks(photoOcr.read(it)) } }
+  val syncEngine by lazy { SyncEngine(database, receiptStore, photoArchiver, contribute = photoContribution::wants) }
   val lookupBudget by lazy {
     val prefs = getSharedPreferences("sefaz", MODE_PRIVATE)
     LookupBudget(load = { prefs.getString("lookups", "") ?: "" }, save = { prefs.edit().putString("lookups", it).apply() })

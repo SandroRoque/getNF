@@ -68,7 +68,7 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 
 ## Open items
 
-- **Cadernetas, not built yet:** syncing cadernetas other than the open one in the background; cleaning buyer data from pages already
+- **Cadernetas, not built yet:** downloading a caderneta joined but never opened on this phone before it's opened; cleaning buyer data from pages already
   online (new pages are clean); a screen for the setup history (`ledger_event`).
 - **Photos (D103):** turning the opt-in off should delete what was sent; abandoned captures aren't kept for opted-in
   users; the photos uploaded before D103 stay until the user decides. How long the phone keeps its own copies is open.

@@ -2296,3 +2296,11 @@ asynchronously and lost on restart; the last member leaving left the folder's fi
 **"por Ana" (2026-10-27).** The phone pulls the caderneta's scan marks and its member list (the whole list each sync,
 so someone who left disappears; Room v11). A receipt nobody using this login scanned shows "POR ANA" in Notas and
 "escaneada por Ana" on the receipt; one this person scanned too shows nothing. Checked on the emulator.
+
+**Other cadernetas in the background (2026-10-27).** After the open caderneta, the sync worker syncs every other
+caderneta this phone has files for and the person still belongs to, each from its own database, opened just for its
+sync, and reads pages that arrived. Receipts copied into another caderneta go up without opening it, and a caderneta
+opened later is already current. One joined but never opened on this phone isn't downloaded until it's opened (no
+pages and catalog for a caderneta the person may never use here). A refusal skips that caderneta; network trouble
+retries the run. Checked on the emulator: with Pessoal open, a receipt Bia added to Casa arrived in Casa's database
+with its page and was read.

@@ -256,8 +256,9 @@ fun CadernetaScreen(ledgerId: String, onBack: () -> Unit) {
 
   if (copying) CopyDialog(others, onDismiss = { copying = false }) { target ->
     copying = false
-    act("Copiadas para ${target.name}. Aparecem lá quando você abrir essa caderneta.") {
+    act("Copiadas para ${target.name}. Sobem para lá na próxima sincronização.") {
       ReceiptCopier(app, app.accountSettings).copy(app.receiptStore, scanned, target.id)
+      io.github.sandroroque.getnf.sync.SyncWorker.enqueue(app)
     }
   }
 
