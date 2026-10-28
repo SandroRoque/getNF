@@ -35,8 +35,13 @@ def env():
 
 
 def db_url(e):
+  """Without the password: a failed pg_dump prints its arguments, and they end up in the journal. See pg_env."""
   ref = urllib.parse.urlparse(e["SUPABASE_URL"]).hostname.split(".")[0]
-  return f"postgresql://postgres:{urllib.parse.quote(e['SUPABASE_DB_PASSWORD'], safe='')}@db.{ref}.supabase.co:5432/postgres?sslmode=require"
+  return f"postgresql://postgres@db.{ref}.supabase.co:5432/postgres?sslmode=require"
+
+
+def pg_env(e):
+  return {**os.environ, "PGPASSWORD": e["SUPABASE_DB_PASSWORD"]}
 
 
 def storage(e, path, body=None):
@@ -71,7 +76,7 @@ def dump(e, out_dir):
   # Tables only, not --schema=public: pg_dump ignores --schema when any --table is given (the first drill caught it).
   subprocess.run(["pg_dump", "--format=custom", "--data-only", "--table=public.*", "--exclude-table=public.taxonomy_*",
                   "--table=auth.users",
-                  "--table=auth.identities", f"--file={target}.part", db_url(e)], check=True)
+                  "--table=auth.identities", f"--file={target}.part", db_url(e)], check=True, env=pg_env(e))
   os.replace(target + ".part", target)
   dumps = sorted(f for f in os.listdir(out_dir) if f.startswith("db-") and f.endswith(".dump"))
   for old in dumps[:-KEEP]:
