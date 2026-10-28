@@ -13,3 +13,8 @@
 
 # Python bytecode
 __pycache__/
+
+# Signing keys: the upload key lives in ~/.config/getnf (tools/make-upload-key.sh), never in the repo.
+*.jks
+*.keystore
+upload-key.properties

@@ -29,6 +29,7 @@ fun isPublishableKey(key: String): Boolean {
 }
 
 var releaseServerProblem: String? = null
+var uploadKeyMissing: String? = null
 
 // Exported schemas are committed: each app version must migrate the previous one (D45).
 room { schemaDirectory("$projectDir/schemas") }
@@ -66,6 +67,26 @@ android {
     val releaseKey = providers.gradleProperty("getnf.releaseSupabaseKey").orNull ?: devEnv.getProperty("SUPABASE_PUBLISHABLE_KEY")
     releaseServerProblem = releaseServerProblem(releaseUrl, releaseKey)
 
+    // Release signing (D105): the Play upload key lives outside the repo, made by tools/make-upload-key.sh. Its
+    // properties file (storeFile, storePassword, keyAlias, keyPassword) is ~/.config/getnf/upload-key.properties,
+    // or -Pgetnf.signingProperties=<path>. Without it, release builds come out unsigned and bundleRelease stops.
+    val signingPath = providers.gradleProperty("getnf.signingProperties").orNull
+      ?: "${System.getProperty("user.home")}/.config/getnf/upload-key.properties"
+    val signing = Properties().apply {
+      providers.fileContents(rootProject.layout.projectDirectory.file(signingPath)).asText.orNull?.let { load(it.reader()) }
+    }
+    val signingKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+    uploadKeyMissing = signingKeys.filter { signing.getProperty(it).isNullOrEmpty() }
+      .takeIf { it.isNotEmpty() }?.let { "release signing: no upload key ($signingPath lacks ${it.joinToString()}). Run tools/make-upload-key.sh" }
+    if (uploadKeyMissing == null) {
+      signingConfigs.create("upload") {
+        storeFile = file(signing.getProperty("storeFile"))
+        storePassword = signing.getProperty("storePassword")
+        keyAlias = signing.getProperty("keyAlias")
+        keyPassword = signing.getProperty("keyPassword")
+      }
+    }
+
     buildTypes {
         debug {
             buildConfigField("String", "DEFAULT_SUPABASE_URL", quoted(supabaseUrl))
@@ -75,6 +96,7 @@ android {
             val ok = releaseServerProblem == null
             buildConfigField("String", "DEFAULT_SUPABASE_URL", quoted(if (ok) releaseUrl else ""))
             buildConfigField("String", "DEFAULT_SUPABASE_KEY", quoted(if (ok) releaseKey else ""))
+            signingConfig = signingConfigs.findByName("upload")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
@@ -173,4 +195,10 @@ tasks.matching { it.name == "preReleaseBuild" }.configureEach {
   // A plain String, so the configuration cache can store the action.
   val problem: String = releaseServerProblem ?: return@configureEach
   doFirst { throw GradleException(problem) }
+}
+
+// What goes to Play must be signed with the upload key (D105). assembleRelease may stay unsigned, for local checks.
+tasks.matching { it.name == "bundleRelease" || it.name == "signReleaseBundle" }.configureEach {
+  val missing: String = uploadKeyMissing ?: return@configureEach
+  doFirst { throw GradleException(missing) }
 }

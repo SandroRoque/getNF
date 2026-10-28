@@ -2352,3 +2352,12 @@ URL and publishable key, both public by design (RLS protects the data), from `se
 Supabase. The release build stops when either is missing, the URL isn't HTTPS, or the key isn't a publishable one (a
 `sb_publishable_` key or a JWT whose role is anon), so a secret key can't end up in an APK. Ajustes › Servidor still
 overrides it.
+
+**Release signing (2026-10-28).** Play gets an app bundle signed with an upload key; with Play App Signing, Google
+holds the key that signs the app for users, and a lost upload key can be reset. The upload key lives outside the
+repo, in `~/.config/getnf/` (`upload-key.jks`, RSA 4096, alias `upload`, and `upload-key.properties` with its
+password, both readable only by the user), made by `tools/make-upload-key.sh`, which the user runs so the password
+never passes through anyone else; `-Pgetnf.signingProperties` points elsewhere. Release builds sign with it when it's
+there; without it `assembleRelease` stays unsigned for local checks and `bundleRelease` stops. Checked with a
+throwaway key: the bundle and the APK are signed with it, and the release APK runs on the emulator, not debuggable,
+with the online server preset.

@@ -70,8 +70,7 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
    caderneta, screenshots ([screenshots/](screenshots/)) and the brief for the roqlab entry
    ([portfolio-brief.md](portfolio-brief.md)). Still being discussed.
    Drafts of the privacy policy ([privacy-policy.md](privacy-policy.md)) and Play's Data safety answers
-   ([play-data-safety.md](play-data-safety.md)); before publishing: release signing (an upload key, an app bundle), a
-   web page for account deletion, the photo opt-in deleting what was sent, the legal read.
+   ([play-data-safety.md](play-data-safety.md)); before publishing: a web page for account deletion, the photo opt-in deleting what was sent, the legal read.
 3. **Cadernetas with a second real person:** only checked with a test user played through the API on the emulator.
    The first real member (a second phone) will be the first live test of invites, claims and "por".
 
@@ -125,6 +124,8 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
 
 - Run `sudo bash tools/setup-system.sh` once (udev rules for the phone, Docker at boot for the local Supabase, adb and
   kvm groups).
+- Create the Play upload key: `tools/make-upload-key.sh` in a terminal (it asks for a password), then back up
+  `~/.config/getnf/` and the password. Then `cd android && ./gradlew :app:bundleRelease` makes the bundle for Play.
 - Rotate the Supabase database password: the 2026-10-27 03:30 backup failed on DNS and its traceback wrote the
   connection URL, password included, to the systemd journal. Fixed for the future (a2cb28f, `PGPASSWORD`); change the
   password in the dashboard, then in `server/.env.local`.
