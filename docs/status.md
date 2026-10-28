@@ -64,7 +64,7 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 
 1. **The user's review of the redesign (D81) on the phone,** now including the caderneta screens. The SEFAZ page
    screen isn't redesigned yet.
-2. **Reading a receipt from its photos alone (D106):** a reader that makes the receipt from the saved photos, checked
+2. **Later: reading a receipt from its photos alone (D106).** Camera and OCR rest first. A reader that makes the receipt from the saved photos, checked
    by the print's own sums, scored against the saved pages. SEFAZ stays the source until the numbers are in. The live
    capture is put down: held-out sessions (D89) and its backlog wait for a reason found by the reader.
 4. **Going public (D105):** positioning, a new name, the portfolio entry at roqlab.com.br, Play listing, screenshots

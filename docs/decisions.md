@@ -2397,7 +2397,7 @@ page can't set. The site says "Caderneta"; the app's launcher still says getNF u
 carries the online project's publishable key, and the project accepts the site's requests (CORS). The published
 policy is still the draft awaiting the legal read; redeploy after editing `docs/privacy-policy.md`.
 
-## D106. A receipt read from its photos alone, built alongside SEFAZ; the live capture is put down (2026-10-28)
+## D106. A receipt read from its photos alone is the next photo work, after a break from camera and OCR (2026-10-28)
 
 Only the SEFAZ page makes a receipt: `NfcePage` builds its lines, totals, store and payments, and the photos serve the
 discounts (D101) and the archive. The capture's "every item legible" (D89, D97) means a photo *could* be read; nothing
@@ -2409,7 +2409,7 @@ work without a lookup, and in any state that prints an NFC-e.
 
 Decided by the user:
 
-- **Start a standalone reader: photos → receipt.** It reads the saved photos into the same shape the page parser
+- **A standalone reader: photos → receipt.** It reads the saved photos into the same shape the page parser
   makes (items, totals, payments, taxes, the store from the header), and checks itself with the print's own
   arithmetic: quantity × unit price = line total, the lines add up to the gross, gross − discounts = paid = the
   payments, the printed item count, GTIN check digits. A reading that passes every check is trusted; one that fails
@@ -2417,6 +2417,8 @@ Decided by the user:
 - **Not switching the order yet.** The page stays the source of a receipt's data, and the reader runs beside it. It
   is scored against the pages the app already saved (the same answer key as D89, no new lookups) until the numbers say
   how often photos alone are exact. Whether photo-first becomes the flow, with SEFAZ as confirmation, is decided then.
+- **Not now: camera and OCR rest first.** Both have had most of the work since D25; other parts of the project come
+  first. The reader is the next photo work when it's picked up again.
 - **The live capture is put down.** It has had D82–D97 and is good enough to feed the reader. Its backlog
   ([capture-backlog.md](capture-backlog.md)) waits; a capture change now needs a reason found by the reader (a
   photo it can't read), not a capture session.

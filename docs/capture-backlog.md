@@ -1,6 +1,6 @@
 # Capture: ideas waiting their turn
 
-Put down by D106: an idea here is picked up only when the photos-only reader finds a photo it can't read.
+Put down by D106: camera and OCR rest; after that, an idea here is picked up only when the photos-only reader finds a photo it can't read.
 
 Done and waiting for a live check: guidance toward the most unseen content (D92); the torch by itself (D93).
 
