@@ -2344,3 +2344,11 @@ are in `docs/screenshots/` and `docs/portfolio-brief.md`.
 (D6, D12); PocketBase is gone (D73) and Play's Data safety form asks whether everything is encrypted in transit.
 Release builds now refuse plain HTTP; a debug-only network config allows it to a local Supabase on `10.0.2.2`,
 `localhost` and `127.0.0.1`. A server typed in Ajustes › Servidor must be HTTPS in a release build.
+
+**The release build carries the online project (2026-10-28).** D70 had release builds start with no server ("set
+them in Settings"), so a Play install couldn't create an account. The release build now bakes in the online project's
+URL and publishable key, both public by design (RLS protects the data), from `server/.env.local` or
+`-Pgetnf.releaseSupabaseUrl/-Pgetnf.releaseSupabaseKey`; never from the debug override, which may point at a local
+Supabase. The release build stops when either is missing, the URL isn't HTTPS, or the key isn't a publishable one (a
+`sb_publishable_` key or a JWT whose role is anon), so a secret key can't end up in an APK. Ajustes › Servidor still
+overrides it.

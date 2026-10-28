@@ -1,3 +1,4 @@
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -7,6 +8,27 @@ plugins {
   alias(libs.plugins.ksp)
   alias(libs.plugins.room)
 }
+
+/** Why the release build can't carry this server, or null when it can (D105). */
+fun releaseServerProblem(url: String?, key: String?): String? = when {
+  url.isNullOrBlank() || key.isNullOrBlank() ->
+    "release build: no Supabase URL and publishable key. Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in " +
+      "server/.env.local, or pass -Pgetnf.releaseSupabaseUrl and -Pgetnf.releaseSupabaseKey"
+  !url.startsWith("https://") -> "release build: the Supabase URL must be HTTPS (release builds refuse plain HTTP)"
+  !isPublishableKey(key) -> "release build: the Supabase key isn't a publishable key. A secret key must never go in an APK"
+  else -> null
+}
+
+/** A new-style publishable key, or a legacy JWT whose role is anon. */
+fun isPublishableKey(key: String): Boolean {
+  if (key.startsWith("sb_publishable_")) return true
+  val parts = key.split('.')
+  if (parts.size != 3) return false
+  val payload = runCatching { String(Base64.getUrlDecoder().decode(parts[1])) }.getOrNull() ?: return false
+  return Regex("\"role\"\\s*:\\s*\"anon\"").containsMatchIn(payload)
+}
+
+var releaseServerProblem: String? = null
 
 // Exported schemas are committed: each app version must migrate the previous one (D45).
 room { schemaDirectory("$projectDir/schemas") }
@@ -28,7 +50,9 @@ android {
     // The Supabase project baked into the APK (D70): its URL and publishable key, which are public by design (Row
     // Level Security protects the data). Debug builds read them from server/.env.local (gitignored), and
     // -Pgetnf.supabaseUrl / -Pgetnf.supabaseKey override that, e.g. to point the emulator at a local Supabase
-    // (http://10.0.2.2:54321). Release builds start empty: set them in Settings. Nobody is signed in by default.
+    // (http://10.0.2.2:54321). Release builds carry the online project (D105): from server/.env.local or
+    // -Pgetnf.releaseSupabaseUrl / -Pgetnf.releaseSupabaseKey, never the debug override, HTTPS and a publishable key
+    // only, or the release build stops. Nobody is signed in by default.
     // A git worktree (.claude/worktrees/<name>/) has no copy of the gitignored file: use the main checkout's.
     val devEnv = Properties().apply {
       listOf("../server/.env.local", "../../../../server/.env.local").firstNotNullOfOrNull {
@@ -38,6 +62,9 @@ android {
     fun quoted(v: String?) = "\"" + (v ?: "").replace("\\", "\\\\").replace("\"", "\\\"") + "\""
     val supabaseUrl = providers.gradleProperty("getnf.supabaseUrl").orNull ?: devEnv.getProperty("SUPABASE_URL")
     val supabaseKey = providers.gradleProperty("getnf.supabaseKey").orNull ?: devEnv.getProperty("SUPABASE_PUBLISHABLE_KEY")
+    val releaseUrl = providers.gradleProperty("getnf.releaseSupabaseUrl").orNull ?: devEnv.getProperty("SUPABASE_URL")
+    val releaseKey = providers.gradleProperty("getnf.releaseSupabaseKey").orNull ?: devEnv.getProperty("SUPABASE_PUBLISHABLE_KEY")
+    releaseServerProblem = releaseServerProblem(releaseUrl, releaseKey)
 
     buildTypes {
         debug {
@@ -45,8 +72,9 @@ android {
             buildConfigField("String", "DEFAULT_SUPABASE_KEY", quoted(supabaseKey))
         }
         release {
-            buildConfigField("String", "DEFAULT_SUPABASE_URL", quoted(""))
-            buildConfigField("String", "DEFAULT_SUPABASE_KEY", quoted(""))
+            val ok = releaseServerProblem == null
+            buildConfigField("String", "DEFAULT_SUPABASE_URL", quoted(if (ok) releaseUrl else ""))
+            buildConfigField("String", "DEFAULT_SUPABASE_KEY", quoted(if (ok) releaseKey else ""))
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
@@ -138,4 +166,11 @@ dependencies {
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+}
+
+// Stop a release build that would ship without a server, or with the wrong one (D105). Debug builds don't care.
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+  // A plain String, so the configuration cache can store the action.
+  val problem: String = releaseServerProblem ?: return@configureEach
+  doFirst { throw GradleException(problem) }
 }
