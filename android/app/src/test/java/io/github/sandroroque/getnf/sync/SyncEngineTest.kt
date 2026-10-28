@@ -32,7 +32,7 @@ class SyncEngineTest {
   private val dao = db.catalog()
   private var ids = 0
   private val store by lazy { ReceiptStore(File(tmp.root, "receipts"), db) }
-  private val parser by lazy { ReceiptParser(db, File(tmp.root, "receipts"), now = { 7 }, newId = { "local${ids++}" }, log = { _, _ -> }) }
+  private val parser by lazy { ReceiptParser(db, File(tmp.root, "receipts"), now = { 7 }, log = { _, _ -> }) }
   private val archived = mutableListOf<String>()
   private val engine by lazy { SyncEngine(db, store, { photo, _ -> archived += photo.name; byteArrayOf(1, 2, 3) }, contribute = { true }, log = {}) }
   private val server = FakeServer()
@@ -68,8 +68,8 @@ class SyncEngineTest {
     // The server has the receipt with its header, its page, every line, the store items, the products and the photo.
     val receipt = server.rows("receipt").single()
     assertEquals("11222333000181", receipt.str("issuer_cnpj"))
-    assertEquals("user-1/$chave/page.html", receipt.str("page_path"))
-    assertTrue(server.objects.containsKey("user-1/$chave/page.html"))
+    assertEquals("ledger-1/$chave/page.html", receipt.str("page_path"))
+    assertTrue(server.objects.containsKey("ledger-1/$chave/page.html"))
     assertEquals(dao.lines(chave).size, server.rows("receipt_line").size)
     assertEquals(dao.storeItems().size, server.rows("store_item").size)
     assertEquals(fruit.id, server.rows("product").single { it.str("id") == apple.productId }.str("category_id"))
@@ -154,10 +154,10 @@ class SyncEngineTest {
   }
 
   @Test fun aReceiptOnlyTheServerHasIsAdoptedWithItsPage() = runTest {
-    server.objects["user-1/$chave/page.html"] = html.toByteArray()
-    server.put("receipt", "user_id,chave", buildJsonObject {
+    server.objects["ledger-1/$chave/page.html"] = html.toByteArray()
+    server.put("receipt", "ledger_id,chave", buildJsonObject {
       put("chave", chave); put("qr_url", "qr"); put("captured_at", "2026-10-01T10:00:00+00:00")
-      put("page_path", "user-1/$chave/page.html"); put("issuer_cnpj", "11222333000181"); put("paid_cents", 3064)
+      put("page_path", "ledger-1/$chave/page.html"); put("issuer_cnpj", "11222333000181"); put("paid_cents", 3064)
     })
     engine.sync(server)
     val r = store.get(chave)!!
@@ -169,11 +169,93 @@ class SyncEngineTest {
     assertNull(store.get(chave)!!.uploadError)
   }
 
+  /** Another phone in the same caderneta: its own database and files, the same server. */
+  private inner class Phone(name: String) {
+    val db = testDatabase()
+    val store = ReceiptStore(File(tmp.root, name), db)
+    val parser = ReceiptParser(db, File(tmp.root, name), now = { 7 }, log = { _, _ -> })
+    val engine = SyncEngine(db, store, { _, _ -> byteArrayOf(1) }, log = {})
+  }
+
+  @Test fun twoPhonesReadingTheSameItemsOfflineMakeTheSameRows() = runTest {
+    // Two members scan the same receipt, both offline; each phone reads the page and makes its catalog (D104).
+    val a = Phone("a"); val b = Phone("b")
+    for (p in listOf(a, b)) {
+      p.store.open(chave, "qr"); p.store.savePage(chave, "https://x", html); p.parser.parse(p.store.get(chave)!!)
+    }
+    val reportA = a.engine.sync(server)
+    val reportB = b.engine.sync(server)
+    assertTrue(reportA.errors.toString(), reportA.errors.isEmpty())
+    assertTrue(reportB.errors.toString(), reportB.errors.isEmpty())
+    // One store item and one product per code, not two; both phones hold the same ids.
+    assertEquals(a.db.catalog().storeItems().size, server.rows("store_item").size)
+    assertEquals(a.db.catalog().products().size, server.rows("product").size)
+    assertEquals(a.db.catalog().storeItems().map { it.id }.toSet(), b.db.catalog().storeItems().map { it.id }.toSet())
+    assertEquals(1, server.rows("receipt").size)
+  }
+
+  @Test fun eachScanLeavesItsMarkButAnAdoptedReceiptDoesnt() = runTest {
+    receiptWithPage()
+    engine.sync(server)
+    assertEquals(chave, server.rows("receipt_scan").single().str("chave"))
+    // A phone that only pulled the receipt doesn't claim to have scanned it.
+    val other = Phone("other")
+    other.engine.sync(server)
+    assertFalse(other.store.get(chave)!!.scannedHere)
+    assertEquals(1, server.pushed.count { it.containsKey("scanned_at") })
+    // Scanning it there too makes it that phone's scan as well.
+    other.store.open(chave, "qr")
+    assertTrue(other.store.get(chave)!!.scannedHere)
+    assertTrue(other.store.get(chave)!!.needsUpload)
+  }
+
+  @Test fun aRefusedRowIsParkedAndNotSentAgainUntilItChanges() = runTest {
+    receiptWithPage()
+    engine.sync(server)
+    val (bad, good) = dao.products().take(2)
+    dao.updateProduct(bad.copy(name = "bad name", dirty = true))
+    dao.updateProduct(good.copy(name = "good name", dirty = true))
+    server.refuse["product"] = "bad name"
+
+    val report = engine.sync(server)
+    // The good one went up anyway, and the sync carried on.
+    assertEquals("good name", server.rows("product").single { it.str("id") == good.id }.str("name"))
+    assertEquals(1, report.errors.size)
+    assertEquals(bad.id, db.sync().parked().single().rowKey)
+    // Not sent again while it's unchanged.
+    val pushed = server.pushed.size
+    engine.sync(server)
+    assertEquals(pushed, server.pushed.size)
+    // Changed, it's tried again; accepted, it's no longer parked.
+    server.refuse.clear()
+    dao.updateProduct(dao.products().single { it.id == bad.id }.copy(name = "fixed name", dirty = true))
+    engine.sync(server)
+    assertEquals("fixed name", server.rows("product").single { it.str("id") == bad.id }.str("name"))
+    assertTrue(db.sync().parked().isEmpty())
+  }
+
+  @Test fun aPageAnotherMemberFetchedIsAdoptedInsteadOfFetched() = runTest {
+    // This phone scanned the receipt and is waiting for its page; another member fetches it (D104).
+    store.open(chave, "qr")
+    engine.sync(server)
+    server.objects["ledger-1/$chave/page.html"] = html.toByteArray()
+    server.put("receipt", "ledger_id,chave", JsonObject(server.rows("receipt").single() + buildJsonObject {
+      put("page_path", "ledger-1/$chave/page.html"); put("page_url", "https://x"); put("page_fetched_at", "2026-10-02T10:00:00+00:00")
+    }))
+    engine.sync(server)
+    val r = store.get(chave)!!
+    assertEquals(ReceiptStore.PAGE_FILE, r.pageFile)
+    assertEquals(html, File(store.dir(chave), ReceiptStore.PAGE_FILE).readText())
+    // Adopting it isn't a change of this phone's: nothing to send back.
+    assertFalse(r.needsUpload)
+    assertTrue(parser.needsParse(r))
+  }
+
   private fun JsonObject.str(name: String) = (this[name] as? JsonPrimitive)?.takeUnless { it is kotlinx.serialization.json.JsonNull }?.content
 
-  /** The Data API as the user "user-1": rows keyed like the real tables, updated_at stamped on every write. */
+  /** The Data API for the caderneta "ledger-1": rows keyed like the real tables, updated_at stamped on every write. */
   private class FakeServer : SyncRemote {
-    override val userId = "user-1"
+    override val ledgerId = "ledger-1"
     val tables = mutableMapOf<String, MutableMap<String, JsonObject>>()
     val objects = mutableMapOf<String, ByteArray>()
     var writes = 0
@@ -182,39 +264,41 @@ class SyncEngineTest {
     var failUpserts = false
     private var clock = Instant.parse("2026-10-25T12:00:00Z")
     private val seed = listOf("food" to null, "food.produce" to "food", "food.produce.fruit" to "food.produce", "food.produce.vegetables" to "food.produce")
-    private val keys = mapOf("receipt" to "user_id,chave", "receipt_line" to "user_id,chave,line_no", "issuer" to "user_id,cnpj",
-      "product_tag" to "user_id,product_id,tag_id", "receipt_photo" to "user_id,chave,local_name")
+    /** Requests the server refuses (a 4xx), by table: a row whose JSON contains this text. */
+    val refuse = mutableMapOf<String, String>()
 
     fun id(path: String) = "srv-$path"
     private fun JsonObject.str(name: String) = (this[name] as? JsonPrimitive)?.takeUnless { it is kotlinx.serialization.json.JsonNull }?.content
     fun rows(table: String) = tables[table].orEmpty().values.toList()
 
-    override fun rpc(function: String) {
-      if (rows("category").isNotEmpty()) return
-      for ((i, node) in seed.withIndex()) put("category", "id", buildJsonObject {
+    override fun rpc(function: String, args: JsonObject): kotlinx.serialization.json.JsonElement {
+      if (rows("category").isNotEmpty()) return kotlinx.serialization.json.JsonNull
+      for ((i, node) in seed.withIndex()) put("category", "ledger_id,id", buildJsonObject {
         put("id", id(node.first)); put("seed_path", node.first); put("label", node.first); put("parent_id", node.second?.let(::id))
         put("sort", i); put("user_modified", false); put("deleted", false)
       })
+      return kotlinx.serialization.json.JsonNull
     }
 
     fun put(table: String, key: String, row: JsonObject) {
-      val withUser = JsonObject(row + ("user_id" to JsonPrimitive(userId)))
-      val k = key.split(",").joinToString("|") { withUser.str(it)!! }
+      val owned = JsonObject(row + ("ledger_id" to JsonPrimitive(ledgerId)))
+      val k = key.split(",").filter { it != "user_id" }.joinToString("|") { owned.str(it)!! }
       val old = tables.getOrPut(table) { mutableMapOf() }[k]
       clock = clock.plusMillis(1)
-      tables.getValue(table)[k] = JsonObject((old ?: emptyMap()) + withUser + ("updated_at" to JsonPrimitive(clock.toString().replace("Z", "+00:00"))))
+      tables.getValue(table)[k] = JsonObject((old ?: emptyMap()) + owned + ("updated_at" to JsonPrimitive(clock.toString().replace("Z", "+00:00"))))
       writes++
     }
 
     fun patch(table: String, id: String, change: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit) {
       val row = rows(table).single { it.str("id") == id }
-      put(table, "id", JsonObject(row + buildJsonObject(change)))
+      put(table, "ledger_id,id", JsonObject(row + buildJsonObject(change)))
     }
 
     override fun upsert(table: String, rows: List<JsonObject>, onConflict: String, ignoreDuplicates: Boolean) {
       if (failUpserts) throw java.io.IOException("offline")
+      refuse[table]?.let { bad -> if (rows.any { bad in it.toString() }) throw SupabaseException(400, "refused") }
       pushed += rows
-      rows.forEach { put(table, keys[table] ?: onConflict, it) }
+      rows.forEach { put(table, onConflict, it) }
     }
 
     override fun delete(table: String, filters: List<Pair<String, String>>) {

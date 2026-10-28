@@ -78,12 +78,13 @@ class SupabaseClient(val url: String, private val key: String, private val http:
     call(authorized(session, target).header("Prefer", "return=minimal").delete().build())
   }
 
-  fun rpc(session: SupabaseSession, function: String) {
+  /** Calls a database function with named [args]; returns what it returns (null as JsonNull, a set as an array). */
+  fun rpc(session: SupabaseSession, function: String, args: JsonObject = JsonObject(emptyMap())): JsonElement {
     val target = base.newBuilder().addPathSegments("rest/v1/rpc").addPathSegment(function).build()
-    call(authorized(session, target).post("{}".toRequestBody(JSON)).build())
+    return call(authorized(session, target).post(args.toString().toRequestBody(JSON)).build())
   }
 
-  /** Writes (or replaces) an object in the private `receipts` bucket. [path] starts with the user's id. */
+  /** Writes (or replaces) an object in the private `receipts` bucket. [path] starts with the caderneta's id (D104). */
   fun upload(session: SupabaseSession, path: String, body: RequestBody) {
     val target = base.newBuilder().addPathSegments("storage/v1/object/$BUCKET").addPathSegments(path).build()
     call(authorized(session, target).header("x-upsert", "true").post(body).build())

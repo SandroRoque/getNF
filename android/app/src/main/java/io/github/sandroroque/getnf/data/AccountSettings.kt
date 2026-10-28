@@ -24,7 +24,7 @@ class AccountSettings(context: Context) {
 
   /** Another project means another account: signs out. */
   fun setProject(config: ProjectConfig) = prefs.edit {
-    if (config != project()) { remove(USER); remove(EMAIL); remove(REFRESH) }
+    if (config != project()) { remove(USER); remove(EMAIL); remove(REFRESH); remove(LEDGER) }
     putString(URL, config.url.trim().trimEnd('/')); putString(KEY, config.key.trim())
   }
 
@@ -38,7 +38,12 @@ class AccountSettings(context: Context) {
     putString(USER, session.userId); putString(EMAIL, session.email); putString(REFRESH, session.refreshToken)
   }
 
-  fun signOut() = prefs.edit { remove(USER); remove(EMAIL); remove(REFRESH) }
+  fun signOut() = prefs.edit { remove(USER); remove(EMAIL); remove(REFRESH); remove(LEDGER) }
+
+  /** The caderneta this phone has open (D104); null until the first sync picks one. */
+  fun ledgerId(): String? = prefs.getString(LEDGER, null)
+
+  fun openLedger(id: String) = prefs.edit { putString(LEDGER, id) }
 
   private companion object {
     const val URL = "url"
@@ -46,5 +51,6 @@ class AccountSettings(context: Context) {
     const val USER = "user"
     const val EMAIL = "email"
     const val REFRESH = "refresh"
+    const val LEDGER = "ledger"
   }
 }

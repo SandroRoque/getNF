@@ -7,7 +7,6 @@ import io.github.sandroroque.getnf.parse.Derive
 import io.github.sandroroque.getnf.parse.NfcePage
 import io.github.sandroroque.getnf.parse.ParsedReceipt
 import java.io.File
-import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -28,7 +27,6 @@ class ReceiptParser(
   private val database: ReceiptDatabase,
   private val root: File,
   private val now: () -> Long = System::currentTimeMillis,
-  private val newId: () -> String = { UUID.randomUUID().toString() },
   private val log: (String, Throwable?) -> Unit = { message, error -> Log.i(TAG, message, error) },
   // Run on the IO dispatcher. A test swaps it to hold the read open.
   private val readPage: suspend (File) -> String = { it.readText(Charsets.UTF_8) },
@@ -123,9 +121,13 @@ class ReceiptParser(
         if (updated != existing) dao.updateStoreItem(updated.copy(dirty = true))
         existing.id
       } else {
-        val product = ProductRow(newId(), name = null, categoryId = null, sizeE6 = null, sizeUnit = null, sizeSource = null, createdAt = now(), dirty = true)
-        dao.insertProduct(product)
-        val item = StoreItemRow(newId(), key.kind, key.code, key.storeCnpj, description, size?.e6, size?.unit, product.id, dirty = true)
+        // Ids from the code (D104), so another phone reading the same item makes the same rows.
+        val productId = CodeIds.product(key.kind, key.code, key.storeCnpj)
+        if (dao.product(productId) == null) {
+          dao.insertProduct(ProductRow(productId, name = null, categoryId = null, sizeE6 = null, sizeUnit = null, sizeSource = null, createdAt = now(), dirty = true))
+        }
+        val item = StoreItemRow(CodeIds.storeItem(key.kind, key.code, key.storeCnpj), key.kind, key.code, key.storeCnpj, description,
+          size?.e6, size?.unit, productId, dirty = true)
         dao.insertStoreItem(item)
         item.id
       }

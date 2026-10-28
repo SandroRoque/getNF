@@ -22,12 +22,10 @@ class ReceiptParserTest {
   @get:Rule val tmp = TemporaryFolder()
   private val db = testDatabase()
   private val dao = db.catalog()
-  private var ids = 0
-  private val newId = { "id${ids++}" }
   private var clock = 1_000L
   // A clock that moves, so fetching a page again changes its pageFetchedAt.
   private val store by lazy { ReceiptStore(tmp.root, db, now = { clock++ }) }
-  private val parser by lazy { ReceiptParser(db, tmp.root, now = { 7 }, newId = newId, log = { _, _ -> }) }
+  private val parser by lazy { ReceiptParser(db, tmp.root, now = { 7 }, log = { _, _ -> }) }
 
   // The fixture's own chave, so the page matches its receipt.
   private val chave = "42260111222333000181651090000000011123456784"
@@ -158,7 +156,7 @@ class ReceiptParserTest {
     // As on the phone: the upload worker is replaced while the page is being read on the IO dispatcher. The read waits
     // for the cancel, so the outcome doesn't depend on which finishes first.
     val reading = CompletableDeferred<Unit>()
-    val p = ReceiptParser(db, tmp.root, newId = newId, log = { _, _ -> }, readPage = { reading.complete(Unit); awaitCancellation() })
+    val p = ReceiptParser(db, tmp.root, log = { _, _ -> }, readPage = { reading.complete(Unit); awaitCancellation() })
     val job = launch { p.parse(r) }
     reading.await()
     job.cancel()
@@ -171,7 +169,7 @@ class ReceiptParserTest {
   @Test fun startupAndTheWorkerAtOnceParseEachPageOnce() = runTest {
     saved()
     val logged = mutableListOf<String>()
-    val p = ReceiptParser(db, tmp.root, newId = newId, log = { m, _ -> logged += m })
+    val p = ReceiptParser(db, tmp.root, log = { m, _ -> logged += m })
     val counts = List(3) { async { p.parsePending(store.receipts.value) } }.awaitAll()
     assertEquals(1, counts.sum())
     assertEquals(1, logged.count { it.startsWith("parsed") })

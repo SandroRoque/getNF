@@ -2,6 +2,7 @@ package io.github.sandroroque.getnf.data
 
 import android.content.Context
 import androidx.room.AutoMigration
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -37,6 +38,8 @@ data class ReceiptRow(
   val uploadedVersion: Long?,
   val remoteId: String?,
   val uploadError: String?,
+  /** Scanned on this phone rather than only adopted from the caderneta (D104). */
+  @ColumnInfo(defaultValue = "1") val scannedHere: Boolean = true,
 )
 
 /**
@@ -104,11 +107,13 @@ abstract class ReceiptDao {
     ReceiptRow::class, PhotoRow::class, CaptureSessionRow::class, PhotoReadRow::class,
     ReceiptParsedRow::class, IssuerRow::class, CategoryRow::class, TagRow::class, ProductRow::class, StoreItemRow::class,
     ProductTagRow::class, ReceiptLineRow::class, SyncStateRow::class, CategoryEventRow::class, LinkSuggestionRow::class, WorkerReportRow::class,
+    SyncParkedRow::class,
   ],
   version = ReceiptDatabase.VERSION,
   // Every version ships a migration from the one before; schemas are exported to android/app/schemas.
   autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7),
-    AutoMigration(from = 7, to = 8, spec = ReceiptDatabase.ReuploadBlanked::class), AutoMigration(from = 8, to = 9, spec = ReceiptDatabase.ReuploadBlanked::class)],
+    AutoMigration(from = 7, to = 8, spec = ReceiptDatabase.ReuploadBlanked::class), AutoMigration(from = 8, to = 9, spec = ReceiptDatabase.ReuploadBlanked::class),
+    AutoMigration(from = 9, to = 10)],
 )
 abstract class ReceiptDatabase : RoomDatabase() {
   abstract fun receipts(): ReceiptDao
@@ -132,7 +137,7 @@ abstract class ReceiptDatabase : RoomDatabase() {
   companion object {
     private const val REUPLOAD = "UPDATE `receipt_photo` SET `uploaded` = 0"
     const val NAME = "getnf.db"
-    const val VERSION = 9
+    const val VERSION = 10
     fun open(context: Context): ReceiptDatabase =
       Room.databaseBuilder(context, ReceiptDatabase::class.java, NAME).addMigrations(MIGRATION_3_4).build()
 

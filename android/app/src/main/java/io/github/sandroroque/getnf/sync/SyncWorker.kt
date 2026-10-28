@@ -34,10 +34,14 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     val client = SupabaseClient(project.url, project.key)
     try {
       val session = client.refresh(account.refreshToken).also { app.accountSettings.signedIn(it) }
-      val report = app.syncEngine.sync(SupabaseRemote(client, session))
+      val ledger = Ledgers.pick(Ledgers.mine(client, session), app.accountSettings.ledgerId(), session.userId)
+        ?: return@withContext Result.success()
+      app.accountSettings.openLedger(ledger)
+      val remote = SupabaseRemote(client, session, ledger)
+      val report = app.syncEngine.sync(remote)
       report.errors.forEach { Log.w(TAG, it) }
       // Receipts adopted from the server came with their page: read it on the phone too (D49), and push the result.
-      if (app.receiptParser.parsePending(store.receipts.value) > 0) app.syncEngine.sync(SupabaseRemote(client, session))
+      if (app.receiptParser.parsePending(store.receipts.value) > 0) app.syncEngine.sync(remote)
       Result.success()
     } catch (e: IOException) {
       Log.w(TAG, "server unreachable, will retry", e)

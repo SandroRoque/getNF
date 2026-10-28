@@ -307,6 +307,7 @@ abstract class CatalogDao {
   @Query("SELECT * FROM store_item WHERE codeKind = :kind AND code = :code AND storeCnpj = :storeCnpj")
   abstract suspend fun storeItem(kind: String, code: String, storeCnpj: String): StoreItemRow?
   @Query("SELECT DISTINCT storeItemId FROM receipt_line") abstract suspend fun storeItemsInUse(): List<String>
+  @Query("SELECT * FROM product WHERE id = :id") abstract suspend fun product(id: String): ProductRow?
 
   @Query(
     """

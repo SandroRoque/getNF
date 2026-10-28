@@ -1,6 +1,7 @@
 package io.github.sandroroque.getnf.data
 
 import androidx.room.Dao
+import androidx.room.Entity
 import androidx.room.Query
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -13,8 +14,20 @@ import androidx.room.Update
  * out. (Not Room's @Upsert either: it can't run on the JVM tests' bundled SQLite.) An insert ignored for another
  * unique index than the key updates nothing, so callers free a seed path or slug before taking it.
  */
+/**
+ * A row the server refused (a 4xx, D104), as it was sent. It isn't sent again until it changes, so one bad row
+ * neither fails every sync nor is retried forever; the error shows in Ajustes.
+ */
+@Entity(tableName = "sync_parked", primaryKeys = ["tableName", "rowKey"])
+data class SyncParkedRow(val tableName: String, val rowKey: String, val payload: String, val error: String, val at: Long)
+
 @Dao
 abstract class SyncDao {
+  @Query("SELECT * FROM sync_parked WHERE tableName = :table") abstract suspend fun parked(table: String): List<SyncParkedRow>
+  @Query("SELECT * FROM sync_parked ORDER BY at DESC") abstract suspend fun parked(): List<SyncParkedRow>
+  @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun park(row: SyncParkedRow)
+  @Query("DELETE FROM sync_parked WHERE tableName = :table AND rowKey IN (:keys)") abstract suspend fun unpark(table: String, keys: List<String>)
+
   @Query("SELECT * FROM issuer WHERE dirty = 1") abstract suspend fun dirtyIssuers(): List<IssuerRow>
   @Query("SELECT * FROM receipt_parsed WHERE dirty = 1") abstract suspend fun dirtyParsed(): List<ReceiptParsedRow>
   @Query("SELECT * FROM category WHERE dirty = 1") abstract suspend fun dirtyCategories(): List<CategoryRow>

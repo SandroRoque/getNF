@@ -16,6 +16,7 @@ import io.github.sandroroque.getnf.data.ReceiptLineRow
 import io.github.sandroroque.getnf.data.ReceiptParsedRow
 import io.github.sandroroque.getnf.data.ReceiptStore
 import io.github.sandroroque.getnf.data.StoreItemRow
+import io.github.sandroroque.getnf.data.SyncParkedRow
 import io.github.sandroroque.getnf.data.SyncStateRow
 import io.github.sandroroque.getnf.data.TagRow
 import java.io.File
@@ -36,10 +37,13 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 
-/** The server side of a sync: the Supabase project as the signed-in user (SupabaseRemote), or a fake in tests. */
+/**
+ * The server side of a sync: one caderneta (D104) of the Supabase project, as the signed-in user (SupabaseRemote), or a
+ * fake in tests. Every row the phone sends carries [ledgerId]; every pull asks for that caderneta's rows only.
+ */
 interface SyncRemote {
-  val userId: String
-  fun rpc(function: String)
+  val ledgerId: String
+  fun rpc(function: String, args: JsonObject = JsonObject(emptyMap())): JsonElement
   fun upsert(table: String, rows: List<JsonObject>, onConflict: String, ignoreDuplicates: Boolean = false)
   fun delete(table: String, filters: List<Pair<String, String>>)
   fun select(table: String, filters: List<Pair<String, String>>): List<JsonObject>
@@ -80,7 +84,7 @@ class SyncEngine(
 
   suspend fun sync(remote: SyncRemote): Report = mutex.withLock {
     val errors = mutableListOf<String>()
-    io { remote.rpc("sync_taxonomy") }
+    io { remote.rpc("sync_taxonomy", buildJsonObject { put("lid", remote.ledgerId) }) }
     var pulled = pull(remote, listOf(CATEGORY, TAG_TABLE))
     val (pushed, photos) = push(remote, errors)
     pulled += pull(remote, TABLES)
@@ -91,53 +95,94 @@ class SyncEngine(
 
   private suspend fun push(remote: SyncRemote, errors: MutableList<String>): Pair<Int, Int> {
     var n = 0
-    n += pushRows(remote, "issuer", "user_id,cnpj", dao.dirtyIssuers(), ::issuerJson, { dao.issuer(it.cnpj) }) { dao.upsertIssuer(it.copy(dirty = false)) }
+    n += pushRows(remote, errors, "issuer", "ledger_id,cnpj", dao.dirtyIssuers(), { it.cnpj }, ::issuerJson, { dao.issuer(it.cnpj) }) { dao.upsertIssuer(it.copy(dirty = false)) }
     n += pushReceipts(remote, errors)
-    n += pushRows(remote, "category", "id", dao.dirtyCategories(), ::categoryJson, { dao.category(it.id) }) { dao.upsertCategory(it.copy(dirty = false)) }
-    n += pushRows(remote, "tag", "id", dao.dirtyTags(), ::tagJson, { dao.tag(it.id) }) { dao.upsertTag(it.copy(dirty = false)) }
-    n += pushRows(remote, "product", "id", dao.dirtyProducts(), ::productJson, { dao.product(it.id) }) { dao.upsertProduct(it.copy(dirty = false)) }
-    n += pushRows(remote, "store_item", "id", dao.dirtyStoreItems(), ::storeItemJson, { dao.storeItem(it.id) }) { dao.upsertStoreItem(it.copy(dirty = false)) }
-    n += pushRows(remote, "product_tag", "user_id,product_id,tag_id", dao.dirtyProductTags(), ::productTagJson,
-      { dao.productTag(it.productId, it.tagId) }) { dao.upsertProductTag(it.copy(dirty = false)) }
+    n += pushRows(remote, errors, "category", BY_ID, dao.dirtyCategories(), { it.id }, ::categoryJson, { dao.category(it.id) }) { dao.upsertCategory(it.copy(dirty = false)) }
+    n += pushRows(remote, errors, "tag", BY_ID, dao.dirtyTags(), { it.id }, ::tagJson, { dao.tag(it.id) }) { dao.upsertTag(it.copy(dirty = false)) }
+    n += pushRows(remote, errors, "product", BY_ID, dao.dirtyProducts(), { it.id }, ::productJson, { dao.product(it.id) }) { dao.upsertProduct(it.copy(dirty = false)) }
+    n += pushRows(remote, errors, "store_item", BY_ID, dao.dirtyStoreItems(), { it.id }, ::storeItemJson, { dao.storeItem(it.id) }) { dao.upsertStoreItem(it.copy(dirty = false)) }
+    n += pushRows(remote, errors, "product_tag", "ledger_id,product_id,tag_id", dao.dirtyProductTags(), { "${it.productId}/${it.tagId}" },
+      ::productTagJson, { dao.productTag(it.productId, it.tagId) }) { dao.upsertProductTag(it.copy(dirty = false)) }
     n += pushLines(remote, errors)
     n += pushEvents(remote)
-    n += pushRows(remote, "link_suggestion", "id", dao.dirtyLinkSuggestions(), ::linkJson, { dao.linkSuggestion(it.id) }) {
+    n += pushRows(remote, errors, "link_suggestion", BY_ID, dao.dirtyLinkSuggestions(), { it.id }, ::linkJson, { dao.linkSuggestion(it.id) }) {
       dao.putLinkSuggestion(it.copy(dirty = false))
     }
     return n to pushPhotos(remote, errors)
   }
 
+  /**
+   * Upserts [rows] in one request. If the server refuses it (a 4xx), they go one by one, and each it refuses is parked
+   * (D104): not sent again until it changes, so one bad row neither holds back the rest nor fails every sync.
+   */
   private suspend fun <T> pushRows(
-    remote: SyncRemote, table: String, key: String, rows: List<T>, toJson: (T) -> JsonObject,
-    current: suspend (T) -> T?, clean: suspend (T) -> Unit,
+    remote: SyncRemote, errors: MutableList<String>, table: String, key: String, rows: List<T>, keyOf: (T) -> String,
+    toJson: (T) -> JsonObject, current: suspend (T) -> T?, clean: suspend (T) -> Unit,
   ): Int {
     if (rows.isEmpty()) return 0
-    io { remote.upsert(table, rows.map(toJson), key) }
-    transaction { for (row in rows) if (current(row) == row) clean(row) }
-    return rows.size
+    val parked = dao.parked(table).associate { it.rowKey to it.payload }
+    val ready = rows.map { it to toJson(it) }.filter { (row, json) -> parked[keyOf(row)] != json.toString() }
+    if (ready.isEmpty()) return 0
+    val sent = try {
+      io { remote.upsert(table, ready.map { owned(remote, it.second) }, key) }
+      ready
+    } catch (e: SupabaseException) {
+      if (e.status == 401) throw e
+      ready.filter { (row, json) ->
+        try {
+          io { remote.upsert(table, listOf(owned(remote, json)), key) }; true
+        } catch (e: SupabaseException) {
+          if (e.status == 401) throw e
+          park(table, keyOf(row), json.toString(), e, errors); false
+        }
+      }
+    }
+    transaction {
+      for ((row, _) in sent) if (current(row) == row) clean(row)
+      if (parked.isNotEmpty()) dao.unpark(table, sent.map { keyOf(it.first) })
+    }
+    return sent.size
   }
+
+  private suspend fun park(table: String, key: String, payload: String, e: SupabaseException, errors: MutableList<String>) {
+    errors += "$table $key: ${e.message}"
+    dao.park(SyncParkedRow(table, key, payload, e.message ?: "rejected", System.currentTimeMillis()))
+  }
+
+  private fun owned(remote: SyncRemote, o: JsonObject) = JsonObject(o + ("ledger_id" to JsonPrimitive(remote.ledgerId)))
 
   /** The receipt row with its parsed header; the page goes to storage when the receipt itself changed. */
   private suspend fun pushReceipts(remote: SyncRemote, errors: MutableList<String>): Int {
     val dirtyHeaders = dao.dirtyParsed().associateBy { it.chave }
+    val parked = dao.parked(RECEIPT).associate { it.rowKey to it.payload }
     var n = 0
     for (r in store.receipts.value) {
       val changed = r.uploadedVersion != r.version
       val header = dirtyHeaders[r.chave] ?: if (changed) dao.parsed(r.chave) else null
       if (!changed && header == null) continue
+      val pagePath = r.pageFile?.let { "${remote.ledgerId}/${r.chave}/page.html" }
+      val row = receiptJson(r, header, pagePath)
+      val attempt = "${r.version} $row"
+      if (parked[r.chave] == attempt) continue
       try {
-        val pagePath = r.pageFile?.let { "${remote.userId}/${r.chave}/page.html" }
         if (changed && r.pageFile != null) {
           val page = File(store.dir(r.chave), r.pageFile)
           if (page.isFile) io { remote.upload(pagePath!!, page.readBytes(), "text/html; charset=utf-8") }
         }
-        io { remote.upsert("receipt", listOf(receiptJson(r, header, pagePath)), "user_id,chave") }
+        io { remote.upsert(RECEIPT, listOf(owned(remote, row)), "ledger_id,chave") }
+        // This phone's scan mark (D104); the server fills in who. Another member's mark is theirs.
+        if (changed && r.scannedHere) io {
+          remote.upsert("receipt_scan", listOf(owned(remote, buildJsonObject { put("chave", r.chave); put("scanned_at", iso(r.capturedAt)) })),
+            "ledger_id,chave,user_id", ignoreDuplicates = true)
+        }
         if (changed) store.markUploaded(r.chave, r.version, REMOTE_ID)
         dirtyHeaders[r.chave]?.let { pushed -> transaction { if (dao.parsed(pushed.chave) == pushed) dao.upsertParsed(pushed.copy(dirty = false)) } }
+        if (r.chave in parked) dao.unpark(RECEIPT, listOf(r.chave))
         n++
       } catch (e: SupabaseException) {
-        // Bad data for this one receipt: record it and carry on with the rest.
-        errors += "${r.chave}: ${e.message}"
+        if (e.status == 401) throw e
+        // Bad data for this one receipt: record it, don't send it again until it changes, carry on with the rest.
+        park(RECEIPT, r.chave, attempt, e, errors)
         store.markUploadError(r.chave, e.message ?: "rejected")
       }
     }
@@ -150,15 +195,23 @@ class SyncEngine(
    */
   private suspend fun pushLines(remote: SyncRemote, errors: MutableList<String>): Int {
     var n = 0
+    val parked = dao.parked(LINES).associate { it.rowKey to it.payload }
     for ((chave, rows) in dao.dirtyLines().groupBy { it.receipt }) {
+      val payload = rows.map(::lineJson).toString()
+      if (parked[chave] == payload) continue
       try {
-        io { remote.upsert("receipt_line", rows.map(::lineJson), "user_id,chave,line_no") }
+        io { remote.upsert("receipt_line", rows.map { owned(remote, lineJson(it)) }, "ledger_id,chave,line_no") }
         val kept = dao.lineNumbers(chave)
-        io { remote.delete("receipt_line", listOf("chave" to "eq.$chave", "line_no" to "not.in.(${kept.joinToString(",")})")) }
+        io {
+          remote.delete("receipt_line", listOf("ledger_id" to "eq.${remote.ledgerId}", "chave" to "eq.$chave",
+            "line_no" to "not.in.(${kept.joinToString(",")})"))
+        }
         transaction { for (row in rows) if (dao.line(row.receipt, row.lineNo) == row) dao.upsertLine(row.copy(dirty = false)) }
+        if (chave in parked) dao.unpark(LINES, listOf(chave))
         n += rows.size
       } catch (e: SupabaseException) {
-        errors += "$chave lines: ${e.message}"
+        if (e.status == 401) throw e
+        park(LINES, chave, payload, e, errors)
       }
     }
     return n
@@ -168,7 +221,7 @@ class SyncEngine(
   private suspend fun pushEvents(remote: SyncRemote): Int {
     val events = database.categoryEvents().dirty()
     if (events.isEmpty()) return 0
-    io { remote.upsert("category_event", events.map(::eventJson), "id", ignoreDuplicates = true) }
+    io { remote.upsert("category_event", events.map { owned(remote, eventJson(it)) }, "id", ignoreDuplicates = true) }
     database.categoryEvents().pushed(events.map { it.id })
     return events.size
   }
@@ -186,14 +239,14 @@ class SyncEngine(
         try {
           val segment = r.captureSegments.find { it.photo == name }
           val archived = io { archiver.archive(file, segment) }
-          val objectPath = "${remote.userId}/${r.chave}/${name.substringBeforeLast('.')}.webp"
+          val objectPath = "${remote.ledgerId}/${r.chave}/${name.substringBeforeLast('.')}.webp"
           io { remote.upload(objectPath, archived, "image/webp") }
           val maskPath = segment?.mask?.let { mask ->
             File(store.dir(r.chave), mask).takeIf { it.isFile }?.let { m ->
-              "${remote.userId}/${r.chave}/$mask".also { path -> io { remote.upload(path, m.readBytes(), "image/png") } }
+              "${remote.ledgerId}/${r.chave}/$mask".also { path -> io { remote.upload(path, m.readBytes(), "image/png") } }
             }
           }
-          io { remote.upsert("receipt_photo", listOf(photoJson(r.chave, name, position, segment, file, objectPath, maskPath, archived.size)), "user_id,chave,local_name") }
+          io { remote.upsert("receipt_photo", listOf(owned(remote, photoJson(r.chave, name, position, segment, file, objectPath, maskPath, archived.size))), "ledger_id,chave,local_name") }
           store.markPhotoUploaded(r.chave, name)
           n++
         } catch (e: SupabaseException) {
@@ -220,6 +273,7 @@ class SyncEngine(
       while (true) {
         val since = cursor?.let { instant(it).minusSeconds(OVERLAP_SECONDS).toString() }
         val filters = buildList {
+          add("ledger_id" to "eq.${remote.ledgerId}")
           if (since != null) add("updated_at" to "gt.$since")
           add("order" to "updated_at.asc"); add("limit" to PAGE.toString())
         }
@@ -305,19 +359,23 @@ class SyncEngine(
     for (o in rows) {
       val chave = o.string("chave")!!
       if (o.bool("deleted") == true) continue
-      val known = store.receipts.value.any { it.chave == chave }
-      if (!known) {
-        val pagePath = o.string("page_path")
+      val known = store.receipts.value.find { it.chave == chave }
+      val pagePath = o.string("page_path")
+      if (known == null) {
         val dir = store.dir(chave).apply { mkdirs() }
         if (pagePath != null) io { remote.download(pagePath, File(dir, ReceiptStore.PAGE_FILE)) }
         store.adoptRemote(
           Receipt(
             chave = chave, qrUrl = o.string("qr_url"), capturedAt = o.millis("captured_at") ?: 0, pageUrl = o.string("page_url"),
             pageFile = pagePath?.let { ReceiptStore.PAGE_FILE }, pageFetchedAt = o.millis("page_fetched_at"),
-            version = 1, uploadedVersion = 1, remoteId = REMOTE_ID,
+            version = 1, uploadedVersion = 1, remoteId = REMOTE_ID, scannedHere = false,
           ),
           emptyList(),
         )
+      } else if (known.pageFile == null && pagePath != null) {
+        // Another member fetched the page of a receipt this phone was waiting on (D104): no lookup needed here.
+        io { remote.download(pagePath, File(store.dir(chave).apply { mkdirs() }, ReceiptStore.PAGE_FILE)) }
+        store.adoptPage(chave, o.string("page_url"), o.millis("page_fetched_at"))
       }
       val local = dao.parsed(chave)
       if (local == null || (local.source != ReceiptParsedRow.SOURCE_PHONE && !local.dirty)) {
@@ -456,6 +514,10 @@ class SyncEngine(
     private const val LOG_TAG = "SyncEngine"
     const val REMOTE_ID = "supabase"
     private const val CATEGORY = "category"
+    private const val RECEIPT = "receipt"
+    private const val LINES = "receipt_line"
+    // Row ids are unique per caderneta (D104).
+    private const val BY_ID = "ledger_id,id"
     private const val TAG_TABLE = "tag"
     // Parents before children, so a pulled row's references already exist locally.
     val TABLES = listOf("issuer", "receipt", "category", "tag", "product", "store_item", "product_tag", "receipt_line",

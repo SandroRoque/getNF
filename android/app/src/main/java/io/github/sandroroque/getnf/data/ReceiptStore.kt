@@ -39,6 +39,8 @@ data class Receipt(
   val captureSegments: List<CaptureSegment> = emptyList(),
   /** Photos confirmed in the server's append-only receipt_photos collection (D42), by local file name. */
   val uploadedPhotos: List<String> = emptyList(),
+  /** Scanned on this phone, not only adopted from the caderneta (D104): this phone's scan mark goes up with it. */
+  val scannedHere: Boolean = true,
 ) {
   val pendingPhotos: List<String>
     get() = photos.filter { it !in uploadedPhotos }
@@ -70,7 +72,11 @@ class ReceiptStore(
   /** Returns the receipt for [chave], creating it on the first scan. */
   suspend fun open(chave: String, qrUrl: String?): Receipt = io {
     mutex.withLock {
-      read(chave)
+      read(chave)?.let { known ->
+        // Scanning a receipt another member brought (D104) makes it this phone's scan too.
+        if (known.scannedHere) known
+        else known.copy(scannedHere = true, version = known.version + 1).also { dao.save(it.row()); publish() }
+      }
         ?: Receipt(chave = chave, qrUrl = qrUrl, capturedAt = now(), version = 1).also {
           dir(chave).mkdirs()
           dao.save(it.row())
@@ -94,6 +100,10 @@ class ReceiptStore(
     io { File(dir(chave), PAGE_FILE).writeText(html, Charsets.UTF_8) }
     update(chave) { it.copy(pageUrl = url, pageFile = PAGE_FILE, pageFetchedAt = now()) }
   }
+
+  /** A page another member fetched (D104), already saved as [PAGE_FILE]. Not a local change: nothing to push. */
+  suspend fun adoptPage(chave: String, url: String?, fetchedAt: Long?) =
+    update(chave, bump = false) { it.copy(pageUrl = url, pageFile = PAGE_FILE, pageFetchedAt = fetchedAt) }
 
   suspend fun markUploaded(chave: String, version: Long, remoteId: String) =
     update(chave, bump = false) { it.copy(uploadedVersion = version, remoteId = remoteId, uploadError = null) }
@@ -127,7 +137,7 @@ class ReceiptStore(
         created += target
       }
       dao.save(
-        old.copy(qrUrl = old.qrUrl ?: session.qrUrl, version = old.version + 1).row(),
+        old.copy(qrUrl = old.qrUrl ?: session.qrUrl, version = old.version + 1, scannedHere = true).row(),
         session.segments.mapIndexed { i, segment ->
           PhotoRow(key, segment.photo, old.photos.size + i, uploaded = false, segment = json.encodeToString(segment))
         },
@@ -205,10 +215,11 @@ class ReceiptStore(
     captureSessions = sessions.map { it.sessionId },
     captureSegments = photos.mapNotNull { p -> p.segment?.let { json.decodeFromString<CaptureSegment>(it) } },
     uploadedPhotos = photos.filter { it.uploaded }.map { it.localName },
+    scannedHere = row.scannedHere,
   )
 
   private fun Receipt.row() =
-    ReceiptRow(chave, qrUrl, capturedAt, pageUrl, pageFile, pageFetchedAt, version, uploadedVersion, remoteId, uploadError)
+    ReceiptRow(chave, qrUrl, capturedAt, pageUrl, pageFile, pageFetchedAt, version, uploadedVersion, remoteId, uploadError, scannedHere)
 
   /**
    * One-time import of the pre-D45 `receipt.json` manifests, keeping versions and upload state so nothing is re-sent.
