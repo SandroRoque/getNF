@@ -180,7 +180,8 @@ fun CadernetaScreen(ledgerId: String, onBack: () -> Unit) {
     verticalArrangement = Arrangement.spacedBy(12.dp)) {
     BackHeader("Ajustes", onBack) { if (manages) Pill("Renomear", ButtonKind.Ghost) { renaming = info?.name } }
     ScreenTitle(info?.name ?: "Caderneta")
-    Sub(listOfNotNull(role?.let { "Você ${roleLabel(it)}" }, if (isOpen) "aberta neste celular" else null).joinToString(" · "))
+    Sub(listOfNotNull(role?.let { if (it == "owner") "Você é responsável" else "Você ${roleLabel(it)}" },
+      if (isOpen) "aberta neste celular" else null).joinToString(" · "))
     if (!isOpen && info != null) Pill("Abrir neste celular", ButtonKind.Solid) { openOnPhone(app, ledgerId) }
 
     SectionLabel("Pessoas")
@@ -265,8 +266,10 @@ fun CadernetaScreen(ledgerId: String, onBack: () -> Unit) {
       onDismissRequest = { leaving = false },
       title = { Text("Sair de ${info?.name}?") },
       text = {
+        val alone = (members?.size ?: 0) <= 1
         Text(
-          "As fotos que você enviou saem com você; as notas, as páginas e o catálogo ficam com quem continua." +
+          (if (alone) "Você é a única pessoa nela: a caderneta é apagada do servidor, com as notas, as páginas e o catálogo."
+            else "As fotos que você enviou saem com você; as notas, as páginas e o catálogo ficam com quem continua.") +
             (if (isOpen && others.isNotEmpty() && scanned.isNotEmpty()) "\n\nQuer levar uma cópia das ${scanned.size} notas que você escaneou? Use \"Copiar para outra caderneta\" antes de sair." else "") +
             (if (isOpen) "\n\nNeste celular, as notas desta caderneta continuam guardadas; o app abre outra caderneta sua." else ""),
         )

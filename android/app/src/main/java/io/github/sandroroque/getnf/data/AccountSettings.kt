@@ -59,7 +59,8 @@ class AccountSettings(context: Context) {
    * Opens [id]; takes effect on the next start (the app restarts). The first caderneta ever opened takes the data the
    * phone already had (D104): it keeps the original files.
    */
-  fun openLedger(id: String) = prefs.edit {
+  // commit, not apply: the app restarts right after, and an asynchronous write would be lost with the process.
+  fun openLedger(id: String) = prefs.edit(commit = true) {
     putString(LEDGER, id)
     if (prefs.getString(LEGACY, null) == null) putString(LEGACY, id)
   }

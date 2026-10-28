@@ -71,7 +71,9 @@ class LedgerService(private val settings: AccountSettings) {
   }
 
   suspend fun leave(ledger: String) = signedIn { c, s ->
-    // The files go after the rows: `own_uploads` lets a person delete what they uploaded even once they've left.
+    // The last one out takes the caderneta with them: its files go first, while they may still read the folder.
+    if (c.select(s, "ledger_member", listOf("ledger_id" to "eq.$ledger")).size == 1) c.deleteObjects(s, c.listObjects(s, "$ledger/"))
+    // Otherwise only their uploads, after the rows: `own_uploads` lets a person delete what they uploaded even once they've left.
     c.deleteObjects(s, paths(c.rpc(s, "leave_ledger", args { put("lid", ledger) })))
   }
 
