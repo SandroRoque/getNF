@@ -2314,3 +2314,19 @@ not as a change to upload), so an older page can't go up again with the buyer.
 the existing data became one caderneta, "Pessoal", whose id is the user's id, with its 11 receipts. The phone build that
 syncs per caderneta was installed at the same time and syncs without errors. Still open: rows the server refuses are
 parked (`sync_parked`) but not shown on any screen yet, despite "parked and shown" above; see `docs/status.md`.
+
+## D105. Getting ready to go public: free for now, a new name, explain the IP budget only when it's hit (2026-10-28)
+
+Marketing work starts (descriptions, screenshots, manuals, the portfolio entry). Decided by the user:
+
+- **Free** for a while, until and unless that's regretted. Open source with crowdfunding is being considered, not
+  decided; a cost report (Supabase, the categorizer, Play Store) would inform it.
+- **"getNF" will be renamed.** The new name isn't chosen.
+- **The SEFAZ budget is explained only when someone goes over it.** People who add a couple of receipts a day never
+  hear about IP limits; the warning before a likely block (D17) is where the explanation goes.
+- **A guest demo** for people wary of creating an account is wanted, later.
+- **Web home:** a subdomain of roqlab.com.br first (for instance `ipci.roqlab.com.br`, name open), a domain of its
+  own later. The roqlab portfolio entry is out of date (PocketBase dashboard screenshot, "extraction happens on the
+  server", PocketBase in the stack) and will be redone from this project's material.
+- The UI after D81 is considered good; more passes come before release, but it no longer blocks marketing material.
+- The user sets up the Play Store developer account.
