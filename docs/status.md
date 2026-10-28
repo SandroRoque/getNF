@@ -24,7 +24,7 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 | 6 | PC dashboard | Dropped for now (D79) |
 | 7 | IPCI, the personal inflation index | Done (D79) |
 | 8 | LLM worker on the PC ([stage-8-plan.md](stage-8-plan.md)) | Done (D80) |
-| — | Cadernetas: catalogs shared by several people (D104) | Built; not yet checked live nor applied online |
+| — | Cadernetas: catalogs shared by several people (D104) | Built, checked locally; not online yet |
 | 9 | Optional sharing and shared curation ([local-and-shared-modes.md](local-and-shared-modes.md)) | Not started |
 | 10 | Analyses across users | Not started |
 
@@ -60,9 +60,9 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 
 ## Next
 
-1. **Cadernetas live (D104):** apply `supabase/migrations/20261027000000_ledgers.sql` to the local Supabase, run
-   `SupabaseLocalTest` and two emulators as two people (invite, join, scan the same receipt, leave), then online after
-   a backup, together with installing the phone build (the old build can't sync once the migration is online).
+1. **Cadernetas online (D104):** checked on the local Supabase and the emulator. Next, after a backup and the user's
+   go-ahead: apply `supabase/migrations/20261027000000_ledgers.sql` online and install the phone build at the same time
+   (the old build can't sync once the migration is online); deploy the `categorize` function too.
 2. **The user's review of the redesign (D81) on the phone.** The SEFAZ page screen isn't redesigned yet.
 3. **Capture:** held-out sessions of receipts the capture hasn't seen (D89).
 

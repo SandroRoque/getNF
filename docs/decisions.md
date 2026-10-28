@@ -2284,3 +2284,11 @@ paths are already `<ledger>/<chave>/…`.
   (finished, or exited keeping the code), so it can't reach the caderneta mid-capture.
 - Not yet: the "por Ana" mark, syncing cadernetas other than the open one, cleaning buyer data from pages already
   online, a screen for `ledger_event`.
+
+**Checked locally (2026-10-27).** Migration applied to the local Supabase; pgTAP 67/67; `SupabaseLocalTest` 2/2 (two
+people in one caderneta reading the same receipt offline: one store item and product per code, one scan mark each). On
+the emulator, as Ana, with Bia played through the API: sign-up, "Casa" created, invite code, Bia joins and adds a
+receipt, Ana opens Casa (its own database), the receipt arrives with its page and is read; Bia leaves (receipt and lines
+stay, her scan mark goes); Ana leaves as the last member (Casa and its files deleted, the phone back on Pessoal);
+"Apagar minha conta" (login and her caderneta gone). Two bugs found and fixed: the open caderneta was saved
+asynchronously and lost on restart; the last member leaving left the folder's files behind.
