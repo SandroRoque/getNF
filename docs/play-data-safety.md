@@ -9,8 +9,8 @@ The matching privacy policy is [privacy-policy.md](privacy-policy.md).
 1. ~~Cleartext traffic allowed app-wide~~: done 2026-10-28. Release builds are HTTPS only; debug builds also allow
    plain HTTP to a local Supabase (`10.0.2.2`, `localhost`, `127.0.0.1`).
    ~~Release builds have no server built in~~: done 2026-10-28. The release build carries the online project.
-2. **A web page for account deletion.** Play requires a URL where people can ask to delete their account without the
-   app. The in-app "Apagar minha conta" exists.
+2. **A web page for account deletion:** built 2026-10-28 (`web/apagar-conta/`, see `web/README.md`); still to be
+   hosted. Its URL goes in "Delete account URL" below and in the policy.
 3. **Turning the photo opt-in off should delete what was sent** (open item, D103); the policy promises it.
 4. Fill in the policy's contact e-mail and publish it on the web (the roqlab subdomain).
 5. The LGPD legal read (D104), mainly on data that stays in a shared caderneta after a member deletes their account.

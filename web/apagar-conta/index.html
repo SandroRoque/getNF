@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src %CONNECT%; img-src 'self'; form-action 'none'; base-uri 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>Apagar conta · %APP%</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+<main>
+  <p class="eyebrow">%APP%</p>
+  <h1>Apagar sua conta</h1>
+  <p>Esta página apaga sua conta do <strong>%APP%</strong> sem precisar do app. No app, o mesmo está em
+    <strong>Ajustes › Conta › Apagar minha conta</strong>.</p>
+
+  <section class="facts" aria-labelledby="o-que">
+    <h2 id="o-que">O que acontece</h2>
+    <ul>
+      <li><strong>Sai do servidor:</strong> seu login e seu e-mail, as cadernetas em que só você está (com notas, catálogo
+        e arquivos) e as fotos que você enviou.</li>
+      <li><strong>Fica com quem continua:</strong> em uma caderneta com outras pessoas, as notas e os itens que vieram
+        de você continuam nela, sem a marca de quem escaneou. Você sai dela.</li>
+      <li><strong>Nos celulares:</strong> nada é apagado. Para apagar também do seu, desinstale o app ou limpe os dados
+        dele nas configurações do Android.</li>
+      <li>As cópias de segurança do servidor expiram em até 14 dias.</li>
+    </ul>
+    <p class="small">Detalhes na <a href="%PRIVACY%">política de privacidade</a>. Esqueceu a senha ou não consegue
+      entrar? Escreva para <a href="mailto:%CONTACT%">%CONTACT%</a> a partir do e-mail da conta.</p>
+  </section>
+
+  <noscript><p class="note">Esta página precisa de JavaScript. Sem ele, peça a exclusão por e-mail para
+    %CONTACT%.</p></noscript>
+
+  <form id="entrar" class="card" hidden>
+    <h2>1. Entre na conta</h2>
+    <label>E-mail <input id="email" type="email" autocomplete="username" required></label>
+    <label>Senha <input id="senha" type="password" autocomplete="current-password" required></label>
+    <button type="submit">Entrar</button>
+  </form>
+
+  <section id="resumo" class="card" hidden aria-live="polite">
+    <h2>2. Confira</h2>
+    <p id="quem"></p>
+    <ul id="cadernetas"></ul>
+    <div id="bloqueio" hidden>
+      <p class="note">Você é a única pessoa responsável por <strong id="bloqueadas"></strong>, que têm outras pessoas.
+        Antes de apagar a conta, torne alguém responsável no app (Ajustes › Cadernetas) e volte aqui.</p>
+    </div>
+    <div id="confirmar" hidden>
+      <label class="check"><input id="entendo" type="checkbox"> Entendo que a conta não pode ser recuperada.</label>
+      <button id="apagar" class="danger" type="button" disabled>Apagar minha conta</button>
+    </div>
+    <button id="cancelar" class="quiet" type="button">Cancelar e sair</button>
+  </section>
+
+  <p id="estado" role="status" aria-live="polite"></p>
+</main>
+</body>
+</html>

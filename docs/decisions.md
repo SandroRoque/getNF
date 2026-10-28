@@ -2361,3 +2361,14 @@ never passes through anyone else; `-Pgetnf.signingProperties` points elsewhere. 
 there; without it `assembleRelease` stays unsigned for local checks and `bundleRelease` stops. Checked with a
 throwaway key: the bundle and the APK are signed with it, and the release APK runs on the emulator, not debuggable,
 with the online server preset.
+
+**Deleting an account from the web (2026-10-28).** Play asks for a URL where someone can delete their account without
+the app. `web/apagar-conta/` is a static page (HTML, CSS and plain `fetch`, no third-party code, a strict
+Content-Security-Policy) that signs in with e-mail and password and does what Ajustes › Conta › Apagar minha conta
+does: lists the person's cadernetas, stops while they're the only owner of one with other people, deletes their files
+(a caderneta's whole folder when they're its only member, else their own uploads) and calls `delete_me`. Keeping the
+logic in the browser rather than a new Edge Function means no new server code with elevated rights; the price is that
+the page and `LedgerService.deleteMe` must change together. `tools/build-web.py` fills in the project's URL and
+publishable key (refusing a secret key) into `web/dist/`, gitignored. Checked against the local Supabase in the
+browser: someone alone in their caderneta is deleted with their file; someone who owns a shared one is stopped and
+nothing changes. Hosting is open (the roqlab subdomain).
