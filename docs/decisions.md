@@ -2309,3 +2309,8 @@ with its page and was read.
 Storage: 2 of the 11 online named a buyer (and a CPF); both replaced after checking that the parser reads each page
 the same before and after. The phone blanks its own saved pages when it loads (only rewriting a page that changes, and
 not as a change to upload), so an older page can't go up again with the buyer.
+
+**Online (2026-10-27).** The migration was applied to the online project and the `categorize` function deployed with it;
+the existing data became one caderneta, "Pessoal", whose id is the user's id, with its 11 receipts. The phone build that
+syncs per caderneta was installed at the same time and syncs without errors. Still open: rows the server refuses are
+parked (`sync_parked`) but not shown on any screen yet, despite "parked and shown" above; see `docs/status.md`.

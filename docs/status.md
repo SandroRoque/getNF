@@ -1,6 +1,6 @@
 # Status and next steps
 
-Last updated 2026-10-27. A handoff for picking the project up again. For *why* things are the way they are, read
+Last updated 2026-10-28. A handoff for picking the project up again. For *why* things are the way they are, read
 `docs/decisions.md` (D1–D104). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
@@ -24,7 +24,7 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 | 6 | PC dashboard | Dropped for now (D79) |
 | 7 | IPCI, the personal inflation index | Done (D79) |
 | 8 | LLM worker on the PC ([stage-8-plan.md](stage-8-plan.md)) | Done (D80) |
-| — | Cadernetas: catalogs shared by several people (D104) | Built, checked locally; not online yet |
+| — | Cadernetas: catalogs shared by several people (D104) | Done, online and on the phone |
 | 9 | Optional sharing and shared curation ([local-and-shared-modes.md](local-and-shared-modes.md)) | Not started |
 | 10 | Analyses across users | Not started |
 
@@ -44,9 +44,11 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 - **Cadernetas (D104):** a person can own several cadernetas and be in others; everyone in one sees everything. Each
   has its own database and receipts folder on the phone; opening another restarts the app. Ajustes › Cadernetas
   creates, joins by code, invites, changes roles, copies receipts to another caderneta and leaves; Conta creates a
-  login and deletes it. Store items and parser-made products have code-derived ids, so two phones make the same rows;
+  login and deletes it. Other cadernetas this phone has files for sync in the background; receipts another member
+  scanned say "por Ana". Store items and parser-made products have code-derived ids, so two phones make the same rows;
   a row the server refuses is parked instead of failing every sync. Pages lose the buyer's CPF and name when saved. A
-  member claims a receipt before fetching its page; a page another member fetched is adopted.
+  member claims a receipt before fetching its page; a page another member fetched is adopted. The pages already
+  online were cleaned of buyers too (`tools/blank-buyers.py`).
 - **SEFAZ lookups:** paced per network with a warning before a fetch would probably get the IP blocked (D17); the
   portal's unneeded assets are skipped (D16).
 - **Supabase** (`supabase/`, project in São Paulo): every row belongs to a caderneta, with RLS by membership; a private
@@ -60,15 +62,21 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 
 ## Next
 
-1. **Cadernetas online (D104):** checked on the local Supabase and the emulator. Next, after a backup and the user's
-   go-ahead: apply `supabase/migrations/20261027000000_ledgers.sql` online and install the phone build at the same time
-   (the old build can't sync once the migration is online); deploy the `categorize` function too.
-2. **The user's review of the redesign (D81) on the phone.** The SEFAZ page screen isn't redesigned yet.
-3. **Capture:** held-out sessions of receipts the capture hasn't seen (D89).
+1. **The user's review of the redesign (D81) on the phone,** now including the caderneta screens. The SEFAZ page
+   screen isn't redesigned yet.
+2. **Capture:** held-out sessions of receipts the capture hasn't seen (D89).
+3. **Cadernetas with a second real person:** only checked with a test user played through the API on the emulator.
+   The first real member (a second phone) will be the first live test of invites, claims and "por".
 
 ## Open items
 
-- **Cadernetas, not built yet:** downloading a caderneta joined but never opened on this phone before it's opened; a screen for the setup history (`ledger_event`).
+- **Cadernetas, not built yet (D104):**
+  - Parked rows (`sync_parked`, a row the server refused) aren't shown anywhere yet; D104 says they are. They belong in
+    Ajustes › Saúde dos dados, with a way to retry or drop one.
+  - A caderneta joined but never opened on this phone isn't downloaded until it's opened.
+  - No screen for a caderneta's setup history (`ledger_event`).
+  - Leaving a caderneta (or being removed) leaves its database and receipts folder on the phone; nothing clears them.
+  - LGPD: get a legal read before opening cadernetas to people outside the family (D104).
 - **Photos (D103):** turning the opt-in off should delete what was sent; abandoned captures aren't kept for opted-in
   users; the photos uploaded before D103 stay until the user decides. How long the phone keeps its own copies is open.
 - **Discounts from photos:** confirming each value against its photo snippet, and undo back to prorated.
@@ -108,6 +116,9 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
 
 - Run `sudo bash tools/setup-system.sh` once (udev rules for the phone, Docker at boot for the local Supabase, adb and
   kvm groups).
+- Rotate the Supabase database password: the 2026-10-27 03:30 backup failed on DNS and its traceback wrote the
+  connection URL, password included, to the systemd journal. Fixed for the future (a2cb28f, `PGPASSWORD`); change the
+  password in the dashboard, then in `server/.env.local`.
 
 ## SEFAZ rules of thumb (learned the hard way, see docs/sefaz-sc.md)
 
