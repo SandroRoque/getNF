@@ -41,3 +41,23 @@ the Android app on the emulator, demo caderneta; the old note that no emulator w
 
 **Careful:** `README.md` and `wrangler.jsonc` had uncommitted changes on 2026-10-28 that aren't part of this
 work; look at them before editing and don't discard them. Don't deploy or change DNS; commit only when the user asks.
+
+---
+
+## Follow-up (2026-10-28): link to the project's site
+
+Already applied once (roqlab `a682d81`). Paste this part into a new session in roqlab.
+
+---
+
+The getNF entry now has a site of its own: **https://caderneta.roqlab.com.br** (landing page, privacy policy,
+account deletion; "Caderneta" is the app's working name). Make the end of the entry link to it:
+
+- Replace `<span class="availability">Publicação em breve …</span>` in `#getnf`'s `.project-end` with a link styled
+  like sistema-carteira's `product-link` (opens in a new tab, `rel="noopener noreferrer"`, the same `sr-only` "em uma
+  nova aba" text). Suggested text: "Conhecer o projeto ↗". Keep "Em desenvolvimento" in the eyebrow: the app isn't
+  on the Play Store yet.
+- Keep the heading **getNF**: the name isn't settled, and the site will follow whatever is chosen.
+- Update the README: line 13 says "Abrir produto" is the only way out to sistema-carteira; getNF now has one too.
+- Run `node tests/browser.cjs` (update anything that expects "Publicação em breve" or counts external links), and
+  check the link at 360, 768 and 1440 px. Commit only when the user asks; don't deploy unless asked.

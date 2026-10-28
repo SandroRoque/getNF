@@ -18,8 +18,9 @@ receipts.
 ## Keep as is
 
 - The name **getNF** for now. A new name is being chosen; renaming the entry twice is worse than waiting.
-- Status "Em desenvolvimento" and "Publicação em breve": not on the Play Store yet.
+- Status "Em desenvolvimento": not on the Play Store yet.
 - No link to the code repository.
+- A link to the project's site, https://caderneta.roqlab.com.br (since 2026-10-28), in place of "Publicação em breve".
 - The section structure (intro, product shot, flow, demo, "Por trás do produto" with three decisions, tech note).
 - "Interface real · dados fictícios" captions: true for these screenshots.
 
