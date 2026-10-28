@@ -66,7 +66,7 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
    screen isn't redesigned yet.
 2. **Capture:** held-out sessions of receipts the capture hasn't seen (D89).
 4. **Going public (D105):** positioning, a new name, the portfolio entry at roqlab.com.br, Play listing, screenshots
-   from made-up data, a short manual, a cost report for the free/crowdfunded question. Still being discussed.
+   from made-up data, a short manual. Running costs are estimated in [costs.md](costs.md). Still being discussed.
 3. **Cadernetas with a second real person:** only checked with a test user played through the API on the emulator.
    The first real member (a second phone) will be the first live test of invites, claims and "por".
 
