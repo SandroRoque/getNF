@@ -2330,3 +2330,12 @@ Marketing work starts (descriptions, screenshots, manuals, the portfolio entry).
   server", PocketBase in the stack) and will be redone from this project's material.
 - The UI after D81 is considered good; more passes come before release, but it no longer blocks marketing material.
 - The user sets up the Play Store developer account.
+
+**Demo caderneta and screenshots (2026-10-28).** Marketing material is made from a demo caderneta, never from real
+receipts: four invented stores, chaves and CNPJs with valid check digits, invented brands and GTINs (prefix
+7890000), six months of a household's shopping with built-in price trends (coffee +3% a month, tomato +4.5%). The
+generator (`DemoCaderneta`, a JVM test that runs only with `GETNF_DEMO_OUT` set) writes SEFAZ-shaped pages and runs
+them through the real store and parser, then categorizes as Jev would, links each store code to one product as a
+user would, and leaves three suggestions for Para você. The output is an ordinary backup zip, restored through
+Ajustes on a signed-out emulator. It can seed the guest demo later. Screenshots and the brief for the roqlab entry
+are in `docs/screenshots/` and `docs/portfolio-brief.md`.
