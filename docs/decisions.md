@@ -2268,3 +2268,19 @@ caderneta's shared record, but get a legal read before opening cadernetas to peo
 
 **Existing data** needs no rewrite: each login becomes a caderneta with the same id, so `<uid>/<chave>/…` storage
 paths are already `<ledger>/<chave>/…`.
+
+**Built (2026-10-27), before any live check.**
+- Server: `20261027000000_ledgers.sql` (pgTAP: `ledger.test.sql`, and the earlier tests per caderneta). The
+  categorize function and the LLM worker go per caderneta; the taxonomy generator seeds every caderneta.
+- Phone (Room v10): rows carry `ledger_id`; pulls ask for the open caderneta only; parked rows (`sync_parked`); scan
+  marks for receipts scanned on the phone (`scannedHere`); a page another member fetched is adopted. One database and
+  receipts folder per caderneta (`LocalFiles`); the phone's original files belong to the first caderneta opened, and
+  the sync never pushes them into another (a caderneta the person no longer belongs to stops syncing until they open
+  another). Ajustes › Cadernetas, a caderneta's screen, sign-up and "Apagar minha conta".
+- **Clash adoption wasn't needed.** The plan had the phone adopt the server's row when a store item clashed on its
+  code. With code-derived ids, new rows can't clash; old rows are already on the server, and a new member's phone
+  starts empty and pulls them, so the parser finds them by code. A clash that still happens is parked and shown.
+- **"Only after the capture" holds by construction:** a receipt enters the phone's store only when its capture ends
+  (finished, or exited keeping the code), so it can't reach the caderneta mid-capture.
+- Not yet: the "por Ana" mark, syncing cadernetas other than the open one, cleaning buyer data from pages already
+  online, a screen for `ledger_event`.
