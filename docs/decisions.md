@@ -2304,3 +2304,8 @@ opened later is already current. One joined but never opened on this phone isn't
 pages and catalog for a caderneta the person may never use here). A refusal skips that caderneta; network trouble
 retries the run. Checked on the emulator: with Pessoal open, a receipt Bia added to Casa arrived in Casa's database
 with its page and was read.
+
+**Buyer data cleaned from older pages (2026-10-27).** `tools/blank-buyers.py` applies the same rules to the pages in
+Storage: 2 of the 11 online named a buyer (and a CPF); both replaced after checking that the parser reads each page
+the same before and after. The phone blanks its own saved pages when it loads (only rewriting a page that changes, and
+not as a change to upload), so an older page can't go up again with the buyer.

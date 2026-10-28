@@ -31,6 +31,23 @@ class ReceiptStoreTest {
   }
 
   @Test
+  fun aPageSavedBeforeD104LosesItsBuyerOnLoadWithoutAChange() = runTest {
+    val store = store()
+    store.open(chave, "qr")
+    store.savePage(chave, "https://x", "<p>x</p>")
+    val page = File(store.dir(chave), ReceiptStore.PAGE_FILE)
+    // As an older version saved it: the buyer in the Consumidor block (made-up values).
+    page.writeText("<h4>Consumidor</h4><ul><li><strong>CPF: </strong>123.456.789-09</li><li>FULANA</li></ul>")
+    val version = store.get(chave)!!.version
+
+    store().apply { load() }
+    val text = page.readText()
+    assertFalse("FULANA" in text || "123.456.789-09" in text)
+    // Not a change to upload: it's the same receipt.
+    assertEquals(version, store().apply { load() }.get(chave)!!.version)
+  }
+
+  @Test
   fun photosAndPageArePersisted() = runTest {
     val store = store()
     store.open(chave, "qr")

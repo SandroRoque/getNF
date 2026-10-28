@@ -64,8 +64,27 @@ class ReceiptStore(
 
   fun dir(chave: String): File = File(root, chave)
 
-  /** Imports any pre-D45 manifests, then publishes. */
-  suspend fun load() = io { mutex.withLock { importManifests(); publish() } }
+  /** Imports any pre-D45 manifests, blanks the buyer from pages saved before D104, then publishes. */
+  suspend fun load() = io { mutex.withLock { importManifests(); blankBuyers(); publish() } }
+
+  /**
+   * Pages saved before D104 still name the buyer; they'd go up like that if their receipt changed. Rewritten in place,
+   * only when something is blanked (the page reads the same, BuyerRedactionTest).
+   */
+  private suspend fun blankBuyers() {
+    for (row in dao.receipts()) {
+      val page = row.pageFile?.let { File(dir(row.chave), it) }?.takeIf { it.isFile } ?: continue
+      runCatching {
+        val html = page.readText(Charsets.UTF_8)
+        val clean = io.github.sandroroque.getnf.parse.BuyerRedaction.blank(html)
+        if (clean != html) {
+          val temp = File(page.path + ".tmp")
+          temp.writeText(clean, Charsets.UTF_8)
+          check(temp.renameTo(page)) { "could not replace ${page.name}" }
+        }
+      }.onFailure { warn("blanking the buyer of ${row.chave}", it) }
+    }
+  }
 
   suspend fun get(chave: String): Receipt? = io { mutex.withLock { read(chave) } }
 
