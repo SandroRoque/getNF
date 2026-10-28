@@ -69,6 +69,9 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
    from made-up data, a short manual. Running costs are estimated in [costs.md](costs.md). Done: the demo
    caderneta, screenshots ([screenshots/](screenshots/)) and the brief for the roqlab entry
    ([portfolio-brief.md](portfolio-brief.md)). Still being discussed.
+   Drafts of the privacy policy ([privacy-policy.md](privacy-policy.md)) and Play's Data safety answers
+   ([play-data-safety.md](play-data-safety.md)); before publishing: cleartext traffic limited to debug builds, a web
+   page for account deletion, the photo opt-in deleting what was sent, the legal read.
 3. **Cadernetas with a second real person:** only checked with a test user played through the API on the emulator.
    The first real member (a second phone) will be the first live test of invites, claims and "por".
 
