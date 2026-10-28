@@ -75,6 +75,15 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
   var receipt by remember { mutableStateOf<Receipt?>(null) }
   var status by remember { mutableStateOf(Status.Loading) }
   LaunchedEffect(chave) { receipt = store.get(chave) }
+  // In a shared caderneta, another member may be fetching this page right now (D104): ask first, so two phones don't
+  // spend two lookups. Offline or signed out, the phone goes ahead: the receipt is its own until it syncs.
+  val ledger = remember { app.accountSettings.ledgerId().takeIf { app.accountSettings.account() != null } }
+  val ledgers = remember { io.github.sandroroque.getnf.sync.LedgerService(app.accountSettings) }
+  var mayFetch by remember { mutableStateOf<Boolean?>(if (ledger == null) true else null) }
+  LaunchedEffect(chave) {
+    if (ledger != null) mayFetch = runCatching { kotlinx.coroutines.withTimeout(8_000) { ledgers.claimFetch(ledger, chave) } }.getOrDefault(true)
+  }
+  fun release() { if (ledger != null) scope.launch { runCatching { ledgers.releaseFetch(ledger, chave) } } }
   // Leaving this screen ends the capture, page or not: push whatever we have.
   DisposableEffect(Unit) { onDispose { SyncWorker.enqueue(context) } }
 
@@ -94,7 +103,17 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
       }
 
       val url = receipt?.qrUrl
-      if (url == null) {
+      if (mayFetch != true) {
+        Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+          horizontalAlignment = Alignment.CenterHorizontally) {
+          if (mayFetch == null) CircularProgressIndicator()
+          else {
+            Text("Outra pessoa da caderneta está buscando esta página agora.", style = MaterialTheme.typography.bodyLarge)
+            Text("Quando ela salvar, a página chega aqui sozinha, sem gastar uma consulta desta rede.", style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onDone) { Text("Voltar") }
+          }
+        }
+      } else if (url == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
           if (receipt != null) Text("Esta nota não tem o endereço do QR Code.")
         }
@@ -107,6 +126,7 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
               SefazPage.Kind.Challenge -> status = Status.Challenge
               SefazPage.Kind.RateLimited -> {
                 status = Status.RateLimited
+                release()
                 app.lookupBudget.markBlocked(network.key)
               }
               SefazPage.Kind.Other -> if (status != Status.Saved) status = Status.Loading
@@ -116,6 +136,7 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
           onDetailsHtml = { finalUrl, html ->
             if (html == null) {
               status = Status.Failed
+              release()
             } else {
               scope.launch {
                 store.savePage(chave, finalUrl, html)

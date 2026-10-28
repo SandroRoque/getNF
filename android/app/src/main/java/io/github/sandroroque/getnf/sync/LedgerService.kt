@@ -100,6 +100,16 @@ class LedgerService(private val settings: AccountSettings) {
     c.rpc(s, "delete_me"); Unit
   }
 
+  /**
+   * Whether this phone may spend a lookup on [chave] now (D104): true unless another member's phone claimed it in the
+   * last few minutes. A receipt the server doesn't know yet is this phone's alone.
+   */
+  suspend fun claimFetch(ledger: String, chave: String): Boolean =
+    signedIn { c, s -> c.rpc(s, "claim_fetch", args { put("lid", ledger); put("chave", chave) }).jsonPrimitive.content == "true" }
+
+  suspend fun releaseFetch(ledger: String, chave: String) =
+    signedIn { c, s -> c.rpc(s, "release_fetch", args { put("lid", ledger); put("chave", chave) }); Unit }
+
   private fun paths(result: JsonElement): List<String> =
     (result as? JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.takeUnless { p -> p is JsonNull }?.content }
 

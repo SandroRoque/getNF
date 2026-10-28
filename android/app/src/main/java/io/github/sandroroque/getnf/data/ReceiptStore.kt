@@ -96,8 +96,9 @@ class ReceiptStore(
     }
   }
 
+  /** The page as the receipt, without who bought it (D104). */
   suspend fun savePage(chave: String, url: String, html: String) {
-    io { File(dir(chave), PAGE_FILE).writeText(html, Charsets.UTF_8) }
+    io { File(dir(chave), PAGE_FILE).writeText(io.github.sandroroque.getnf.parse.BuyerRedaction.blank(html), Charsets.UTF_8) }
     update(chave) { it.copy(pageUrl = url, pageFile = PAGE_FILE, pageFetchedAt = now()) }
   }
 
