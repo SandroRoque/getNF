@@ -2339,3 +2339,8 @@ them through the real store and parser, then categorizes as Jev would, links eac
 user would, and leaves three suggestions for Para você. The output is an ordinary backup zip, restored through
 Ajustes on a signed-out emulator. It can seed the guest demo later. Screenshots and the brief for the roqlab entry
 are in `docs/screenshots/` and `docs/portfolio-brief.md`.
+
+**HTTPS only in release builds (2026-10-28).** Cleartext traffic was allowed app-wide for PocketBase over Tailscale
+(D6, D12); PocketBase is gone (D73) and Play's Data safety form asks whether everything is encrypted in transit.
+Release builds now refuse plain HTTP; a debug-only network config allows it to a local Supabase on `10.0.2.2`,
+`localhost` and `127.0.0.1`. A server typed in Ajustes › Servidor must be HTTPS in a release build.
