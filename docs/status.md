@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-28. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D104). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
+`docs/decisions.md` (D1–D106). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
@@ -64,7 +64,9 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 
 1. **The user's review of the redesign (D81) on the phone,** now including the caderneta screens. The SEFAZ page
    screen isn't redesigned yet.
-2. **Capture:** held-out sessions of receipts the capture hasn't seen (D89).
+2. **Reading a receipt from its photos alone (D106):** a reader that makes the receipt from the saved photos, checked
+   by the print's own sums, scored against the saved pages. SEFAZ stays the source until the numbers are in. The live
+   capture is put down: held-out sessions (D89) and its backlog wait for a reason found by the reader.
 4. **Going public (D105):** positioning, a new name, the portfolio entry at roqlab.com.br, Play listing, screenshots
    from made-up data, a short manual. Running costs are estimated in [costs.md](costs.md). Done: the demo
    caderneta, screenshots ([screenshots/](screenshots/)) and the brief for the roqlab entry

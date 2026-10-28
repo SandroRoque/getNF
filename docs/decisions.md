@@ -2396,3 +2396,30 @@ page can't set. The site says "Caderneta"; the app's launcher still says getNF u
 `/apagar-conta/` (the URLs for Play Console). Checked: every page answers, the headers are sent, the deletion page
 carries the online project's publishable key, and the project accepts the site's requests (CORS). The published
 policy is still the draft awaiting the legal read; redeploy after editing `docs/privacy-policy.md`.
+
+## D106. A receipt read from its photos alone, built alongside SEFAZ; the live capture is put down (2026-10-28)
+
+Only the SEFAZ page makes a receipt: `NfcePage` builds its lines, totals, store and payments, and the photos serve the
+discounts (D101) and the archive. The capture's "every item legible" (D89, D97) means a photo *could* be read; nothing
+reads it into a receipt yet. Meanwhile the page is the most constrained part of the app: about 5 lookups an hour per
+IP (D17), the Turnstile check, the WebView, the wait for the page (D99, D100), and one state's portal. The print holds
+nearly everything the page's summary does (code, description, quantity, unit price, totals, payments), and the QR
+code's chave gives the state, the store's CNPJ, the month, number and series. A receipt read from its photos would
+work without a lookup, and in any state that prints an NFC-e.
+
+Decided by the user:
+
+- **Start a standalone reader: photos → receipt.** It reads the saved photos into the same shape the page parser
+  makes (items, totals, payments, taxes, the store from the header), and checks itself with the print's own
+  arithmetic: quantity × unit price = line total, the lines add up to the gross, gross − discounts = paid = the
+  payments, the printed item count, GTIN check digits. A reading that passes every check is trusted; one that fails
+  points at the line.
+- **Not switching the order yet.** The page stays the source of a receipt's data, and the reader runs beside it. It
+  is scored against the pages the app already saved (the same answer key as D89, no new lookups) until the numbers say
+  how often photos alone are exact. Whether photo-first becomes the flow, with SEFAZ as confirmation, is decided then.
+- **The live capture is put down.** It has had D82–D97 and is good enough to feed the reader. Its backlog
+  ([capture-backlog.md](capture-backlog.md)) waits; a capture change now needs a reason found by the reader (a
+  photo it can't read), not a capture session.
+- Beyond SC, open before any claim: receipts from other states and other billing software (print layouts vary
+  within the national DANFE standard), São Paulo's CF-e-SAT and Ceará's MFE (other documents, other prints), and the
+  2026 tax reform's lines on the print.

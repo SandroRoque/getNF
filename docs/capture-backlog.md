@@ -1,5 +1,7 @@
 # Capture: ideas waiting their turn
 
+Put down by D106: an idea here is picked up only when the photos-only reader finds a photo it can't read.
+
 Done and waiting for a live check: guidance toward the most unseen content (D92); the torch by itself (D93).
 
 Each idea goes through the benchmark loop in [capture-bench.md](capture-bench.md) when it's picked up: one at a time,
