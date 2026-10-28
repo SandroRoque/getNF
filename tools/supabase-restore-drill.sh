@@ -19,7 +19,7 @@ npx supabase db reset >/dev/null
 # Triggers off while loading: the new-user seed would duplicate categories, and updated_at must keep its values.
 pg_restore --data-only --disable-triggers --no-owner --dbname="$local_admin" "$dump"
 
-tables="auth.users public.receipt public.receipt_line public.receipt_photo public.issuer public.product public.store_item public.category public.tag public.product_tag"
+tables="auth.users public.ledger public.ledger_member public.receipt public.receipt_scan public.receipt_line public.receipt_photo public.issuer public.product public.store_item public.category public.tag public.product_tag"
 count() { for t in $tables; do printf '%s ' "$(psql "$1" -Atc "select count(*) from $t")"; done; }
 restored=$(count "$local_db"); online=$(count "$live")
 printf '%-22s %10s %10s\n' table restored online

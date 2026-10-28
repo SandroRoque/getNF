@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """The LLM worker (stage 8, D80, docs/stage-8-plan.md): runs on the user's PC with LM Studio, suggests, never decides.
 
-  python3 tools/llm-worker.py                 # every task, every user, on the online project
+  python3 tools/llm-worker.py                 # every task, every caderneta, on the online project
   python3 tools/llm-worker.py --local         # against the local Supabase (npx supabase start)
   python3 tools/llm-worker.py --only audit --dry-run --limit 5
 
-Tasks, per user:
+Tasks, per caderneta (D104):
   audit   checks automatic (model-set, unconfirmed) categories: never-checked first, then by spending, plus a random
           sample that measures the real error rate (D69). A disagreement becomes a suggestion: the product goes to
           "Para escolher" on the phone.
@@ -43,7 +43,7 @@ def log(*a):
 
 
 class Supabase:
-  """The Data API as the service role (sees every user; the code keeps each user's rows to that user)."""
+  """The Data API as the service role (sees every caderneta; the code keeps each one's rows to it)."""
 
   def __init__(self, url, key, dry=False):
     self.url, self.key, self.dry = url.rstrip("/"), key, dry
@@ -80,13 +80,13 @@ class Supabase:
     prefer = "resolution=merge-duplicates,return=minimal" if "on_conflict" in params else "return=minimal"
     return self.call(method, f"/rest/v1/{table}", body, params, prefer=prefer)
 
-  def users(self):
-    return self.call("GET", "/auth/v1/admin/users", params={"per_page": 1000})["users"]
+  def ledgers(self):
+    return self.select("ledger")
 
-  def check(self, secret, user_id, items, lexicon=()):
+  def check(self, secret, ledger_id, items, lexicon=()):
     """The categorize function's check mode (D74): Jev's answers, nothing written."""
     req = urllib.request.Request(self.url + "/functions/v1/categorize", json.dumps(
-      {"check": {"user_id": user_id, "items": items, "lexicon": list(lexicon)}}).encode(),
+      {"check": {"ledger_id": ledger_id, "items": items, "lexicon": list(lexicon)}}).encode(),
       {"content-type": "application/json", "x-categorize-secret": secret}, method="POST")
     with urllib.request.urlopen(req, timeout=300) as r:
       return json.load(r)["answers"]
@@ -126,12 +126,12 @@ class Llm:
     return {}
 
 
-class User:
-  """One user's catalog, read once per run."""
+class Ledger:
+  """One caderneta's catalog (D104), read once per run."""
 
-  def __init__(self, db, uid):
-    self.db, self.uid = db, uid
-    f = {"user_id": f"eq.{uid}"}
+  def __init__(self, db, lid):
+    self.db, self.lid = db, lid
+    f = {"ledger_id": f"eq.{lid}"}
     self.categories = [c for c in db.select("category", **f) if not c["deleted"]]
     self.products = {p["id"]: p for p in db.select("product", **f) if not p["deleted"]}
     self.items = [s for s in db.select("store_item", **f) if not s["deleted"]]
@@ -212,12 +212,12 @@ def audit(db, llm, u, limit, sample, now):
     a = llm.ask(system, f"Produto: {u.words(p['id'])}\nCategoria atual: {current}\nEstá certa?")
     llm_cat = u.by_path(a.get("categoria"))
     ok = llm_cat is None or llm_cat == p["category_id"]
-    db.write("POST", "audit_log", {"user_id": u.uid, "product_id": p["id"], "category_id": p["category_id"],
+    db.write("POST", "audit_log", {"ledger_id": u.lid, "product_id": p["id"], "category_id": p["category_id"],
                                    "llm_category_id": llm_cat, "agree": ok, "sample": p in sampled, "model": LLM_NAME})
     change = {"llm_checked_at": now}
     if not ok and not p.get("suggestion_category_id"):
       change.update(suggestion_category_id=llm_cat, suggestion_model=LLM_NAME, suggestion_confidence=None, suggestion_at=now)
-    db.write("PATCH", "product", change, id=f"eq.{p['id']}", user_id=f"eq.{u.uid}")
+    db.write("PATCH", "product", change, id=f"eq.{p['id']}", ledger_id=f"eq.{u.lid}")
     agree += ok; disagree += not ok
     log(f"  audit {'ok  ' if ok else 'DIFF'} {u.words(p['id'])[:50]} | {current} -> {u.path.get(llm_cat, '-')}")
   return {"audited": agree + disagree, "disagreed": disagree}
@@ -246,7 +246,7 @@ def learn(db, llm, u, since, secret, now):
   # The check answers with the option keys the function builds: the seed path, or `user.<id prefix>` (D74).
   option = {c["id"]: c.get("seed_path") or f"user.{c['id'][:8]}" for c in u.categories}
   def score(lexicon=()):
-    answers = db.check(secret, u.uid, items, lexicon)
+    answers = db.check(secret, u.lid, items, lexicon)
     return [a.get("category") == option.get(gate[i]["category_id"]) for i, a in enumerate(answers)]
   baseline = score() if secret and items else None
   rules = added = refused = 0
@@ -255,7 +255,7 @@ def learn(db, llm, u, since, secret, now):
     guess = u.path.get(p.get("suggestion_category_id")) or "(não registrado)"
     a = llm.ask(LEARN, f"Produto: {words}\nO modelo tinha dito: {guess}\nO usuário escolheu: {u.path[p['category_id']]}")
     if a.get("regra"):
-      db.write("POST", "category_rule", {"user_id": u.uid, "text": str(a["regra"])[:300], "product_id": p["id"], "model": LLM_NAME})
+      db.write("POST", "category_rule", {"ledger_id": u.lid, "text": str(a["regra"])[:300], "product_id": p["id"], "model": LLM_NAME})
       rules += 1
       log("  rule:", a["regra"])
     for ab in a.get("abreviacoes") or []:
@@ -289,7 +289,7 @@ def tokens(text):
 
 
 def links(db, llm, u, limit):
-  known = {(s["store_item_id"], s["product_id"]) for s in db.select("link_suggestion", user_id=f"eq.{u.uid}")}
+  known = {(s["store_item_id"], s["product_id"]) for s in db.select("link_suggestion", ledger_id=f"eq.{u.lid}")}
   weight = lambda units: "peso" if units & {"KG", "L"} else "unidade"
   candidates = []
   for a in u.items:
@@ -312,9 +312,9 @@ def links(db, llm, u, limit):
     a = llm.ask(SAME, f"A: \"{small['description']}\" ({u.issuers.get(small['store_cnpj'], 'outra loja')})\n"
                       f"B: \"{big['description']}\" ({u.issuers.get(big['store_cnpj'], 'outra loja')})")
     if a.get("mesmo") and float(a.get("confianca") or 0) >= .6:
-      db.write("POST", "link_suggestion", {"user_id": u.uid, "store_item_id": small["id"], "product_id": big["product_id"],
+      db.write("POST", "link_suggestion", {"ledger_id": u.lid, "store_item_id": small["id"], "product_id": big["product_id"],
                                            "confidence": float(a["confianca"]), "reason": str(a.get("motivo") or "")[:200],
-                                           "model": LLM_NAME}, on_conflict="user_id,store_item_id,product_id")
+                                           "model": LLM_NAME}, on_conflict="ledger_id,store_item_id,product_id")
       proposed += 1
       log(f"  same: {small['description']} = {big['description']}")
   return {"link_candidates": len(candidates), "links_proposed": proposed}
@@ -344,7 +344,7 @@ def sizes(db, llm, u, limit, now):
     ok = isinstance(amount, (int, float)) and amount > 0 and unit in ("kg", "l")
     db.write("PATCH", "product", {"size_suggestion_e6": round(amount * 1_000_000) if ok else None,
                                   "size_suggestion_unit": unit if ok else None, "size_suggestion_model": LLM_NAME,
-                                  "size_suggestion_at": now}, id=f"eq.{p['id']}", user_id=f"eq.{u.uid}")
+                                  "size_suggestion_at": now}, id=f"eq.{p['id']}", ledger_id=f"eq.{u.lid}")
     proposed += ok
     log(f"  size: {u.items_of[p['id']][0]['description']} -> {amount if ok else '-'} {unit if ok else ''}")
   return {"sizes_checked": min(limit, len(todo)), "sizes_proposed": proposed}
@@ -361,13 +361,13 @@ def describe(db, llm, u):
   for c in todo:
     a = llm.ask(DESCRIBE, f"Categoria: {u.path[c['id']]}")
     if a.get("descricao"):
-      db.write("PATCH", "category", {"description_suggestion": str(a["descricao"])[:200]}, id=f"eq.{c['id']}", user_id=f"eq.{u.uid}")
+      db.write("PATCH", "category", {"description_suggestion": str(a["descricao"])[:200]}, id=f"eq.{c['id']}", ledger_id=f"eq.{u.lid}")
       log(f"  describe {u.path[c['id']]}: {a['descricao']}")
   return {"descriptions_drafted": len(todo)}
 
 
 def report(db, u, results, now):
-  audits = db.select("audit_log", user_id=f"eq.{u.uid}", sample="eq.true", order="at.desc")[:50]
+  audits = db.select("audit_log", ledger_id=f"eq.{u.lid}", sample="eq.true", order="at.desc")[:50]
   auto = [p for p in u.products.values() if p.get("category_review") == "automatic" and u.spent.get(p["id"])]
   unchecked = [p for p in auto if not p.get("llm_checked_at")]
   checked = sorted(p["llm_checked_at"] for p in auto if p.get("llm_checked_at"))
@@ -385,7 +385,7 @@ def report(db, u, results, now):
     "backup_age_hours": round(backup_age, 1) if backup_age is not None else None,
     "model": LLM_NAME,
   }
-  db.write("POST", "worker_report", {"user_id": u.uid, "report": r})
+  db.write("POST", "worker_report", {"ledger_id": u.lid, "report": r})
   return r
 
 
@@ -393,7 +393,7 @@ def main():
   p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
   p.add_argument("--local", action="store_true")
   p.add_argument("--only", choices=["audit", "learn", "links", "sizes", "describe", "report"], action="append")
-  p.add_argument("--limit", type=int, default=30, help="per task and user (audit, links, sizes)")
+  p.add_argument("--limit", type=int, default=30, help="per task and caderneta (audit, links, sizes)")
   p.add_argument("--sample", type=int, default=8, help="random already-checked products re-audited for the error rate")
   p.add_argument("--dry-run", action="store_true")
   args = p.parse_args()
@@ -412,19 +412,19 @@ def main():
   now = datetime.datetime.now(datetime.timezone.utc).isoformat()
   needs_llm = any(t != "report" for t in tasks)
   with (Llm(e["LMSTUDIO_API_KEY"]) if needs_llm else _Nothing()) as llm:
-    for user in db.users():
-      uid = user["id"]
-      u = User(db, uid)
-      log(f"user {user.get('email', uid)[:3]}…: {len(u.products)} products, {len(u.categories)} categories")
+    for ledger in db.ledgers():
+      lid = ledger["id"]
+      u = Ledger(db, lid)
+      log(f"caderneta {lid[:8]}…: {len(u.products)} products, {len(u.categories)} categories")
       results = {}
       if "audit" in tasks: results.update(audit(db, llm, u, args.limit, args.sample, now))
-      if "learn" in tasks: results.update(learn(db, llm, u, state.get(uid, {}).get("learned_until"), secret, now))
+      if "learn" in tasks: results.update(learn(db, llm, u, state.get(lid, {}).get("learned_until"), secret, now))
       if "links" in tasks: results.update(links(db, llm, u, args.limit))
       if "sizes" in tasks: results.update(sizes(db, llm, u, args.limit, now))
       if "describe" in tasks: results.update(describe(db, llm, u))
-      if "report" in tasks: log("  report", json.dumps(report(db, User(db, uid), results, now), ensure_ascii=False))
+      if "report" in tasks: log("  report", json.dumps(report(db, Ledger(db, lid), results, now), ensure_ascii=False))
       if "learn" in tasks and not args.dry_run:
-        state.setdefault(uid, {})["learned_until"] = now
+        state.setdefault(lid, {})["learned_until"] = now
   if not args.dry_run:
     os.makedirs(os.path.dirname(state_path), exist_ok=True)
     json.dump(state, open(state_path, "w"))

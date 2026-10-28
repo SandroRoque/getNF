@@ -1,11 +1,11 @@
 // Suggests categories for new store items with Jev (stage 4b, D70; the setup measured in D67/D68).
 //
 // pg_cron calls this every minute while categorize_job has work (kick_categorize). Each run claims a batch, and for
-// each item asks Jev one choice question over the user's leaf categories, with the item's words translated by the
+// each item asks Jev one choice question over the caderneta's leaf categories, with the item's words translated by the
 // shared lexicon and, for a barcode, Open Food Facts' name. Confidence at or above THRESHOLD becomes the category
 // ("automatic", not confirmed); below, a suggestion for the review list. A failure retries with backoff.
 //
-// A POST with {"check": {"user_id", "items": [{description, code_kind, code}], "lexicon"?: [{key, en}]}} answers
+// A POST with {"check": {"ledger_id", "items": [{description, code_kind, code}], "lexicon"?: [{key, en}]}} answers
 // those items with the same code and writes nothing: the regression check (D69) runs through exactly what
 // production runs. Extra lexicon entries are tried on top of the table, to test a proposed one before it goes live.
 //
@@ -24,7 +24,7 @@ const BATCH = Number(Deno.env.get("BATCH") ?? "25");
 const INSTRUCTIONS = "What kind of product is this item from a Brazilian supermarket receipt?";
 const OFF_FIELDS = "product_name,product_name_pt,brands,quantity,categories_tags";
 
-type Job = { user_id: string; store_item_id: string; product_id: string; code_kind: string; code: string; description: string };
+type Job = { ledger_id: string; store_item_id: string; product_id: string; code_kind: string; code: string; description: string };
 type Option = { key: string; id: string; text: string };
 
 Deno.serve(async (req) => {
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     return new Response("forbidden", { status: 403 });
   }
   const body = await req.json().catch(() => ({}));
-  if (body.check) return json(await check(body.check.user_id, body.check.items, body.check.lexicon ?? []));
+  if (body.check) return json(await check(body.check.ledger_id, body.check.items, body.check.lexicon ?? []));
 
   const { data: jobs, error } = await db.rpc("claim_categorize_jobs", { batch: BATCH });
   if (error) return json({ error: error.message }, 500);
@@ -43,10 +43,10 @@ Deno.serve(async (req) => {
   const outcomes: Record<string, number> = {};
   for (const job of jobs as Job[]) {
     try {
-      if (!options.has(job.user_id)) options.set(job.user_id, await leafCategories(job.user_id));
-      const { chosen, confidence } = await answer(job, options.get(job.user_id)!, expand);
+      if (!options.has(job.ledger_id)) options.set(job.ledger_id, await leafCategories(job.ledger_id));
+      const { chosen, confidence } = await answer(job, options.get(job.ledger_id)!, expand);
       const { data: outcome, error } = await db.rpc("apply_categorization", {
-        uid: job.user_id, item: job.store_item_id, product: job.product_id, category: chosen.id,
+        lid: job.ledger_id, item: job.store_item_id, product: job.product_id, category: chosen.id,
         confidence, model: JEV_MODEL, threshold: THRESHOLD,
       });
       if (error) throw new Error(error.message);
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.error(`job ${job.store_item_id}: ${message}`);
-      await db.rpc("fail_categorize_job", { uid: job.user_id, item: job.store_item_id, error: message.slice(0, 500) });
+      await db.rpc("fail_categorize_job", { lid: job.ledger_id, item: job.store_item_id, error: message.slice(0, 500) });
       outcomes.failed = (outcomes.failed ?? 0) + 1;
     }
   }
@@ -72,8 +72,8 @@ async function answer(item: Item, choices: Option[], expand: (t: string) => stri
   return { chosen, confidence: a.confidence };
 }
 
-async function check(userId: string, items: Item[], extra: { key: string; en: string }[]) {
-  const [expand, choices] = await Promise.all([lexicon(extra), leafCategories(userId)]);
+async function check(ledgerId: string, items: Item[], extra: { key: string; en: string }[]) {
+  const [expand, choices] = await Promise.all([lexicon(extra), leafCategories(ledgerId)]);
   const out = [];
   for (const item of items) {
     try {
@@ -90,10 +90,10 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 }
 
-/** The user's categories that have no children: what an item can be assigned to, described as in D67's eval. */
-async function leafCategories(userId: string): Promise<Option[]> {
+/** The caderneta's categories that have no children: what an item can be assigned to, described as in D67's eval. */
+async function leafCategories(ledgerId: string): Promise<Option[]> {
   const { data: cats, error } = await db.from("category").select("id, seed_path, label, description, parent_id")
-    .eq("user_id", userId).eq("deleted", false);
+    .eq("ledger_id", ledgerId).eq("deleted", false);
   if (error) throw new Error(error.message);
   const { data: seed } = await db.from("taxonomy_node").select("path, description_en");
   const described = new Map((seed ?? []).map((n) => [n.path, n.description_en]));

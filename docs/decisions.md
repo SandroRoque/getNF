@@ -2225,3 +2225,46 @@ A photo is working material: once the page is saved and the discounts read, the 
 sync has no storage delete yet, so the setting's text doesn't promise it. A capture the user abandons is discarded
 with its photos, so those failures aren't kept; keeping them for opted-in users is the other missing failure.
 The photos already online (uploaded before this) stay until the user says what to do with them.
+
+## D104. Cadernetas: catalogs belong to a caderneta; people and cadernetas are many-to-many (2026-10-27)
+
+**Context.** The user wants several people to share one catalog (a family, an office), and one person to keep several
+(home and office). Until now every row on Supabase belonged to one login (`user_id`, D71).
+
+**Decision** (the user's, in a planning session):
+- **Names.** The shared thing is a **caderneta** (code: `ledger`). **Conta** means only the person's login. A person
+  can own several cadernetas and be a member of others; `ledger_member (ledger_id, user_id, role)` holds one role per
+  pair. Nothing marks a "home" caderneta; the phone remembers which one is open. A new login gets a first one,
+  "Pessoal", as a starting point.
+- **Roles.** The creator (owner) can do everything, including deleting the caderneta and changing managers; managers
+  invite and remove members and edit the category tree; any member scans, fetches pages, and picks categories,
+  sizes, links and discounts. Tree edits: last write wins, no conflict screen; every change to the caderneta's
+  setup is logged (`ledger_event`, `category_event` with its actor), with no screen yet.
+- **No privacy inside a caderneta.** Its reports and IPCI are the caderneta's. Who scanned a receipt is shown ("por
+  Ana"); there are no reports per person.
+- **A receipt is one row per caderneta and chave**, however many members scan it; each scanner is a `receipt_scan`
+  row. Lines hang off the receipt, so members leaving never leaves a dangling row.
+- **Leaving a caderneta:** the photos that member uploaded (D103: only opted-in, blanked copies) and their scan marks
+  go; receipts, pages, lines and the catalog stay with the caderneta, even when they were the only scanner. Before
+  leaving, they're offered a copy of the receipts they scanned into another caderneta of theirs; the original keeps
+  them. Copying is also available any time.
+- **Leaving the app** ("Apagar minha conta"): export offered first (D47); the leaving rules in every caderneta;
+  cadernetas where they're the only member are deleted whole; a caderneta they own with other members must be
+  handed over first; then the login is deleted.
+- **Pages** keep the receipt but lose the buyer: a consumer's CPF/CNPJ and name are blanked when a page is saved.
+- **Two phones, same rows.** Store items and the products the parser makes get ids derived from the item's code
+  (`uuid5`), so two phones reading the same item offline make the same row instead of a duplicate and a sync stuck on
+  a unique key (found in planning: the second phone's sync failed for good). A row the server refuses (4xx) is parked
+  with its error instead of failing every sync.
+- **Shared fetch queue.** A receipt waiting for its page reaches the caderneta only once its capture is over ("Nota
+  salva", D99) or a fetch failed; any member can then fetch it, after claiming it (a few minutes' lease) so two phones
+  don't spend two lookups. A page, once on the server, is never cleared by a later write without one.
+- **One database per caderneta on the phone**, each with its own pull cursors: joining starts empty and pulls, the
+  case that already worked, so catalogs are never merged.
+
+**LGPD (not legal advice).** Data extracted into a shared caderneta isn't anonymized: it stays tied to the caderneta
+and its members, and the chave retrieves the receipt. Keeping it after a member leaves is defensible as the
+caderneta's shared record, but get a legal read before opening cadernetas to people outside the family.
+
+**Existing data** needs no rewrite: each login becomes a caderneta with the same id, so `<uid>/<chave>/…` storage
+paths are already `<ledger>/<chave>/…`.

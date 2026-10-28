@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Writes a Supabase migration that loads taxonomy/categories.txt, descriptions-en.txt and tags.txt into the seed tables
-(taxonomy_node, taxonomy_tag), then brings every user's categories up to it (sync_taxonomy_for, D70).
+(taxonomy_node, taxonomy_tag), then brings every caderneta's categories up to it (sync_taxonomy_for, D70, D104).
 
 Run after editing the taxonomy:  python3 tools/taxonomy-sql.py  (writes supabase/migrations/<now>_taxonomy.sql)
 It only adds and updates. Moving or renaming a slug changes the category's path, its identity: write a migration that
@@ -66,7 +66,7 @@ def main():
   sql.append(",\n".join(f"  ({q(s)}, {q(d)})" for s, d in tags()))
   sql.append("on conflict (slug) do update set description = excluded.description;")
   sql.append("")
-  sql.append("select public.sync_taxonomy_for(id) from auth.users;")
+  sql.append("select public.sync_taxonomy_for(id) from public.ledger;")
   stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
   path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "supabase", "migrations", f"{stamp}_taxonomy.sql")
   open(path, "w", encoding="utf-8").write("\n".join(sql) + "\n")
