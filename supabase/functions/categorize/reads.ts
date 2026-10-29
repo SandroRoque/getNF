@@ -71,3 +71,39 @@ export const NO_SIZE = "none";
 export const SIZE_INSTRUCTIONS =
   "What is the net weight or volume of one unit of this item, as written in its receipt text? A pack's total counts as one unit.";
 export const NO_SIZE_TEXT = "No net weight or volume is written (a number that is a count, a model, a percentage or a size of clothing)";
+
+type Question = { type: "choice"; instructions: string; criteria: Record<string, string> };
+
+/**
+ * The questions one item needs. `categories` (key → description) is null when its product needs no category. The way
+ * it's sold is asked only when its unit doesn't settle it (`settled`); its size only when it isn't sold by weight or
+ * volume and its description has a candidate.
+ */
+export function buildQuestions(
+  item: { description: string; unit?: string | null; qty_e4?: number | null },
+  categories: Record<string, string> | null, categoryInstructions: string,
+): { questions: Record<string, Question>; settled: SoldBy | null; candidates: Candidate[] } {
+  const questions: Record<string, Question> = {};
+  if (categories) questions.category = { type: "choice", instructions: categoryInstructions, criteria: categories };
+  const settled = soldByFromUnit(item.unit ?? null, item.qty_e4 ?? null);
+  if (!settled) questions.sold_by = { type: "choice", instructions: SOLD_BY_INSTRUCTIONS, criteria: SOLD_BY_CRITERIA };
+  // Sold by weight or volume, the line's quantity is already the measure; a size in the name doesn't price it.
+  const candidates = settled === "weight" || settled === "volume" ? [] : sizeCandidates(item.description);
+  if (candidates.length) {
+    questions.size = {
+      type: "choice", instructions: SIZE_INSTRUCTIONS,
+      criteria: { ...Object.fromEntries(candidates.map((c) => [c.key, c.text])), [NO_SIZE]: NO_SIZE_TEXT },
+    };
+  }
+  return { questions, settled, candidates };
+}
+
+/** What every question sees: the description translated by the lexicon and as printed, the unit and the quantity. */
+export function buildState(
+  item: { description: string; unit?: string | null; qty_e4?: number | null }, translated: string,
+): Record<string, string> {
+  const state: Record<string, string> = { item: translated, "receipt text": item.description };
+  if (item.unit) state["unit on the receipt"] = item.unit;
+  if (item.qty_e4 != null) state["quantity on the receipt"] = String(item.qty_e4 / 10_000);
+  return state;
+}

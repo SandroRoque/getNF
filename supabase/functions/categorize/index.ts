@@ -17,10 +17,7 @@
 // Secrets (supabase secrets set): JEV_API_KEY, CATEGORIZE_SECRET. Optional: JEV_URL, JEV_MODEL, THRESHOLD, BATCH.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import {
-  type Candidate, NO_SIZE, NO_SIZE_TEXT, SIZE_INSTRUCTIONS, type SoldBy, SOLD_BY_CRITERIA, SOLD_BY_INSTRUCTIONS,
-  sizeCandidates, soldByFromUnit,
-} from "./reads.ts";
+import { buildQuestions, buildState, NO_SIZE, type SoldBy, SOLD_BY_CRITERIA } from "./reads.ts";
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false },
@@ -92,26 +89,11 @@ type Answers = {
 /** One request for every question this item needs; `choices` null when its product needs no category. */
 async function answer(item: Item, choices: Option[] | null, expand: (t: string) => string): Promise<Answers> {
   const out: Answers = {};
-  const questions: Record<string, unknown> = {};
-  if (choices) {
-    questions.category = { type: "choice", instructions: INSTRUCTIONS, criteria: Object.fromEntries(choices.map((o) => [o.key, o.text])) };
-  }
-  const settled = soldByFromUnit(item.unit ?? null, item.qty_e4 ?? null);
+  const { questions, settled, candidates } = buildQuestions(item, choices && Object.fromEntries(choices.map((o) => [o.key, o.text])), INSTRUCTIONS);
   if (settled) out.soldBy = { value: settled, source: "parser", confidence: 1 };
-  else questions.sold_by = { type: "choice", instructions: SOLD_BY_INSTRUCTIONS, criteria: SOLD_BY_CRITERIA };
-  // Sold by weight or volume, the line's quantity is already the measure; a size in the name doesn't price it.
-  const candidates: Candidate[] = settled === "weight" || settled === "volume" ? [] : sizeCandidates(item.description);
-  if (candidates.length) {
-    questions.size = {
-      type: "choice", instructions: SIZE_INSTRUCTIONS,
-      criteria: { ...Object.fromEntries(candidates.map((c) => [c.key, c.text])), [NO_SIZE]: NO_SIZE_TEXT },
-    };
-  }
   if (!Object.keys(questions).length) return out;
 
-  const state: Record<string, string> = { item: expand(item.description), "receipt text": item.description };
-  if (item.unit) state["unit on the receipt"] = item.unit;
-  if (item.qty_e4 != null) state["quantity on the receipt"] = String(item.qty_e4 / 10_000);
+  const state = buildState(item, expand(item.description));
   if (item.code_kind === "gtin") Object.assign(state, await openFoodFacts(item.code));
   const a = await jev(state, questions);
 
