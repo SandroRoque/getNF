@@ -65,9 +65,10 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 
 1. **The user's review of the redesign (D81) on the phone,** now including the caderneta screens. The SEFAZ page
    screen isn't redesigned yet.
-2. **System-1 asks more per item (D108):** category, how it was sold and the size in one Jev request per new
-   store item, with code normalizing units and finding size candidates. Then the LLM's new role: a capable model, run
-   rarely, for rules, lexicon and disagreements, instead of the nightly small one.
+2. **System-1 reads more per item (D108), live since 2026-10-29:** category, how it's sold and the size (with pack
+   counts) for each new store item; the 94 existing ones were read. The phone needs the v12 build to use them. Open:
+   a card for an unsure "how it's sold"; showing a price per unit of a pack; the LLM auditing System-1's sizes; then
+   the LLM's new role (a capable model, run rarely, for rules, lexicon and disagreements).
 3. **Going public (D105):** positioning, a new name, the portfolio entry at roqlab.com.br, Play listing, screenshots
    from made-up data, a short manual. Running costs are estimated in [costs.md](costs.md). Done: the demo
    caderneta, screenshots ([screenshots/](screenshots/)) and the brief for the roqlab entry

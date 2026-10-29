@@ -2731,3 +2731,10 @@ The answer logic moved to `reads.ts` with Jev passed in, tested with a fake (whi
 Not deployed yet. The user agreed to read every existing store item once too (94 online, about 94 Jev requests):
 `20261029000100_read_existing_items.sql` queues them. The function must be deployed before that migration is
 applied, or the old function would mark the jobs done without asking the new questions.
+
+**Deployed (2026-10-29),** by the user (this session's permissions don't allow production deploys): the function,
+then both migrations. The 94 existing store items were read in 4 minutes, none failed. How sold: 15 by the unit
+(weighed), 73 "by the unit" from Jev, 6 unsure and left unwritten. Sizes: 55 sure; one adds a size the parser missed
+(`ARROZ … 1K`, 1 kg) and three add a pack count with no weight (`C/4` capsules, `C 12` rolls, `30UN` filters). No
+size suggestions, and no category changed (every product already had one). The phone shows them once it has
+database v12.
