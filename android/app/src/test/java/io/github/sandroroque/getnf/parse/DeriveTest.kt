@@ -6,7 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** server/test/derive.test.js, ported (the taxonomy file parsers stay on the server for now). */
+/** Ported from the retired server's derive.test.js (D48). */
 class DeriveTest {
   @Test fun gtinCheckDigitsAndStoreInternalCodes() {
     assertTrue(Derive.isGtin("7891079000229"))

@@ -9,7 +9,7 @@ dump=${1:-$(ls -1 ~/getnf-backups/supabase/db-*.dump | tail -1)}
 local_db=postgresql://postgres:postgres@127.0.0.1:54322/postgres
 # The local superuser: only it may switch off triggers on the auth tables.
 local_admin=postgresql://supabase_admin:postgres@127.0.0.1:54322/postgres
-envfile=server/.env.local; [ -f "$envfile" ] || envfile=../../../server/.env.local
+envfile=.env.local; [ -f "$envfile" ] || envfile=../../../.env.local
 set -a; . "$envfile"; set +a
 ref=$(sed -E 's#https://([^.]+)\..*#\1#' <<<"$SUPABASE_URL")
 live="postgresql://postgres:$(python3 -c 'import os,urllib.parse;print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"],safe=""))')@db.$ref.supabase.co:5432/postgres?sslmode=require"

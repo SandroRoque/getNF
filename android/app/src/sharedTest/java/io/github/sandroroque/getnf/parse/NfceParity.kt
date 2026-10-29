@@ -11,16 +11,12 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * Compares the Kotlin parser and derivation with golden files written from the server's JS by tools/nfce-golden.mjs
- * (D48). Shared by the JVM tests and the on-device ones, since Android's regex engine (ICU) isn't the JVM's.
+ * Compares the parser and derivation with golden files. They were written from the retired server's JS parser when it
+ * was ported (D48) and now pin the output: a deliberate change to the parser updates them. Shared by the JVM tests and
+ * the on-device ones, since Android's regex engine (ICU) isn't the JVM's.
  */
 object NfceParity {
   val FIXTURES = listOf("sc-detalhes-server-html", "sc-detalhes-webview-dom")
-
-  /** Each page in [dir] that has a golden file next to it. */
-  fun pairs(dir: java.io.File) = dir.listFiles { f -> f.extension == "html" }.orEmpty().sorted().mapNotNull { html ->
-    java.io.File(html.path.removeSuffix(".html") + ".json").takeIf { it.isFile }?.let { html to it }
-  }
 
   /** The golden file's shape, from the Kotlin side. */
   fun golden(p: ParsedReceipt): JsonObject {

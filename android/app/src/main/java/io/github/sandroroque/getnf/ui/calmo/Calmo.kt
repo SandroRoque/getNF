@@ -263,6 +263,3 @@ fun SearchBox(value: String, onValue: (String) -> Unit, placeholder: String, mod
 @Composable
 fun EmptyState(text: String, modifier: Modifier = Modifier) =
   Text(text, modifier.fillMaxWidth().padding(vertical = 24.dp), style = MaterialTheme.typography.bodyMedium, color = Calmo.mute)
-
-/** The colour of a top-level category, by its position in the tree. */
-fun categoryColor(index: Int, colors: List<Color>, none: Color): Color = if (index < 0) none else colors[index % colors.size]

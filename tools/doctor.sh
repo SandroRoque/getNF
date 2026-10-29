@@ -14,5 +14,5 @@ avdmanager list avd -c 2>/dev/null | grep -qx "$GETNF_AVD" && ok "AVD '$GETNF_AV
 [[ -r /dev/kvm ]]                    && ok "/dev/kvm (hardware virtualization)" || miss "/dev/kvm" "enable SVM/AMD-V in BIOS, reboot"
 command -v magick >/dev/null         && ok "imagemagick (still-image camera input)" || miss "imagemagick" "pacman -S imagemagick"
 docker info >/dev/null 2>&1          && ok "docker" || miss "docker" "systemctl start docker"
-curl -sf http://127.0.0.1:8090/api/health >/dev/null && ok "PocketBase on :8090" || echo "  --      PocketBase not running (docker compose -f server/compose.yaml up -d)"
+[[ -f .env.local || -f ../../../.env.local ]] && ok ".env.local (Supabase URL and keys)" || miss ".env.local" "copy it from the main checkout or the Supabase dashboard"
 exit $fail

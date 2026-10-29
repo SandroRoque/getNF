@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Measure how well local models categorize receipt items, against the categories the user picked by hand (D56).
 
-  categorize-eval.py export            # hand-categorized products from the local PocketBase -> test-media/categorize/
   categorize-eval.py laya [--model M]  # Laya (laya-serve, Jev protocol), walking the category tree level by level
-  categorize-eval.py llm  [--model M]  # an LLM through LM Studio's OpenAI-compatible server (key: $LMSTUDIO_API_KEY or server/.env.local)
+  categorize-eval.py llm  [--model M]  # an LLM through LM Studio's OpenAI-compatible server (key: $LMSTUDIO_API_KEY or .env.local)
   categorize-eval.py synth --model M   # LLM-written receipt-style items per category (training data)
   categorize-eval.py trainset ...      # Laya training rows (JSONL for laya-train) from labeled items
   categorize-eval.py report            # compare the saved runs
 
 The items are real purchases, so everything this writes stays in test-media/ (gitignored). Only the taxonomy's labels
-are shown to the models: its comments name real items, which would leak the answers.
+are shown to the models: its comments name real items, which would leak the answers. test-media/categorize/items.json
+was exported from the retired PocketBase (D56) and is kept as the fixed answer key.
 """
 import argparse, json, os, re, sys, time, urllib.request
 from collections import Counter, defaultdict
@@ -23,11 +23,6 @@ TAXONOMY = os.path.join(ROOT, "taxonomy", "categories.txt")
 def post(url, body, headers=None, timeout=300):
   req = urllib.request.Request(url, json.dumps(body).encode(), {"content-type": "application/json", **(headers or {})})
   with urllib.request.urlopen(req, timeout=timeout) as r:
-    return json.load(r)
-
-
-def get(url, headers=None):
-  with urllib.request.urlopen(urllib.request.Request(url, headers=headers or {}), timeout=60) as r:
     return json.load(r)
 
 
@@ -48,61 +43,18 @@ def taxonomy():
 
 
 def lmstudio_key():
-  """$LMSTUDIO_API_KEY, else the gitignored server/.env.local (never printed)."""
+  """$LMSTUDIO_API_KEY, else the gitignored .env.local (never printed)."""
   return os.environ.get("LMSTUDIO_API_KEY") or env_local().get("LMSTUDIO_API_KEY")
 
 
 def env_local():
   values = {}
-  for line in open(os.path.join(ROOT, "server", ".env.local")) if os.path.exists(os.path.join(ROOT, "server", ".env.local")) \
-      else open(os.path.join(ROOT, "..", "..", "..", "server", ".env.local")):
+  for line in open(os.path.join(ROOT, ".env.local")) if os.path.exists(os.path.join(ROOT, ".env.local")) \
+      else open(os.path.join(ROOT, "..", "..", "..", ".env.local")):
     if "=" in line and not line.lstrip().startswith("#"):
       k, v = line.strip().split("=", 1)
       values[k] = v
   return values
-
-
-def export(args):
-  creds = env_local()
-  base = args.server.rstrip("/")
-  token = post(f"{base}/api/collections/_superusers/auth-with-password",
-               {"identity": creds["PB_ADMIN_EMAIL"], "password": creds["PB_ADMIN_PASSWORD"]})["token"]
-  auth = {"Authorization": token}
-
-  def all_records(collection):
-    page, rows = 1, []
-    while True:
-      r = get(f"{base}/api/collections/{collection}/records?perPage=500&page={page}", auth)
-      rows += r["items"]
-      if page >= r["totalPages"]:
-        return rows
-      page += 1
-
-  paths = {c["id"]: c["path"] for c in all_records("categories")}
-  receipts = {r["id"]: r for r in all_records("receipts")}
-  lines = all_records("receipt_items")
-  by_receipt, by_product = defaultdict(list), defaultdict(list)
-  for l in lines:
-    by_receipt[l["receipt"]].append(l)
-    by_product[l["product"]].append(l)
-  items = []
-  for p in all_records("products"):
-    if not p.get("category"):
-      continue
-    seen = by_product.get(p["id"], [])
-    first = seen[0] if seen else None
-    receipt = receipts.get(first["receipt"]) if first else None
-    items.append({
-      "id": p["id"], "description": p["description"], "key_kind": p["key"].split(":", 1)[0],
-      "gtin": p.get("gtin") or None, "category": paths[p["category"]],
-      "unit": first and first["unit"], "qty": first and first["qty"], "unit_price": first and first["unit_price"],
-      "store": receipt and receipt.get("store_name"),
-      "receipt_items": [l["description"] for l in sorted(by_receipt[first["receipt"]], key=lambda l: l["line"])
-                        if l["product"] != p["id"]] if first else [],
-    })
-  os.makedirs(OUT, exist_ok=True)
-  json.dump(items, open(ITEMS, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-  print(f"{len(items)} categorized products, {len(set(i['category'] for i in items))} categories -> {ITEMS}")
 
 
 def load_items():
@@ -153,7 +105,7 @@ def laya(args):
   # A hosted Jev-protocol service (TypeSafe's Jev) takes a bearer key, read like lmstudio_key() and never printed.
   key = (os.environ.get(args.key_env) or env_local().get(args.key_env)) if args.key_env else None
   if args.key_env and not key:
-    sys.exit(f"{args.key_env} is not set (environment or server/.env.local)")
+    sys.exit(f"{args.key_env} is not set (environment or .env.local)")
   headers = {"Authorization": f"Bearer {key}"} if key else None
   leaves = [p for p in labels if not children.get(p)]
   off = json.load(open(os.path.join(OUT, "off.json"), encoding="utf-8")) if args.lookup else {}
@@ -418,7 +370,6 @@ def report(args):
 def main():
   p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
   sub = p.add_subparsers(dest="cmd", required=True)
-  e = sub.add_parser("export"); e.add_argument("--server", default="http://127.0.0.1:8090"); e.set_defaults(fn=export)
   l = sub.add_parser("laya"); l.add_argument("--url", default="http://127.0.0.1:8003"); l.add_argument("--model")
   l.add_argument("--lang", choices=["pt", "en"], default="pt", help="language of the question and descriptions")
   l.add_argument("--lexicon", help="token/phrase -> pt/en expansions (TSV)")

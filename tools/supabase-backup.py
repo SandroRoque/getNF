@@ -10,7 +10,7 @@
 - Files (pages, archive photos, masks in bucket `receipts`): mirrored into files/, downloading only what's new or
   changed. Files deleted online stay here.
 
-Reads SUPABASE_URL, SUPABASE_SECRET_KEY and SUPABASE_DB_PASSWORD from server/.env.local and never prints them.
+Reads SUPABASE_URL, SUPABASE_SECRET_KEY and SUPABASE_DB_PASSWORD from .env.local and never prints them.
 The restore drill (tools/supabase-restore-drill.sh) proves a dump can be read back.
 """
 import argparse, datetime, json, os, subprocess, sys, urllib.parse, urllib.request
@@ -21,7 +21,7 @@ KEEP = 14
 
 def env():
   values = {}
-  for path in (os.path.join(ROOT, "server", ".env.local"), os.path.join(ROOT, "..", "..", "..", "server", ".env.local")):
+  for path in (os.path.join(ROOT, ".env.local"), os.path.join(ROOT, "..", "..", "..", ".env.local")):
     if os.path.exists(path):
       for line in open(path):
         if "=" in line and not line.lstrip().startswith("#"):
@@ -30,7 +30,7 @@ def env():
       break
   missing = [k for k in ("SUPABASE_URL", "SUPABASE_SECRET_KEY", "SUPABASE_DB_PASSWORD") if not values.get(k)]
   if missing:
-    sys.exit(f"missing in server/.env.local: {', '.join(missing)}")
+    sys.exit(f"missing in .env.local: {', '.join(missing)}")
   return values
 
 

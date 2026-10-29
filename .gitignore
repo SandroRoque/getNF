@@ -1,12 +1,12 @@
 # Real receipts: personal/financial data and large files. Kept local only.
-# Small, sanitized parser fixtures belong in android/ or server/ test dirs instead.
+# Small, sanitized parser fixtures (tools/make-nfce-fixture.py) belong in android/app/src/test/fixtures instead.
 /test-media/**
 !/test-media/README.md
 
-# PocketBase runtime data and local credentials
-/server/pb_data/
-/server/.env.local
-/server/.env
+# Local credentials: the Supabase URL and keys, the database password, LM Studio's key. Never commit.
+/.env.local
+# The retired PocketBase server's data and credentials, still on disk in the main checkout.
+/server/
 
 # Claude Code per-machine settings
 /.claude/settings.local.json

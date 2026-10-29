@@ -8,8 +8,8 @@ import java.time.format.DateTimeFormatter
 
 /*
  * Parser for the national NFC-e consultation page (`NFCe_Detalhes.aspx`, docs/sefaz-sc.md), ported from
- * server/pb_hooks/lib/nfce_page.js (D48). Accepts both the server's HTML and the WebView's DOM serialisation.
- * Golden files made by tools/nfce-golden.mjs from the JS parser keep the two in step.
+ * the retired server's nfce_page.js (D48). Accepts both the server's HTML and the WebView's DOM serialisation.
+ * Golden files written from the JS parser when it was ported pin its output (NfceParityTest).
  *
  * Money is Long cents and quantities Long at scale 4, read exactly from the page's decimal text.
  */

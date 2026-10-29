@@ -1,32 +1,21 @@
 package io.github.sandroroque.getnf.ui.spending
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.sandroroque.getnf.data.Period
-import io.github.sandroroque.getnf.data.Slice
 import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
@@ -46,46 +35,6 @@ fun label(p: Period, long: Boolean = false): String {
   val ym = YearMonth.parse(p.key)
   return if (long) "${ym.month.getDisplayName(TextStyle.FULL, BR)} de ${ym.year}"
   else ym.month.getDisplayName(TextStyle.SHORT, BR).trimEnd('.') + if (ym.monthValue == 1) "\n${ym.year % 100}" else ""
-}
-
-/**
- * One bar per period, stacked by top-level category, the selected one full colour and the rest faded. Scrolls when
- * there are many periods, starting at the newest. Tapping a bar selects its period.
- */
-@Composable
-fun StackedBars(
-  periods: List<Period>, stacks: Map<Period, List<Slice>>, colorOf: (String?) -> Color, selected: Period?, onSelect: (Period) -> Unit,
-) {
-  val max = stacks.values.maxOfOrNull { s -> s.sumOf { it.netCents } }?.takeIf { it > 0 } ?: 1L
-  val scroll = rememberScrollState()
-  LaunchedEffect(periods.size) { scroll.scrollTo(scroll.maxValue) }
-  Row(Modifier.fillMaxWidth().horizontalScroll(scroll), verticalAlignment = Alignment.Bottom) {
-    for (p in periods) {
-      val faded = selected != null && p != selected
-      Column(Modifier.width(44.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Canvas(Modifier.width(30.dp).height(140.dp).pointerInput(p) { detectTapGestures { onSelect(p) } }) {
-          var y = size.height
-          for (slice in stacks[p].orEmpty().sortedByDescending { it.netCents }) {
-            val h = size.height * slice.netCents / max
-            y -= h
-            drawRect(colorOf(slice.categoryId).copy(alpha = if (faded) .35f else 1f), Offset(0f, y), Size(size.width, h))
-          }
-        }
-        Text(label(p), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
-          color = if (faded) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
-      }
-    }
-  }
-}
-
-/** A thin bar showing a share, for list rows. */
-@Composable
-fun ShareBar(fraction: Float, color: Color, modifier: Modifier = Modifier) {
-  val track = MaterialTheme.colorScheme.surfaceVariant
-  Canvas(modifier.height(6.dp)) {
-    drawRoundRect(track, cornerRadius = CornerRadius(3.dp.toPx()))
-    drawRoundRect(color, size = Size(size.width * fraction.coerceIn(0f, 1f), size.height), cornerRadius = CornerRadius(3.dp.toPx()))
-  }
 }
 
 /**

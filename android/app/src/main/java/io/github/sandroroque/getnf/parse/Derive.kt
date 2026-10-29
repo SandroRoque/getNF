@@ -1,7 +1,7 @@
 package io.github.sandroroque.getnf.parse
 
 /*
- * Turning parsed receipts into store items and line discounts (D14, D44), ported from server/pb_hooks/lib/derive.js
+ * Turning parsed receipts into store items and line discounts (D14, D44), ported from the retired server's derive.js
  * (D48). Sizes are Long millionths of a kg or litre, money Long cents, as in the database.
  */
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Make a small, sanitised test fixture from a real NFC-e details page (test-media/ stays local; see CLAUDE.md).
 
-    tools/make-nfce-fixture.py test-media/pages/<page>.html server/test/fixtures/<name>.html --items 5
+    tools/make-nfce-fixture.py test-media/pages/<page>.html android/app/src/test/fixtures/<name>.html --items 5
 
 Keeps only the receipt markup (drops ASP.NET viewstate, scripts, portal chrome) and the first N items, recomputes the
 totals so they stay consistent, and replaces everything that ties it to a real purchase with synthetic values: chave,

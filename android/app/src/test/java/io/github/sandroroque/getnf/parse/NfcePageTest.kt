@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 
-/** server/test/nfce_page.test.js, ported. */
+/** Ported from the retired server's nfce_page.test.js (D48). */
 class NfcePageTest {
   private fun fixture(name: String) = javaClass.classLoader!!.getResource(name)!!.readText()
 

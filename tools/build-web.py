@@ -4,7 +4,7 @@
 - `/`: the landing page.
 - `/privacidade/`: docs/privacy-policy.md, rendered with cmark (its draft note dropped, its blanks filled in).
 - `/apagar-conta/`: deleting an account without the app, which Play asks for. It needs the Supabase project's URL
-  and publishable key (public by design, kept out of the repo like the app's): from server/.env.local, or with
+  and publishable key (public by design, kept out of the repo like the app's): from .env.local, or with
   --local from the running local Supabase, for testing. Values are never printed.
 
   tools/build-web.py --contact <e-mail>
@@ -20,10 +20,10 @@ SKIP = {"dist", "README.md", "wrangler.jsonc", ".wrangler"}
 
 
 def env_local():
-  for path in (os.path.join(ROOT, "server", ".env.local"), os.path.join(ROOT, "..", "..", "..", "server", ".env.local")):
+  for path in (os.path.join(ROOT, ".env.local"), os.path.join(ROOT, "..", "..", "..", ".env.local")):
     if os.path.exists(path):
       return dict(line.strip().split("=", 1) for line in open(path) if "=" in line and not line.lstrip().startswith("#"))
-  sys.exit("no server/.env.local")
+  sys.exit("no .env.local")
 
 
 def local_supabase():

@@ -5,7 +5,7 @@
 
 The file comes from the categorization eval and is built from real receipts, so it stays out of git; the table is
 what the `categorize` function reads. Existing keys are updated; nothing is deleted. --local loads the local
-Supabase (npx supabase start); without it, the online project (server/.env.local, password never printed).
+Supabase (npx supabase start); without it, the online project (.env.local, password never printed).
 Format: key<TAB>portuguese<TAB>english, `#` comments; phrases (with spaces) are matched before single words.
 """
 import argparse, os, subprocess, sys, urllib.parse
@@ -14,12 +14,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def online_url():
-  for path in (os.path.join(ROOT, "server", ".env.local"), os.path.join(ROOT, "..", "..", "..", "server", ".env.local")):
+  for path in (os.path.join(ROOT, ".env.local"), os.path.join(ROOT, "..", "..", "..", ".env.local")):
     if os.path.exists(path):
       env = dict(l.strip().split("=", 1) for l in open(path) if "=" in l and not l.lstrip().startswith("#"))
       ref = urllib.parse.urlparse(env["SUPABASE_URL"]).hostname.split(".")[0]
       return f"postgresql://postgres:{urllib.parse.quote(env['SUPABASE_DB_PASSWORD'], safe='')}@db.{ref}.supabase.co:5432/postgres?sslmode=require"
-  sys.exit("no server/.env.local")
+  sys.exit("no .env.local")
 
 
 def q(text):

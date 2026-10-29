@@ -8,8 +8,7 @@
       "Bash(avdmanager list:*)",
       "Bash(sdkmanager --list:*)",
       "Bash(tools/doctor.sh:*)",
-      "Bash(tools/emulator.sh:*)",
-      "Bash(docker compose -f server/compose.yaml:*)"
+      "Bash(tools/emulator.sh:*)"
     ]
   }
 }

@@ -13,7 +13,7 @@ plugins {
 fun releaseServerProblem(url: String?, key: String?): String? = when {
   url.isNullOrBlank() || key.isNullOrBlank() ->
     "release build: no Supabase URL and publishable key. Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in " +
-      "server/.env.local, or pass -Pgetnf.releaseSupabaseUrl and -Pgetnf.releaseSupabaseKey"
+      ".env.local, or pass -Pgetnf.releaseSupabaseUrl and -Pgetnf.releaseSupabaseKey"
   !url.startsWith("https://") -> "release build: the Supabase URL must be HTTPS (release builds refuse plain HTTP)"
   !isPublishableKey(key) -> "release build: the Supabase key isn't a publishable key. A secret key must never go in an APK"
   else -> null
@@ -49,14 +49,14 @@ android {
     }
 
     // The Supabase project baked into the APK (D70): its URL and publishable key, which are public by design (Row
-    // Level Security protects the data). Debug builds read them from server/.env.local (gitignored), and
+    // Level Security protects the data). Debug builds read them from .env.local (gitignored), and
     // -Pgetnf.supabaseUrl / -Pgetnf.supabaseKey override that, e.g. to point the emulator at a local Supabase
-    // (http://10.0.2.2:54321). Release builds carry the online project (D105): from server/.env.local or
+    // (http://10.0.2.2:54321). Release builds carry the online project (D105): from .env.local or
     // -Pgetnf.releaseSupabaseUrl / -Pgetnf.releaseSupabaseKey, never the debug override, HTTPS and a publishable key
     // only, or the release build stops. Nobody is signed in by default.
     // A git worktree (.claude/worktrees/<name>/) has no copy of the gitignored file: use the main checkout's.
     val devEnv = Properties().apply {
-      listOf("../server/.env.local", "../../../../server/.env.local").firstNotNullOfOrNull {
+      listOf("../.env.local", "../../../../.env.local").firstNotNullOfOrNull {
         providers.fileContents(rootProject.layout.projectDirectory.file(it)).asText.orNull
       }?.let { load(it.reader()) }
     }
@@ -112,12 +112,12 @@ android {
       shaders = false
     }
 
-    // The parser fixtures live with the server's tests; the Kotlin port reads the same files (D48).
-    sourceSets["test"].resources.srcDir("../../server/test/fixtures")
+    // Sanitized SEFAZ pages (tools/make-nfce-fixture.py), read by the JVM and the on-device tests.
+    sourceSets["test"].resources.srcDir("src/test/fixtures")
     // The parity helper and goldens are shared with the on-device tests (Android's regex engine differs).
     sourceSets["test"].kotlin.srcDir("src/sharedTest/java")
     sourceSets["androidTest"].kotlin.srcDir("src/sharedTest/java")
-    sourceSets["androidTest"].resources.srcDirs("../../server/test/fixtures", "src/test/resources")
+    sourceSets["androidTest"].resources.srcDirs("src/test/fixtures", "src/test/resources")
 
     packaging {
       resources {

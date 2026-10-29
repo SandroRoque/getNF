@@ -19,7 +19,7 @@ Tasks, per caderneta (D104):
 
 Nothing leaves the PC except to the user's own Supabase project, and, for the regression gate, the item
 descriptions Jev already sees (D74). Reads SUPABASE_URL, SUPABASE_SECRET_KEY and LMSTUDIO_API_KEY from
-server/.env.local and never prints them. The model is loaded for the run and unloaded after, unless it was loaded
+.env.local and never prints them. The model is loaded for the run and unloaded after, unless it was loaded
 already.
 """
 import argparse, datetime, json, os, random, re, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
@@ -32,10 +32,10 @@ LLM_NAME = "llm:swift-1.5"
 
 
 def env():
-  for path in (os.path.join(ROOT, "server", ".env.local"), os.path.join(ROOT, "..", "..", "..", "server", ".env.local")):
+  for path in (os.path.join(ROOT, ".env.local"), os.path.join(ROOT, "..", "..", "..", ".env.local")):
     if os.path.exists(path):
       return dict(l.strip().split("=", 1) for l in open(path) if "=" in l and not l.lstrip().startswith("#"))
-  sys.exit("no server/.env.local")
+  sys.exit("no .env.local")
 
 
 def log(*a):
