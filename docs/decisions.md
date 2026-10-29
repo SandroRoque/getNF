@@ -2728,4 +2728,6 @@ including `1K` (1 kg) and `FILTRO 3CORAC 30UN` (a pack of 30, no weight). `IOG F
 0.5 or above.**
 
 The answer logic moved to `reads.ts` with Jev passed in, tested with a fake (which requests, with which state).
-Not deployed yet.
+Not deployed yet. The user agreed to read every existing store item once too (94 online, about 94 Jev requests):
+`20261029000100_read_existing_items.sql` queues them. The function must be deployed before that migration is
+applied, or the old function would mark the jobs done without asking the new questions.
