@@ -482,7 +482,8 @@ class SyncEngine(
     o.string("link_review"), o.bool("deleted") ?: false,
     soldBy = o.string("sold_by"), soldBySource = o.string("sold_by_source"), soldByConfidence = o.double("sold_by_confidence"),
     readSizeE6 = o.long("read_size_e6"), readSizeUnit = o.string("read_size_unit"), readSizeSource = o.string("read_size_source"),
-    readSizeConfidence = o.double("read_size_confidence"), readModel = o.string("read_model"),
+    readSizeConfidence = o.double("read_size_confidence"), readPackCount = o.long("read_pack_count")?.toInt(),
+    readModel = o.string("read_model"),
   )
 
   private fun productTagJson(t: ProductTagRow) = buildJsonObject {

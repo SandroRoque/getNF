@@ -202,11 +202,16 @@ data class StoreItemRow(
   val soldBy: String? = null,
   val soldBySource: String? = null,
   val soldByConfidence: Double? = null,
-  /** A size Jev is sure of; with [readSizeSource] set and no size, "no net size here". Replaces [parsedSizeE6] in prices. */
+  /**
+   * A size Jev is sure of: the whole unit as sold (a pack of 12 × 500 ml is 6 l), with [readPackCount] what's in it (1
+   * for a single item). With [readSizeSource] set and no size, "no weight or volume here". Replaces [parsedSizeE6] in
+   * prices.
+   */
   val readSizeE6: Long? = null,
   val readSizeUnit: String? = null,
   val readSizeSource: String? = null,
   val readSizeConfidence: Double? = null,
+  val readPackCount: Int? = null,
   val readModel: String? = null,
 )
 

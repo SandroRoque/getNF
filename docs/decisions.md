@@ -2699,3 +2699,33 @@ in a request is answered on its own against the same state.
   (`Derive.unitKind`, now also KGS, LT, LTS…) or by `sold_by`.
 - **LLM worker:** proposes sizes only for items System-1 never read. Auditing System-1's sizes is not built.
 - **Tests:** Deno (`reads_test.ts`), pgTAP (queue, claim, readings), JVM (pricing with readings).
+
+**Packs, and the 82-item check (2026-10-29).** The user's catch on `AGUA MIN CRYSTAL 12X500ML`: neither "6 l" nor
+"500 ml" is that product, a pack of 12 bottles of 500 ml. A size reading now has a count as well as an amount
+(`read_pack_count`, 1 for a single item); `read_size_e6` stays the whole unit as sold (6 l), so prices per litre don't
+change, and a price per bottle becomes possible (not shown yet). Code also offers counts printed alone (`C/4`,
+`C 30`, `CX 12`, `30UN`) and a count printed apart from the amount (`350ML C/12`). The "how it's sold" options lost
+their examples ("bread by the kilo" could pull `PAO FRANCES` × 6 toward weight).
+
+Measured with the user's go-ahead: the 82 hand-categorized items through check mode, the function served locally
+with the online lexicon and barcode cache copied in (82 Jev requests, no Open Food Facts lookups), against the
+deployed function's D74 answers on the same items:
+
+| | Right | Automatic (≥ 0.9) | Automatic and right |
+|---|---|---|---|
+| D74 state (category alone) | 77/82 | 73 | 73 |
+| One shared state (category, sold-by, size) | 77/82 | 73 | 71 |
+
+The shared state made two categories confidently wrong (`PRES CASA QUEIJO 300G`, ham, as cheese at 0.94; a smoked
+pork loin as pork at 0.95, a boundary case that went to review before). So **the category gets its own request on
+exactly D74's state**, and the readings a second one, side by side; requests are cheap (D108), and the property
+"every automatic category right" is kept. The category path is byte for byte D74's again, so it wasn't re-measured.
+
+The readings on those 82: Jev said "by the unit" for all 68 items the unit didn't settle (right for each; 61 sure, 7
+not; this set has no weighed item rung up as UN, so the hard case is untested). Every sure size was right by eye,
+including `1K` (1 kg) and `FILTRO 3CORAC 30UN` (a pack of 30, no weight). `IOG FRUTAP 1 25KG` picked 1.25 kg unsure
+(0.38), a suggestion. A suitcase's `10KG` (its capacity) came at 0.04: **an unsure size becomes a suggestion only at
+0.5 or above.**
+
+The answer logic moved to `reads.ts` with Jev passed in, tested with a fake (which requests, with which state).
+Not deployed yet.

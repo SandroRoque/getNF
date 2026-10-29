@@ -1,6 +1,6 @@
 -- Stage 4b's queue and write-back (D70, D108): what gets queued, what an answer changes, and what it may not.
 begin;
-select plan(21);
+select plan(22);
 
 insert into auth.users (id, email) values ('00000000-0000-0000-0000-00000000000a', 'a@example.test');
 set local role authenticated;
@@ -68,24 +68,27 @@ select is((select name || ' ' || (select seed_path from public.category c where 
 reset role;
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-00000000000a", "role": "authenticated"}';
-select throws_ok($$select public.apply_reading(null, null, null, null, null, null, false, null, null, null, null, .9)$$,
+select throws_ok($$select public.apply_reading(null, null, null, null, null, null, false, null, null, null, null, null, .9)$$,
   '42501', null, 'users can''t write readings');
 reset role;
 update public.store_item set parsed_size_e6 = 500000, parsed_size_unit = 'kg' where id = '20000000-0000-0000-0000-000000000002';
 set local role service_role;
 select is(public.apply_reading(current_setting('t.la')::uuid, '20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001',
-  'weight', 'parser', 1, false, null, null, null, 'jev-latest', .9), 'sold_by', 'the unit''s own answer is kept');
+  'weight', 'parser', 1, false, null, null, null, null, 'jev-latest', .9), 'sold_by', 'the unit''s own answer is kept');
 select is(public.apply_reading(current_setting('t.la')::uuid, '20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002',
-  'unit', 'jev', .6, true, 250000, 'kg', .5, 'jev-latest', .9), 'size_suggested',
+  null, null, null, true, 10000000, 'kg', 1, .04, 'jev-latest', .9), 'nothing', 'a size Jev all but rejects isn''t suggested');
+select is(public.apply_reading(current_setting('t.la')::uuid, '20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002',
+  'unit', 'jev', .6, true, 250000, 'kg', 1, .5, 'jev-latest', .9), 'size_suggested',
   'an unsure way of selling isn''t; an unsure size becomes a suggestion');
 select is((select coalesce(sold_by, '-') || ' ' || coalesce(read_size_source, '-') from public.store_item where id = '20000000-0000-0000-0000-000000000002'),
   '- -', 'and neither is applied');
 select is((select size_suggestion_e6 || ' ' || size_suggestion_model from public.product where id = '10000000-0000-0000-0000-000000000002'),
   '250000 jev-latest', 'the suggestion is on the product');
 select is(public.apply_reading(current_setting('t.la')::uuid, '20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002',
-  'unit', 'jev', .95, true, null, null, .97, 'jev-latest', .9), 'sold_by size', 'sure answers are applied');
-select is((select sold_by || ' ' || read_size_source || ' ' || coalesce(read_size_e6::text, 'none') from public.store_item
-           where id = '20000000-0000-0000-0000-000000000002'), 'unit jev none', 'a sure "no size" included');
+  'unit', 'jev', .95, true, null, null, 4, .97, 'jev-latest', .9), 'sold_by size', 'sure answers are applied');
+select is((select sold_by || ' ' || read_size_source || ' ' || coalesce(read_size_e6::text, 'none') || ' ×' || read_pack_count
+           from public.store_item where id = '20000000-0000-0000-0000-000000000002'), 'unit jev none ×4',
+  'a sure "no weight or volume" included, with its pack count');
 select is((select sold_by || '/' || sold_by_source from public.store_item where id = '20000000-0000-0000-0000-000000000001'),
   'weight/parser', 'the parser''s reading stays on the other item');
 

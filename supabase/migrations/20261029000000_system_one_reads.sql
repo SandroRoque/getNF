@@ -3,17 +3,20 @@
 -- Both are readings of the store item (its description and the way its lines are rung up), written only by the server
 -- and pulled by the phone, never pushed. `sold_by` is set by the parser when the unit settles it (KG, L, a fractional
 -- quantity) and by Jev when it's sure; the size Jev is sure of replaces the parsed one in prices (a sure "no size"
--- included). An unsure size becomes the product's size suggestion, as the LLM's did (D80).
+-- included). An unsure size becomes the product's size suggestion, as the LLM's did (D80). A size is the whole unit
+-- as sold (a pack of 12 × 500 ml is 6 l) with the count of what's in it: 12 there, 1 for a single item.
 
 alter table public.store_item
   add column sold_by text check (sold_by in ('weight', 'volume', 'unit')),
   add column sold_by_source text check (sold_by_source in ('parser', 'jev')),
   add column sold_by_confidence real,
-  -- Set only by Jev at or above the threshold. Source set with a null size: "this description has no net size".
+  -- Set only by Jev at or above the threshold. Source set with a null size: "this description has no net size" (a
+  -- pack count may still be known: "C/4").
   add column read_size_e6 bigint,
   add column read_size_unit text check (read_size_unit in ('kg', 'l')),
   add column read_size_source text check (read_size_source in ('jev')),
   add column read_size_confidence real,
+  add column read_pack_count int check (read_pack_count >= 1),
   add column read_model text,
   add column read_at timestamptz;
 
@@ -60,12 +63,12 @@ $$;
 
 -- Writes a store item's readings and finishes its job. `sold_by_source` 'parser' is the unit's own answer; 'jev' is
 -- kept only at or above the threshold. `size_asked` false: there was no candidate, nothing to write. A size below the
--- threshold becomes the product's suggestion, unless the product has a size by hand or a suggestion already, or the
--- answer is the parser's own reading or "no size".
+-- threshold, and at 0.5 or above, becomes the product's suggestion, unless the product has a size by hand or a
+-- suggestion already, or the answer is the parser's own reading or "no size".
 create function public.apply_reading(
   lid uuid, item uuid, product uuid,
   sold_by text, sold_by_source text, sold_by_confidence real,
-  size_asked boolean, size_e6 bigint, size_unit text, size_confidence real,
+  size_asked boolean, size_e6 bigint, size_unit text, pack_count int, size_confidence real,
   model text, threshold real
 ) returns text language plpgsql security definer set search_path = '' as $$
 declare
@@ -85,10 +88,12 @@ begin
 
   if apply_reading.size_asked and apply_reading.size_confidence >= apply_reading.threshold then
     update public.store_item si set read_size_e6 = apply_reading.size_e6, read_size_unit = apply_reading.size_unit, read_size_source = 'jev',
-      read_size_confidence = apply_reading.size_confidence, read_model = apply_reading.model, read_at = now()
+      read_pack_count = apply_reading.pack_count, read_size_confidence = apply_reading.size_confidence, read_model = apply_reading.model, read_at = now()
     where si.ledger_id = lid and si.id = item;
     outcome := outcome || ' size';
-  elsif apply_reading.size_asked and apply_reading.size_e6 is not null and apply_reading.size_e6 is distinct from s.parsed_size_e6 then
+  -- Below 0.5 Jev is all but saying no (a suitcase "10KG" is its capacity: 0.04): not worth the user's time.
+  elsif apply_reading.size_asked and apply_reading.size_confidence >= 0.5 and apply_reading.size_e6 is not null
+        and apply_reading.size_e6 is distinct from s.parsed_size_e6 then
     update public.product p set size_suggestion_e6 = apply_reading.size_e6, size_suggestion_unit = apply_reading.size_unit,
       size_suggestion_model = apply_reading.model, size_suggestion_at = now()
     where p.ledger_id = lid and p.id = apply_reading.product and p.size_source is null and p.size_suggestion_e6 is null;
@@ -100,8 +105,8 @@ begin
 end $$;
 
 revoke execute on function public.claim_categorize_jobs(int),
-  public.apply_reading(uuid, uuid, uuid, text, text, real, boolean, bigint, text, real, text, real)
+  public.apply_reading(uuid, uuid, uuid, text, text, real, boolean, bigint, text, int, real, text, real)
   from public, anon, authenticated;
 grant execute on function public.claim_categorize_jobs(int),
-  public.apply_reading(uuid, uuid, uuid, text, text, real, boolean, bigint, text, real, text, real)
+  public.apply_reading(uuid, uuid, uuid, text, text, real, boolean, bigint, text, int, real, text, real)
   to service_role;

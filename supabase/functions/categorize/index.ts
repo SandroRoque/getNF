@@ -17,7 +17,7 @@
 // Secrets (supabase secrets set): JEV_API_KEY, CATEGORIZE_SECRET. Optional: JEV_URL, JEV_MODEL, THRESHOLD, BATCH.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { buildQuestions, buildState, NO_SIZE, type SoldBy, SOLD_BY_CRITERIA } from "./reads.ts";
+import { type Answers, answerItem, type JevAnswer, needsReading } from "./reads.ts";
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false },
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       const { data: read, error } = await db.rpc("apply_reading", {
         lid: job.ledger_id, item: job.store_item_id, product: job.product_id,
         sold_by: a.soldBy?.value ?? null, sold_by_source: a.soldBy?.source ?? null, sold_by_confidence: a.soldBy?.confidence ?? null,
-        size_asked: a.size != null, size_e6: a.size?.e6 ?? null, size_unit: a.size?.unit ?? null,
+        size_asked: a.size != null, size_e6: a.size?.e6 ?? null, size_unit: a.size?.unit ?? null, pack_count: a.size?.count ?? null,
         size_confidence: a.size?.confidence ?? null, model: JEV_MODEL, threshold: THRESHOLD,
       });
       if (error) throw new Error(error.message);
@@ -80,38 +80,10 @@ Deno.serve(async (req) => {
 });
 
 type Item = { description: string; code_kind: string; code: string; unit?: string | null; qty_e4?: number | null };
-type Answers = {
-  category?: { chosen: Option; confidence: number };
-  soldBy?: { value: SoldBy; source: "parser" | "jev"; confidence: number };
-  size?: { e6: number | null; unit: string | null; confidence: number };
-};
-
-/** One request for every question this item needs; `choices` null when its product needs no category. */
-async function answer(item: Item, choices: Option[] | null, expand: (t: string) => string): Promise<Answers> {
-  const out: Answers = {};
-  const { questions, settled, candidates } = buildQuestions(item, choices && Object.fromEntries(choices.map((o) => [o.key, o.text])), INSTRUCTIONS);
-  if (settled) out.soldBy = { value: settled, source: "parser", confidence: 1 };
-  if (!Object.keys(questions).length) return out;
-
-  const state = buildState(item, expand(item.description));
-  if (item.code_kind === "gtin") Object.assign(state, await openFoodFacts(item.code));
-  const a = await jev(state, questions);
-
-  if (a.category) {
-    const chosen = choices!.find((o) => o.key === a.category.choice);
-    if (!chosen) throw new Error(`Jev chose an unknown category: ${a.category.choice}`);
-    out.category = { chosen, confidence: a.category.confidence };
-  }
-  if (a.sold_by) {
-    if (!(a.sold_by.choice in SOLD_BY_CRITERIA)) throw new Error(`Jev chose an unknown way of selling: ${a.sold_by.choice}`);
-    out.soldBy = { value: a.sold_by.choice as SoldBy, source: "jev", confidence: a.sold_by.confidence };
-  }
-  if (a.size) {
-    const c = candidates.find((x) => x.key === a.size.choice);
-    if (!c && a.size.choice !== NO_SIZE) throw new Error(`Jev chose an unknown size: ${a.size.choice}`);
-    out.size = { e6: c?.e6 ?? null, unit: c?.unit ?? null, confidence: a.size.confidence };
-  }
-  return out;
+/** Jev's answers for one item: see answerItem in reads.ts (two requests at most, D108). */
+async function answer(item: Item, choices: Option[] | null, expand: (t: string) => string): Promise<Answers<Option>> {
+  const off = item.code_kind === "gtin" && (choices || needsReading(item)) ? await openFoodFacts(item.code) : {};
+  return answerItem(item, choices, expand(item.description), off, INSTRUCTIONS, jev);
 }
 
 async function check(ledgerId: string, items: Item[], extra: { key: string; en: string }[]) {
@@ -193,8 +165,6 @@ async function openFoodFacts(gtin: string): Promise<Record<string, string>> {
   if (tags.length) out.product_categories = tags.slice(-4).join(", ");
   return out;
 }
-
-type JevAnswer = { choice: string; confidence: number };
 
 async function jev(state: Record<string, string>, questions: Record<string, unknown>): Promise<Record<string, JevAnswer>> {
   const r = await fetch(`${JEV_URL}/v1/systemone`, {
