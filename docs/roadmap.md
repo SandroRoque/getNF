@@ -1,8 +1,11 @@
 # Etapas de evolução do getNF
 
+> Escrito em 2026-10-14, antes de D55 (serviço online primeiro) e D70 (Supabase). O estado de cada etapa está em
+> [status.md](status.md); onde este texto diverge, valem status.md e [decisions.md](decisions.md).
+
 Visão de alto nível registrada em 2026-10-14. Este é um plano proposto para dividir o trabalho, não uma indicação
 de funcionalidades implementadas. Os requisitos estão em [objectives.md](objectives.md), e a avaliação inicial
-da persistência está em [data-model-review.md](data-model-review.md).
+da persistência está em [data-model-review.md](archive/data-model-review.md).
 
 ## Visão geral
 
@@ -21,7 +24,7 @@ da persistência está em [data-model-review.md](data-model-review.md).
 
 ## 1. Definir modelo de dados e arquitetura
 
-**Frente adicional de captura:** [automatic-capture.md](automatic-capture.md) detalha a experiência de câmera
+**Frente adicional de captura:** [automatic-capture.md](archive/automatic-capture.md) detalha a experiência de câmera
 contínua, com fotos e conclusão automáticas. A prova de viabilidade pode começar cedo. Incluir sessão, imagens,
 qualidade e cobertura no desenho da etapa 1; entregar captura automática simples e depois cobertura de recibos
 longos como incrementos próprios. Essa frente fornece as evidências para OCR nas etapas 3–4 e não depende do IPCI
@@ -33,9 +36,9 @@ QR tardio e conclusão automática com cobertura conectada. Substitui o primeiro
 e seu fallback manual. Em 2026-10-15, duas capturas no Motorola concluíram e preservaram as imagens.
 A revisão encontrou borrão aceito pelo filtro: a próxima prioridade é qualidade. Retenção generosa durante
 o desenvolvimento e futura seleção de imagens ruins/redundantes estão em
-[capture-retention-plan.md](capture-retention-plan.md); não há descarte posterior implementado.
+[capture-retention-plan.md](archive/capture-retention-plan.md); não há descarte posterior implementado.
 A validação física mais ampla continua necessária.
-Ver [capture-validation.md](capture-validation.md).
+Ver [capture-validation.md](archive/capture-validation.md).
 
 Começar pelas entidades e pelas operações que o usuário precisa executar. Definir identidade de produto,
 identificadores externos, categorias, unidades, embalagem, precisão dos valores e separação entre extração e
@@ -43,7 +46,7 @@ correções. Estabelecer regras de exclusão e preservação do histórico.
 
 Avaliar e escolher a persistência local. SQLite com Room é a recomendação preliminar, ainda a validar.
 Definir o papel do servidor e se o PC será apenas consulta ou também edição; essa escolha afeta as próximas etapas.
-O parser no Android foi escolhido pelo usuário após a comparação em [etl-options.md](etl-options.md).
+O parser no Android foi escolhido pelo usuário após a comparação em [etl-options.md](archive/etl-options.md).
 Definir a separação entre cadastro pessoal e compartilhado, conforme [local-and-shared-modes.md](local-and-shared-modes.md).
 Desenhar o fluxo manual o suficiente para verificar que o esquema atende às operações, antes de construir as telas.
 Incluir fotos como evidência com seus metadados (máscara, faixas, qualidade) e um envio ao servidor que só acrescente,
@@ -71,7 +74,7 @@ O processamento pode continuar no servidor durante esta entrega intermediária.
 Implementar extração e derivação no Android: itens, totais, descontos, identificação inicial dos produtos e
 pendências de revisão. Permitir reprocessar capturas preservando correções e informar erros sem perder a nota.
 Avaliar OCR local como incremento para recuperar descontos por item das fotos, conforme
-[discounts-and-ocr.md](discounts-and-ocr.md), sem bloquear a extração HTML.
+[discounts-and-ocr.md](archive/discounts-and-ocr.md), sem bloquear a extração HTML.
 
 **Conclusão da etapa:** uma página capturada produz dados estruturados sem serviço remoto. Capturas salvas podem
 ser processadas offline; buscar uma nova página da SEFAZ continua exigindo internet.

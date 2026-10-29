@@ -2,7 +2,7 @@
 
 Host: Arch Linux (omarchy), Ryzen 5 5500, 32 GB RAM. Run `tools/doctor.sh` at any time to see what's missing.
 
-## Status (2026-10-08): all green
+## Status (2026-10-08, updated 2026-10-29): all green
 
 | Item | State |
 |---|---|
@@ -12,7 +12,8 @@ Host: Arch Linux (omarchy), Ryzen 5 5500, 32 GB RAM. Run `tools/doctor.sh` at an
 | KVM (SVM enabled in BIOS) | ✅ |
 | Camera input from receipt video/photo (`--camera`) | ✅ verified in stock camera app |
 | Template app builds (`./gradlew assembleDebug testDebugUnitTest`) | ✅ |
-| PocketBase in Docker on `127.0.0.1:8090`, dev superuser in `server/.env.local` | ✅ |
+| Docker, for the local Supabase (`npx supabase start`) | ✅ |
+| `.env.local` at the repo root: the online Supabase URL and keys, LM Studio's and Jev's keys | ✅ |
 | `android-udev` + `adbusers` group (for the real phone) | ✅ |
 | Real phone over USB: Motorola Edge 50 Pro, Android 16 (API 36), arm64, 1220×2712 @ 450 dpi, WebView 154 | ✅ `adb devices` |
 | Android skills for Claude in `.claude/skills/` | ✅ |
@@ -30,7 +31,7 @@ Host: Arch Linux (omarchy), Ryzen 5 5500, 32 GB RAM. Run `tools/doctor.sh` at an
 
 ```bash
 . tools/env.sh                          # adds adb/emulator/sdkmanager/android to PATH, sets ANDROID_AVD_HOME
-docker compose -f server/compose.yaml up -d     # PocketBase (http://127.0.0.1:8090/_/)
+npx supabase start                      # optional: a local Supabase (Studio at http://127.0.0.1:54323)
 
 tools/emulator.sh --camera test-media/video/VID_20261008_211557559.mp4   # or a photo; add --headless for no window
 
@@ -39,24 +40,19 @@ adb -e exec-out screencap -p > /tmp/s.png  # -e = the emulator, -d = the USB pho
 adb -e emu kill                         # stop emulator (needed to change the camera file)
 ```
 
-Inside the emulator, the host machine is `10.0.2.2` (so PocketBase is `http://10.0.2.2:8090`).
+Debug builds talk to the online Supabase. To use the local one instead, build with
+`-Pgetnf.supabaseUrl=http://10.0.2.2:54321 -Pgetnf.supabaseKey=<its publishable key>`: inside the emulator, the
+host machine is `10.0.2.2`.
 
 ## Notes
 
 - The app's files are private to it. Look at them with `adb -e shell run-as io.github.sandroroque.getnf ls -R files/receipts`.
 - Debugging the in-app WebView: debug builds expose a DevTools socket. Forward it and query the live page with
   `tools/webview-eval.mjs` (usage in the file header), or open `chrome://inspect` in desktop Chrome.
-- Real phone: on home Wi‑Fi it uses `http://192.168.4.4:8090` (D18). PocketBase listens there because `server/.env`
-  (not in git) sets `GETNF_LAN_IP`. If the PC's address changes, update that file and the app's Settings.
-  Away from home without Wi‑Fi, the USB tunnel still works: `adb -d reverse tcp:8090 tcp:8090` and set the URL to
-  `http://127.0.0.1:8090` (lost on unplug).
-- Debug builds only: change a setting with the phone locked by editing `shared_prefs/server.xml` through
+- Debug builds only: change a setting with the phone locked by editing `shared_prefs/supabase.xml` (or `dev.xml`, `sefaz.xml`) through
   `adb -d shell run-as io.github.sandroroque.getnf` (force-stop the app first).
-- Schema changes made in the PocketBase admin UI (or via the collections API) are written out as new files in
-  `server/pb_migrations/` automatically. Commit them if the change is meant to stay. They're root-owned (written by the
-  container), so delete unwanted ones with `docker compose -f server/compose.yaml exec pocketbase rm /pb/pb_migrations/<file>`.
-  Editing *data* (e.g. assigning categories to products) doesn't create migrations.
-- Uploaded receipts: PocketBase admin UI → `receipts` collection. The app logs in as `phone@getnf.local` (`DEV_APP_*` in `server/.env.local`).
+- Schema changes go in `supabase/migrations/` as new files; never edit the online schema by hand. New tables need
+  explicit grants (D71, D74). Test with `npx supabase test db`.
 
 - `sdkmanager` says it's deprecated in favour of `android sdk ...`. Both work.
 - AVD files live in `~/.config/.android/avd/getnf.avd/` (XDG location, not `~/.android`).

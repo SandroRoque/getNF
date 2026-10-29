@@ -18,8 +18,10 @@ Explain Android-specific concepts briefly when they come up.
 - Emulator: `tools/emulator.sh [--headless] [--camera <video-or-photo>]`. The back camera plays that file. Restart to change it.
 - Inspect/drive the device with the `android` CLI (`android screen`, `android layout`, `android run`) or adb.
   See `.claude/skills/android-cli`.
-- PocketBase: `docker compose -f server/compose.yaml up -d`, admin creds in `server/.env.local`.
-  From the emulator: `http://10.0.2.2:8090`. Schema changes go in `server/pb_migrations/` as migrations.
+- Supabase: the online project (São Paulo) is what debug builds use; its URL and keys, and the other credentials,
+  are in `.env.local` at the repo root (a worktree uses the main checkout's). `npx supabase start` runs a local one
+  (Docker); from the emulator it's `http://10.0.2.2:54321`. Schema changes go in `supabase/migrations/` as
+  migrations; `npx supabase test db` runs the pgTAP tests.
 - `sudo` needs a password, so you can't run it. Put root steps in `tools/setup-system.sh` and ask the user to run it.
 
 ## Data & privacy
@@ -31,4 +33,4 @@ Explain Android-specific concepts briefly when they come up.
   use `test-media/pages/`, the fixtures, or DevTools on an already-open WebView (`tools/webview-eval.mjs`). Before any
   live request, say how many and get a go-ahead (`docs/sefaz-sc.md`).
 - The repo is public. Never commit a real chave (anyone can look the receipt up), store details from real receipts,
-  or anything from `server/.env.local`. Fixtures go through `tools/make-nfce-fixture.py`.
+  or anything from `.env.local`. Fixtures go through `tools/make-nfce-fixture.py`.

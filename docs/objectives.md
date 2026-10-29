@@ -1,5 +1,8 @@
 # Objetivos e evolução do getNF
 
+> Escrito em 2026-10-14, antes de D55 (serviço online primeiro) e D70 (Supabase): o PocketBase citado aqui foi
+> aposentado (D73). Onde este texto diverge, valem [status.md](status.md) e [decisions.md](decisions.md).
+
 Registrado em 2026-10-14, a partir da discussão com o usuário. Este documento registra a direção do produto;
 não descreve funcionalidades já implementadas nem exige executar todas as mudanças simultaneamente.
 
@@ -97,14 +100,14 @@ recibos longos. Detecção de bordas e seleção de frames são sugestões de im
 excluindo o fundo e a borda papel/fundo. A localização deve admitir trechos parciais do recibo.
 Durante o desenvolvimento, preservar generosamente as imagens de cada NF. Planejar heurísticas para
 rejeitar capturas ruins e reduzir redundância, preservando cobertura e detalhes úteis; não implementar limpeza
-silenciosa nesta etapa. Ver [capture-retention-plan.md](capture-retention-plan.md) e D34.
-Ver [automatic-capture.md](automatic-capture.md) para fluxo, alternativas e entregas incrementais.
+silenciosa nesta etapa. Ver [capture-retention-plan.md](archive/capture-retention-plan.md) e D34.
+Ver [automatic-capture.md](archive/automatic-capture.md) para fluxo, alternativas e entregas incrementais.
 
 ## Etapas propostas
 
 A divisão do trabalho está em [roadmap.md](roadmap.md), com entregas e dependências. A primeira etapa é revisar
 o modelo de dados e a persistência, conforme solicitado pelo usuário; a avaliação preliminar está em
-[data-model-review.md](data-model-review.md). As recomendações técnicas ainda são propostas.
+[data-model-review.md](archive/data-model-review.md). As recomendações técnicas ainda são propostas.
 
 As etapas podem ser divididas ou reordenadas conforme a discussão. Não é necessário implementar todos os
 objetivos de uma vez.

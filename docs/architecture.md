@@ -1,83 +1,82 @@
 # Architecture
 
-getNF captures NFC-e receipts on Android, preserves the source files, and derives structured data for spending analysis.
-The phone handles capture and queued uploads; PocketBase handles storage and parsing; a web dashboard reads the
-analytical view to group purchases by month, category, and product.
+How the parts fit together today (2026-10-29). For why, see [decisions.md](decisions.md); for the current state and
+open items, [status.md](status.md).
 
-## From capture to analysis
+The phone does the work: capture, the SEFAZ page, parsing, the catalog, reports. Supabase holds a synced copy shared
+by a caderneta's members and runs the categorizer. A PC runs nightly jobs. The phone works without an account.
 
 ```mermaid
 flowchart TD
-    A[Android: QR scan, photos, SEFAZ HTML] --> B[Local archive and upload queue]
-    B --> C[Bronze: raw captures in PocketBase]
-    C --> D[Silver: parsed receipt items and shared products]
-    E[Categories, tags, and manual enrichment] --> D
-    D --> F[Gold: spending_lines analytical view]
-    F --> G[Dashboard: monthly spending and purchase drill-down]
+    A[Camera: QR code and receipt photos] --> B[SEFAZ page in a WebView]
+    B --> C[Parser on the phone: lines, store items, totals, payments]
+    A --> D[Discounts read from the photos]
+    C --> E[(Room database, one per caderneta)]
+    D --> E
+    E <--> F[(Supabase: rows by caderneta, RLS by membership)]
+    F --> G[categorize Edge Function: Jev, every minute]
+    G --> F
+    H[PC: nightly backup and LLM worker] <--> F
+    E --> I[Reports and IPCI on the phone]
 ```
 
-The pipeline follows the medallion pattern through **logical layers**:
+## On the phone (`android/`)
 
-| Layer | Current implementation | Responsibility |
-| --- | --- | --- |
-| Bronze | Saved photos, HTML, QR/page URLs, chave, and capture timestamps | Preserve source evidence independently of the parser |
-| Silver | Parsed receipt fields, `receipt_items`, `products`, categories, and tags | Structure and enrich data, resolve product identity, and allocate discounts |
-| Gold | SQL view `spending_lines`, followed by dashboard aggregations | Expose analytical dimensions and measures for spending questions |
+Kotlin and Jetpack Compose, one module, package `io.github.sandroroque.getnf`:
 
-These layers share PocketBase/SQLite. The `receipts` collection holds both raw capture references and derived summary
-fields. Gold is a line-level analytical view; monthly/category/product aggregates are calculated in the dashboard,
-rather than persisted in separate aggregate tables. This is a compact implementation of the pattern.
+| Package | What's in it |
+| --- | --- |
+| `ui/scan` | The live capture (D82–D97): QR code, paper finder, the receipt assembled from OCR rows, the fewest photos kept |
+| `ui/page` | The SEFAZ page in a WebView, the lookup budget check (D16, D17, D99–D101) |
+| `parse` | [NfcePage.kt](../android/app/src/main/java/io/github/sandroroque/getnf/parse/NfcePage.kt) reads the page; [Derive.kt](../android/app/src/main/java/io/github/sandroroque/getnf/parse/Derive.kt) makes store items and line discounts; buyer redaction |
+| `discounts` | OCR of the saved photos, pairing discount lines with items (D54, D101) |
+| `data` | Room ([ReceiptDatabase.kt](../android/app/src/main/java/io/github/sandroroque/getnf/data/ReceiptDatabase.kt), v11), the receipt store, the catalog and its editor, spending and IPCI, backup/restore, the lookup budget |
+| `sync` | [SyncEngine.kt](../android/app/src/main/java/io/github/sandroroque/getnf/sync/SyncEngine.kt) and its worker, cadernetas (ledgers), photo uploads and withdrawal, the page reminder |
+| `ui/*` | The four tabs (D81): Início, Gastos, Para você, Catálogo; Ajustes; the "Calmo" theme |
 
-Raw captures allow receipt parsing to be repeated when the parser changes. Parser versions and file references select
-receipts for reprocessing; item replacement runs in a transaction. Manual product classifications and size corrections
-are separate enrichment inputs and need backups: they cannot be reconstructed from raw HTML alone. Raw preservation
-does not currently provide an immutable, versioned history of every capture or enrichment change.
+- **The page is the source of a receipt's data.** The parser runs on the phone, and the page is saved, so a parser
+  change can re-read every receipt. Photos are the archive and the source of per-item discounts. A reader that makes
+  the receipt from the photos alone is planned (D106).
+- **Each caderneta has its own database file and receipts folder** (D104). Opening another restarts the app.
+- **Ids:** store items and parser-made products have ids derived from their codes, so two phones make the same rows.
+  A product is keyed by GTIN, or by store CNPJ plus the store's code for in-store items.
+- **Export/restore:** one zip with the database and photos, from Ajustes (D47).
 
-## Processing and consistency
+## Sync and Supabase (`supabase/`)
 
-The Android [receipt store](../android/app/src/main/java/io/github/sandroroque/getnf/data/ReceiptStore.kt) saves captures
-locally before upload. Continuous camera attempts first use private temporary sessions. A complete connected
-capture is imported as one idempotent batch; local metadata retains segment masks, polygons, coverage and quality.
-Incomplete exit keeps only the identified code when explicitly selected; existing receipt evidence remains intact.
-The original JPEG segments are uploaded through the existing photo field; masks and segment metadata currently
-remain local. See [automatic-capture.md](automatic-capture.md).
+- **Schema** in [migrations](../supabase/migrations/), São Paulo region. Every row belongs to a caderneta (`ledger`);
+  Row Level Security lets members only. Ids are unique per caderneta: upserts use `ledger_id,id`.
+- **Sync** (D70, D104): pull the taxonomy, push dirty rows parents first, pull what changed since the last cursor,
+  never overwriting a local change. A row the server refuses is parked (`sync_parked`) instead of failing the run.
+- **Storage:** a private bucket, a folder per caderneta. Photos go up only if the user opts in, and only for receipts
+  the app failed with, with sensitive parts blanked (D98, D103).
+- **Categorization** ([functions/categorize](../supabase/functions/categorize/)): Jev runs on new store items every
+  minute. Confidence ≥ 0.9 sets the category; below it, a suggestion for Para você (D74).
+- **Tests:** pgTAP in [tests/database](../supabase/tests/database/) (`npx supabase test db`).
 
-A local version and the last confirmed uploaded version track pending changes. The
-[upload worker](../android/app/src/main/java/io/github/sandroroque/getnf/upload/UploadWorker.kt) retries network failures;
-the [API client](../android/app/src/main/java/io/github/sandroroque/getnf/upload/PocketBaseClient.kt) upserts by chave so
-repeated uploads target the same receipt.
+## On the PC (`tools/`)
 
-On the server, the [parser](../server/pb_hooks/lib/nfce_page.js) extracts items and totals from saved HTML. Count and
-total discrepancies are recorded in `parse_error` without rejecting the raw upload. The
-[ingestion hooks](../server/pb_hooks/lib/ingest.js) replace a receipt's derived items in one transaction and track the
-parser version for later reprocessing.
+systemd user timers ([tools/systemd](../tools/systemd/)):
 
-The [derived model](../server/pb_migrations/1791600000_derived_data.js) separates receipt lines from shared products.
-Products are keyed by GTIN or issuer CNPJ plus store code. Classification belongs to the product, so purchases reuse
-the same category. [Derivation helpers](../server/pb_hooks/lib/derive.js) allocate discounts in integer cents and extract
-package sizes for normalized prices. Manual size corrections survive reprocessing.
+- 03:30 [supabase-backup.py](../tools/supabase-backup.py): a dump of the online project (D73); restore drills with
+  `supabase-restore-drill.sh`.
+- 04:00 [llm-worker.py](../tools/llm-worker.py): a local LLM (LM Studio) audits categories and suggests links and
+  categories; the user decides on the phone (D80).
 
-The [analytical SQL view](../server/pb_migrations/1791600001_spending_view.js) exposes one row per receipt line with
-time and category dimensions, gross amounts, discounts, and net amounts. The
-[dashboard model](../server/pb_public/dashboard/model.mjs) aggregates net spending in cents and keeps quantities
-separate by unit. Users can drill down from monthly totals to categories, products, and individual purchases.
+Their credentials, and the build's, are in `.env.local` at the repo root (gitignored; a worktree uses the main
+checkout's).
 
-## Validation and deployment
+## The site (`web/`)
 
-Parser and derivation modules run both in PocketBase and in Node tests. [Server tests](../server/test/) cover parsing,
-discount allocation, and dashboard reconciliation and edge cases; [Android tests](../android/app/src/test/java/io/github/sandroroque/getnf/)
-cover local storage, chave validation, lookup budgets, and page request filtering. HTML fixtures are reduced and
-sanitized with the [fixture generator](../tools/make-nfce-fixture.py).
+Static pages at https://caderneta.roqlab.com.br: the landing page, the privacy policy, account deletion (D105). See
+[web/README.md](../web/README.md).
 
-[Docker Compose](../server/compose.yaml) runs PocketBase and mounts the dashboard and taxonomy files. Collection
-schemas and the analytical view are defined in versioned [migrations](../server/pb_migrations/).
-[Decision records](decisions.md) explain the implementation choices.
+## What the numbers mean
 
-## Analytical meaning and current boundaries
-
-- Spending measures captured receipts, not all personal expenditure. A month with no receipts does not establish zero spending.
-- Time buckets use issue dates rather than capture dates. The current analytical view uses UTC-3 for Santa Catarina.
-- Item discounts are generally prorated from the receipt total. The model can preserve photo-derived discounts, but the photo extraction workflow is future work.
-- A product has one main category, allowing additive category totals. Tags overlap and should not be summed as exclusive groups.
-- Product classification and size corrections reflect current enrichment; historical classification snapshots are not implemented.
-- Weekly/quarterly/yearly dimensions exist in the analytical view; the current dashboard presents monthly analysis.
+- Spending measures the receipts captured, not everything spent. A month without receipts isn't a month of zero.
+- Periods follow the issue date, in the issuing state's time zone.
+- A receipt-level discount is prorated over its lines until the photos show which item had it.
+- A product has one category, so category totals add up; tags overlap and aren't summed.
+- Reports use each product's current category; past classifications aren't kept.
+- The IPCI (D79) follows the price paid for the same products month to month, and says "dados insuficientes" when
+  there aren't enough repeated purchases.

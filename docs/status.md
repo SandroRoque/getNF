@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-28. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D106). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
+`docs/decisions.md` (D1–D107). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
@@ -56,7 +56,8 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
   Function runs Jev on new items every minute: ≥ 0.9 sets the category, below it a suggestion (D74).
 - **PC jobs** (systemd user timers, `tools/systemd/`): backup at 03:30 (`tools/supabase-backup.py`, D73) and the LLM
   worker at 04:00 (`tools/llm-worker.py` with LM Studio, D80). Check with `systemctl --user list-timers`.
-- **Retired:** PocketBase and its dashboard (D73). `server/` stays for reference and the parser parity tests.
+- **Retired:** PocketBase, its dashboard and the server-side JS parser (D73); `server/` was removed 2026-10-29
+  (D107). Old plans and comparisons are in [archive/](archive/).
 - **Repo:** public at github.com/SandroRoque/getNF, branch `main`. History was squashed before publishing to remove
   personal data. Commits use the GitHub noreply address.
 
@@ -109,7 +110,7 @@ tools/emulator.sh --headless --camera test-media/video/<video>.mp4   # optional;
 npx supabase start                                                  # local Supabase for development (Docker)
 ```
 
-Debug builds talk to the online Supabase with the URL and publishable key from `server/.env.local` (a worktree falls
+Debug builds talk to the online Supabase with the URL and publishable key from `.env.local` at the repo root (a worktree falls
 back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` point the emulator at a local Supabase.
 
 ## Tests
@@ -121,7 +122,8 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
   rule, the categorize queue). `SupabaseLocalTest` runs the phone's sync against the local Supabase when
   `GETNF_SUPABASE_LOCAL` is set.
 - **Capture:** `tools/capture-bench.sh` (D89).
-- **Parser parity:** after changing either parser, `node tools/nfce-golden.mjs` (Kotlin vs the old JS, D48).
+- **Parser:** `NfceParityTest` holds the parser to golden files first written from the old JS parser (D48); a
+  deliberate parser change updates them.
 
 ## Pending, by the user
 
@@ -131,7 +133,7 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
   `~/.config/getnf/` and the password. Then `cd android && ./gradlew :app:bundleRelease` makes the bundle for Play.
 - Rotate the Supabase database password: the 2026-10-27 03:30 backup failed on DNS and its traceback wrote the
   connection URL, password included, to the systemd journal. Fixed for the future (a2cb28f, `PGPASSWORD`); change the
-  password in the dashboard, then in `server/.env.local`.
+  password in the dashboard, then in `.env.local`.
 
 ## SEFAZ rules of thumb (learned the hard way, see docs/sefaz-sc.md)
 

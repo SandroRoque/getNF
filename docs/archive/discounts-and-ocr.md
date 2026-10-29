@@ -63,4 +63,4 @@ parciais, notas sem desconto, fotos sobrepostas e leitura ilegível. Não consul
 - [ML Kit: OCR no Android e modelo embarcado](https://developers.google.com/ml-kit/vision/text-recognition/v2/android).
 - [Tesseract](https://github.com/tesseract-ocr/tesseract).
 - [Tesseract4Android](https://github.com/adaptech-cz/Tesseract4Android).
-- [Comportamento da página SEFAZ suportada](sefaz-sc.md).
+- [Comportamento da página SEFAZ suportada](../sefaz-sc.md).

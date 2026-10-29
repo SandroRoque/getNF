@@ -3,11 +3,11 @@
 2026-10-14. Proposta para discussão; não é um esquema aprovado nem uma migração implementada.
 
 **Atualização 2026-10-17:** o desenho concreto (esquema, fluxos, exclusão, taxonomia e migração) está em
-[data-model.md](data-model.md). Este documento fica como o raciocínio que levou a ele.
+[data-model.md](../data-model.md). Este documento fica como o raciocínio que levou a ele.
 
 **Atualização da discussão:** após avaliar ETL em VPS, o usuário escolheu parser no Android. O modelo também deve
 acomodar compartilhamento opcional e curadoria sem comprometer o modo local; ver
-[local-and-shared-modes.md](local-and-shared-modes.md) para as fronteiras entre cadastros e os dados a compartilhar.
+[local-and-shared-modes.md](../local-and-shared-modes.md) para as fronteiras entre cadastros e os dados a compartilhar.
 
 ## Conclusão preliminar
 
@@ -110,4 +110,4 @@ já confirmou. Falta incluir essa entidade no esquema local (Room) da etapa 2.
 
 - [Room: persistência local sobre SQLite](https://developer.android.com/training/data-storage/room).
 - [PocketBase: servidor com banco SQLite embutido](https://pocketbase.io/docs/).
-- [Arquitetura atual](architecture.md) e [objetivos do produto](objectives.md).
+- [Arquitetura atual](../architecture.md) e [objetivos do produto](../objectives.md).

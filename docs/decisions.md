@@ -1,6 +1,123 @@
 # Decisions
 
-Append-only log. Newest at the bottom. When a decision is reversed, add a new entry instead of editing the old one.
+Append-only log. Newest at the bottom. When a decision is reversed, add a new entry instead of editing the old one,
+then update its row in the index below and add a "Replaced by" line under the old entry's heading.
+
+## Index
+
+What still holds, at a glance. **current**: the rule stands. **partly replaced**: some of it stands; the entries after
+the arrow say what changed. **replaced**: the entries after the arrow took its place. **history**: a measurement, a
+plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107).
+
+| | Area | Status | Decision |
+|---|---|---|---|
+| D1 | app | current | Native Android app in Kotlin + Jetpack Compose |
+| D2 | data | current | Raw capture is the source of truth; parsing is derived |
+| D3 | capture | replaced → D25, D86 | Capture flow: live QR detection, then photo, then WebView only when needed |
+| D4 | sync | partly replaced → D55, D62 | Offline-first on the phone, upload queue to a self-hosted backend |
+| D5 | online | replaced → D62, D73 | Backend: PocketBase |
+| D6 | online | replaced → D18, D55 | Phone ↔ server connectivity via Tailscale (planned, 2026-10-08) |
+| D7 | dev | current | Dev loop is agent-drivable, without Android Studio |
+| D8 | dev | replaced → README | Repo layout |
+| D9 | dev | current | Fake camera: the emulator's built-in `videofile:`/`imagefile:` instead of v4l2loopback |
+| D10 | capture | current | QR decoding: ML Kit bundled barcode model via CameraX `MlKitAnalyzer` |
+| D11 | data | replaced → D45 | v1 storage: one directory per receipt with a JSON manifest, not Room |
+| D12 | online | replaced → D71 | Upload: WorkManager → PocketBase `receipts` collection, logged in as a plain `users` record |
+| D13 | product | history | v1 scope |
+| D14 | data | partly replaced → D44 | Derived data model: products, categories (tree + tags), item lines with prorated discounts |
+| D15 | parser | replaced → D49, D73 | Parser and derivation implemented as PocketBase JS hooks; `spending_lines` view for reports |
+| D16 | SEFAZ | current | The WebView skips SEFAZ subresources it doesn't need |
+| D17 | SEFAZ | current | The app paces SEFAZ lookups per network, and only advises |
+| D18 | online | replaced → D55 | The phone uploads over home Wi‑Fi; Tailscale postponed |
+| D19 | dashboard | replaced → D79 | Live monthly spending dashboard on the existing PocketBase server |
+| D20 | dashboard | replaced → D79 | Dashboard accepts the saved PocketBase admin login too |
+| D21 | dashboard | replaced → D79 | Selected month's NF list alongside category drill-down |
+| D22 | dashboard | replaced → D79 | Distinct category colors and stronger pie selection |
+| D23 | product | partly replaced → D55 | Android autonomy, user-managed catalog, and personal inflation objectives |
+| D24 | product | current | On-device parser, optional shared curation, and contributor-only collective analysis |
+| D25 | capture | current | Continuous camera capture with automatic completion |
+| D26 | capture | replaced → D86 | First automatic whole-document capture increment |
+| D27 | capture | replaced → D86 | Sharpness must be measured exclusively inside the detected receipt area |
+| D28 | capture | replaced → D86 | Continuous capture with masked quality and connected segment coverage |
+| D29 | capture | replaced → D86 | Bound mask refinement and preserve continuous AF |
+| D30 | capture | replaced → D86 | Learn receipt geometry before capture and register zoom independently of photos |
+| D31 | capture | replaced → D86 | Validate paper regions and render the actual analysis area |
+| D32 | capture | replaced → D86 | Do not initialize an unanchored partial map or rebase saved coverage |
+| D33 | capture | replaced → D86 | Require a usable anchor before saving and retain orientation through fallback |
+| D34 | capture | history | Retain development captures; plan quality and redundancy selection separately |
+| D35 | capture | history | Review findings: fix quality and upload risks first, then start the data model |
+| D36 | capture | replaced → D71, D86 | Photo limit applied on the server; capture stops cleanly at the cap; PATCH replaces photos |
+| D37 | capture | replaced → D86 | Capture legibility decided by on-device OCR; the gradient score only pre-filters |
+| D38 | capture | replaced → D86 | OCR legibility recalibrated on real receipts: band median confidence >= 0.5 |
+| D39 | capture | replaced → D86 | A region must look like a receipt; long unread stretches aren't print; an anchorless map yields |
+| D40 | capture | replaced → D86 | Keep the receipt's axis, replace an anchored provisional map, and tolerate a shadowed end |
+| D41 | capture | replaced → D86 | Trim background leaks from the paper mask; close the capture front for now |
+| D42 | photos | replaced → D71 | Photos are append-only evidence in their own collection |
+| D43 | product | replaced → D55 | Stage 1 data model: phone is the source of truth, PC read-only, reports use the current category |
+| D44 | data | current | data-model.md approved: the local schema and policies for stage 2 |
+| D45 | data | current | Stage 2a: receipts and photo evidence move into a Room database |
+| D46 | data | replaced → D71 | Stage 2b: a read-only copy of the server's lines and catalog on the phone |
+| D47 | data | current | Stage 2c: export and restore through a user-picked file, swapped in on restart |
+| D48 | parser | current | Stage 3a: the server's parser and derivation, ported to Kotlin and held to the JS by golden files |
+| D49 | parser | current | Stage 3b: the phone parses its own pages; the server still supplies the catalog |
+| D50 | UI | replaced → D81, D101 | Stage 3c: a receipt detail screen, and reading a saved page again on demand |
+| D51 | catalog | current | Interpreted fields are suggestions with a source and a review state; models propose, the user confirms |
+| D52 | capture | replaced → D86 | The paper mask stops at the receipt's straight sides |
+| D53 | capture | replaced → D86 | A frame that fills the last coverage gap is always worth saving |
+| D54 | discounts | current | Stage 3d: per-item discounts read from the photos, on the phone |
+| D55 | product | current | New direction: hosted online service first, AI categorization, local-only Android after the MVP |
+| D56 | categorizer | history | First categorization eval: a local LLM categorizes well; Laya untrained does not |
+| D57 | categorizer | replaced → D74, D80 | Roles: Laya assigns categories, an LLM manages them |
+| D58 | categorizer | history | Laya trained on written practice items categorizes at 90%, with a confidence worth using |
+| D59 | categorizer | history | Most of D58's 90% is the lexicon's translation; Laya adds about 14 points and the confidence |
+| D60 | categorizer | history | Open Food Facts knows 14 of the user's 58 barcodes: good names, too little coverage |
+| D61 | photos | current | Photos: read at full quality on the phone, upload small archive copies (planned, 2026-10-24) |
+| D62 | online | current | Host the online service on Supabase, São Paulo region |
+| D63 | online | partly replaced → D103 | Supabase setup: photos online from the start, free tier for now |
+| D64 | IPCI | current | IPCI starts from two numbers: category spending and real price change; the gap is lifestyle |
+| D65 | ops | current | Database health on Supabase: our own nightly backup, restore drills, migrations only (planned, 2026-10-24) |
+| D66 | categorizer | history | Open Food Facts can't name items without barcodes; link them to generic items instead |
+| D67 | categorizer | history | Jev (TypeSafe, hosted) benchmark: 96% untrained with one flat question, calibrated confidence |
+| D68 | categorizer | history | Open Food Facts names fed to Jev: raw text 85% → 90%; with the lexicon no gain |
+| D69 | catalog | current | A standing data-cleanliness routine for category assignments (planned, 2026-10-25) |
+| D70 | online | history | Stage 4 plan: Supabase first, then Jev suggestions and full editing on the phone |
+| D71 | sync | partly replaced → D104 | Stage 4a built: Supabase schema online, the phone syncs, PocketBase is out of the app |
+| D72 | online | history | Real data moved to Supabase and verified; first restore drill caught a backup bug |
+| D73 | ops | current | PocketBase retired; nightly Supabase backup installed |
+| D74 | categorizer | current | Stage 4b live: Jev categorizes new items online; 94% on the 82 items, every automatic one right |
+| D75 | catalog | current | Category tree edits are recorded as events; merge and split join the editor; categories get descriptions |
+| D76 | catalog | current | Stage 4c built: review list, product and line editing, and the category tree editor on the phone |
+| D77 | reports | partly replaced → D81 | Stage 5: spending reports on the phone, offline, under bottom tabs |
+| D78 | catalog | current | Medicine moves to Saúde as "Remédios"; Saúde gets "Consultas, exames e planos" |
+| D79 | IPCI | current | Stage 6 dropped for now; stage 7's IPCI follows the price paid, chained monthly |
+| D80 | categorizer | current | Stage 8: an LLM worker on the PC suggests; the user decides on the phone |
+| D81 | UI | current | UI/UX redesign: four tabs around one decision queue, in the "Calmo" direction |
+| D82 | capture | partly replaced → D85 | Capture is planned live from a model of the receipt's print lines |
+| D83 | capture | current | Coverage is accepted by stretch, not line by line |
+| D84 | capture | current | On-device OCR finds the print, and decides what is readable |
+| D85 | capture | current | The receipt is assembled from its printed rows; capture is planned on that assembly |
+| D86 | capture | current | The capture is the planned flow, live; the old pipeline and OpenCV are gone |
+| D87 | capture | current | Lessons from the first phone sessions: square axes, text size, keyframes by movement |
+| D88 | capture | current | Frames are read on one thread and planned on another; photos are made only when saved |
+| D89 | capture | current | The capture changes only through a benchmark scored against SEFAZ's pages |
+| D90 | capture | current | A finished capture keeps the fewest photos that read the receipt |
+| D91 | capture | current | The paper finder's walks without allocations |
+| D92 | capture | current | The hint goes where the next frame adds the most, and keeps the sweep |
+| D93 | capture | current | The torch comes on by itself when it's too dark to read |
+| D94 | capture | current | A finished capture keeps looking for its QR code |
+| D95 | capture | current | The QR code's corners are used as the scanner gives them |
+| D96 | parser | current | Payments and taxes are stored as data, read in every store's wording |
+| D97 | capture | current | The capture reads the lines the app needs and archives the rest |
+| D98 | photos | current | Copies that go online have the card slip, a CPF and the operator blanked |
+| D99 | SEFAZ | current | A scan offers the page at once, reminds later, and names what waits; OCR is kept; blanks follow the print |
+| D100 | UI | current | A receipt waiting for its page has its own screen; re-reading a page that isn't there no longer crashes |
+| D101 | discounts | current | After the page: the receipt opens, its photos' discounts are read by themselves, sideways photos too |
+| D102 | photos | current | Every reader of photo text is tested at every angle |
+| D103 | photos | current | Photos go up only if the user opts in, and then only the receipts the app failed with |
+| D104 | cadernetas | current | Cadernetas: catalogs belong to a caderneta; people and cadernetas are many-to-many |
+| D105 | launch | current | Getting ready to go public: free for now, a new name, explain the IP budget only when it's hit |
+| D106 | photos | current | A receipt read from its photos alone is the next photo work, after a break from camera and OCR |
+| D107 | dev | current | Housekeeping: server/ removed, docs archived, an index for this log |
 
 ---
 
@@ -26,6 +143,8 @@ The **chave** is the natural key (it's unique, and it's printed on the paper as 
 
 ## D3. Capture flow: live QR detection, then photo, then WebView only when needed (2026-10-08)
 
+> **Replaced by D25, D86** (index, D107).
+
 Test media showed the QR code decodes from a crisp full-receipt photo but not from a blurry one, and only from
 ~25% of video frames. So:
 
@@ -41,10 +160,14 @@ The quick desktop test used zxing-cpp.
 
 ## D4. Offline-first on the phone, upload queue to a self-hosted backend (2026-10-08)
 
+> **Partly replaced by D55, D62** (index, D107).
+
 Room DB + files in app storage. WorkManager uploads pending receipts with retry/backoff when the server is
 reachable. The app is fully usable while the NAS doesn't exist yet.
 
 ## D5. Backend: PocketBase (2026-10-08)
+
+> **Replaced by D62, D73** (index, D107).
 
 A single binary with SQLite, file storage, auth, an admin UI and an automatic REST API. That covers "I can make it
 an API if I want to" without writing a server. Runs in Docker (`server/compose.yaml`) on the desktop for now; to
@@ -55,6 +178,8 @@ Pinned to PocketBase v0.40.5 (the build verifies the release checksum). Port bou
 at `http://10.0.2.2:8090`.
 
 ## D6. Phone ↔ server connectivity via Tailscale (planned, 2026-10-08)
+
+> **Replaced by D18, D55** (index, D107).
 
 Don't expose PocketBase to the internet. Put the phone and the server on a tailnet. This isn't set up yet, since it isn't
 needed until the app runs on the real phone.
@@ -72,6 +197,8 @@ needed until the app runs on the real phone.
 - Gradle downloads JDK 17 for the build automatically (foojay toolchain resolver). The system JDK is 21.
 
 ## D8. Repo layout (2026-10-08)
+
+> **Replaced by README** (index, D107).
 
 ```
 android/      Gradle project (the app)
@@ -106,6 +233,8 @@ struggles on the real phone.
 
 ## D11. v1 storage: one directory per receipt with a JSON manifest, not Room (2026-10-08, deviates from D4)
 
+> **Replaced by D45** (index, D107).
+
 `filesDir/receipts/<chave>/` holds `receipt.json`, `photo-<ts>.jpg` files and `page.html`. The manifest carries a
 `version` that's bumped on every local change and the `uploadedVersion` last confirmed by the server, so "needs upload"
 is `version != uploadedVersion`, and a change made during an upload isn't lost. Why not Room yet: there's one list screen and
@@ -118,6 +247,8 @@ charset meta, so this matches what the server sent. It's ~5% bigger than the cur
 re-serialised, but has the same 20 items.
 
 ## D12. Upload: WorkManager → PocketBase `receipts` collection, logged in as a plain `users` record (2026-10-08)
+
+> **Replaced by D71** (index, D107).
 
 - Schema in `server/pb_migrations/1791500000_create_receipts.js`: `chave` (unique, `^[0-9]{44}$`), `qr_url`,
   `page_url`, `captured_at`, `page_fetched_at`, `photos` (≤20 JPEGs, 30 MB each), `page` (file), autodates.
@@ -144,6 +275,8 @@ so the app never re-requests the portal for them.
 
 ## D14. Derived data model: products, categories (tree + tags), item lines with prorated discounts (2026-10-08)
 
+> **Partly replaced by D44** (index, D107).
+
 Goal: spending per category (coffee, fruit, meat, grains, alcohol...) by week/month/quarter/year, and price tracking per
 product and per class of product. This dataset is one branch of a larger "measure everything" dataset, so the
 shapes are meant to be shared with future sources (card/bank statements, etc.).
@@ -169,6 +302,8 @@ shapes are meant to be shared with future sources (card/bank statements, etc.).
 - Categorizing happens in the PocketBase admin UI at first. An app screen and LLM-suggested categories come later.
 
 ## D15. Parser and derivation implemented as PocketBase JS hooks; `spending_lines` view for reports (2026-10-08)
+
+> **Replaced by D49, D73** (index, D107).
 
 Implements D14.
 - `server/pb_hooks/lib/nfce_page.js` (parser) and `lib/derive.js` (product keys, sizes, discount proration, taxonomy
@@ -220,6 +355,8 @@ phone's data SIM got an immediate pass, which confirms the block is per IP.
 
 ## D18. The phone uploads over home Wi‑Fi; Tailscale postponed (2026-10-09, defers D6)
 
+> **Replaced by D55** (index, D107).
+
 Uploads needed the phone on a USB cable (`adb reverse`). PocketBase now also listens on the PC's LAN address, and the
 phone's server URL is `http://192.168.4.4:8090`.
 - **Why not Tailscale yet:** it adds an account and a background VPN app on the phone, plus a service on the PC, to get
@@ -235,6 +372,8 @@ phone's server URL is `http://192.168.4.4:8090`.
   until something ran a docker command). If the address can't be bound, the container won't start, so the failure is obvious.
 
 ## D19. Live monthly spending dashboard on the existing PocketBase server (2026-10-10)
+
+> **Replaced by D79** (index, D107).
 
 - **Local web page:** buildless HTML/CSS/JavaScript and SVG charts in `server/pb_public/dashboard/`, mounted read-only
   at `/pb/pb_public`. PocketBase serves `/dashboard/` on its existing port and bindings. No additional service,
@@ -258,6 +397,8 @@ phone's server URL is `http://192.168.4.4:8090`.
 
 ## D20. Dashboard accepts the saved PocketBase admin login too (2026-10-10)
 
+> **Replaced by D79** (index, D107).
+
 The admin UI and dashboard share an origin, so Chromium may autofill the admin credentials on the dashboard.
 Rejecting those valid credentials made the dashboard appear broken. Sign-in now tries the phone's `users` collection
 first, then `_superusers` only after an explicit invalid-credentials response. Network, server, and rate-limit errors
@@ -266,6 +407,8 @@ and Refresh use the correct auth endpoint. Older phone-account sessions default 
 The dashboard remains read-only and neither account's password nor the collection access rules change.
 
 ## D21. Selected month's NF list alongside category drill-down (2026-10-10)
+
+> **Replaced by D79** (index, D107).
 
 The dashboard now also reads the authenticated `receipts` collection and the existing receipt relation on
 `spending_lines`. A full-width Receipts this month section lists NFs by issue date (newest first), with store, parsed
@@ -277,6 +420,8 @@ This adds no schema changes or new endpoints, and the dashboard remains read-onl
 
 ## D22. Distinct category colors and stronger pie selection (2026-10-10)
 
+> **Replaced by D79** (index, D107).
+
 Hash-generated hues made unrelated categories look identical (produce and meat, for example). Main category groups
 now have an explicit palette. Additional category colors are chosen by maximizing perceptual separation in OKLab
 from the colors already used at that depth. Registering the full loaded history before filtering keeps assignments
@@ -285,6 +430,8 @@ remains neutral gray. A selected pie slice moves out slightly, retains its full 
 hover/keyboard focus restores a slice's full color. Selection remains indicated by its outline and legend state too.
 
 ## D23. Android autonomy, user-managed catalog, and personal inflation objectives (2026-10-14)
+
+> **Partly replaced by D55** (index, D107).
 
 The user set a new product direction: the app must be self-contained, Android must provide a first-class experience,
 and the dashboard must remain accessible on PC. This revises the long-term server-centered processing direction
@@ -328,9 +475,11 @@ Frame selection, document edges, QR detection, focus/legibility checks, and cove
 not selected algorithms. Long receipts require coverage across overlapping captures; readable QR or detected edges
 alone do not prove all receipt text was captured. Library choice remains open, including evaluating existing scanners.
 
-See [automatic-capture.md](automatic-capture.md) for incremental delivery and evidence required for completion.
+See [automatic-capture.md](archive/automatic-capture.md) for incremental delivery and evidence required for completion.
 
 ## D26. First automatic whole-document capture increment (2026-10-14)
+
+> **Replaced by D86** (index, D107).
 
 Use the existing CameraX controller, wrapped MlKitAnalyzer (QR plus bundled Latin text recognition), and bundled
 OpenCV for document geometry/quality. Keep analyzing after identifying the QR. A whole quadrilateral with margins,
@@ -348,6 +497,8 @@ and bundled model size should be considered when preparing public distribution.
 
 ## D27. Sharpness must be measured exclusively inside the detected receipt area (2026-10-14)
 
+> **Replaced by D86** (index, D107).
+
 The user made receipt-area detection mandatory: only the visible receipt interior may contribute to sharpness.
 Exclude background and paper/background boundary responses, including filter neighborhoods. A bounding rectangle
 that includes background is insufficient. Support partial receipt regions without requiring all four corners.
@@ -355,10 +506,12 @@ that includes background is insufficient. Support partial receipt regions withou
 When localization is uncertain, mark sharpness unevaluated rather than scoring the whole frame. Apply the same
 rule to candidate frames and saved images. Per-content-region quality must prevent a sharp QR from masking blurred
 text elsewhere. Algorithms remain to be selected; the current inner rectangular ROI does not fully implement this
-requirement. See [automatic-capture.md](automatic-capture.md) for proposed validation criteria.
+requirement. See [automatic-capture.md](archive/automatic-capture.md) for proposed validation criteria.
 
 
 ## D28. Continuous capture with masked quality and connected segment coverage (2026-10-14)
+
+> **Replaced by D86** (index, D107).
 
 Replace D26's whole-page requirement and manual fallback with automatic overlapping segments. Draw detected
 edge segments; show simultaneous need-driven hints and one movement destination. Top, bottom, QR, geometry,
@@ -384,6 +537,8 @@ calibration on the Motorola is still required; this decision does not claim fiel
 
 ## D29. Bound mask refinement and preserve continuous AF (2026-10-15)
 
+> **Replaced by D86** (index, D107).
+
 Physical Motorola testing exposed multi-second overlay latency: per-frame GrabCut on the full 720-pixel scene
 cost 1.2–3.2 seconds in observed samples. Limit segmentation to a cropped paper ROI on a 240-pixel grid; erode
 before enlargement to exclude coarse boundary uncertainty. Keep focus evaluation at native resolution, inside
@@ -400,6 +555,8 @@ Local debug stage timings contain no fiscal data. See capture-validation.md for 
 
 
 ## D30. Learn receipt geometry before capture and register zoom independently of photos (2026-10-15)
+
+> **Replaced by D86** (index, D107).
 
 Separate session geometry, current frame localization, and validated persisted coverage. A confident observation
 of all four physical edges establishes provisional geometry even if text is blurred. Confirm it with another
@@ -424,6 +581,8 @@ Build, lint, 41 unit and 19 synthetic instrumented tests pass; physical latency/
 
 
 ## D31. Validate paper regions and render the actual analysis area (2026-10-15)
+
+> **Replaced by D86** (index, D107).
 
 Physical testing disproved the assumption that the old Hough overlay delimited the paper. Raw scene-line
 candidates were published before mask/localization validation; line length and pair width rewarded the wrong
@@ -453,6 +612,8 @@ No database, camera API, neural model or external service change is part of this
 
 ## D32. Do not initialize an unanchored partial map or rebase saved coverage (2026-10-15)
 
+> **Replaced by D86** (index, D107).
+
 The first physical check of D31 showed a paper-following contour and much faster region analysis, but sessions
 could remain unregistered. A clean attempt reached `located=true, sharp=true, anchors=0, tracked=false`.
 Prevent a partial frame without usable descriptors from initializing world coordinates. A full-outline map may
@@ -464,6 +625,8 @@ basis and require registration. Tests exercise both allowed recovery and refusal
 This fixes a demonstrated tracker dead-end; it does not establish physical acceptance of the full scan flow.
 
 ## D33. Require a usable anchor before saving and retain orientation through fallback (2026-10-15)
+
+> **Replaced by D86** (index, D107).
 
 The follow-up physical attempt exposed a second dead-end: an unanchored full frame could still save a candidate,
 which correctly disabled reference replacement but prevented recovery. Require a retained usable anchor before
@@ -546,6 +709,8 @@ metadata, append-only upload and a deletion policy; (d) retention step 2 becomes
 
 ## D36. Photo limit applied on the server; capture stops cleanly at the cap; PATCH replaces photos (2026-10-15)
 
+> **Replaced by D71, D86** (index, D107).
+
 First slice of D35's order, step (a).
 
 - **Server:** backup `pre-photo-limit-2026-10-15.zip` created through PocketBase's backup API (kept in
@@ -574,6 +739,8 @@ D36 validation: after freeing disk space, all 37 instrumented tests pass on the 
 cap tests.
 
 ## D37. Capture legibility decided by on-device OCR; the gradient score only pre-filters (2026-10-15)
+
+> **Replaced by D86** (index, D107).
 
 A synthetic benchmark with OCR ground truth (capture-validation.md) reproduced both D35 defects and showed that
 the gradient ratio can't be calibrated: it measures blur in pixels while legibility depends on blur relative to
@@ -608,6 +775,8 @@ Next: measure OCR time and confidences on the Motorola, including the six D34 JP
 
 ## D38. OCR legibility recalibrated on real receipts: band median confidence >= 0.5 (2026-10-15)
 
+> **Replaced by D86** (index, D107).
+
 D37's threshold came from synthetic text and was wrong for thermal paper. On the ten real capture JPEGs
 (capture-validation.md), ML Kit's per-line confidence for legible print was 0.5–0.85 and no band passed "every
 line >= 0.8", so captures could never complete. The motion-blurred JPEG produced no OCR line at all, which is the
@@ -631,6 +800,8 @@ partially blurred ones. A blurred strip between legible text bands would pass as
 usually grows toward one end, but it isn't excluded. OCR time on the Motorola is still unmeasured.
 
 ## D39. A region must look like a receipt; long unread stretches aren't print; an anchorless map yields (2026-10-15)
+
+> **Replaced by D86** (index, D107).
 
 The first live capture with D38 exposed three faults. On a white table the phone's rectangular shadow was located as
 the receipt: it has a strong boundary but no texture, so it never produced anchors, and frames with it in the mask were
@@ -657,6 +828,8 @@ created an anchorless map that close upright frames could never localize.
 with little print in view (a long bottom margin), may not be located. Saturation uses the camera's white balance.
 
 ## D40. Keep the receipt's axis, replace an anchored provisional map, and tolerate a shadowed end (2026-10-15)
+
+> **Replaced by D86** (index, D107).
 
 The second live capture with D39 found three more faults.
 
@@ -685,6 +858,8 @@ included, board excluded.
 
 ## D41. Trim background leaks from the paper mask; close the capture front for now (2026-10-15)
 
+> **Replaced by D86** (index, D107).
+
 On a patterned red board the contour followed light filaments of the print where they touched the receipt. The
 selected region is now opened with a 15 px ellipse (at 720 px scale), original pixels within 15 px of the opened
 shape are restored (a plain opening rounded the corners and broke the overview→top-zoom confirmation test), and the
@@ -700,6 +875,8 @@ work is recorded under Known capture limits in status.md. **Long receipts that n
 receipt that fits one or two frames. Next: roadmap stage 1 (data model, append-only evidence upload).
 
 ## D42. Photos are append-only evidence in their own collection (2026-10-15)
+
+> **Replaced by D71** (index, D107).
 
 First slice of roadmap stage 1, chosen because of the loss paths confirmed in D36: the upload replaced the server's
 photo list (deleting what the phone didn't send), and capture masks and segment metadata existed only on the phone.
@@ -730,6 +907,8 @@ photo list (deleting what the phone didn't send), and capture masks and segment 
   phone; a relaunch uploaded nothing more (still 51). No emulator end-to-end run.
 
 ## D43. Stage 1 data model: phone is the source of truth, PC read-only, reports use the current category (2026-10-17)
+
+> **Replaced by D55** (index, D107).
 
 Second slice of roadmap stage 1. The user decided two questions while planning it:
 
@@ -834,6 +1013,8 @@ and a queryable copy; the phone becomes the source of truth in stages 3–4.
   - the server stayed at 9 receipts and 51 `receipt_photos`, with no receipt updated.
 
 ## D46. Stage 2b: a read-only copy of the server's lines and catalog on the phone (2026-10-17)
+
+> **Replaced by D71** (index, D107).
 
 - **Schema v2** (Room auto-migration 1→2, tested with `MigrationTestHelper`): adds `issuer`, `category`, `tag`,
   `product`, `store_item`, `product_tag` and `receipt_line` as in data-model.md.
@@ -1034,6 +1215,8 @@ server involved. Categorizing stays on the server until stage 4.
 
 ## D50. Stage 3c: a receipt detail screen, and reading a saved page again on demand (2026-10-21)
 
+> **Replaced by D81, D101** (index, D107).
+
 - **Navigation.** Tapping a receipt that has a saved page opens `ReceiptDetail(chave)`. A receipt without a page
   still opens the SEFAZ page, through the lookup budget check, as before.
 - **The screen** shows:
@@ -1085,6 +1268,8 @@ Recorded after a design conversation, not code. No implementation changes with t
 
 ## D52. The paper mask stops at the receipt's straight sides (2026-10-21)
 
+> **Replaced by D86** (index, D107).
+
 - **Seen live:** a receipt on a dark chair, with a lit patch of the cloth beside it. The overlay and the analyzed area
   spread over a large part of the background to the left of and below the receipt. Coverage never completed, and the
   app kept asking to go back to the last recognized segment.
@@ -1113,6 +1298,8 @@ Recorded after a design conversation, not code. No implementation changes with t
   That's low contrast, not a leak.
 
 ## D53. A frame that fills the last coverage gap is always worth saving (2026-10-24)
+
+> **Replaced by D86** (index, D107).
 
 - **Seen live (screen recording):** the same receipt on the dark chair. With D52 the outline now follows the receipt.
   One overview photo was saved, and Topo, Fundo and QR were ticked, but Cobertura never was. For 40 s of scanning
@@ -1237,6 +1424,8 @@ products (33 categories, of the 75 in the taxonomy) from the local PocketBase in
 
 ## D57. Roles: Laya assigns categories, an LLM manages them (2026-10-24)
 
+> **Replaced by D74, D80** (index, D107).
+
 The user's direction after D56:
 
 - **Laya (System 1) assigns** a category to every item: local, fast, with a probability per option.
@@ -1330,7 +1519,7 @@ Facts (`categorize-eval.py lookup`: barcodes only, 58 requests, cached in test-m
 
 ## D61. Photos: read at full quality on the phone, upload small archive copies (planned, 2026-10-24)
 
-Hosting online (D55, [hosting-options.md](hosting-options.md)) makes photo storage the main cost: ~14 MB per receipt,
+Hosting online (D55, [hosting-options.md](archive/hosting-options.md)) makes photo storage the main cost: ~14 MB per receipt,
 ~200 MB per month for one user, enough to fill Supabase's free 1 GB in ~5 months. The full resolution is needed only
 to read per-item discounts (D54), and that already happens on the phone before upload.
 
@@ -1347,7 +1536,7 @@ to read per-item discounts (D54), and that already happens on the phone before u
 
 ## D62. Host the online service on Supabase, São Paulo region (2026-10-24)
 
-Chosen by the user from [hosting-options.md](hosting-options.md) (D55: data online, nothing on the user's computer).
+Chosen by the user from [hosting-options.md](archive/hosting-options.md) (D55: data online, nothing on the user's computer).
 
 - **Why:** accounts, per-user isolation (Row Level Security), file storage, SQL and backups come managed. What we buy
   is not running a server, not a lower price.
@@ -1361,6 +1550,8 @@ Chosen by the user from [hosting-options.md](hosting-options.md) (D55: data onli
   tier vs Pro.
 
 ## D63. Supabase setup: photos online from the start, free tier for now (2026-10-24)
+
+> **Partly replaced by D103** (index, D107).
 
 The two choices D62 left open, made by the user.
 
@@ -1514,6 +1705,8 @@ manual-only stage 4 with PocketBase as the catalog's owner.
 
 ## D71. Stage 4a built: Supabase schema online, the phone syncs, PocketBase is out of the app (2026-10-25)
 
+> **Partly replaced by D104** (index, D107).
+
 Implements the 4a part of D70 ([stage-4-plan.md](stage-4-plan.md)). Real data not moved yet.
 
 - **Schema** (`supabase/migrations/`, applied to the online project in São Paulo): the phone's tables with `user_id` in
@@ -1663,6 +1856,8 @@ Implements 4c of D70 with D75. Portuguese UI on every new screen; Home, receipt 
 
 ## D77. Stage 5: spending reports on the phone, offline, under bottom tabs (2026-10-25)
 
+> **Partly replaced by D81** (index, D107).
+
 Chosen by the user: bottom tabs (Gastos first, Notas, Produtos), month view with a year view, and price evolution
 per product plus a preliminary per-category trend.
 
@@ -1783,6 +1978,8 @@ three published pages (private artifacts): an inventory and ontology of everythi
 
 ## D82. Capture is planned live from a model of the receipt's print lines (2026-10-25)
 
+> **Partly replaced by D85** (index, D107).
+
 A capture on the phone that tried to join photos covering different parts of the receipt saved 26 frames in 73 s. The
 second frame, taken at 6 s, already held the whole receipt legibly at native resolution, both ends included (item
 lines about 22 px apart); the first, at 0 s, missed only the last four footer lines. The other 24 frames added
@@ -1813,7 +2010,7 @@ Direction, chosen by the user:
   26-frame session it must conclude that frame 1 alone covers the receipt. Then live, then full-resolution stills,
   then the phone.
 
-Plan and progress: [capture-coverage-plan.md](capture-coverage-plan.md). Supersedes "the capture front is closed for
+Plan and progress: [capture-coverage-plan.md](archive/capture-coverage-plan.md). Supersedes "the capture front is closed for
 now" (D41). The session's frames stay in `test-media/` (real receipt, gitignored).
 
 ## D83. Coverage is accepted by stretch, not line by line (2026-10-25)
@@ -2425,3 +2622,23 @@ Decided by the user:
 - Beyond SC, open before any claim: receipts from other states and other billing software (print layouts vary
   within the national DANFE standard), São Paulo's CF-e-SAT and Ceará's MFE (other documents, other prints), and the
   2026 tax reform's lines on the print.
+
+## D107. Housekeeping: server/ removed, docs archived, an index for this log (2026-10-29)
+
+Asked by the user after several changes of direction: what bloat did they leave? The app's code was clean (no
+compiler warnings; three unused functions and the template's two backup XMLs). What had gone stale was around it.
+
+- **`server/` is gone.** It stayed after D73 only so `tools/nfce-golden.mjs` could hold the Kotlin parser to the JS
+  one (D48). The Kotlin parser is the only one now: the two sanitized fixtures moved to
+  `android/app/src/test/fixtures/`, and the golden files, first written from the JS, now pin the parser's output
+  (`NfceParityTest`); a deliberate parser change updates them. Checking local real pages against the JS is gone with
+  it. `categorize-eval.py` lost its PocketBase `export` (its answer key, `items.json`, is already in test-media).
+- **Credentials moved** from `server/.env.local` to `.env.local` at the repo root, without the PocketBase logins. The
+  build, the nightly jobs and the tools read it there; a worktree uses the main checkout's. The old file and
+  PocketBase's data (`server/pb_data/`) stay on disk in the main checkout, ignored by git.
+- **Docs:** README, CLAUDE.md, architecture.md and dev-environment.md describe today's project (they still described
+  PocketBase and the PC dashboard). Plans and comparisons that only explain the past moved to `docs/archive/`, with
+  links kept working. roadmap.md, objectives.md and data-model.md stay, with a note saying what overtook them.
+- **This log keeps every entry as written** and gains an index at the top: each decision's area, and whether it's
+  current, partly replaced, replaced (by which entries) or history. Replaced entries also get a pointer under their
+  heading. When a decision is reversed from now on, the new entry updates the index row and adds the pointer.

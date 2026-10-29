@@ -1,12 +1,15 @@
 # Modelo de dados local (etapa 1)
 
+> Aprovado em 2026-10-17 (D44) para o banco local. O esquema evoluiu depois: Supabase (D70, D71), cadernetas (D104).
+> O código e as migrações em `supabase/migrations/` valem sobre este texto.
+
 2026-10-17. Desenho proposto para aprovação. Fecha a etapa 1 do roadmap e orienta a etapa 2, que implanta o banco
 no Android e migra os dados. Já decidido pelo usuário (D43):
 
 - **O PC só consulta.** O celular é a fonte da verdade.
 - **Os relatórios usam a categoria atual do produto.**
 
-Este documento substitui a parte de proposta de [data-model-review.md](data-model-review.md).
+Este documento substitui a parte de proposta de [data-model-review.md](archive/data-model-review.md).
 
 ## Princípio
 
@@ -277,4 +280,4 @@ Dados de compras reais que passarem pelo PC durante a migração (exportações 
   sem depender de ids remotos ([local-and-shared-modes.md](local-and-shared-modes.md)).
 - **Classificação histórica por época:** foi recusada por agora (D43).
 - **OCR de descontos:** o esquema já tem `source = photo` e o estado de revisão.
-- **Retenção de fotos e limpeza das duplicadas antigas:** ver [capture-retention-plan.md](capture-retention-plan.md).
+- **Retenção de fotos e limpeza das duplicadas antigas:** ver [capture-retention-plan.md](archive/capture-retention-plan.md).

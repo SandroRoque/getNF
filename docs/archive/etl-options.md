@@ -3,7 +3,7 @@
 Discussão registrada em 2026-10-14. Este documento preserva a comparação feita ao considerar ETL em VPS.
 **Decisão posterior do usuário: parser no Android**, com revisão manual e análises locais independentes.
 Um serviço remoto poderá atender compartilhamento e curadoria opcionais; sua hospedagem ainda não foi escolhida.
-Ver [local-and-shared-modes.md](local-and-shared-modes.md). As alternativas abaixo são contexto da decisão.
+Ver [local-and-shared-modes.md](../local-and-shared-modes.md). As alternativas abaixo são contexto da decisão.
 
 ## O que o processamento atual faz
 
