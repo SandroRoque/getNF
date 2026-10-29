@@ -195,6 +195,19 @@ data class StoreItemRow(
   val linkReview: String? = null,
   @ColumnInfo(defaultValue = "0") val deleted: Boolean = false,
   @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
+  /**
+   * System-1's readings (D108), written only by the server and never pushed. How it's sold (`weight`, `volume`,
+   * `unit`), by the `parser` (the unit settled it) or `jev`; set only when sure.
+   */
+  val soldBy: String? = null,
+  val soldBySource: String? = null,
+  val soldByConfidence: Double? = null,
+  /** A size Jev is sure of; with [readSizeSource] set and no size, "no net size here". Replaces [parsedSizeE6] in prices. */
+  val readSizeE6: Long? = null,
+  val readSizeUnit: String? = null,
+  val readSizeSource: String? = null,
+  val readSizeConfidence: Double? = null,
+  val readModel: String? = null,
 )
 
 @Entity(

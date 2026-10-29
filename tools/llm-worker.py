@@ -13,7 +13,7 @@ Tasks, per caderneta (D104):
           abbreviation joins the shared lexicon only if Jev's check on the user's confirmed items doesn't get worse
           and the corrected item comes out right (the regression gate, D69).
   links   proposes store items in other stores that are the same product (D44, D66), for the user to accept.
-  sizes   proposes pack sizes the parser couldn't read.
+  sizes   proposes pack sizes the parser couldn't read, for items System-1 hasn't read (D108).
   describe drafts a one-line description for categories the user created without one (D75).
   report  writes the health report (D65, D69) the phone shows in Ajustes.
 
@@ -334,6 +334,9 @@ def sizes(db, llm, u, limit, now):
       continue
     items = u.items_of.get(p["id"], [])
     if not items or any(s.get("parsed_size_e6") for s in items) or any(u.units.get(s["id"], set()) & {"KG", "L"} for s in items):
+      continue
+    # System-1 reads sizes now (D108): only items it never read are left to the LLM.
+    if any(s.get("read_size_source") or s.get("sold_by") for s in items):
       continue
     if re.search(r"\d", " ".join(s["description"] for s in items)):
       todo.append(p)

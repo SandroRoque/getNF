@@ -102,9 +102,9 @@ object Ipci {
 
   /** `kg`, `l` or `un`: how a line's quantity is measured for comparing prices. */
   fun basisOf(l: SpendingLine): String {
-    val unit = l.unit?.uppercase()
+    val measure = l.measure
     return when {
-      unit == "KG" || unit == "L" -> unit.lowercase()
+      measure != null -> measure
       l.sizeE6 != null && l.sizeE6 > 0 && l.sizeUnit != null -> l.sizeUnit
       else -> "un"
     }
@@ -113,9 +113,8 @@ object Ipci {
   /** The line's quantity in its basis: kilos or litres, else units. */
   fun quantity(l: SpendingLine): Double {
     val units = l.qtyE4 / 10_000.0
-    val unit = l.unit?.uppercase()
     return when {
-      unit == "KG" || unit == "L" -> units
+      l.measure != null -> units
       l.sizeE6 != null && l.sizeE6 > 0 && l.sizeUnit != null -> units * l.sizeE6 / 1_000_000.0
       else -> units
     }

@@ -23,6 +23,16 @@ enum class DiscountSource(val value: String) { PRORATED("prorated"), PHOTO("phot
 data class LineDiscount(val cents: Long, val source: DiscountSource)
 
 object Derive {
+  /**
+   * `kg` or `l` when a line's unit says its quantity is a weight or a volume, else null (UN, PCT, CX… say nothing: some
+   * stores print UN for something weighed). Same table as supabase/functions/categorize/reads.ts (D108).
+   */
+  fun unitKind(unit: String?): String? = when (unit?.trim()?.uppercase()) {
+    "KG", "KGS", "KILO", "KILOS", "QUILO", "QUILOS" -> "kg"
+    "L", "LT", "LTS", "LITRO", "LITROS" -> "l"
+    else -> null
+  }
+
   /** True for a GTIN-8/12/13/14 with a valid check digit that isn't a store-internal (restricted circulation) code. */
   fun isGtin(code: String?): Boolean {
     if (code == null || !Regex("\\d{8}|\\d{12,14}").matches(code)) return false

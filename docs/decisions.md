@@ -2679,3 +2679,23 @@ rules from the user's corrections, lexicon entries, disagreements System-1 can't
 taxonomy itself. The D80 integration stays (the worker, its tables, the phone's screens, the regression gate);
 what changes is which model, how often, and on what. Which LLM, where it runs and what triggers it are open. Sizes
 move from the worker to System-1; the worker audits instead of producing.
+
+**Built, not deployed (2026-10-29).** TypeSafe's docs list three question types: choice, score (a rubric) and noul
+(how likely a statement is true). None extracts a value, so the size stays a choice among candidates. Each question
+in a request is answered on its own against the same state.
+
+- **Server** (`20261029000000_system_one_reads.sql`): every new store item is queued, not only those of an
+  uncategorized product; a job waits for one of its lines (or 10 minutes), so its unit and quantity are known.
+  `store_item` gains `sold_by` (+ source, confidence) and `read_size_*`; `apply_reading` writes them and finishes the
+  job. An unsure size becomes the product's `size_suggestion` (model `jev-latest`), the card D80 already shows, unless
+  the product has a size by hand or a suggestion, or the answer is the parser's own. An unsure way of selling isn't
+  written anywhere yet.
+- **Function:** `reads.ts` holds the unit table and the size candidates (`12X500ML` gives 6 l and 500 ml; `1 25KG`
+  gives 1.25 kg and 25 kg; Jev picks). Sold by weight or volume per the unit, no size is asked. The state gains the
+  description as printed, the unit and the quantity, shared by all questions: **the category's 94% (D74) must be
+  measured again with it** before deploying.
+- **Phone** (Room v12): the readings are pulled, never pushed. Prices: a size by hand, else System-1's sure one
+  (a sure "no size" included), else the parsed one; the quantity is a weight or volume by the unit's spelling
+  (`Derive.unitKind`, now also KGS, LT, LTS…) or by `sold_by`.
+- **LLM worker:** proposes sizes only for items System-1 never read. Auditing System-1's sizes is not built.
+- **Tests:** Deno (`reads_test.ts`), pgTAP (queue, claim, readings), JVM (pricing with readings).

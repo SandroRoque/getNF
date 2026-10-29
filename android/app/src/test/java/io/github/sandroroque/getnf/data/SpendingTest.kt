@@ -76,4 +76,25 @@ class SpendingTest {
     val pulp = pricePoint(lines.first { it.sizeE6 == 100_000L })!!
     assertEquals(2980L to "kg", pulp.cents to pulp.basis)
   }
+
+  @Test fun systemOnesReadingsPriceTheLine() = runTest {
+    spending()
+    val pulpItem = dao.storeItems().first { it.description.startsWith("POLPA") }
+    val lineNo = dao.lines().first { it.storeItemId == pulpItem.id }.lineNo
+    suspend fun pulp() = db.spending().lines().first().first { it.lineNo == lineNo }
+    // A size System-1 is sure of replaces the parsed one (D108): 400 g instead of 100 g.
+    dao.updateStoreItem(pulpItem.copy(readSizeE6 = 400_000, readSizeUnit = "kg", readSizeSource = "jev"))
+    assertEquals(745L to "kg", pricePoint(pulp())!!.let { it.cents to it.basis })
+    // A sure "no size" prices it per unit.
+    dao.updateStoreItem(pulpItem.copy(readSizeE6 = null, readSizeUnit = null, readSizeSource = "jev"))
+    assertEquals(298L to "un", pricePoint(pulp())!!.let { it.cents to it.basis })
+    // Sold by weight under a unit that says nothing: the unit price is per kg.
+    dao.updateStoreItem(pulpItem.copy(soldBy = "weight", soldBySource = "jev"))
+    assertEquals(298L to "kg", pricePoint(pulp())!!.let { it.cents to it.basis })
+    // A size by hand still wins over System-1's.
+    dao.updateStoreItem(pulpItem.copy(readSizeE6 = 400_000, readSizeUnit = "kg", readSizeSource = "jev"))
+    val product = dao.products().single { it.id == pulpItem.productId }
+    dao.updateProduct(product.copy(sizeE6 = 200_000, sizeUnit = "kg", sizeSource = "manual"))
+    assertEquals(200_000L, pulp().sizeE6)
+  }
 }

@@ -1,18 +1,26 @@
-// Suggests categories for new store items with Jev (stage 4b, D70; the setup measured in D67/D68).
+// Reads new store items with Jev (stage 4b, D70; the setup measured in D67/D68; more questions in D108).
 //
 // pg_cron calls this every minute while categorize_job has work (kick_categorize). Each run claims a batch, and for
-// each item asks Jev one choice question over the caderneta's leaf categories, with the item's words translated by the
-// shared lexicon and, for a barcode, Open Food Facts' name. Confidence at or above THRESHOLD becomes the category
-// ("automatic", not confirmed); below, a suggestion for the review list. A failure retries with backoff.
+// each item asks Jev, in one request, up to three choice questions: its category, over the caderneta's leaf
+// categories, when its product has none yet; how it's sold, when the unit doesn't settle it (reads.ts); and its net
+// size, among the candidates code finds in the description, or none. The state is the item's words translated by the
+// shared lexicon, its receipt text, unit and quantity, and for a barcode Open Food Facts' name. Confidence at or above
+// THRESHOLD is applied ("automatic", not confirmed); below, a category or a size becomes a suggestion for the review
+// list. A failure retries with backoff.
 //
-// A POST with {"check": {"ledger_id", "items": [{description, code_kind, code}], "lexicon"?: [{key, en}]}} answers
-// those items with the same code and writes nothing: the regression check (D69) runs through exactly what
+// A POST with {"check": {"ledger_id", "items": [{description, code_kind, code, unit?, qty_e4?}], "lexicon"?: [{key, en}]}}
+// answers those items with the same code and writes nothing: the regression check (D69) runs through exactly what
 // production runs. Extra lexicon entries are tried on top of the table, to test a proposed one before it goes live.
 //
-// Sent to TypeSafe: the translated item description and Open Food Facts' name and categories. Nothing else.
+// Sent to TypeSafe: the item's description (translated and as printed), its unit and quantity, and Open Food Facts'
+// name and categories. Not the store, prices or the receipt.
 // Secrets (supabase secrets set): JEV_API_KEY, CATEGORIZE_SECRET. Optional: JEV_URL, JEV_MODEL, THRESHOLD, BATCH.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  type Candidate, NO_SIZE, NO_SIZE_TEXT, SIZE_INSTRUCTIONS, type SoldBy, SOLD_BY_CRITERIA, SOLD_BY_INSTRUCTIONS,
+  sizeCandidates, soldByFromUnit,
+} from "./reads.ts";
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false },
@@ -24,7 +32,10 @@ const BATCH = Number(Deno.env.get("BATCH") ?? "25");
 const INSTRUCTIONS = "What kind of product is this item from a Brazilian supermarket receipt?";
 const OFF_FIELDS = "product_name,product_name_pt,brands,quantity,categories_tags";
 
-type Job = { ledger_id: string; store_item_id: string; product_id: string; code_kind: string; code: string; description: string };
+type Job = {
+  ledger_id: string; store_item_id: string; product_id: string; code_kind: string; code: string; description: string;
+  wants_category: boolean; unit: string | null; qty_e4: number | null;
+};
 type Option = { key: string; id: string; text: string };
 
 Deno.serve(async (req) => {
@@ -43,14 +54,24 @@ Deno.serve(async (req) => {
   const outcomes: Record<string, number> = {};
   for (const job of jobs as Job[]) {
     try {
-      if (!options.has(job.ledger_id)) options.set(job.ledger_id, await leafCategories(job.ledger_id));
-      const { chosen, confidence } = await answer(job, options.get(job.ledger_id)!, expand);
-      const { data: outcome, error } = await db.rpc("apply_categorization", {
-        lid: job.ledger_id, item: job.store_item_id, product: job.product_id, category: chosen.id,
-        confidence, model: JEV_MODEL, threshold: THRESHOLD,
+      if (job.wants_category && !options.has(job.ledger_id)) options.set(job.ledger_id, await leafCategories(job.ledger_id));
+      const a = await answer(job, job.wants_category ? options.get(job.ledger_id)! : null, expand);
+      if (a.category) {
+        const { data: outcome, error } = await db.rpc("apply_categorization", {
+          lid: job.ledger_id, item: job.store_item_id, product: job.product_id, category: a.category.chosen.id,
+          confidence: a.category.confidence, model: JEV_MODEL, threshold: THRESHOLD,
+        });
+        if (error) throw new Error(error.message);
+        outcomes[outcome] = (outcomes[outcome] ?? 0) + 1;
+      }
+      const { data: read, error } = await db.rpc("apply_reading", {
+        lid: job.ledger_id, item: job.store_item_id, product: job.product_id,
+        sold_by: a.soldBy?.value ?? null, sold_by_source: a.soldBy?.source ?? null, sold_by_confidence: a.soldBy?.confidence ?? null,
+        size_asked: a.size != null, size_e6: a.size?.e6 ?? null, size_unit: a.size?.unit ?? null,
+        size_confidence: a.size?.confidence ?? null, model: JEV_MODEL, threshold: THRESHOLD,
       });
       if (error) throw new Error(error.message);
-      outcomes[outcome] = (outcomes[outcome] ?? 0) + 1;
+      for (const r of String(read).split(" ")) outcomes[r] = (outcomes[r] ?? 0) + 1;
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.error(`job ${job.store_item_id}: ${message}`);
@@ -61,15 +82,54 @@ Deno.serve(async (req) => {
   return json({ done: jobs.length, ...outcomes });
 });
 
-type Item = { description: string; code_kind: string; code: string };
+type Item = { description: string; code_kind: string; code: string; unit?: string | null; qty_e4?: number | null };
+type Answers = {
+  category?: { chosen: Option; confidence: number };
+  soldBy?: { value: SoldBy; source: "parser" | "jev"; confidence: number };
+  size?: { e6: number | null; unit: string | null; confidence: number };
+};
 
-async function answer(item: Item, choices: Option[], expand: (t: string) => string) {
-  const state: Record<string, string> = { item: expand(item.description) };
+/** One request for every question this item needs; `choices` null when its product needs no category. */
+async function answer(item: Item, choices: Option[] | null, expand: (t: string) => string): Promise<Answers> {
+  const out: Answers = {};
+  const questions: Record<string, unknown> = {};
+  if (choices) {
+    questions.category = { type: "choice", instructions: INSTRUCTIONS, criteria: Object.fromEntries(choices.map((o) => [o.key, o.text])) };
+  }
+  const settled = soldByFromUnit(item.unit ?? null, item.qty_e4 ?? null);
+  if (settled) out.soldBy = { value: settled, source: "parser", confidence: 1 };
+  else questions.sold_by = { type: "choice", instructions: SOLD_BY_INSTRUCTIONS, criteria: SOLD_BY_CRITERIA };
+  // Sold by weight or volume, the line's quantity is already the measure; a size in the name doesn't price it.
+  const candidates: Candidate[] = settled === "weight" || settled === "volume" ? [] : sizeCandidates(item.description);
+  if (candidates.length) {
+    questions.size = {
+      type: "choice", instructions: SIZE_INSTRUCTIONS,
+      criteria: { ...Object.fromEntries(candidates.map((c) => [c.key, c.text])), [NO_SIZE]: NO_SIZE_TEXT },
+    };
+  }
+  if (!Object.keys(questions).length) return out;
+
+  const state: Record<string, string> = { item: expand(item.description), "receipt text": item.description };
+  if (item.unit) state["unit on the receipt"] = item.unit;
+  if (item.qty_e4 != null) state["quantity on the receipt"] = String(item.qty_e4 / 10_000);
   if (item.code_kind === "gtin") Object.assign(state, await openFoodFacts(item.code));
-  const a = await jev(state, choices);
-  const chosen = choices.find((o) => o.key === a.choice);
-  if (!chosen) throw new Error(`Jev chose an unknown option: ${a.choice}`);
-  return { chosen, confidence: a.confidence };
+  const a = await jev(state, questions);
+
+  if (a.category) {
+    const chosen = choices!.find((o) => o.key === a.category.choice);
+    if (!chosen) throw new Error(`Jev chose an unknown category: ${a.category.choice}`);
+    out.category = { chosen, confidence: a.category.confidence };
+  }
+  if (a.sold_by) {
+    if (!(a.sold_by.choice in SOLD_BY_CRITERIA)) throw new Error(`Jev chose an unknown way of selling: ${a.sold_by.choice}`);
+    out.soldBy = { value: a.sold_by.choice as SoldBy, source: "jev", confidence: a.sold_by.confidence };
+  }
+  if (a.size) {
+    const c = candidates.find((x) => x.key === a.size.choice);
+    if (!c && a.size.choice !== NO_SIZE) throw new Error(`Jev chose an unknown size: ${a.size.choice}`);
+    out.size = { e6: c?.e6 ?? null, unit: c?.unit ?? null, confidence: a.size.confidence };
+  }
+  return out;
 }
 
 async function check(ledgerId: string, items: Item[], extra: { key: string; en: string }[]) {
@@ -77,8 +137,11 @@ async function check(ledgerId: string, items: Item[], extra: { key: string; en: 
   const out = [];
   for (const item of items) {
     try {
-      const { chosen, confidence } = await answer(item, choices, expand);
-      out.push({ category: chosen.key.replaceAll("__", "."), confidence });
+      const a = await answer(item, choices, expand);
+      out.push({
+        category: a.category!.chosen.key.replaceAll("__", "."), confidence: a.category!.confidence,
+        sold_by: a.soldBy ?? null, size: a.size ?? null,
+      });
     } catch (e) {
       out.push({ error: e instanceof Error ? e.message : String(e) });
     }
@@ -149,16 +212,19 @@ async function openFoodFacts(gtin: string): Promise<Record<string, string>> {
   return out;
 }
 
-async function jev(state: Record<string, string>, choices: Option[]): Promise<{ choice: string; confidence: number }> {
+type JevAnswer = { choice: string; confidence: number };
+
+async function jev(state: Record<string, string>, questions: Record<string, unknown>): Promise<Record<string, JevAnswer>> {
   const r = await fetch(`${JEV_URL}/v1/systemone`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${Deno.env.get("JEV_API_KEY")}` },
-    body: JSON.stringify({
-      model: JEV_MODEL, state,
-      questions: { c: { type: "choice", instructions: INSTRUCTIONS, criteria: Object.fromEntries(choices.map((o) => [o.key, o.text])) } },
-    }),
+    body: JSON.stringify({ model: JEV_MODEL, state, questions }),
   });
   if (!r.ok) throw new Error(`Jev ${r.status}: ${(await r.text()).slice(0, 200)}`);
-  const c = (await r.json()).answers.c;
-  return { choice: c.choice, confidence: Number(c.confidence ?? 0) };
+  const answers = (await r.json()).answers ?? {};
+  return Object.fromEntries(Object.keys(questions).map((k) => {
+    const a = answers[k];
+    if (!a) throw new Error(`Jev gave no answer to ${k}`);
+    return [k, { choice: a.choice, confidence: Number(a.confidence ?? 0) }];
+  }));
 }

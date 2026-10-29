@@ -469,6 +469,7 @@ class SyncEngine(
     sizeSuggestionModel = o.string("size_suggestion_model"),
   )
 
+  /** System-1's readings are left out: only the server writes them (D108). */
   private fun storeItemJson(s: StoreItemRow) = buildJsonObject {
     put("id", s.id); put("code_kind", s.codeKind); put("code", s.code); put("store_cnpj", s.storeCnpj)
     put("description", s.description); put("parsed_size_e6", s.parsedSizeE6); put("parsed_size_unit", s.parsedSizeUnit)
@@ -479,6 +480,9 @@ class SyncEngine(
     o.string("id")!!, o.string("code_kind")!!, o.string("code")!!, o.string("store_cnpj") ?: "", o.string("description")!!,
     o.long("parsed_size_e6"), o.string("parsed_size_unit"), o.string("product_id")!!, o.string("link_source") ?: "regex",
     o.string("link_review"), o.bool("deleted") ?: false,
+    soldBy = o.string("sold_by"), soldBySource = o.string("sold_by_source"), soldByConfidence = o.double("sold_by_confidence"),
+    readSizeE6 = o.long("read_size_e6"), readSizeUnit = o.string("read_size_unit"), readSizeSource = o.string("read_size_source"),
+    readSizeConfidence = o.double("read_size_confidence"), readModel = o.string("read_model"),
   )
 
   private fun productTagJson(t: ProductTagRow) = buildJsonObject {

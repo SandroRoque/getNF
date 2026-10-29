@@ -2,6 +2,7 @@ package io.github.sandroroque.getnf.data
 
 import androidx.room.Dao
 import androidx.room.Query
+import io.github.sandroroque.getnf.parse.Derive
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlinx.coroutines.flow.Flow
@@ -25,10 +26,15 @@ data class SpendingLine(
   val qtyE4: Long,
   val unit: String?,
   val unitPriceE4: Long,
-  /** The product's size by hand, else the store item's parsed one; manual "no size" gives null. */
+  /** The product's size by hand, else the one System-1 is sure of (D108), else the parsed one; "no size" gives null. */
   val sizeE6: Long?,
   val sizeUnit: String?,
+  /** How the store item is sold, when the parser or System-1 settled it (D108): `weight`, `volume` or `unit`. */
+  val soldBy: String? = null,
 ) {
+  /** `kg` or `l` when the quantity is itself a weight or a volume: by the unit's spelling, else by how it's sold. */
+  val measure: String? get() = Derive.unitKind(unit) ?: when (soldBy) { "weight" -> "kg"; "volume" -> "l"; else -> null }
+
   val netCents: Long get() = grossCents - discountCents
 }
 
@@ -38,8 +44,9 @@ abstract class SpendingDao {
     """
     SELECT l.receipt AS chave, l.lineNo, rp.issuedAt, rp.issuerCnpj AS storeCnpj, i.name AS storeName, l.grossCents,
       l.discountCents, l.discountSource, p.id AS productId, p.categoryId, l.qtyE4, l.unit, l.unitPriceE4,
-      CASE WHEN p.sizeSource = 'manual' THEN p.sizeE6 ELSE s.parsedSizeE6 END AS sizeE6,
-      CASE WHEN p.sizeSource = 'manual' THEN p.sizeUnit ELSE s.parsedSizeUnit END AS sizeUnit
+      CASE WHEN p.sizeSource = 'manual' THEN p.sizeE6 WHEN s.readSizeSource IS NOT NULL THEN s.readSizeE6 ELSE s.parsedSizeE6 END AS sizeE6,
+      CASE WHEN p.sizeSource = 'manual' THEN p.sizeUnit WHEN s.readSizeSource IS NOT NULL THEN s.readSizeUnit ELSE s.parsedSizeUnit END AS sizeUnit,
+      s.soldBy
     FROM receipt_line l
     JOIN store_item s ON s.id = l.storeItemId
     JOIN product p ON p.id = COALESCE(l.productOverrideId, s.productId)
@@ -152,11 +159,11 @@ data class PricePoint(val at: Long, val storeName: String?, val cents: Long, val
 
 fun pricePoint(line: SpendingLine): PricePoint? {
   val at = line.issuedAt ?: return null
-  val unit = line.unit?.uppercase()
+  val measure = line.measure
   // unitPriceE4 is centavos × 100 (scale 4 on reais).
   val perUnitCents = line.unitPriceE4 / 100.0
   return when {
-    unit == "KG" || unit == "L" -> PricePoint(at, line.storeName, Math.round(perUnitCents), unit.lowercase())
+    measure != null -> PricePoint(at, line.storeName, Math.round(perUnitCents), measure)
     line.sizeE6 != null && line.sizeE6 > 0 && line.sizeUnit != null ->
       PricePoint(at, line.storeName, Math.round(perUnitCents * 1_000_000 / line.sizeE6), line.sizeUnit)
     else -> PricePoint(at, line.storeName, Math.round(perUnitCents), "un")
