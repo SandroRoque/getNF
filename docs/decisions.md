@@ -90,7 +90,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D77 | reports | partly replaced → D81 | Stage 5: spending reports on the phone, offline, under bottom tabs |
 | D78 | catalog | current | Medicine moves to Saúde as "Remédios"; Saúde gets "Consultas, exames e planos" |
 | D79 | IPCI | current | Stage 6 dropped for now; stage 7's IPCI follows the price paid, chained monthly |
-| D80 | categorizer | current | Stage 8: an LLM worker on the PC suggests; the user decides on the phone |
+| D80 | categorizer | partly replaced → D108 | Stage 8: an LLM worker on the PC suggests; the user decides on the phone |
 | D81 | UI | current | UI/UX redesign: four tabs around one decision queue, in the "Calmo" direction |
 | D82 | capture | partly replaced → D85 | Capture is planned live from a model of the receipt's print lines |
 | D83 | capture | current | Coverage is accepted by stretch, not line by line |
@@ -118,6 +118,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D105 | launch | current | Getting ready to go public: free for now, a new name, explain the IP budget only when it's hit |
 | D106 | photos | current | A receipt read from its photos alone is the next photo work, after a break from camera and OCR |
 | D107 | dev | current | Housekeeping: server/ removed, docs archived, an index for this log |
+| D108 | categorizer | current | System-1 reads more than the category; a powerful LLM, run sparingly, replaces a cheap one run liberally |
 
 ---
 
@@ -1924,6 +1925,8 @@ its next sync.
 
 ## D80. Stage 8: an LLM worker on the PC suggests; the user decides on the phone (2026-10-25)
 
+> **Partly replaced by D108** (index, D107).
+
 Chosen by the user: all four parts of [stage-8-plan.md](stage-8-plan.md), with the local LLM (LM Studio, Swift).
 
 - **`tools/llm-worker.py`** runs nightly on the PC (systemd user timer, 04:00, after the 03:30 backup), loads the
@@ -2642,3 +2645,37 @@ compiler warnings; three unused functions and the template's two backup XMLs). W
 - **This log keeps every entry as written** and gains an index at the top: each decision's area, and whether it's
   current, partly replaced, replaced (by which entries) or history. Replaced entries also get a pointer under their
   heading. When a decision is reversed from now on, the new entry updates the index row and adds the pointer.
+
+## D108. System-1 reads more than the category; a powerful LLM, run sparingly, replaces a cheap one run liberally (2026-10-29)
+
+Discussed with the user. Not built yet.
+
+**System-1 (Jev) takes on more per item.**
+
+- **One request per new store item, several questions.** The protocol takes several questions in one request; today
+  we send one (the category). The start: the category; how the item was sold (by weight, by volume, by the unit or
+  pack); and its net size. More questions will come. Requests stay per item, never per receipt: Jev charges per token,
+  not per request, most of an item's tokens are the category options that would repeat anyway, only new store items
+  are asked (a household rebuys), and the confidence measured in D67 and D74 is per item. Mixing a receipt's items in
+  one request would need it measured again.
+- **Code does what's exact; System-1 judges.** The page's unit column is exact and stays the source: code normalizes
+  its spellings (UN, UND, PC, KG, Kg…) and takes a fractional quantity as weighed. System-1 answers how the item was
+  sold where the unit doesn't settle it (a store that prints UN for something weighed). For the size, code finds
+  every candidate in the description ("250G", "12X1L", "1K", "1 25KG") and System-1 picks one, or "no size". If Jev
+  offers question types beyond choice (extracting a value), that may replace the candidates; to check in TypeSafe's
+  docs, without calls.
+- **Each answer like the category (D74):** ≥ 0.9 is applied as automatic, below it a suggestion in Para você; the
+  user's choice is final (D51).
+- **Pricing keeps both and prefers weight or volume,** as it already does: per kg or litre from a KG/L unit, else from
+  the size, else per unit.
+- **Not System-1's job: checking the parse.** The numbers are checked by the print's and the page's own arithmetic
+  (quantity × unit price, the sum of lines, the totals, the item count), which no model beats. A garbled
+  description shows up as a low-confidence category and goes to review, which already happens.
+
+**The LLM's role is rethought.** D80 runs a small local model (LM Studio) every night over many items: audits,
+sizes, rules, links. The user's view now: a very capable LLM, run very sparingly, instead of a cheap one run
+liberally. System-1 does the volume work, item by item; the LLM is for what needs real judgement and is rare: house
+rules from the user's corrections, lexicon entries, disagreements System-1 can't settle, category descriptions, the
+taxonomy itself. The D80 integration stays (the worker, its tables, the phone's screens, the regression gate);
+what changes is which model, how often, and on what. Which LLM, where it runs and what triggers it are open. Sizes
+move from the worker to System-1; the worker audits instead of producing.
