@@ -135,6 +135,9 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
   kvm groups).
 - Create the Play upload key: `tools/make-upload-key.sh` in a terminal (it asks for a password), then back up
   `~/.config/getnf/` and the password. Then `cd android && ./gradlew :app:bundleRelease` makes the bundle for Play.
+- From another device on the LAN (the phone on Wi-Fi works with any port-check app, or a laptop with `nc -zv -w3
+  192.168.4.4 54321`), confirm 54321-54324 time out, on IPv4 and the PC's IPv6 address. The firewall rule that should
+  make them time out is in place (D109); the PC can't test this on itself.
 - Rotate the Supabase database password: the 2026-10-27 03:30 backup failed on DNS and its traceback wrote the
   connection URL, password included, to the systemd journal. Fixed for the future (a2cb28f, `PGPASSWORD`); change the
   password in the dashboard, then in `.env.local`.

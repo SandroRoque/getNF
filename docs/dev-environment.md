@@ -44,6 +44,23 @@ Debug builds talk to the online Supabase. To use the local one instead, build wi
 `-Pgetnf.supabaseUrl=http://10.0.2.2:54321 -Pgetnf.supabaseKey=<its publishable key>`: inside the emulator, the
 host machine is `10.0.2.2`.
 
+## Local Supabase stack: keep it off the network (D109)
+
+`npx supabase start` publishes Kong (54321), Postgres (54322), Studio (54323) and Mailpit (54324) on **all** interfaces
+and has no setting to change that. Studio and the database use development passwords, so nothing here may be
+reachable from the LAN. Consumers are all host-local: tools on `127.0.0.1:54322`, the emulator at `10.0.2.2:54321`,
+the Android debug build, `supabase functions serve` (its container joins the stack's Docker network).
+
+- `tools/local-stack-check.sh [--bindings]`: read-only check of API, auth, storage, DB, Studio, Mailpit and
+  functions (functions are skipped unless `supabase_edge_runtime_getnf` is running), plus how each port is published.
+- `sudo bash tools/harden-local-stack.sh` (applied 2026-10-25): a DOCKER-USER jump into a small chain (also persisted in `/etc/ufw/after.rules`) that drops
+  new connections to ports 54320-54329 unless they arrive from loopback or a Docker bridge. No restart, no data touched.
+  `--status` shows it, `--remove` rolls it back (the script keeps a timestamped `after.rules` backup).
+- After applying, from **another device** on the LAN: `nc -zv -w3 192.168.4.4 54321` (also 54322-54324, and the
+  host's global IPv6 address). Every port should time out. The host cannot test this on itself.
+- Start and stop the stack from the main checkout (`/home/roque/Documents/Projects/getNF`), not from a worktree: the CLI
+  records the directory in the container labels and bind-mounts `supabase/snippets` from it into Studio.
+
 ## Notes
 
 - The app's files are private to it. Look at them with `adb -e shell run-as io.github.sandroroque.getnf ls -R files/receipts`.

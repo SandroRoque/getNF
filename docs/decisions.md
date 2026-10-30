@@ -119,6 +119,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D106 | photos | current | A receipt read from its photos alone is the next photo work, after a break from camera and OCR |
 | D107 | dev | current | Housekeeping: server/ removed, docs archived, an index for this log |
 | D108 | categorizer | current | System-1 reads more than the category; a powerful LLM, run sparingly, replaces a cheap one run liberally |
+| D109 | dev | current | The local Supabase stack is kept off the network with a DOCKER-USER rule, not a rebind |
 
 ---
 
@@ -2738,3 +2739,38 @@ then both migrations. The 94 existing store items were read in 4 minutes, none f
 (`ARROZ … 1K`, 1 kg) and three add a pack count with no weight (`C/4` capsules, `C 12` rolls, `30UN` filters). No
 size suggestions, and no category changed (every product already had one). The phone shows them once it has
 database v12.
+
+## D109. The local Supabase stack is kept off the network with a DOCKER-USER rule, not a rebind (2026-10-25, recorded 2026-10-29)
+
+Written on 2026-10-25 as "D76" on a branch that was never merged, while main used D76 for Stage 4c; recorded here
+under the next free number. The user applied the rule the same day (`after.rules` has the GETNF-LOCAL chain and a
+`getnf-bak-20261025-*` backup). On 2026-10-29 the CLI was still 2.122.0 and still published 54321-54324 on
+`0.0.0.0` and `[::]`, so the reasoning below still holds. Still open: the check from another LAN device.
+
+An audit found the CLI's published ports (54321 Kong, 54322 Postgres, 54323 Studio, 54324 Mailpit) bound on all IPv4 and
+IPv6 interfaces. D18 already ruled out 0.0.0.0 for PocketBase for the same reason (Docker's published ports go around ufw).
+
+- **Findings (read-only):** CLI 2.122.0's `start` runs the legacy Go binary (`supabase-go`), which publishes with an empty
+  `HostIp` and has no config key to change it; `[db.network_restrictions]` is for the hosted platform only. (The new
+  TypeScript runtime in the same package publishes `127.0.0.1::port`, but only for its own native mode, which this stack
+  does not use.) `/etc/ufw/after.rules` is the `ufw-docker` integration: DOCKER-USER returns every RFC1918 source before
+  dropping anything, so a LAN device reaches the ports over IPv4; public IPv4 sources are dropped (the DNAT'd
+  destination is a container address). IPv6: Docker has IPv6 off, so `[::]` connections are accepted by docker-proxy in
+  INPUT, which ufw's default-deny covers. Not verified live (no root); needs a check from another device.
+- **Consumers found:** the emulator (`10.0.2.2:54321`, a localhost client), `tools/*` over `127.0.0.1:54322`,
+  `supabase functions serve` (its `supabase_edge_runtime_getnf` container only exists while serving; the `fakejev`
+  container seen earlier no longer exists). The phone uses the online project, not this stack.
+- **Decision:** add a jump at the head of DOCKER-USER into a small GETNF-LOCAL chain (`tools/harden-local-stack.sh`, run as root by the user): drop NEW
+  connections whose original destination port is 54320-54329 unless they come from `lo`, `br-+` or `docker0`.
+  Host-local clients go through docker-proxy, not this chain. It needs no restart, leaves volumes and credentials alone,
+  and is also written into `after.rules` so `ufw reload` and reboots keep it.
+- **Rejected:** recreating containers by hand with `127.0.0.1:` bindings (the next `supabase start` would undo it, and it
+  bypasses the CLI); a Docker daemon `"ip": "127.0.0.1"` (changes every project's publishing); `db.network_restrictions`.
+- **Rollback:** `sudo bash tools/harden-local-stack.sh --remove`, or restore `/etc/ufw/after.rules.getnf-bak-*` and
+  `ufw reload`.
+- **Ownership:** the running stack is labelled with the `project-status-38a085` worktree, and Studio bind-mounts its
+  `supabase/snippets`. At the next planned restart, `supabase stop` (keeps volumes; never `--no-backup`) and `supabase
+  start` from the main checkout. Not done now: it would interrupt active work and the firewall rule does not need it.
+- **Left alone, for the user:** the Docker group gives the desktop user root-equivalent access (separate concern); backup
+  dumps in `~/getnf-backups/supabase/` are `0644` (shielded by `/home/roque` being `0700`; `chmod 600` and `umask 077` in
+  the backup job would add depth).
