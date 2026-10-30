@@ -41,7 +41,9 @@ android {
     installation { installOptions += listOf("-g") }
     compileSdk = 36
     defaultConfig {
-        applicationId = "io.github.sandroroque.getnf"
+        // The Play listing's id, permanent once the app is created there (D113). The Kotlin package (namespace) keeps
+        // its old name: it's never seen and nothing depends on it.
+        applicationId = "br.com.roqlab.caderneta"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
@@ -89,6 +91,9 @@ android {
 
     buildTypes {
         debug {
+            // Its own app next to the Play one: a debug build can't replace a Play-signed install without
+            // uninstalling it, which would wipe the receipts (D113).
+            applicationIdSuffix = ".debug"
             buildConfigField("String", "DEFAULT_SUPABASE_URL", quoted(supabaseUrl))
             buildConfigField("String", "DEFAULT_SUPABASE_KEY", quoted(supabaseKey))
         }

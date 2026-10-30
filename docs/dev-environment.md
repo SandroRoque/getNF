@@ -63,11 +63,11 @@ the Android debug build, `supabase functions serve` (its container joins the sta
 
 ## Notes
 
-- The app's files are private to it. Look at them with `adb -e shell run-as io.github.sandroroque.getnf ls -R files/receipts`.
+- The app's files are private to it. Look at them with `adb -e shell run-as br.com.roqlab.caderneta.debug ls -R files/receipts`.
 - Debugging the in-app WebView: debug builds expose a DevTools socket. Forward it and query the live page with
   `tools/webview-eval.mjs` (usage in the file header), or open `chrome://inspect` in desktop Chrome.
 - Debug builds only: change a setting with the phone locked by editing `shared_prefs/supabase.xml` (or `dev.xml`, `sefaz.xml`) through
-  `adb -d shell run-as io.github.sandroroque.getnf` (force-stop the app first).
+  `adb -d shell run-as br.com.roqlab.caderneta.debug` (force-stop the app first).
 - Schema changes go in `supabase/migrations/` as new files; never edit the online schema by hand. New tables need
   explicit grants (D71, D74). Test with `npx supabase test db`.
 

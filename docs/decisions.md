@@ -123,6 +123,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D110 | categorizer | current | An unsure "how it's sold" is a card; the user's answer is final; a pack shows its price per item |
 | D111 | discounts | current | Photo discounts that add up to the page's discount need no card |
 | D112 | app | current | The app never names its models: System-1 is "auto", the LLM worker "revisor" |
+| D113 | app | current | The app's id is br.com.roqlab.caderneta; debug builds add .debug |
 
 ---
 
@@ -2834,3 +2835,23 @@ são o mesmo item", "Sugestão do LLM".
 - **Prose names no one** where it can: "Parece ser por unidade (71% de certeza)", "Tamanho sugerido: 1,25 kg". Where
   the two disagree: "O revisor discorda da categoria automática".
 - Code, columns and docs keep Jev, System-1 and LLM: those are the right names for whoever reads them.
+
+## D113. The app's id is `br.com.roqlab.caderneta`; debug builds add `.debug` (2026-10-30)
+
+The user's Play Console account is ready and they were creating the app there. Play's package name can never change
+nor be reused, and ours was `io.github.sandroroque.getnf` (D1's era), carrying the name being dropped. The user chose
+`br.com.roqlab.caderneta`: their own domain reversed, matching caderneta.roqlab.com.br. If the final name isn't
+Caderneta, the id stays; users hardly see it (the Play URL).
+
+- **Only `applicationId` changes.** The Kotlin package (`namespace`) keeps `io.github.sandroroque.getnf`: users never
+  see it, nothing outside depends on it (no deep links, no URL schemes, no hardcoded package), and renaming every
+  file would only churn history.
+- **Debug builds are `br.com.roqlab.caderneta.debug`, labelled "getNF dev".** A debug build is signed with the PC's
+  debug key, a Play install with Play's key; one can't replace the other without uninstalling, and uninstalling
+  wipes the receipts and photos (which stay on the phone, D98). With the suffix they live side by side.
+- **The phone's data stays in the old app** (`io.github.sandroroque.getnf`) until it's moved: Ajustes › Exportar in
+  the old app, Restaurar in the new one (photos are only on the phone; signing in brings the rest but not them). The
+  old app can go once the new one shows everything.
+- The launcher label is still "getNF" in release builds; it follows the name when it's chosen (the Play listing's
+  name is set in the console and can change).
+- `tools/pull-capture-dumps.sh`, `tools/webview-eval.mjs` and dev-environment.md use the debug id.

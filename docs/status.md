@@ -136,6 +136,8 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
 
 - Run `sudo bash tools/setup-system.sh` once (udev rules for the phone, Docker at boot for the local Supabase, adb and
   kvm groups).
+- Move the phone's data to the new app id (D113): in the old app (`getNF`), Ajustes › Exportar; then install the new
+  debug build (`getNF dev`) and Restaurar there. Uninstall the old one only after the new one shows everything.
 - Create the Play upload key: `tools/make-upload-key.sh` in a terminal (it asks for a password), then back up
   `~/.config/getnf/` and the password. Then `cd android && ./gradlew :app:bundleRelease` makes the bundle for Play.
 - From another device on the LAN (the phone on Wi-Fi works with any port-check app, or a laptop with `nc -zv -w3

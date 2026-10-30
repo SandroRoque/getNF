@@ -8,7 +8,7 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 media="$(git -C "$root" rev-parse --path-format=absolute --git-common-dir | xargs dirname)/test-media"
 . "$root/tools/env.sh" >/dev/null
 serial=(); [ $# -gt 0 ] && serial=(-s "$1")
-app=io.github.sandroroque.getnf
+app=br.com.roqlab.caderneta.debug
 dest="$media/live-dumps/phone"; corpus="$media/bench/corpus.tsv"
 mkdir -p "$dest"
 for d in $(adb "${serial[@]}" shell run-as $app ls files/capture-dump | tr -d '\r' | grep -v '^enabled$'); do
