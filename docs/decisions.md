@@ -2247,9 +2247,9 @@ inside the view mean holding still. Replayed, that session's hints are one sweep
 change direction more than twice. The benchmark scores what is saved, not hints, so it shows no change; whether the
 person follows faster can only be seen live.
 
+## D93. The torch comes on by itself when it's too dark to read (2026-10-26)
 
 > **Partly replaced by D117** (index, D107).
-## D93. The torch comes on by itself when it's too dark to read (2026-10-26)
 
 The user asked for the LED to turn on without having to press it. Auto exposure holds frames near a mean luminance of
 140: the benchmark's phone sessions, in ordinary light, measured 111–160. When it runs out (long exposure, high gain),
