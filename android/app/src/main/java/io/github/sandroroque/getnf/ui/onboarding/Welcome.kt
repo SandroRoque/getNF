@@ -65,7 +65,7 @@ fun WelcomeScreen(onScan: () -> Unit, onDemo: () -> Unit, onExplore: () -> Unit,
           ScreenTitle("Cada nota acrescenta um pouco.")
           Step("Na primeira nota", "Seus gastos por categoria e por loja.")
           Step("Quando comprar algo de novo", "O histórico de preço daquele produto, loja a loja.")
-          Step("Depois de dois meses", "Sua inflação pessoal, calculada com o que você realmente compra.")
+          Step("Quando comprar de novo em outro mês", "Sua inflação pessoal, calculada com o que você realmente compra.")
           Body("Notas antigas que ainda estão na carteira também valem.")
         }
         else -> {

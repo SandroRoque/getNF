@@ -76,7 +76,7 @@ fun IpciScreen(initialCategory: String?, onOpenProduct: (String) -> Unit, onBack
     }
     val ms = months ?: return@LazyColumn
     if (ms.size < 2) {
-      item { EmptyState("O índice precisa de pelo menos dois meses com compras. Cada nota nova ajuda.") }
+      item { EmptyState(io.github.sandroroque.getnf.ui.home.IPCI_HINT) }
       return@LazyColumn
     }
     val latest = ms.lastOrNull { it.reading != null }

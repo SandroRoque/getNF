@@ -22,27 +22,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import io.github.sandroroque.getnf.data.ReceiptListItem
-import io.github.sandroroque.getnf.data.SpendingLine
 import io.github.sandroroque.getnf.theme.Calmo
 import io.github.sandroroque.getnf.ui.calmo.Icons
+
+/** The first steps are done once a receipt has its page: the account is optional. */
+fun List<FirstStep>.finished(): Boolean = take(2).all { it.done }
 
 /** One step of the first ones: done or not, and where tapping it goes. */
 class FirstStep(val title: String, val text: String, val done: Boolean, val onClick: (() -> Unit)?)
 
 /**
- * The way from an empty app to a full one (D115), each step what the next receipt unlocks. Done steps stay ticked;
- * the card goes once all are done or the user hides it.
+ * The first sitting (D115, D116): a receipt scanned and its page fetched, and the account, which is optional. What
+ * comes with time (price history, the IPCI) isn't a step: it's said where it will appear. The card goes once the page
+ * is fetched, or when the user hides it.
  */
 fun firstSteps(
-  receipts: List<ReceiptListItem>, lines: List<SpendingLine>, hasInflation: Boolean, signedIn: Boolean,
-  onScan: () -> Unit, onFetch: () -> Unit, onAccount: () -> Unit,
+  receipts: List<ReceiptListItem>, signedIn: Boolean, onScan: () -> Unit, onFetch: () -> Unit, onAccount: () -> Unit,
 ): List<FirstStep> = listOf(
   FirstStep("Escaneie uma nota", "O QR Code da nota fiscal, com o botão do meio.", receipts.isNotEmpty(), onScan),
   FirstStep("Busque a página da SEFAZ", "Os itens e os preços vêm de lá; aí aparecem seus gastos.", receipts.any { it.hasPage },
     onFetch.takeIf { receipts.isNotEmpty() }),
-  FirstStep("Compre algo de novo", "O produto ganha um histórico de preço.",
-    lines.groupBy { it.productId }.values.any { l -> l.map { it.chave }.distinct().size > 1 }, null),
-  FirstStep("Dois meses de notas", "Aparece sua inflação pessoal.", hasInflation, null),
   FirstStep("Crie uma conta (opcional)", "Os itens ganham categoria sozinhos e as notas ficam salvas online.", signedIn, onAccount),
 )
 

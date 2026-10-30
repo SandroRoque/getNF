@@ -42,6 +42,7 @@ import io.github.sandroroque.getnf.ui.calmo.SectionLabel
 import io.github.sandroroque.getnf.ui.calmo.Sub
 import io.github.sandroroque.getnf.ui.catalog.flatten
 import io.github.sandroroque.getnf.ui.onboarding.FirstStepsCard
+import io.github.sandroroque.getnf.ui.onboarding.finished
 import io.github.sandroroque.getnf.ui.onboarding.firstSteps
 import io.github.sandroroque.getnf.ui.spending.label
 
@@ -73,8 +74,8 @@ fun InicioScreen(
   val colorOf = rememberCategoryColor(categories)
   // The first steps (D115): not in the demo, and gone once done or hidden.
   var stepsHidden by remember { mutableStateOf(app.accountSettings.demo || app.onboarding.firstStepsHidden) }
-  val steps = remember(receipts, lines, ipci, account) {
-    firstSteps(receipts, lines.orEmpty(), ipci != null, account != null, onScan = onScan, onFetch = onDecisions, onAccount = onSettings)
+  val steps = remember(receipts, account) {
+    firstSteps(receipts, account != null, onScan = onScan, onFetch = onDecisions, onAccount = onSettings)
   }
 
   val month = spending?.periods?.lastOrNull()
@@ -90,7 +91,7 @@ fun InicioScreen(
       }
     }
     if (spending == null) return@LazyColumn
-    val showSteps = !stepsHidden && !steps.all { it.done }
+    val showSteps = !stepsHidden && !steps.finished()
     if (month == null) {
       if (!showSteps) item { EmptyState("Nenhuma nota ainda. Toque no botão do meio para escanear o QR Code de uma nota fiscal.") }
     } else {
@@ -123,6 +124,13 @@ fun InicioScreen(
         MidNumber("%+.1f%%".format(ipci.reading).replace('.', ','), color = if (ipci.reading!! > 0) Calmo.up else Calmo.down)
       }
     }
+    // Before its first reading, where it will appear says what it needs (D116).
+    else if (month != null) item {
+      Column(Modifier.fillMaxWidth().clickable(onClick = onIpci).padding(vertical = 4.dp)) {
+        Text("Inflação pessoal", style = MaterialTheme.typography.bodyMedium, color = Calmo.fg)
+        Sub(IPCI_HINT)
+      }
+    }
     if (receipts.isNotEmpty()) {
       item { SectionLabel("Últimas notas") }
       items(receipts.take(3), key = { it.chave }) { r ->
@@ -136,6 +144,10 @@ fun InicioScreen(
     }
   }
 }
+
+/** What the IPCI needs before its first reading (D116). */
+const val IPCI_HINT = "Aparece no mês em que você comprar de novo produtos de meses anteriores. " +
+  "Notas antigas que ainda estão na carteira também contam."
 
 /** "5 decisões para você", with what kinds; or that there's nothing to decide. */
 @Composable

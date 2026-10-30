@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-30. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D115). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
+`docs/decisions.md` (D1–D116). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
@@ -37,8 +37,8 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
   moves, only frames that add rows are saved, and a finished capture keeps the fewest photos that read it. Changes go
   through the benchmark ([capture-bench.md](capture-bench.md)), scored against the receipts' pages; ideas wait in
   [capture-backlog.md](capture-backlog.md).
-- **First start (D115):** a three-page welcome, a how-to before the first scan, "Primeiros passos" on Início until
-  done, and a read-only demo caderneta (bundled, never synced) one tap away.
+- **First start (D115):** a three-page welcome, a how-to before the first scan, "Primeiros passos" on Início until the
+  first page is fetched (D116), and a read-only demo caderneta (bundled, never synced) one tap away.
 - **After a scan (D99–D101):** "Nota salva" offers the page at once or reminds 3 h later; a receipt waiting for its
   page has its own screen; once fetched, the receipt opens and its photos' discounts are read by themselves.
 - **Photos (D98, D103):** stay on the phone. Copies go online only if the user opts in, and then only for receipts the

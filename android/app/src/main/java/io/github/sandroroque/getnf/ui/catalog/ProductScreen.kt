@@ -236,6 +236,8 @@ private fun PriceBlock(points: List<PricePoint>) {
         format = { Format.brl(Math.round(it)) })
       Sub("Preço de prateleira." + if (shown.map { it.storeName }.distinct().size > 1) " Uma linha por loja." else "")
     }
+    // One purchase so far: what a second one gives, here where it will show (D116).
+    else Sub("Compre de novo e o histórico de preço aparece aqui, loja a loja.")
   }
 }
 

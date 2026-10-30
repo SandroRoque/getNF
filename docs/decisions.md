@@ -126,6 +126,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D113 | app | current | The app's id is br.com.roqlab.caderneta; debug builds add .debug |
 | D114 | app | current | The icon: a caderneta with a receipt laid across it, askew |
 | D115 | app | current | A new user starts clean and is guided; the demo is a separate, read-only visit |
+| D116 | app | current | The first steps are one sitting; what comes with time is said where it will appear |
 
 ---
 
@@ -2925,3 +2926,15 @@ The demo's dates are fixed (May to October 2026), so it will look older with tim
 it's opened is possible later. Checked on the emulator from a cleared app: the welcome, the steps card, the how-to
 and the camera's permission prompt, the demo (Início full, the bar, scan refused), and back to an empty caderneta
 with the demo's files gone.
+
+## D116. The first steps are one sitting; what comes with time is said where it will appear (2026-10-30)
+
+D115's "Primeiros passos" mixed two kinds of thing: steps (scan a receipt, fetch its page, optionally an account)
+and milestones that come with weeks of receipts ("compre algo de novo", "dois meses de notas"). As a checklist the
+milestones read as homework, and the card would sit at "3 de 5" for weeks, as if onboarding took two months (the
+user's read). The card now has the three steps and goes once a receipt has its page, usually in the first sitting;
+the account doesn't hold it open. The milestones moved to where they pay off: a product bought once says "Compre de
+novo e o histórico de preço aparece aqui, loja a loja", and before the IPCI's first reading Início (and the IPCI
+screen) say it appears in the month you buy again products from earlier months, and that old receipts still in the
+wallet count, the way to see it on the first day. The welcome's second page says "Quando comprar de novo em outro
+mês" instead of "Depois de dois meses".
