@@ -141,7 +141,7 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
 - The Play app is in Internal testing (version 1, 2026-10-30, [play-console.md](play-console.md)); the user starts fresh
   in it, as a new user would. The old app (`getNF`, `io.github.sandroroque.getnf`) stays installed, since its photos
   exist only on that phone, until the user decides about them. Before going public: the app content tasks, a review
-  login, a real icon and feature graphic, new screenshots, 12 testers for 14 days in closed testing.
+  login, new screenshots, 12 testers for 14 days in closed testing.
 - From another device on the LAN (the phone on Wi-Fi works with any port-check app, or a laptop with `nc -zv -w3
   192.168.4.4 54321`), confirm 54321-54324 time out, on IPv4 and the PC's IPv6 address. The firewall rule that should
   make them time out is in place (D109); the PC can't test this on itself.

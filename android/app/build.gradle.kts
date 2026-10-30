@@ -46,7 +46,7 @@ android {
         applicationId = "br.com.roqlab.caderneta1"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        versionCode = 2
         versionName = "1.0"
     }
 

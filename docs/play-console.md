@@ -38,8 +38,8 @@ Each new upload needs a higher `versionCode` (`android/app/build.gradle.kts`).
 
 - **Category:** Finance (spending from receipts). Shopping is the alternative.
 - **Contact:** the same public e-mail as the site (`tools/build-web.py --contact`); website https://caderneta.roqlab.com.br.
-- **Store listing** (needs, besides text): a 512×512 icon, a 1024×500 feature graphic, 2–8 phone screenshots. The app
-  still has the Android template icon: a real one is needed before the listing goes public. Screenshots:
+- **Store listing** (needs, besides text): the 512×512 icon `docs/brand/icon-512.png`, the 1024×500 feature graphic
+  `docs/brand/feature-graphic.png` (both from `tools/make-icons.py`, D114), and 2–8 phone screenshots. Screenshots:
   [screenshots/](screenshots/), from the demo caderneta, taken before D112 (they may show the old "JEV" mark).
 
 ### Listing text (draft, pt-BR)

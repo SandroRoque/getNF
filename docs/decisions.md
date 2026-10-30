@@ -124,6 +124,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D111 | discounts | current | Photo discounts that add up to the page's discount need no card |
 | D112 | app | current | The app never names its models: System-1 is "auto", the LLM worker "revisor" |
 | D113 | app | current | The app's id is br.com.roqlab.caderneta1 (as created in Play); debug builds add .debug |
+| D114 | app | current | The icon: a caderneta with a receipt laid across it, askew |
 
 ---
 
@@ -2859,3 +2860,24 @@ Caderneta, the id stays; users hardly see it (the Play URL).
 **Changed the same day:** the app was created in the console as `br.com.roqlab.caderneta1`, and Play's id can't
 change, so the project follows: `br.com.roqlab.caderneta1`, debug `br.com.roqlab.caderneta1.debug`. The "1" shows
 only in the Play URL.
+
+## D114. The icon: a caderneta with a receipt laid across it, askew (2026-10-30)
+
+The app still had Android Studio's template robot, and Play needs a 512×512 icon and a 1024×500 banner. Five
+directions were drawn (a caderneta, a receipt, a receipt with a rising price, a QR, a ruled notebook); the user took
+the caderneta, wanted a receipt visible, and after receipts in four positions and four askew, chose a receipt laid
+across the caderneta's lower right, tilted 10° and running off its edge ("D2").
+
+- **Colors:** the app's own (Calmo): slate cover, darker spine, cream pages, an amber elastic, a white receipt with
+  grey lines and a dark total, on the light background.
+- **One source:** `tools/make-icons.py` makes the adaptive icon (`drawable/ic_launcher_{foreground,background,
+  monochrome}.xml`), Play's icon (`docs/brand/icon-512.png`, the middle 72 dp a launcher shows) and the banner
+  (`docs/brand/feature-graphic.png`, 8-bit with no alpha as Play wants). The template's per-density images are gone:
+  with minSdk 26 the adaptive icon is always used.
+- **Scale 0.88** of the 108 dp canvas, checked on the emulator's launcher next to Google's icons: 0.8 kept everything
+  inside the guaranteed 66 dp circle but looked small; at 0.88 only the cover's rounded corner reaches past it, still
+  inside the 72 dp a round mask shows.
+- **Themed icons** (Android 13+) get the receipt alone, its lines cut out: one tinted shape can't show a receipt on top
+  of a notebook.
+- **The banner** has a line of text, not the app's name, which isn't chosen yet (D105): "Suas notas fiscais, seus
+  preços."
