@@ -129,6 +129,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D116 | app | current | The first steps are one sitting; what comes with time is said where it will appear |
 | D117 | capture | current | The torch is on from the start of every capture |
 | D118 | app | current | The scan button is the receipt, named "Escanear" |
+| D119 | app | current | Signing up: the password typed twice, an existing account said plainly, the link sent again |
 
 ---
 
@@ -2957,3 +2958,27 @@ icons were drawn in the bar (a camera, the receipt, the receipt in a scan frame,
 by the user: **the receipt**, the same one as in the app's icon (D114), since it says what the button reads rather
 than the device it uses, and with "Escanear" under it like the tabs around it. The circle went from 52 to 46 dp so
 the label fits the bar's height. The Play screenshots (2026-10-30) still show the old button.
+
+## D119. Signing up: the password typed twice, an existing account said plainly, the link sent again (2026-10-30)
+
+Testing account creation on the phone, the user found no password confirmation, and a "confirm your e-mail" with no
+e-mail arriving. The online project confirms e-mails (the local one doesn't, `supabase/config.toml`), and when the
+address already has a login Supabase answers a sign-up as if it had worked, to not tell anyone who has an account:
+a user with no identities and no session, and no e-mail sent. The app read every answer without a session as "go
+confirm", so signing up again with an existing address promised a link that never comes. The user list held only the
+user's own account afterwards, which fits that case.
+
+- **The password twice** when creating, with "Pelo menos 6 caracteres" (the project's minimum) and "As senhas não
+  são iguais" under the second field; "Criar conta" waits for both.
+- **Three outcomes** (`SupabaseClient.SignUp`): a session (signed in), a confirmation to wait for ("Mandamos um link
+  para …; olhe o spam", with "Mandar o link de novo", Supabase's `resend`), or an existing account ("Já existe uma
+  conta com …. Entre com a senha dela", and the form turns to signing in). Where confirmations are off, Supabase says
+  `user_already_exists` outright; that leads to the same place.
+- **Errors in Portuguese** from Supabase's `error_code`: wrong e-mail or password, e-mail not confirmed (which also
+  offers the link again), weak password, invalid address, too many e-mails, no connection. Anything else keeps the
+  server's text.
+
+Checked on the emulator against the local Supabase: mismatch, creating (signed in), the same address again, a wrong
+password. **Not solved here: e-mail delivery.** The project has no SMTP of its own, so Supabase's built-in sender is
+used, which only delivers to the organisation's own members and a few an hour; real sign-ups need custom SMTP
+(Resend, say) set up in the dashboard, with a verified sending domain.

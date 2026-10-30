@@ -105,6 +105,25 @@ private fun ContributionSection(app: GetNFApp) {
   )
 }
 
+/** The project's minimum (supabase/config.toml, and the online project's Auth settings). */
+private const val MIN_PASSWORD = 6
+
+/** What went wrong signing up or in, in words the person can act on; the server's own text when it's something else. */
+private fun authError(t: Throwable): String {
+  val code = (t as? io.github.sandroroque.getnf.sync.SupabaseException)?.code
+  val text = t.message.orEmpty()
+  return when {
+    code == "invalid_credentials" -> "E-mail ou senha errados."
+    code == "email_not_confirmed" -> "Falta confirmar o e-mail: toque no link que mandamos (olhe também o spam)."
+    code == "user_already_exists" -> "Já existe uma conta com esse e-mail. Entre com a senha dela."
+    code == "weak_password" -> "Senha fraca: use pelo menos $MIN_PASSWORD caracteres."
+    code == "email_address_invalid" || code == "validation_failed" -> "Esse e-mail não parece certo."
+    code == "over_email_send_rate_limit" || "rate limit" in text -> "Muitos e-mails mandados agora. Tente de novo daqui a uma hora."
+    t is java.io.IOException -> "Sem conexão com o servidor. Tente de novo."
+    else -> "Não deu certo: $text"
+  }
+}
+
 /** Debug builds only (D99). */
 @Composable
 private fun DeveloperSection(app: GetNFApp) {
@@ -133,6 +152,9 @@ private fun AccountSection(app: GetNFApp, onDone: () -> Unit, onSignedIn: (Boole
   var key by remember { mutableStateOf(initial.key) }
   var email by remember { mutableStateOf(account?.email ?: "") }
   var password by remember { mutableStateOf("") }
+  var repeat by remember { mutableStateOf("") }
+  // An e-mail waiting for its confirmation link, which can be sent again.
+  var awaiting by remember { mutableStateOf<String?>(null) }
   var showProject by remember { mutableStateOf(!initial.isComplete) }
   var creating by remember { mutableStateOf(false) }
   var name by remember { mutableStateOf("") }
@@ -164,34 +186,72 @@ private fun AccountSection(app: GetNFApp, onDone: () -> Unit, onSignedIn: (Boole
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
     OutlinedTextField(password, { password = it }, label = { Text("Senha") }, singleLine = true,
       visualTransformation = PasswordVisualTransformation(),
+      supportingText = if (creating) ({ Text("Pelo menos $MIN_PASSWORD caracteres.") }) else null,
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
+    // A new password is typed twice: a typo there would lock the person out of the account they just made.
+    val mismatch = creating && repeat.isNotEmpty() && repeat != password
+    if (creating) OutlinedTextField(repeat, { repeat = it }, label = { Text("Repita a senha") }, singleLine = true,
+      visualTransformation = PasswordVisualTransformation(), isError = mismatch,
+      supportingText = if (mismatch) ({ Text("As senhas não são iguais.") }) else null,
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
+    val ready = email.isNotBlank() && password.isNotEmpty() &&
+      (!creating || (name.isNotBlank() && password.length >= MIN_PASSWORD && repeat == password))
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-      Button(enabled = !busy && email.isNotBlank() && password.isNotEmpty() && (!creating || name.isNotBlank()), onClick = {
+      Button(enabled = !busy && ready, onClick = {
         busy = true; status = if (creating) "Criando a conta…" else "Entrando…"
         scope.launch {
           val project = ProjectConfig(url, key)
+          val address = email.trim()
           status = withContext(Dispatchers.IO) {
             runCatching {
               val client = SupabaseClient(project.url.trim(), project.key.trim())
-              if (creating) client.signUp(email.trim(), password, name.trim()) else client.signIn(email.trim(), password)
+              if (creating) client.signUp(address, password, name.trim()) else SupabaseClient.SignUp.Done(client.signIn(address, password))
             }
           }.fold(
-            { session ->
-              if (session == null) "Conta criada. Confirme pelo link no seu e-mail e depois entre aqui."
-              else {
-                app.accountSettings.setProject(project)
-                app.accountSettings.signedIn(session)
-                account = app.accountSettings.account(); password = ""; onSignedIn(true)
-                SyncWorker.enqueue(context)
-                "Conectado ✓ Sincronizando…"
+            { result ->
+              when (result) {
+                is SupabaseClient.SignUp.Done -> {
+                  app.accountSettings.setProject(project)
+                  app.accountSettings.signedIn(result.session)
+                  account = app.accountSettings.account(); password = ""; repeat = ""; awaiting = null; onSignedIn(true)
+                  SyncWorker.enqueue(context)
+                  "Conectado ✓ Sincronizando…"
+                }
+                SupabaseClient.SignUp.ConfirmEmail -> {
+                  awaiting = address; creating = false; repeat = ""
+                  "Conta criada. Mandamos um link para $address: toque nele e depois entre aqui. Se não chegar em alguns minutos, olhe o spam."
+                }
+                SupabaseClient.SignUp.Exists -> {
+                  creating = false; repeat = ""
+                  "Já existe uma conta com $address. Entre com a senha dela."
+                }
               }
             },
-            { "Não deu certo: ${it.message}" },
+            {
+              // Signing in before confirming: the link can be sent again from here.
+              when ((it as? io.github.sandroroque.getnf.sync.SupabaseException)?.code) {
+                "email_not_confirmed" -> awaiting = address
+                // Where confirmations are off, Supabase says so outright: on to signing in, as for [SignUp.Exists].
+                "user_already_exists" -> { creating = false; repeat = "" }
+              }
+              authError(it)
+            },
           )
           busy = false
         }
       }) { Text(if (creating) "Criar conta" else "Entrar") }
-      TextButton(onClick = { creating = !creating }) { Text(if (creating) "Já tenho conta" else "Criar conta") }
+      TextButton(onClick = { creating = !creating; status = null }) { Text(if (creating) "Já tenho conta" else "Criar conta") }
+    }
+    awaiting?.let { address ->
+      TextButton(enabled = !busy, onClick = {
+        busy = true
+        scope.launch {
+          status = withContext(Dispatchers.IO) {
+            runCatching { SupabaseClient(url.trim(), key.trim()).resendConfirmation(address) }
+          }.fold({ "Link mandado de novo para $address." }, { authError(it) })
+          busy = false
+        }
+      }) { Text("Mandar o link de novo") }
     }
   }
   TextButton(onClick = { showProject = !showProject }) { Text(if (showProject) "Ocultar servidor" else "Servidor…") }

@@ -23,7 +23,8 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 
 /** A response from Supabase that retrying won't fix (bad login, a rejected row...). */
-class SupabaseException(val status: Int, message: String) : Exception(message)
+/** [code] is Supabase's own name for the error, when it gives one (`invalid_credentials`, `weak_password`). */
+class SupabaseException(val status: Int, message: String, val code: String? = null) : Exception(message)
 
 /** A signed-in user. The refresh token is what's kept; access tokens last an hour and are renewed each sync. */
 data class SupabaseSession(val userId: String, val email: String, val accessToken: String, val refreshToken: String)
@@ -39,15 +40,31 @@ class SupabaseClient(val url: String, private val key: String, private val http:
   fun signIn(email: String, password: String): SupabaseSession =
     session(auth("password", buildJsonObject { put("email", email); put("password", password) }))
 
-  /**
-   * A new login, with the [name] others in a caderneta will see (D104). Null when the project asks to confirm the
-   * e-mail first: the person signs in after confirming.
-   */
-  fun signUp(email: String, password: String, name: String): SupabaseSession? {
+  /** What a sign-up gave: a session, a confirmation e-mail to wait for, or an e-mail that already has a login. */
+  sealed interface SignUp {
+    data class Done(val session: SupabaseSession) : SignUp
+    data object ConfirmEmail : SignUp
+    /** Supabase doesn't say it outright (no telling who has an account): the user it returns has no identities. */
+    data object Exists : SignUp
+  }
+
+  /** A new login, with the [name] others in a caderneta will see (D104). */
+  fun signUp(email: String, password: String, name: String): SignUp {
     val target = base.newBuilder().addPathSegments("auth/v1/signup").build()
     val body = buildJsonObject { put("email", email); put("password", password); put("data", buildJsonObject { put("name", name) }) }
     val o = call(Request.Builder().url(target).header("apikey", key).post(body.toString().toRequestBody(JSON)).build()).jsonObject
-    return if (o["access_token"] != null) session(o) else null
+    return when {
+      o["access_token"] != null -> SignUp.Done(session(o))
+      (o["identities"] as? JsonArray)?.isEmpty() == true -> SignUp.Exists
+      else -> SignUp.ConfirmEmail
+    }
+  }
+
+  /** Sends the sign-up's confirmation e-mail again. */
+  fun resendConfirmation(email: String) {
+    val target = base.newBuilder().addPathSegments("auth/v1/resend").build()
+    val body = buildJsonObject { put("type", "signup"); put("email", email) }
+    call(Request.Builder().url(target).header("apikey", key).post(body.toString().toRequestBody(JSON)).build())
   }
 
   fun refresh(refreshToken: String): SupabaseSession =
@@ -150,13 +167,13 @@ class SupabaseClient(val url: String, private val key: String, private val http:
   private fun call(request: Request): JsonElement = http.newCall(request).execute().use { r ->
     val text = r.body.string()
     if (!r.isSuccessful) {
-      val message = runCatching {
-        val o = Json.parseToJsonElement(text).jsonObject
-        listOf("msg", "message", "error_description", "error").firstNotNullOfOrNull { o[it]?.jsonPrimitive?.content }
-      }.getOrNull() ?: text.take(200)
+      val o = runCatching { Json.parseToJsonElement(text).jsonObject }.getOrNull()
+      val message = o?.let { listOf("msg", "message", "error_description", "error").firstNotNullOfOrNull { k -> it[k]?.jsonPrimitive?.content } }
+        ?: text.take(200)
+      val code = o?.get("error_code")?.jsonPrimitive?.content
       // 5xx and 429 may pass on a retry: report them as network trouble, so the worker backs off and tries again.
       if (r.code >= 500 || r.code == 429) throw IOException("${request.method} ${request.url.encodedPath}: ${r.code} $message")
-      throw SupabaseException(r.code, "${request.method} ${request.url.encodedPath}: ${r.code} $message")
+      throw SupabaseException(r.code, "${request.method} ${request.url.encodedPath}: ${r.code} $message", code)
     }
     if (text.isBlank()) JsonArray(emptyList()) else Json.parseToJsonElement(text)
   }
