@@ -123,7 +123,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D110 | categorizer | current | An unsure "how it's sold" is a card; the user's answer is final; a pack shows its price per item |
 | D111 | discounts | current | Photo discounts that add up to the page's discount need no card |
 | D112 | app | current | The app never names its models: System-1 is "auto", the LLM worker "revisor" |
-| D113 | app | current | The app's id is br.com.roqlab.caderneta; debug builds add .debug |
+| D113 | app | current | The app's id is br.com.roqlab.caderneta1 (as created in Play); debug builds add .debug |
 
 ---
 
@@ -2855,3 +2855,7 @@ Caderneta, the id stays; users hardly see it (the Play URL).
 - The launcher label is still "getNF" in release builds; it follows the name when it's chosen (the Play listing's
   name is set in the console and can change).
 - `tools/pull-capture-dumps.sh`, `tools/webview-eval.mjs` and dev-environment.md use the debug id.
+
+**Changed the same day:** the app was created in the console as `br.com.roqlab.caderneta1`, and Play's id can't
+change, so the project follows: `br.com.roqlab.caderneta1`, debug `br.com.roqlab.caderneta1.debug`. The "1" shows
+only in the Play URL.

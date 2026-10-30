@@ -43,7 +43,7 @@ android {
     defaultConfig {
         // The Play listing's id, permanent once the app is created there (D113). The Kotlin package (namespace) keeps
         // its old name: it's never seen and nothing depends on it.
-        applicationId = "br.com.roqlab.caderneta"
+        applicationId = "br.com.roqlab.caderneta1"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
