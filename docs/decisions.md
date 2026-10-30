@@ -123,7 +123,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D110 | categorizer | current | An unsure "how it's sold" is a card; the user's answer is final; a pack shows its price per item |
 | D111 | discounts | current | Photo discounts that add up to the page's discount need no card |
 | D112 | app | current | The app never names its models: System-1 is "auto", the LLM worker "revisor" |
-| D113 | app | current | The app's id is br.com.roqlab.caderneta1 (as created in Play); debug builds add .debug |
+| D113 | app | current | The app's id is br.com.roqlab.caderneta; debug builds add .debug |
 | D114 | app | current | The icon: a caderneta with a receipt laid across it, askew |
 
 ---
@@ -2881,3 +2881,9 @@ across the caderneta's lower right, tilted 10° and running off its edge ("D2").
   of a notebook.
 - **The banner** has a line of text, not the app's name, which isn't chosen yet (D105): "Suas notas fiscais, seus
   preços."
+
+**And back (2026-10-30):** nobody could tell where the "1" came from, and the user didn't want an id that differs
+from the site for good. Play frees a deleted app's id only if it never had an install, and `caderneta1` had one, so
+that id is spent; `br.com.roqlab.caderneta` was still free. The user created the app again with it and deleted the
+`caderneta1` one. The project is back to `br.com.roqlab.caderneta` (debug `.debug`), versionCode 1 again: it's a new
+app to Play.

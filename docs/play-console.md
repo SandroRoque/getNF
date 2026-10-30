@@ -14,9 +14,11 @@ before production; it's also not reviewed the way production is.
 
 The phone's Play app may show an empty black sheet for the opt-in link. Accepting on the PC's browser (same Google
 account) works; then install from the PC's Play page or open
-`https://play.google.com/store/apps/details?id=br.com.roqlab.caderneta1` on the phone.
+`https://play.google.com/store/apps/details?id=br.com.roqlab.caderneta` on the phone.
 
-Version 1 (1.0) went to Internal testing on 2026-10-30 and was installed on the user's phone.
+The app was first created as `br.com.roqlab.caderneta1` (the "1" came from nowhere anyone could tell), got two
+internal releases and an install, then was deleted and created again as `br.com.roqlab.caderneta` (D113). An id with
+any install is never freed, so the "1" one is gone for good; its versionCodes don't carry over.
 
 Each new upload needs a higher `versionCode` (`android/app/build.gradle.kts`).
 
