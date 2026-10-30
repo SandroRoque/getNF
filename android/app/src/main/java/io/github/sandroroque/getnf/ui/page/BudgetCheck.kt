@@ -13,12 +13,11 @@ import androidx.compose.ui.platform.LocalContext
 import io.github.sandroroque.getnf.GetNFApp
 import io.github.sandroroque.getnf.data.CurrentNetwork
 import io.github.sandroroque.getnf.data.LookupBudget
-import java.text.DateFormat
-import java.util.Date
+import io.github.sandroroque.getnf.ui.Format
 
 /** One line about the SEFAZ lookup budget on [network], for the home screen and the dialog. */
 fun budgetText(network: CurrentNetwork, status: LookupBudget.Status): String {
-  val at = status.nextFreeAt?.let { DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it)) }
+  val at = status.nextFreeAt?.let { Format.time(it) }
   return when {
     status.blocked -> "A SEFAZ está bloqueando ${network.label}. Tente depois das $at, ou troque de rede."
     status.remaining == 0 -> "Consultas à SEFAZ esgotadas em ${network.label} (${LookupBudget.LIMIT} por hora). Próxima às $at."

@@ -15,8 +15,22 @@ object Format {
   fun count(n: Int, one: String, many: String) = "$n ${if (n == 1) one else many}"
 
   /** "9 out" (this year) or "9 out 2025". Receipts are dated in store-local time, UTC-3 (D19). */
-  fun date(millis: Long): String {
-    val d = java.time.Instant.ofEpochMilli(millis).atOffset(java.time.ZoneOffset.ofHours(-3)).toLocalDate()
+  fun date(millis: Long): String = day(java.time.Instant.ofEpochMilli(millis).atOffset(java.time.ZoneOffset.ofHours(-3)).toLocalDate())
+
+  /**
+   * Something that happened on the phone (a backup, a review), in its own time zone: "27 out 2026, 04:00". Never the
+   * phone's language, which may not be Portuguese.
+   */
+  fun dateTime(millis: Long, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String {
+    val t = java.time.Instant.ofEpochMilli(millis).atZone(zone)
+    return "${day(t.toLocalDate())}, ${time(millis, zone)}"
+  }
+
+  /** "16:05", on the phone's clock. */
+  fun time(millis: Long, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String =
+    java.time.Instant.ofEpochMilli(millis).atZone(zone).toLocalTime().let { "%02d:%02d".format(it.hour, it.minute) }
+
+  private fun day(d: java.time.LocalDate): String {
     val month = d.month.getDisplayName(java.time.format.TextStyle.SHORT, BR).trimEnd('.')
     return if (d.year == java.time.LocalDate.now().year) "${d.dayOfMonth} $month" else "${d.dayOfMonth} $month ${d.year}"
   }

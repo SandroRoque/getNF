@@ -40,6 +40,7 @@ import io.github.sandroroque.getnf.data.BackupManifest
 import io.github.sandroroque.getnf.data.ProjectConfig
 import io.github.sandroroque.getnf.sync.SupabaseClient
 import io.github.sandroroque.getnf.sync.SyncWorker
+import io.github.sandroroque.getnf.ui.Format
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -239,7 +240,7 @@ private fun HealthSection(app: GetNFApp) {
   }
   fun n(key: String) = (r[key] as? kotlinx.serialization.json.JsonPrimitive)?.takeUnless { it is kotlinx.serialization.json.JsonNull }?.content
   val lines = listOfNotNull(
-    "Última revisão: ${java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(row!!.at)}",
+    "Última revisão: ${Format.dateTime(row!!.at)}",
     n("audited")?.let { "Conferidas pelo revisor: $it, discordou de ${n("disagreed") ?: "0"}" },
     n("automatic_unconfirmed")?.let { "Categorias automáticas ainda não confirmadas: $it (nunca conferidas: ${n("never_checked") ?: "?"})" },
     n("sample_error_rate")?.let { "Erro medido na amostra: ${Math.round(it.toDouble() * 100)}% de ${n("sample_size")} conferências" },
@@ -295,7 +296,7 @@ private fun BackupSection(app: GetNFApp) {
       title = { Text("Substituir tudo?") },
       text = {
         Text(
-          "Cópia de ${java.text.DateFormat.getDateTimeInstance().format(m.createdAt)}: ${m.receipts} notas, ${m.photos} fotos.\n" +
+          "Cópia de ${Format.dateTime(m.createdAt)}: ${m.receipts} notas, ${m.photos} fotos.\n" +
             "Neste celular agora: ${receipts.size} notas, ${receipts.sumOf { it.photos.size }} fotos.\n\n" +
             "Tudo neste celular é substituído pela cópia, e o app reinicia.",
         )
