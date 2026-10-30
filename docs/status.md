@@ -66,9 +66,9 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 1. **The user's review of the redesign (D81) on the phone,** now including the caderneta screens. The SEFAZ page
    screen isn't redesigned yet.
 2. **System-1 reads more per item (D108), live since 2026-10-29:** category, how it's sold and the size (with pack
-   counts) for each new store item; the 94 existing ones were read. The phone needs the v12 build to use them. Open:
-   a card for an unsure "how it's sold"; showing a price per unit of a pack; the LLM auditing System-1's sizes; then
-   the LLM's new role (a capable model, run rarely, for rules, lexicon and disagreements).
+   counts) for each new store item; the 94 existing ones were read. Built, not deployed (D110): a card for an unsure
+   "how it's sold" and a pack's price per item, with Room v13. Open: the LLM auditing System-1's sizes; then the LLM's
+   new role (a capable model, run rarely, for rules, lexicon and disagreements).
 3. **Going public (D105):** positioning, a new name, the portfolio entry at roqlab.com.br, Play listing, screenshots
    from made-up data, a short manual. Running costs are estimated in [costs.md](costs.md). Done: the demo
    caderneta, screenshots ([screenshots/](screenshots/)) and the brief for the roqlab entry
@@ -140,6 +140,8 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
 - From another device on the LAN (the phone on Wi-Fi works with any port-check app, or a laptop with `nc -zv -w3
   192.168.4.4 54321`), confirm 54321-54324 time out, on IPv4 and the PC's IPv6 address. The firewall rule that should
   make them time out is in place (D109); the PC can't test this on itself.
+- Deploy D110: `npx supabase db push` from the main checkout (one migration; it re-reads about 6 store items with
+  Jev). Only then install the v13 build on the phone: before the migration, its store items would be refused.
 - Rotate the Supabase database password: the 2026-10-27 03:30 backup failed on DNS and its traceback wrote the
   connection URL, password included, to the systemd journal. Fixed for the future (a2cb28f, `PGPASSWORD`); change the
   password in the dashboard, then in `.env.local`.

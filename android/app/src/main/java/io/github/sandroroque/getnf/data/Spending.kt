@@ -29,8 +29,10 @@ data class SpendingLine(
   /** The product's size by hand, else the one System-1 is sure of (D108), else the parsed one; "no size" gives null. */
   val sizeE6: Long?,
   val sizeUnit: String?,
-  /** How the store item is sold, when the parser or System-1 settled it (D108): `weight`, `volume` or `unit`. */
+  /** How the store item is sold, by the user (D110), else as the parser or System-1 settled it (D108): `weight`, `volume` or `unit`. */
   val soldBy: String? = null,
+  /** How many items the unit as sold holds, when System-1 read it (D108): 12 for a pack of 12 × 500 ml. */
+  val packCount: Int? = null,
 ) {
   /** `kg` or `l` when the quantity is itself a weight or a volume: by the unit's spelling, else by how it's sold. */
   val measure: String? get() = Derive.unitKind(unit) ?: when (soldBy) { "weight" -> "kg"; "volume" -> "l"; else -> null }
@@ -46,7 +48,7 @@ abstract class SpendingDao {
       l.discountCents, l.discountSource, p.id AS productId, p.categoryId, l.qtyE4, l.unit, l.unitPriceE4,
       CASE WHEN p.sizeSource = 'manual' THEN p.sizeE6 WHEN s.readSizeSource IS NOT NULL THEN s.readSizeE6 ELSE s.parsedSizeE6 END AS sizeE6,
       CASE WHEN p.sizeSource = 'manual' THEN p.sizeUnit WHEN s.readSizeSource IS NOT NULL THEN s.readSizeUnit ELSE s.parsedSizeUnit END AS sizeUnit,
-      s.soldBy
+      COALESCE(s.soldByUser, s.soldBy) AS soldBy, CASE WHEN s.readSizeSource IS NOT NULL THEN s.readPackCount END AS packCount
     FROM receipt_line l
     JOIN store_item s ON s.id = l.storeItemId
     JOIN product p ON p.id = COALESCE(l.productOverrideId, s.productId)
@@ -155,17 +157,23 @@ fun productsIn(lines: List<SpendingLine>): List<ProductSpend> = lines.groupBy { 
  * One purchase's price, made comparable: per kg or litre when the line is sold by weight or the size is known, else per
  * unit. Uses the shelf price (unit price before discounts), like a price tag.
  */
-data class PricePoint(val at: Long, val storeName: String?, val cents: Long, val basis: String)
+data class PricePoint(
+  val at: Long, val storeName: String?, val cents: Long, val basis: String,
+  /** A pack's price per item in it (D110), with [packCount]; null for a single item or one sold by weight. */
+  val perItemCents: Long? = null, val packCount: Int? = null,
+)
 
 fun pricePoint(line: SpendingLine): PricePoint? {
   val at = line.issuedAt ?: return null
   val measure = line.measure
   // unitPriceE4 is centavos × 100 (scale 4 on reais).
   val perUnitCents = line.unitPriceE4 / 100.0
+  val pack = line.packCount?.takeIf { it > 1 && measure == null }
+  val perItem = pack?.let { Math.round(perUnitCents / it) }
   return when {
     measure != null -> PricePoint(at, line.storeName, Math.round(perUnitCents), measure)
     line.sizeE6 != null && line.sizeE6 > 0 && line.sizeUnit != null ->
-      PricePoint(at, line.storeName, Math.round(perUnitCents * 1_000_000 / line.sizeE6), line.sizeUnit)
-    else -> PricePoint(at, line.storeName, Math.round(perUnitCents), "un")
+      PricePoint(at, line.storeName, Math.round(perUnitCents * 1_000_000 / line.sizeE6), line.sizeUnit, perItem, pack)
+    else -> PricePoint(at, line.storeName, Math.round(perUnitCents), "un", perItem, pack)
   }
 }

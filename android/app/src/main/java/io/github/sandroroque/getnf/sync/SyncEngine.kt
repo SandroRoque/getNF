@@ -469,11 +469,12 @@ class SyncEngine(
     sizeSuggestionModel = o.string("size_suggestion_model"),
   )
 
-  /** System-1's readings are left out: only the server writes them (D108). */
+  /** System-1's readings are left out: only the server writes them (D108). The user's answer goes up (D110). */
   private fun storeItemJson(s: StoreItemRow) = buildJsonObject {
     put("id", s.id); put("code_kind", s.codeKind); put("code", s.code); put("store_cnpj", s.storeCnpj)
     put("description", s.description); put("parsed_size_e6", s.parsedSizeE6); put("parsed_size_unit", s.parsedSizeUnit)
     put("product_id", s.productId); put("link_source", s.linkSource); put("link_review", s.linkReview); put("deleted", s.deleted)
+    put("sold_by_user", s.soldByUser)
   }
 
   private fun storeItem(o: JsonObject) = StoreItemRow(
@@ -483,7 +484,8 @@ class SyncEngine(
     soldBy = o.string("sold_by"), soldBySource = o.string("sold_by_source"), soldByConfidence = o.double("sold_by_confidence"),
     readSizeE6 = o.long("read_size_e6"), readSizeUnit = o.string("read_size_unit"), readSizeSource = o.string("read_size_source"),
     readSizeConfidence = o.double("read_size_confidence"), readPackCount = o.long("read_pack_count")?.toInt(),
-    readModel = o.string("read_model"),
+    readModel = o.string("read_model"), soldBySuggestion = o.string("sold_by_suggestion"),
+    soldBySuggestionConfidence = o.double("sold_by_suggestion_confidence"), soldByUser = o.string("sold_by_user"),
   )
 
   private fun productTagJson(t: ProductTagRow) = buildJsonObject {

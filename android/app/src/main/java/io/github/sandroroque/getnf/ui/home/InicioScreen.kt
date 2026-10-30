@@ -57,10 +57,13 @@ fun InicioScreen(
   val links by remember { app.database.edit().linkSuggestions() }.collectAsStateWithLifecycle(emptyList())
   val sizes by remember { app.database.edit().sizeSuggestions() }.collectAsStateWithLifecycle(emptyList())
   val checks by remember { app.database.lists().photoDiscountChecks() }.collectAsStateWithLifecycle(emptyList())
+  val soldBy by remember { app.database.edit().soldBySuggestions() }.collectAsStateWithLifecycle(emptyList())
   val account = remember { app.accountSettings.account() }
   val parents = remember(categories) { categories.associate { it.id to it.parentId } }
   val spending = remember(lines, parents) { lines?.let { Spending(it, parents) } }
-  val queue = remember(receipts, products, categories, links, sizes, checks) { decisions(receipts, products, categories, links, sizes, checks) }
+  val queue = remember(receipts, products, categories, links, sizes, checks, soldBy) {
+    decisions(receipts, products, categories, links, sizes, checks, soldBy)
+  }
   val ipci = remember(lines) { lines?.let { Ipci.compute(it) }?.lastOrNull { it.reading != null } }
   val colorOf = rememberCategoryColor(categories)
 
@@ -131,7 +134,7 @@ private fun QueueCard(queue: List<Decision>, onOpen: () -> Unit) {
     queue.count { it is Decision.FetchPage }.takeIf { it > 0 }?.let { "$it ${if (it == 1) "página" else "páginas"} para buscar" },
     queue.count { it is Decision.PickCategory || it is Decision.PickPart }.takeIf { it > 0 }?.let { "$it para escolher categoria" },
     queue.count { it is Decision.Dispute }.takeIf { it > 0 }?.let { "$it em dúvida" },
-    queue.count { it is Decision.SameProduct || it is Decision.Size || it is Decision.Description || it is Decision.CheckPhotoDiscounts }
+    queue.count { it is Decision.SameProduct || it is Decision.Size || it is Decision.SoldBy || it is Decision.Description || it is Decision.CheckPhotoDiscounts }
       .takeIf { it > 0 }?.let { "$it ${if (it == 1) "sugestão" else "sugestões"}" },
   )
   DecisionCard(

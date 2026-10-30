@@ -97,4 +97,20 @@ class SpendingTest {
     dao.updateProduct(product.copy(sizeE6 = 200_000, sizeUnit = "kg", sizeSource = "manual"))
     assertEquals(200_000L, pulp().sizeE6)
   }
+
+  @Test fun theUsersWayOfSellingWinsAndAPackHasAPricePerItem() = runTest {
+    spending()
+    val pulpItem = dao.storeItems().first { it.description.startsWith("POLPA") }
+    val lineNo = dao.lines().first { it.storeItemId == pulpItem.id }.lineNo
+    suspend fun pulp() = db.spending().lines().first().first { it.lineNo == lineNo }
+    // A pack of 4 × 100 g at R$ 2,98: R$ 7,45 a kg and R$ 0,75 each (D110).
+    dao.updateStoreItem(pulpItem.copy(readSizeE6 = 400_000, readSizeUnit = "kg", readSizeSource = "jev", readPackCount = 4))
+    with(pricePoint(pulp())!!) { assertEquals(listOf<Any?>(745L, "kg", 75L, 4), listOf(cents, basis, perItemCents, packCount)) }
+    // A single item has no price per item.
+    dao.updateStoreItem(pulpItem.copy(readSizeE6 = 100_000, readSizeUnit = "kg", readSizeSource = "jev", readPackCount = 1))
+    assertEquals(null, pricePoint(pulp())!!.perItemCents)
+    // The user says it's weighed: their answer beats System-1's, and a weighed line has no pack.
+    dao.updateStoreItem(pulpItem.copy(soldBy = "unit", soldBySource = "jev", soldByUser = "weight", readPackCount = 4, readSizeSource = "jev"))
+    with(pricePoint(pulp())!!) { assertEquals(listOf<Any?>(298L, "kg", null), listOf(cents, basis, perItemCents)) }
+  }
 }

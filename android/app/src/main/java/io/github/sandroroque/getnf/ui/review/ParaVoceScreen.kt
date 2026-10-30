@@ -54,7 +54,10 @@ fun ParaVoceScreen(onOpenPage: (String) -> Unit, onOpenProduct: (String) -> Unit
   val links by remember { app.database.edit().linkSuggestions() }.collectAsStateWithLifecycle(emptyList())
   val sizes by remember { app.database.edit().sizeSuggestions() }.collectAsStateWithLifecycle(emptyList())
   val checks by remember { app.database.lists().photoDiscountChecks() }.collectAsStateWithLifecycle(emptyList())
-  val queue = remember(receipts, products, categories, links, sizes, checks) { decisions(receipts, products, categories, links, sizes, checks) }
+  val soldBy by remember { app.database.edit().soldBySuggestions() }.collectAsStateWithLifecycle(emptyList())
+  val queue = remember(receipts, products, categories, links, sizes, checks, soldBy) {
+    decisions(receipts, products, categories, links, sizes, checks, soldBy)
+  }
   val byId = remember(categories) { categories.associateBy { it.id } }
   val edit = rememberEdit()
   val editor = app.catalogEditor
@@ -144,6 +147,18 @@ fun ParaVoceScreen(onOpenPage: (String) -> Unit, onOpenProduct: (String) -> Unit
             Pill("Outro", ButtonKind.Ghost) { onOpenProduct(z.productId) }
           }
         }
+        is Decision.SoldBy -> {
+          val i = d.item
+          val ways = listOf(i.suggestion) + SOLD_BY.keys.filter { it != i.suggestion }
+          DecisionCard(title = i.name ?: i.description, amount = Format.brl(d.cents), onOpen = { onOpenProduct(i.productId) },
+            why = listOfNotNull(
+              "Como é vendido? O Jev acha que é ${SOLD_BY.getValue(i.suggestion).lowercase()}, com ${percent(i.confidence)} de confiança.",
+              i.unit?.let { u -> "Na nota${i.storeName?.let { " de $it" } ?: ""}: ${u.uppercase()}." },
+            ).joinToString(" ")) {
+            for (w in ways) Pill(SOLD_BY.getValue(w), if (w == i.suggestion) ButtonKind.Solid else ButtonKind.Outline,
+              mark = if (w == i.suggestion) "Jev" else null) { edit { editor.setSoldBy(i.storeItemId, w); done() } }
+          }
+        }
         is Decision.CheckPhotoDiscounts -> {
           val c = d.check
           DecisionCard(title = "Descontos lidos das fotos", amount = Format.brl(c.cents),
@@ -179,6 +194,9 @@ private fun who(source: String?) = when {
   source == "user" -> "Você"
   else -> source
 }
+
+/** How an item is sold (D108, D110), as the card's answers say it: by weight the receipt's quantity is kilos. */
+internal val SOLD_BY = linkedMapOf("unit" to "Por unidade", "weight" to "Por quilo", "volume" to "Por litro")
 
 private fun percent(x: Double?) = x?.let { "${Math.round(it * 100)}%" } ?: "pouca"
 

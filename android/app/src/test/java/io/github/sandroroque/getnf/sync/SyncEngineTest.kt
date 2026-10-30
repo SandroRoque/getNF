@@ -124,6 +124,16 @@ class SyncEngineTest {
     dao.updateProduct(dao.products().single { it.id == other.id }.copy(name = "x", dirty = true))
     engine.sync(server)
     assertTrue(server.pushed.none { "suggestion_category_id" in it })
+
+    // How it's sold (D110): Jev's unsure answer comes down and never goes back; the user's answer goes up.
+    val item = dao.storeItems().first()
+    server.patch("store_item", item.id) { put("sold_by_suggestion", "unit"); put("sold_by_suggestion_confidence", .6) }
+    engine.sync(server)
+    assertEquals("unit", dao.storeItems().single { it.id == item.id }.soldBySuggestion)
+    dao.updateStoreItem(dao.storeItems().single { it.id == item.id }.copy(soldByUser = "weight", dirty = true))
+    engine.sync(server)
+    assertTrue(server.pushed.any { it["sold_by_user"].toString() == "\"weight\"" })
+    assertTrue(server.pushed.none { "sold_by_suggestion" in it })
   }
 
   @Test fun treeEditsGoUpWithTheirLogOnce() = runTest {

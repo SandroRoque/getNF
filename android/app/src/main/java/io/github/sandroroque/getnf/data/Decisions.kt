@@ -102,6 +102,10 @@ sealed interface Decision {
   data class Size(val size: SizeSuggestionView, override val cents: Long) : Decision {
     override val key get() = "size:${size.productId}"
   }
+  /** Jev isn't sure how a store item is sold (D110). */
+  data class SoldBy(val item: SoldBySuggestionView, override val cents: Long) : Decision {
+    override val key get() = "soldby:${item.storeItemId}"
+  }
   data class CheckPhotoDiscounts(val check: PhotoDiscountCheck) : Decision {
     override val key get() = "photo:${check.chave}"
     override val cents get() = check.cents
@@ -116,6 +120,7 @@ sealed interface Decision {
 fun decisions(
   receipts: List<ReceiptListItem>, products: List<ProductSummary>, categories: List<CategoryNode>,
   links: List<LinkSuggestionView>, sizes: List<SizeSuggestionView>, photoChecks: List<PhotoDiscountCheck>,
+  soldBy: List<SoldBySuggestionView> = emptyList(),
 ): List<Decision> {
   val spent = products.associate { it.productId to it.spentCents }
   val children = categories.groupBy { it.parentId }
@@ -128,6 +133,7 @@ fun decisions(
   }
   links.mapTo(out) { Decision.SameProduct(it, spent[it.productId] ?: 0) }
   sizes.mapTo(out) { Decision.Size(it, spent[it.productId] ?: 0) }
+  soldBy.mapTo(out) { Decision.SoldBy(it, spent[it.productId] ?: 0) }
   photoChecks.mapTo(out) { Decision.CheckPhotoDiscounts(it) }
   categories.filter { it.description == null && it.descriptionSuggestion != null }.mapTo(out) { Decision.Description(it) }
   return out.sortedByDescending { it.cents }

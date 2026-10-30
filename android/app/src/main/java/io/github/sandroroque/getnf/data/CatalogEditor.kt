@@ -53,9 +53,19 @@ data class SizeSuggestionView(
   val productId: String, val description: String?, val name: String?, val sizeE6: Long, val unit: String,
 )
 
+/** How a store item is sold, as Jev answered below the threshold (D110). [unit]: how its lines were rung up. */
+data class SoldBySuggestionView(
+  val storeItemId: String, val productId: String, val description: String, val name: String?, val storeName: String?,
+  val suggestion: String, val confidence: Double?, val unit: String?,
+)
+
 data class StoreItemDetail(
   val id: String, val codeKind: String, val code: String, val storeCnpj: String, val description: String,
   val parsedSizeE6: Long?, val parsedSizeUnit: String?, val issuerName: String?, val lines: Int,
+  /** How it's sold, by the user or as settled (D108, D110); [soldByUser] when it's the user's. */
+  val soldBy: String? = null, val soldByUser: String? = null,
+  /** System-1's size, when sure (D108): with a source and no size, "no weight or volume". */
+  val readSizeE6: Long? = null, val readSizeUnit: String? = null, val readSizeSource: String? = null, val readPackCount: Int? = null,
 )
 
 data class Purchase(
@@ -127,6 +137,17 @@ abstract class EditDao {
   )
   abstract fun sizeSuggestions(): Flow<List<SizeSuggestionView>>
 
+  @Query(
+    """
+    SELECT s.id AS storeItemId, s.productId, s.description, p.name, i.name AS storeName, s.soldBySuggestion AS suggestion,
+      s.soldBySuggestionConfidence AS confidence,
+      (SELECT l.unit FROM receipt_line l WHERE l.storeItemId = s.id ORDER BY l.receipt, l.lineNo LIMIT 1) AS unit
+    FROM store_item s JOIN product p ON p.id = s.productId LEFT JOIN issuer i ON i.cnpj = s.storeCnpj
+    WHERE s.soldBySuggestion IS NOT NULL AND s.soldBy IS NULL AND s.soldByUser IS NULL AND s.deleted = 0 AND p.deleted = 0
+    """,
+  )
+  abstract fun soldBySuggestions(): Flow<List<SoldBySuggestionView>>
+
   @Query("SELECT * FROM worker_report ORDER BY at DESC LIMIT 1") abstract fun latestReport(): Flow<WorkerReportRow?>
   @Query("SELECT * FROM tag WHERE deleted = 0 ORDER BY slug") abstract fun tags(): Flow<List<TagRow>>
   @Query("SELECT tagId FROM product_tag WHERE productId = :id AND deleted = 0") abstract fun tagIds(id: String): Flow<List<String>>
@@ -134,7 +155,8 @@ abstract class EditDao {
   @Query(
     """
     SELECT s.id, s.codeKind, s.code, s.storeCnpj, s.description, s.parsedSizeE6, s.parsedSizeUnit, i.name AS issuerName,
-      (SELECT COUNT(*) FROM receipt_line l WHERE l.storeItemId = s.id) AS lines
+      (SELECT COUNT(*) FROM receipt_line l WHERE l.storeItemId = s.id) AS lines,
+      COALESCE(s.soldByUser, s.soldBy) AS soldBy, s.soldByUser, s.readSizeE6, s.readSizeUnit, s.readSizeSource, s.readPackCount
     FROM store_item s LEFT JOIN issuer i ON i.cnpj = s.storeCnpj
     WHERE s.productId = :id AND s.deleted = 0
     """,
@@ -269,6 +291,12 @@ class CatalogEditor(
   suspend fun refuseLink(suggestionId: String) = write {
     val s = requireNotNull(database.sync().linkSuggestion(suggestionId)) { "Sugestão não encontrada." }
     sync.putLinkSuggestion(s.copy(status = "refused", dirty = true))
+  }
+
+  /** How a store item is sold, by the user (D110): `weight`, `volume` or `unit`. Final; the server never changes it. */
+  suspend fun setSoldBy(storeItemId: String, soldBy: String) = write {
+    val item = requireNotNull(database.sync().storeItem(storeItemId)) { "Item não encontrado." }
+    sync.upsertStoreItem(item.copy(soldByUser = soldBy, dirty = true))
   }
 
   suspend fun acceptSize(productId: String) = write {

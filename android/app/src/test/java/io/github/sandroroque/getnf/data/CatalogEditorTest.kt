@@ -153,6 +153,21 @@ class CatalogEditorTest {
     assertTrue(db.edit().sizeSuggestions().first().isEmpty())
   }
 
+  @Test fun anUnsureWayOfSellingIsACardUntilTheUserAnswers() = runTest {
+    receipt()
+    val pulp = dao.storeItems().first { it.description.startsWith("POLPA") }
+    dao.updateStoreItem(pulp.copy(soldBySuggestion = "unit", soldBySuggestionConfidence = .6))
+    val card = db.edit().soldBySuggestions().first().single()
+    assertEquals(listOf<Any?>(pulp.id, "unit", .6, "UN"), listOf(card.storeItemId, card.suggestion, card.confidence, card.unit))
+    val queue = decisions(emptyList(), db.edit().products().first(), emptyList(), emptyList(), emptyList(), emptyList(),
+      db.edit().soldBySuggestions().first())
+    assertTrue(queue.any { it is Decision.SoldBy && it.cents > 0 })
+    // The user's answer is final (D110) and goes up; the card leaves the queue.
+    editor.setSoldBy(pulp.id, "weight")
+    with(dao.storeItems().single { it.id == pulp.id }) { assertEquals("weight" to true, soldByUser to dirty) }
+    assertTrue(db.edit().soldBySuggestions().first().isEmpty())
+  }
+
   @Test fun whenTheLlmDisagreesWithJevTheUserPicks() = runTest {
     receipt()
     dao.updateProduct(apple().copy(categoryId = "veg", categorySource = "jev", categoryReview = "automatic", suggestionCategoryId = "fruit", suggestionModel = "llm"))

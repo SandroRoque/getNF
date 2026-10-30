@@ -1,6 +1,6 @@
 -- Stage 4b's queue and write-back (D70, D108): what gets queued, what an answer changes, and what it may not.
 begin;
-select plan(22);
+select plan(25);
 
 insert into auth.users (id, email) values ('00000000-0000-0000-0000-00000000000a', 'a@example.test');
 set local role authenticated;
@@ -78,10 +78,11 @@ select is(public.apply_reading(current_setting('t.la')::uuid, '20000000-0000-000
 select is(public.apply_reading(current_setting('t.la')::uuid, '20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002',
   null, null, null, true, 10000000, 'kg', 1, .04, 'jev-latest', .9), 'nothing', 'a size Jev all but rejects isn''t suggested');
 select is(public.apply_reading(current_setting('t.la')::uuid, '20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002',
-  'unit', 'jev', .6, true, 250000, 'kg', 1, .5, 'jev-latest', .9), 'size_suggested',
-  'an unsure way of selling isn''t; an unsure size becomes a suggestion');
-select is((select coalesce(sold_by, '-') || ' ' || coalesce(read_size_source, '-') from public.store_item where id = '20000000-0000-0000-0000-000000000002'),
-  '- -', 'and neither is applied');
+  'unit', 'jev', .6, true, 250000, 'kg', 1, .5, 'jev-latest', .9), 'sold_by_suggested size_suggested',
+  'unsure answers become suggestions (D110)');
+select is((select coalesce(sold_by, '-') || ' ' || coalesce(read_size_source, '-') || ' ' || sold_by_suggestion || ' ' || sold_by_suggestion_confidence
+           from public.store_item where id = '20000000-0000-0000-0000-000000000002'),
+  '- - unit 0.6', 'and neither is applied');
 select is((select size_suggestion_e6 || ' ' || size_suggestion_model from public.product where id = '10000000-0000-0000-0000-000000000002'),
   '250000 jev-latest', 'the suggestion is on the product');
 select is(public.apply_reading(current_setting('t.la')::uuid, '20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002',
@@ -91,6 +92,19 @@ select is((select sold_by || ' ' || read_size_source || ' ' || coalesce(read_siz
   'a sure "no weight or volume" included, with its pack count');
 select is((select sold_by || '/' || sold_by_source from public.store_item where id = '20000000-0000-0000-0000-000000000001'),
   'weight/parser', 'the parser''s reading stays on the other item');
+select is((select coalesce(sold_by_suggestion, '-') from public.store_item where id = '20000000-0000-0000-0000-000000000002'),
+  '-', 'a sure answer clears the suggestion');
+reset role;
+update public.store_item set sold_by = null, sold_by_source = null, sold_by_user = 'weight' where id = '20000000-0000-0000-0000-000000000002';
+set local role service_role;
+select is(public.apply_reading(current_setting('t.la')::uuid, '20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002',
+  'unit', 'jev', .6, false, null, null, null, null, 'jev-latest', .9), 'nothing', 'the user''s answer gets no suggestion');
+reset role;
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-00000000000a", "role": "authenticated"}';
+update public.store_item set sold_by_user = 'volume' where id = '20000000-0000-0000-0000-000000000002';
+select is((select sold_by_user from public.store_item where id = '20000000-0000-0000-0000-000000000002'), 'volume',
+  'members write their own answer');
 
 select * from finish();
 rollback;

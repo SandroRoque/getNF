@@ -120,6 +120,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D107 | dev | current | Housekeeping: server/ removed, docs archived, an index for this log |
 | D108 | categorizer | current | System-1 reads more than the category; a powerful LLM, run sparingly, replaces a cheap one run liberally |
 | D109 | dev | current | The local Supabase stack is kept off the network with a DOCKER-USER rule, not a rebind |
+| D110 | categorizer | current | An unsure "how it's sold" is a card; the user's answer is final; a pack shows its price per item |
 
 ---
 
@@ -2774,3 +2775,28 @@ IPv6 interfaces. D18 already ruled out 0.0.0.0 for PocketBase for the same reaso
 - **Left alone, for the user:** the Docker group gives the desktop user root-equivalent access (separate concern); backup
   dumps in `~/getnf-backups/supabase/` are `0644` (shielded by `/home/roque` being `0700`; `chmod 600` and `umask 077` in
   the backup job would add depth).
+
+## D110. An unsure "how it's sold" becomes a card, and a pack shows its price per item (2026-10-29)
+
+Two of D108's open follow-ups, taken up at the user's go-ahead.
+
+- **How it's sold, when Jev isn't sure.** D108 dropped an answer below 0.9; now it's the store item's
+  `sold_by_suggestion` (with its confidence), and Para você asks "Como é vendido?" with three answers: por unidade,
+  por quilo, por litro, Jev's first. It's per store item, not per product: the same product can be weighed at one
+  store and rung up by the unit at another. No floor like the size's 0.5: there are only three answers, each one
+  plausible, and the question is cheap to answer.
+- **The user's answer is final (D51) and has its own column,** `sold_by_user`, pushed by the phone; the server never
+  writes it, and the readings stay server-only. Prices use it before `sold_by`. The product screen shows "Vendido"
+  (with a "você" mark when it's the user's) and changes it for every store item of the product at once, since that's
+  how a person thinks of it. The size row hides when the item is weighed.
+- **A pack's price per item.** With System-1's pack count above 1 (`AGUA MIN … 12X500ML`), the product screen shows,
+  under the price per litre or kg, "R$ 1,25 cada, no pacote com 12". The price per litre stays the basis for
+  comparisons and the IPCI: the per-item price is only for reading. A weighed line has no pack. The size row shows
+  System-1's size when sure (mark "Jev"), as prices already did, with the pack spelled out: "6 l (12 × 500 ml)".
+- **Server** (`20261030000000_sold_by_choices.sql`): the columns, `apply_reading` writing the suggestion (only when the
+  item has no answer yet; a sure answer clears it), and the store items left with no answer by D108's reading queued
+  once more, about 6 Jev requests. The categorize function is unchanged.
+- **Phone:** Room v13. **The migration must be online before the v13 build reaches a phone:** that build sends
+  `sold_by_user` with every store item, and a server without the column would refuse those rows (parked, D104).
+- **Checked:** pgTAP (80), JVM (158), the phone's sync against the local Supabase, and on the emulator with the demo
+  caderneta: the card, answering it, the product screen's "Vendido" sheet, and a pack's price per item.

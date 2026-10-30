@@ -213,6 +213,11 @@ data class StoreItemRow(
   val readSizeConfidence: Double? = null,
   val readPackCount: Int? = null,
   val readModel: String? = null,
+  /** How it's sold by Jev's answer below the threshold (D110): a card in Para você until the user answers. Never pushed. */
+  val soldBySuggestion: String? = null,
+  val soldBySuggestionConfidence: Double? = null,
+  /** The user's answer to how it's sold (D110): final, and pushed. Wins over [soldBy]. */
+  val soldByUser: String? = null,
 )
 
 @Entity(
