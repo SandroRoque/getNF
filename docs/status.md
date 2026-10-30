@@ -96,7 +96,9 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 - **Discounts from photos:** confirming each value against its photo snippet, and undo back to prorated.
 - **Stage 4 leftovers:** automatic assignments aren't re-run after a category tree change (D69).
 - **Manual-chave fallback** for damaged QR codes (D3/D13): not built.
-- **Size parsing gaps:** "1K" (= 1 kg) and "1 25KG" (= 1.25 kg) aren't understood; those were fixed by hand.
+- **Size parsing gaps:** the parser still doesn't understand "1K" (= 1 kg) or "1 25KG" (= 1.25 kg). Since D108,
+  System-1 reads "1K" as 1 kg; "1 25KG" comes back unsure (0.38), below the 0.5 floor for a suggestion. The two items
+  that had them were fixed by hand (the user checked the yogurt's 1.25 kg on 2026-10-29).
 - **Is the home IP shared (CGNAT)?** Check the router's WAN address: anything in 100.64.0.0/10 means yes. Adjust
   `LookupBudget.LIMIT` once more blocks (or non-blocks) tell us more.
 - **IPCI:** with four months of receipts in two years, only June 2026 has a reading so far (+2,3%); the rest say
