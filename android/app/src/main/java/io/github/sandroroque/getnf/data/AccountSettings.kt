@@ -87,6 +87,9 @@ class AccountSettings(context: Context) {
     // commit: the app restarts right after.
     set(value) { prefs.edit(commit = true) { putBoolean(DEMO, value) } }
 
+  /** The caderneta that took the phone's original files (D104), if any did. */
+  fun legacyLedger(): String? = prefs.getString(LEGACY, null)
+
   fun filesFor(ledger: String?): LocalFiles = LocalFiles.of(ledger, prefs.getString(LEGACY, null))
 
   private companion object {

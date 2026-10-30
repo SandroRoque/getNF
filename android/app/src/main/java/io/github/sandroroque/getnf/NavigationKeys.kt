@@ -34,6 +34,9 @@ import kotlinx.serialization.Serializable
 @Serializable data object Backup : NavKey
 @Serializable data object Developer : NavKey
 
+/** Bringing receipts from the phone's other cadernetas into the open one (D126). */
+@Serializable data object ImportNotes : NavKey
+
 /** One caderneta in Ajustes (D104). */
 @Serializable data class LedgerDetail(val ledgerId: String) : NavKey
 

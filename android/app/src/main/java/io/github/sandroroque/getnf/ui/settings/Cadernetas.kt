@@ -123,13 +123,18 @@ fun CadernetasScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
   asking?.let { kind ->
     var text by remember(kind) { mutableStateOf("") }
     CalmoSheet(if (kind == "new") "Nova caderneta" else "Entrar numa caderneta", onDismiss = { asking = null }) {
-      Sub(if (kind == "new") "Um nome que todos reconheçam: Casa, Escritório…" else "O código que você recebeu de quem está nela.")
+      Sub(if (kind == "new") "Um nome que todos reconheçam: Casa, Escritório… Ela abre neste celular, e você escolhe que notas trazer para ela."
+        else "O código que você recebeu de quem está nela.")
       Field(text, { text = it }, if (kind == "new") "Nome" else "Código", last = true)
       Wide(if (kind == "new") "Criar" else "Entrar", ButtonKind.Solid, enabled = !busy && text.isNotBlank()) {
         busy = true
         scope.launch {
           runCatching { if (kind == "new") service.create(text.trim()) else service.join(text.trim()) }
-            .onSuccess { id -> asking = null; status = null; ledgers = runCatching { service.mine() }.getOrNull(); onOpen(id) }
+            .onSuccess { id ->
+              // A new caderneta is made to be used: it opens on this phone, on "Trazer notas" (D126).
+              if (kind == "new") { app.onboarding.importOnStart = true; openOnPhone(app, id) }
+              asking = null; status = null; ledgers = runCatching { service.mine() }.getOrNull(); onOpen(id)
+            }
             .onFailure { status = reason(it); asking = null }
           busy = false
         }
@@ -141,7 +146,7 @@ fun CadernetasScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
 /** One caderneta: who is in it, inviting, roles, copying receipts out, and leaving (D104). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CadernetaScreen(ledgerId: String, onBack: () -> Unit) {
+fun CadernetaScreen(ledgerId: String, onBack: () -> Unit, onImport: () -> Unit = {}) {
   val context = LocalContext.current
   val app = context.applicationContext as GetNFApp
   val service = remember { LedgerService(app.accountSettings) }
@@ -210,15 +215,14 @@ fun CadernetaScreen(ledgerId: String, onBack: () -> Unit) {
       }
     }
 
-    if (isOpen && others.isNotEmpty()) {
-      Spacer(Modifier.height(4.dp))
-      SectionLabel("Suas notas")
-      Sub("Copie as notas que você escaneou (${scanned.size}) para outra caderneta sua. Esta continua com elas.")
-      Pill("Copiar para outra caderneta", enabled = !busy && scanned.isNotEmpty()) { copying = true }
-    } else if (!isOpen) {
-      Spacer(Modifier.height(4.dp))
-      SectionLabel("Suas notas")
-      Sub("Para copiar notas desta caderneta, abra-a neste celular.")
+    Spacer(Modifier.height(4.dp))
+    SectionLabel("Suas notas")
+    if (isOpen) {
+      Sub("Traga para cá as notas que você escaneou em outra caderneta deste celular, ou leve uma cópia das daqui (${scanned.size}) para outra.")
+      Pill("Trazer notas de outra caderneta", enabled = !busy, onClick = onImport)
+      if (others.isNotEmpty()) Pill("Copiar para outra caderneta", enabled = !busy && scanned.isNotEmpty()) { copying = true }
+    } else {
+      Sub("Para trazer ou copiar notas, abra esta caderneta neste celular.")
     }
 
     Spacer(Modifier.height(4.dp))

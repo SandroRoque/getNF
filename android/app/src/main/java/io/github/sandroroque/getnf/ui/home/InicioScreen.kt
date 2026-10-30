@@ -1,5 +1,11 @@
 package io.github.sandroroque.getnf.ui.home
 
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.LaunchedEffect
+import io.github.sandroroque.getnf.ui.calmo.ButtonKind
+import io.github.sandroroque.getnf.ui.calmo.Wide
+import io.github.sandroroque.getnf.ui.calmo.LeadCard
+import io.github.sandroroque.getnf.data.LocalCadernetas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -53,7 +59,7 @@ import io.github.sandroroque.getnf.ui.spending.label
 @Composable
 fun InicioScreen(
   onSpending: () -> Unit, onDecisions: () -> Unit, onIpci: () -> Unit, onReceipt: (String) -> Unit, onSettings: () -> Unit,
-  onScan: () -> Unit = {}, onDemo: () -> Unit = {}, onSignIn: () -> Unit = onSettings,
+  onScan: () -> Unit = {}, onDemo: () -> Unit = {}, onSignIn: () -> Unit = onSettings, onImport: () -> Unit = {},
 ) {
   val app = LocalContext.current.applicationContext as GetNFApp
   val lines by remember { app.database.spending().lines() }.collectAsStateWithLifecycle(null)
@@ -72,10 +78,21 @@ fun InicioScreen(
   }
   val ipci = remember(lines) { lines?.let { Ipci.compute(it) }?.lastOrNull { it.reading != null } }
   val colorOf = rememberCategoryColor(categories)
-  // The first steps (D115): not in the demo, and gone once done or hidden.
-  var stepsHidden by remember { mutableStateOf(app.accountSettings.demo || app.onboarding.firstStepsHidden) }
+  // The first steps (D115): not in the demo, and gone once done or hidden; once done they stay gone, also in a new
+  // caderneta (D126).
+  var stepsHidden by remember {
+    mutableStateOf(app.accountSettings.demo || app.onboarding.firstStepsHidden || app.onboarding.firstStepsDone)
+  }
   val steps = remember(receipts, account) {
     firstSteps(receipts, account != null, onScan = onScan, onFetch = onDecisions, onAccount = onSignIn)
+  }
+  LaunchedEffect(steps) { if (steps.finished()) app.onboarding.firstStepsDone = true }
+  // An empty caderneta while others on this phone hold receipts scanned here: offer to bring them (D126).
+  var elsewhere by remember { mutableIntStateOf(0) }
+  LaunchedEffect(receipts.isEmpty()) {
+    elsewhere = if (receipts.isNotEmpty() || app.accountSettings.demo) 0 else runCatching {
+      LocalCadernetas(app, app.accountSettings).sources(app.accountSettings.ledgerId()).sumOf { it.receipts.size }
+    }.getOrDefault(0)
   }
 
   val month = spending?.periods?.lastOrNull()
@@ -91,9 +108,17 @@ fun InicioScreen(
       }
     }
     if (spending == null) return@LazyColumn
-    val showSteps = !stepsHidden && !steps.finished()
+    val showSteps = !stepsHidden && !steps.finished() && elsewhere == 0
     if (month == null) {
-      if (!showSteps) item { EmptyState("Nenhuma nota ainda. Toque no botão do meio para escanear o QR Code de uma nota fiscal.") }
+      if (elsewhere > 0) item {
+        LeadCard {
+          Text("Esta caderneta está vazia", style = MaterialTheme.typography.titleSmall, color = Calmo.fg)
+          Sub("Você tem ${Format.count(elsewhere, "nota escaneada", "notas escaneadas")} em outra caderneta deste celular. " +
+            "Traga as que quiser para esta; a outra continua com elas.")
+          Wide("Trazer notas", ButtonKind.Solid, onClick = onImport)
+        }
+      }
+      else if (!showSteps) item { EmptyState("Nenhuma nota ainda. Toque no botão do meio para escanear o QR Code de uma nota fiscal.") }
     } else {
       val previous = spending.periods.dropLast(1).lastOrNull()
       item {

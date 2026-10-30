@@ -136,6 +136,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D123 | UI | current | Ajustes as an index; signing in, the account and backups get screens of their own |
 | D124 | UI | current | The category picker opens collapsed, with + and − on each branch |
 | D125 | accounts | current | Deleting the account in the app asks for the password again |
+| D126 | cadernetas | current | A new caderneta opens on "Trazer notas"; the first steps don't come back |
 
 ---
 
@@ -3120,3 +3121,31 @@ some days), which needs a server job to finish the deletion later.
 
 Checked on the emulator against the local Supabase: a wrong password is refused and the account stays; the right one
 deletes it (gone from `auth.users`) and Ajustes shows "Sem conta".
+
+## D126. A new caderneta opens on "Trazer notas"; the first steps don't come back (2026-10-30)
+
+The user created a caderneta, opened it and landed on Início's "Primeiros passos", as if they had never used the
+app. They also had no way to bring the receipts they already had into it: D104 only copies out, from the open
+caderneta to another.
+
+- **"Trazer notas"** (`ImportScreen`, `LocalCadernetas`) is the pull side of `ReceiptCopier`. It lists, per other
+  caderneta with files on this phone, the receipts scanned here (newest first, each with a checkbox, "Todas" /
+  "Nenhuma"). Everything starts selected. "Trazer N notas" copies them into the open caderneta with
+  `ReceiptStore.importCopy`, reads their pages and syncs. The sources keep theirs.
+- **Only receipts scanned on this phone**, as for copying out: what others scanned stays in the caderneta it was shared
+  in.
+- **Where it shows:**
+  - creating a caderneta now opens it on this phone, and after the restart it lands on "Trazer notas"
+    (`Onboarding.importOnStart`); joining by code still goes to the caderneta's screen;
+  - an empty caderneta's Início shows "Esta caderneta está vazia" with "Trazer notas" while other cadernetas here hold
+    receipts scanned here;
+  - a caderneta's screen has "Trazer notas de outra caderneta" next to "Copiar para outra caderneta".
+- **The first steps** stay gone once they were all done in any caderneta (`Onboarding.firstStepsDone`, set when they
+  finish). They also don't show while there are receipts to bring.
+- **Categories don't come along:** products and categories belong to each caderneta, so the receipts brought in
+  arrive without categories. They are categorized again (the categorizer online, or the user).
+
+Checked on the emulator against the local Supabase, with the demo backup restored into a first caderneta:
+- creating "Casa" opened it on "Trazer notas" with the 86 receipts;
+- "Agora não" led to the empty-caderneta card, without the first steps;
+- bringing two receipts put them, read, in Casa's Início.

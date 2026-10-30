@@ -18,4 +18,15 @@ class Onboarding(context: Context) {
   var firstStepsHidden: Boolean
     get() = prefs.getBoolean("first_steps_hidden", false)
     set(value) = prefs.edit { putBoolean("first_steps_hidden", value) }
+
+  /** The first steps were all done once, in any caderneta (D126): they don't come back in a new, empty one. */
+  var firstStepsDone: Boolean
+    get() = prefs.getBoolean("first_steps_done", false)
+    set(value) = prefs.edit { putBoolean("first_steps_done", value) }
+
+  /** A caderneta was just created: after the restart that opens it, show "Trazer notas" first (D126). */
+  var importOnStart: Boolean
+    get() = prefs.getBoolean("import_on_start", false)
+    // commit: the app restarts right after.
+    set(value) { prefs.edit(commit = true) { putBoolean("import_on_start", value) } }
 }

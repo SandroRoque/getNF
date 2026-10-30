@@ -64,6 +64,7 @@ import io.github.sandroroque.getnf.ui.settings.BackupScreen
 import io.github.sandroroque.getnf.ui.settings.CadernetaScreen
 import io.github.sandroroque.getnf.ui.settings.CadernetasScreen
 import io.github.sandroroque.getnf.ui.settings.DeveloperScreen
+import io.github.sandroroque.getnf.ui.settings.ImportScreen
 import io.github.sandroroque.getnf.ui.settings.SettingsRoutes
 import io.github.sandroroque.getnf.ui.settings.SettingsScreen
 import io.github.sandroroque.getnf.ui.settings.SignInScreen
@@ -103,6 +104,9 @@ fun MainNavigation() {
     return
   }
 
+  // A caderneta just created opens on "Trazer notas" (D126).
+  LaunchedEffect(Unit) { if (app.onboarding.importOnStart) { app.onboarding.importOnStart = false; open(ImportNotes) } }
+
   // NavDisplay only handles Back with more than one screen open; at a tab's root, Back goes to Início first.
   BackHandler(enabled = backStack.size == 1 && root != Inicio) { tab(Inicio) }
 
@@ -127,7 +131,7 @@ fun MainNavigation() {
           InicioScreen(
             onSpending = { tab(Spending) }, onDecisions = { tab(ParaVoce) }, onIpci = { open(IpciKey(null)) },
             onReceipt = { open(ReceiptDetail(it)) }, onSettings = { open(Settings) },
-            onScan = { open(Scan) }, onDemo = ::enterDemo, onSignIn = { open(SignIn) },
+            onScan = { open(Scan) }, onDemo = ::enterDemo, onSignIn = { open(SignIn) }, onImport = { open(ImportNotes) },
           )
         }
         entry<Spending> {
@@ -178,7 +182,8 @@ fun MainNavigation() {
         entry<Cadernetas> { CadernetasScreen(onBack = ::back, onOpen = { open(LedgerDetail(it)) }) }
         entry<Backup> { BackupScreen(onBack = ::back) }
         entry<Developer> { DeveloperScreen(onBack = ::back) }
-        entry<LedgerDetail> { key -> CadernetaScreen(key.ledgerId, onBack = ::back) }
+        entry<LedgerDetail> { key -> CadernetaScreen(key.ledgerId, onBack = ::back, onImport = { open(ImportNotes) }) }
+        entry<ImportNotes> { ImportScreen(onDone = ::back) }
       },
     )
   }
