@@ -2800,3 +2800,7 @@ Two of D108's open follow-ups, taken up at the user's go-ahead.
   `sold_by_user` with every store item, and a server without the column would refuse those rows (parked, D104).
 - **Checked:** pgTAP (80), JVM (158), the phone's sync against the local Supabase, and on the emulator with the demo
   caderneta: the card, answering it, the product screen's "Vendido" sheet, and a pack's price per item.
+
+**Deployed (2026-10-29),** by the user (`db push`); the v13 build went on the phone afterwards. The 6 store items D108
+had left without an answer were read again: all six "by the unit", unsure (0.61 to 0.88), so six cards. The phone
+pulled them; no row was refused or parked.
