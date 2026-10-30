@@ -126,6 +126,22 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOp
       preview.keepScreenOn = false
     }
   }
+  // The torch is on from the start (D117): the paper reads better lit, and the button turns it off. The camera's info
+  // comes once it's bound, so this waits for it a moment; a camera without a flash is left as it is.
+  LaunchedEffect(Unit) {
+    repeat(40) {
+      if (torch || torchTouched) return@LaunchedEffect
+      val info = controller.cameraInfo
+      if (info != null) {
+        if (info.hasFlashUnit()) {
+          val result = controller.enableTorch(true)
+          result.addListener({ if (runCatching { result.get() }.isSuccess && !torchTouched) torch = true }, ContextCompat.getMainExecutor(context))
+        }
+        return@LaunchedEffect
+      }
+      kotlinx.coroutines.delay(100)
+    }
+  }
   // Too dark to read the print: the torch comes on by itself, once, unless the person has used it (D93). It isn't
   // turned off by itself: the frames are bright once it is on.
   LaunchedEffect(state.dark) {

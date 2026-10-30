@@ -103,7 +103,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D90 | capture | current | A finished capture keeps the fewest photos that read the receipt |
 | D91 | capture | current | The paper finder's walks without allocations |
 | D92 | capture | current | The hint goes where the next frame adds the most, and keeps the sweep |
-| D93 | capture | current | The torch comes on by itself when it's too dark to read |
+| D93 | capture | partly replaced → D117 | The torch comes on by itself when it's too dark to read |
 | D94 | capture | current | A finished capture keeps looking for its QR code |
 | D95 | capture | current | The QR code's corners are used as the scanner gives them |
 | D96 | parser | current | Payments and taxes are stored as data, read in every store's wording |
@@ -127,6 +127,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D114 | app | current | The icon: a caderneta with a receipt laid across it, askew |
 | D115 | app | current | A new user starts clean and is guided; the demo is a separate, read-only visit |
 | D116 | app | current | The first steps are one sitting; what comes with time is said where it will appear |
+| D117 | capture | current | The torch is on from the start of every capture |
 
 ---
 
@@ -2246,6 +2247,8 @@ inside the view mean holding still. Replayed, that session's hints are one sweep
 change direction more than twice. The benchmark scores what is saved, not hints, so it shows no change; whether the
 person follows faster can only be seen live.
 
+
+> **Partly replaced by D117** (index, D107).
 ## D93. The torch comes on by itself when it's too dark to read (2026-10-26)
 
 The user asked for the LED to turn on without having to press it. Auto exposure holds frames near a mean luminance of
@@ -2938,3 +2941,10 @@ novo e o histórico de preço aparece aqui, loja a loja", and before the IPCI's 
 screen) say it appears in the month you buy again products from earlier months, and that old receipts still in the
 wallet count, the way to see it on the first day. The welcome's second page says "Quando comprar de novo em outro
 mês" instead of "Depois de dois meses".
+
+## D117. The torch is on from the start of every capture (2026-10-30)
+
+Asked by the user. D93 turned it on only once the frames were too dark to read; now it comes on as the camera opens,
+whatever the light, since the print reads better lit. The button still turns it off, and once touched the capture
+leaves it alone (the D93 rule for when it's dark stays, for a torch turned off and a room going dark). A camera
+without a flash is left as it is. The how-to before the first scan says the torch starts on.

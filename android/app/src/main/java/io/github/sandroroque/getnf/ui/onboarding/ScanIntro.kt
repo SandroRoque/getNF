@@ -33,7 +33,7 @@ fun ScanIntro(onStart: () -> Unit, onCancel: () -> Unit) {
       verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
       ReceiptSketch(Modifier.size(width = 120.dp, height = 150.dp).align(Alignment.CenterHorizontally))
       ScreenTitle("Como escanear")
-      Step("A nota sobre a mesa, com luz", "Esticada, se der. A lanterna acende sozinha quando está escuro.")
+      Step("A nota sobre a mesa, com luz", "Esticada, se der. A lanterna já começa acesa; o raio no alto a apaga.")
       Step("Percorra a nota devagar", "O app fotografa sozinho. O mapa ao lado mostra o que já foi lido e o que falta.")
       Step("Mostre o QR Code", "Ele fica no fim da nota. Lidos o QR e a nota inteira, a captura termina sozinha.")
       Step("Depois, a página da SEFAZ", "Os itens e os preços vêm de lá. Às vezes a SEFAZ pede para confirmar que você é uma pessoa.")
