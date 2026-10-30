@@ -27,6 +27,13 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object Settings : NavKey
 
+/** Ajustes' own screens (D123). */
+@Serializable data object SignIn : NavKey
+@Serializable data object AccountKey : NavKey
+@Serializable data object Cadernetas : NavKey
+@Serializable data object Backup : NavKey
+@Serializable data object Developer : NavKey
+
 /** One caderneta in Ajustes (D104). */
 @Serializable data class LedgerDetail(val ledgerId: String) : NavKey
 

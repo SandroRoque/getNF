@@ -133,6 +133,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D120 | online | current | The confirmation e-mail is in Portuguese and lands on a page of the site |
 | D121 | sync | current | After sending new items, the phone comes back for the categorizer's answers |
 | D122 | catalog | current | Personal care: "Higiene e banho" and "Beleza" |
+| D123 | UI | current | Ajustes as an index; signing in, the account and backups get screens of their own |
 
 ---
 
@@ -3027,3 +3028,64 @@ nothing. Every caderneta gets the new labels on its next sync unless it renamed 
 categorized aren't moved: online, the old "Cosméticos e cabelo" held one, a shampoo the user had confirmed, which the
 user moves with a tap. The demo's shampoo moved to Higiene e banho and its backup was regenerated. Applied locally
 (pgTAP passes); online it needs `npx supabase db push`.
+
+## D123. Ajustes as an index; signing in, the account and backups get screens of their own (2026-10-30)
+
+The D81 overhaul tidied the main screens, but Ajustes grew afterwards one section at a time and the user called it
+"péssimo", and signing in or up "ruim". It was one long scroll that put side by side the sign-in form, the Supabase
+server's address and key, the LLM reviewer's health report, backups, photo contribution and the debug switch. Its
+buttons and headings were Material's defaults, not Calmo's. Creating an account was a link that changed the same form
+in place, the main button sat grey and disabled until every field was right, and every outcome (wrong password, "check
+your e-mail", resent link) was one loose line of text. Signed in, "Sincronizar agora", "Sair" and "Apagar minha conta"
+sat next to each other. Planned in a mockup of four screens and approved by the user ("pode seguir, faz tudo").
+
+- **Ajustes is an index.** At the top, a card for the account:
+  - signed out, what an account gives and one button, "Entrar ou criar conta";
+  - signed in, the initial, the name from sign-up, the e-mail, and how the sync is going ("Sincronizando…",
+    "Sincronizado há 5 min", "Sem conexão…"), with "Sincronizar". `AccountSettings` now keeps the name and the time
+    of the last sync that finished without an error; `SyncWorker.NAME` is watched for the rest.
+
+  Below, rows in groups: **Caderneta** (the open one, and Cadernetas), **Este celular** (Cópia de segurança, the photo
+  switch), **Sobre** (the privacy policy, the version). Each row opens its own screen; the demo still shows only its
+  explanation and the way out.
+- **Entrar / Criar conta is its own screen.**
+  - Segments switch between the two modes, so creating an account never looks like a second form.
+  - The password has an eye to show it.
+  - The button is always enabled: pressing it marks what's missing under each field, rather than leaving a grey
+    button with no reason.
+  - Errors appear in a box above the button.
+- **"Confira seu e-mail"** replaces the loose line after a sign-up that needs confirming, and after a sign-in refused
+  for an unconfirmed e-mail. It offers "Já confirmei, entrar" (the password stays in memory only for that), "Mandar o
+  link de novo" and "Usar outro e-mail".
+- **Esqueci a senha.** A sheet asks for the e-mail and calls Supabase's `recover` with `redirect_to` set to
+  `caderneta.roqlab.com.br/nova-senha/`. That page reads the short-lived session from the address, drops it from the
+  address at once, keeps it in memory only, and uses it once, to set the new password (`PUT /auth/v1/user`). The person
+  then signs in on the app. The e-mail has a Portuguese template (`supabase/templates/recovery.html`) like D120's.
+  Supabase answers the same whether or not the address has an account, and the sheet says "se existe uma conta",
+  so nobody learns who has one.
+- **The account screen** shows the e-mail and has "Sair da conta". Apart, at the bottom, is "Apagar a conta". Both ask
+  first in a sheet.
+- **Moved to Desenvolvimento, debug builds only:**
+  - Servidor: release builds always use the bundled project, so no one outside development needs it;
+  - Saúde dos dados: it's for whoever runs the LLM worker;
+  - Testando a captura.
+
+  D104's "the error shows in Ajustes" for refused rows is still to do; it would go next to the sync line.
+- **Calmo throughout:** `ui/calmo/Forms.kt` holds the field, wide button, switch row, lead card, avatar and notice
+  these screens use. A disabled solid pill now goes quiet instead of keeping its weight. Cadernetas and a caderneta's
+  screen use bottom sheets instead of dialogs (D81's rule), and so does restoring a backup. Início's placeholder title
+  said "getNF"; it says "Caderneta".
+
+Checked on the emulator against the local Supabase, light and dark:
+- every screen;
+- the validation messages;
+- a wrong password;
+- signing up with confirmations off (straight in) and on (Confira seu e-mail, then the link from the local mail
+  catcher, then "Já confirmei, entrar");
+- signing out;
+- the delete-account and leave sheets;
+- the reset e-mail (Portuguese subject).
+
+The new-password page was checked in a browser against the local project: mismatched passwords are refused, the new
+password signs in, and the token is gone from the address. JVM tests and pgTAP pass. Online, the reset template and the
+Redirect URL wait for the user (status.md › Pending, by the user).

@@ -6,6 +6,7 @@
 - `/apagar-conta/`: deleting an account without the app, which Play asks for. It needs the Supabase project's URL
   and publishable key (public by design, kept out of the repo like the app's): from .env.local, or with
   --local from the running local Supabase, for testing. Values are never printed.
+- `/nova-senha/`: where the reset-password e-mail lands; sets the new password. Same URL and key.
 
   tools/build-web.py --contact <e-mail>
   tools/build-web.py --local --contact teste@example.test
@@ -93,8 +94,9 @@ def main():
         if re.search(r"%[A-Z]+%", html):
           sys.exit(f"unfilled placeholder in {os.path.relpath(path, OUT)}")
         open(path, "w", encoding="utf-8").write(html)
-  with open(os.path.join(OUT, "apagar-conta", "config.js"), "w", encoding="utf-8") as f:
-    f.write("window.GETNF = " + json.dumps({"url": url, "key": key}) + ";\n")
+  for page in ("apagar-conta", "nova-senha"):
+    with open(os.path.join(OUT, page, "config.js"), "w", encoding="utf-8") as f:
+      f.write("window.GETNF = " + json.dumps({"url": url, "key": key}) + ";\n")
   print(f"built {os.path.relpath(OUT, ROOT)}/ ({'local Supabase' if a.local else 'online project'})")
 
 

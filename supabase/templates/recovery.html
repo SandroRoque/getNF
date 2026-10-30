@@ -1,0 +1,13 @@
+<!-- Reset password (D123). Online: paste into Authentication › Emails › Templates › Reset password, with the subject
+     "Nova senha · Caderneta". Locally, supabase/config.toml points at this file. -->
+<div style="font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; color: #22252A; max-width: 480px; margin: 0 auto; padding: 24px 16px; line-height: 1.5;">
+  <h2 style="font-weight: 600; margin: 0 0 16px;">Escolha uma nova senha</h2>
+  <p style="margin: 0 0 16px;">Alguém pediu uma nova senha para a sua conta na Caderneta. Toque no botão para escolher
+    uma; depois, volte ao app e entre com ela.</p>
+  <p style="margin: 24px 0;">
+    <a href="{{ .ConfirmationURL }}" style="background: #22252A; color: #F7F7F5; text-decoration: none; padding: 12px 22px; border-radius: 999px; display: inline-block;">Escolher nova senha</a>
+  </p>
+  <p style="margin: 0 0 16px; color: #6F747C; font-size: 14px;">O link vale por pouco tempo; se expirar, peça outro no app.
+    Se não foi você, ignore esta mensagem: sua senha continua a mesma.</p>
+  <p style="margin: 0; color: #6F747C; font-size: 14px;">Caderneta · caderneta.roqlab.com.br</p>
+</div>

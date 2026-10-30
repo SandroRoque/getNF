@@ -1,5 +1,6 @@
 package io.github.sandroroque.getnf.ui.onboarding
 
+import io.github.sandroroque.getnf.ui.calmo.TextLink
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable

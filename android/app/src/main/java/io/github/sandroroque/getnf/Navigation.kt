@@ -46,9 +46,9 @@ import io.github.sandroroque.getnf.theme.Calmo
 import io.github.sandroroque.getnf.ui.calmo.ButtonKind
 import io.github.sandroroque.getnf.ui.calmo.Sub
 import io.github.sandroroque.getnf.ui.catalog.CalmoSheet
-import io.github.sandroroque.getnf.ui.onboarding.TextLink
+import io.github.sandroroque.getnf.ui.calmo.TextLink
 import io.github.sandroroque.getnf.ui.onboarding.WelcomeScreen
-import io.github.sandroroque.getnf.ui.onboarding.Wide
+import io.github.sandroroque.getnf.ui.calmo.Wide
 import io.github.sandroroque.getnf.ui.calmo.Hairline
 import io.github.sandroroque.getnf.ui.calmo.Icons
 import io.github.sandroroque.getnf.ui.catalog.CatalogScreen
@@ -59,7 +59,14 @@ import io.github.sandroroque.getnf.ui.page.PageScreen
 import io.github.sandroroque.getnf.ui.receipt.ReceiptScreen
 import io.github.sandroroque.getnf.ui.review.ParaVoceScreen
 import io.github.sandroroque.getnf.ui.scan.ScanScreen
+import io.github.sandroroque.getnf.ui.settings.AccountScreen
+import io.github.sandroroque.getnf.ui.settings.BackupScreen
+import io.github.sandroroque.getnf.ui.settings.CadernetaScreen
+import io.github.sandroroque.getnf.ui.settings.CadernetasScreen
+import io.github.sandroroque.getnf.ui.settings.DeveloperScreen
+import io.github.sandroroque.getnf.ui.settings.SettingsRoutes
 import io.github.sandroroque.getnf.ui.settings.SettingsScreen
+import io.github.sandroroque.getnf.ui.settings.SignInScreen
 import io.github.sandroroque.getnf.ui.spending.IpciScreen
 import io.github.sandroroque.getnf.ui.spending.SpendingScreen
 
@@ -91,7 +98,7 @@ fun MainNavigation() {
     if (receipts?.isEmpty() != true) return
     fun done(then: () -> Unit) { app.onboarding.welcomeSeen = true; welcomeSeen = true; then() }
     WelcomeScreen(
-      onScan = { done { open(Scan) } }, onDemo = { done(::enterDemo) }, onExplore = { done {} }, onSignIn = { done { open(Settings) } },
+      onScan = { done { open(Scan) } }, onDemo = { done(::enterDemo) }, onExplore = { done {} }, onSignIn = { done { open(SignIn) } },
     )
     return
   }
@@ -120,7 +127,7 @@ fun MainNavigation() {
           InicioScreen(
             onSpending = { tab(Spending) }, onDecisions = { tab(ParaVoce) }, onIpci = { open(IpciKey(null)) },
             onReceipt = { open(ReceiptDetail(it)) }, onSettings = { open(Settings) },
-            onScan = { open(Scan) }, onDemo = ::enterDemo,
+            onScan = { open(Scan) }, onDemo = ::enterDemo, onSignIn = { open(SignIn) },
           )
         }
         entry<Spending> {
@@ -158,8 +165,20 @@ fun MainNavigation() {
           ProductScreen(key.productId, onOpenProduct = { back(); open(ProductDetail(it)) }, onBack = ::back,
             onOpenReceipt = { open(ReceiptDetail(it)) })
         }
-        entry<Settings> { SettingsScreen(onDone = ::back, onOpenLedger = { open(LedgerDetail(it)) }, onLeaveDemo = { leavingDemo = true }) }
-        entry<LedgerDetail> { key -> io.github.sandroroque.getnf.ui.settings.CadernetaScreen(key.ledgerId, onBack = ::back) }
+        entry<Settings> {
+          SettingsScreen(SettingsRoutes(
+            back = ::back, signIn = { open(SignIn) }, account = { open(AccountKey) }, cadernetas = { open(Cadernetas) },
+            ledger = { open(LedgerDetail(it)) }, backup = { open(Backup) }, developer = { open(Developer) },
+            leaveDemo = { leavingDemo = true },
+          ))
+        }
+        // Signed in: back to where the sign-in began (Ajustes, or Início's first steps).
+        entry<SignIn> { SignInScreen(onBack = ::back, onSignedIn = ::back) }
+        entry<AccountKey> { AccountScreen(onBack = ::back) }
+        entry<Cadernetas> { CadernetasScreen(onBack = ::back, onOpen = { open(LedgerDetail(it)) }) }
+        entry<Backup> { BackupScreen(onBack = ::back) }
+        entry<Developer> { DeveloperScreen(onBack = ::back) }
+        entry<LedgerDetail> { key -> CadernetaScreen(key.ledgerId, onBack = ::back) }
       },
     )
   }

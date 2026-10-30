@@ -25,7 +25,7 @@ data class LocalFiles(val database: String, val receipts: String) {
 }
 
 /** The signed-in account: kept is the refresh token, never the password (D70). */
-data class Account(val userId: String, val email: String, val refreshToken: String)
+data class Account(val userId: String, val email: String, val refreshToken: String, val name: String = "")
 
 /** Kept in app-private SharedPreferences (app data is excluded from Android backups). */
 class AccountSettings(context: Context) {
@@ -38,22 +38,29 @@ class AccountSettings(context: Context) {
 
   /** Another project means another account: signs out. */
   fun setProject(config: ProjectConfig) = prefs.edit {
-    if (config != project()) { remove(USER); remove(EMAIL); remove(REFRESH) }
+    if (config != project()) { remove(USER); remove(EMAIL); remove(REFRESH); remove(NAME); remove(LAST_SYNC) }
     putString(URL, config.url.trim().trimEnd('/')); putString(KEY, config.key.trim())
   }
 
   fun account(): Account? {
     val user = prefs.getString(USER, null) ?: return null
-    return Account(user, prefs.getString(EMAIL, null) ?: "", prefs.getString(REFRESH, null) ?: return null)
+    return Account(user, prefs.getString(EMAIL, null) ?: "", prefs.getString(REFRESH, null) ?: return null, prefs.getString(NAME, null) ?: "")
   }
 
   /** Each refresh hands out a new refresh token and retires the old one: always keep the latest. */
   fun signedIn(session: SupabaseSession) = prefs.edit {
+    if (session.userId != prefs.getString(USER, null)) { remove(LAST_SYNC); remove(NAME) }
     putString(USER, session.userId); putString(EMAIL, session.email); putString(REFRESH, session.refreshToken)
+    if (session.name.isNotBlank()) putString(NAME, session.name)
   }
 
+  /** When the last sync finished without an error (D123), for "Sincronizado há 5 min" in Ajustes; 0 for never. */
+  var lastSync: Long
+    get() = prefs.getLong(LAST_SYNC, 0)
+    set(value) = prefs.edit { putLong(LAST_SYNC, value) }
+
   /** Signing out leaves the open caderneta's data on the phone, and open: nothing is deleted. */
-  fun signOut() = prefs.edit { remove(USER); remove(EMAIL); remove(REFRESH) }
+  fun signOut() = prefs.edit { remove(USER); remove(EMAIL); remove(REFRESH); remove(NAME); remove(LAST_SYNC) }
 
   /** The caderneta this phone has open (D104); null until the first sync picks one. */
   fun ledgerId(): String? = prefs.getString(LEDGER, null)
@@ -91,5 +98,7 @@ class AccountSettings(context: Context) {
     const val LEDGER = "ledger"
     const val LEGACY = "legacy_ledger"
     const val DEMO = "demo"
+    const val NAME = "name"
+    const val LAST_SYNC = "last_sync"
   }
 }

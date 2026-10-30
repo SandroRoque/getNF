@@ -1,382 +1,238 @@
 package io.github.sandroroque.getnf.ui.settings
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import io.github.sandroroque.getnf.BuildConfig
 import io.github.sandroroque.getnf.GetNFApp
-import io.github.sandroroque.getnf.data.BackupManifest
-import io.github.sandroroque.getnf.data.ProjectConfig
-import io.github.sandroroque.getnf.sync.SupabaseClient
+import io.github.sandroroque.getnf.data.Account
+import io.github.sandroroque.getnf.sync.LedgerInfo
+import io.github.sandroroque.getnf.sync.LedgerService
 import io.github.sandroroque.getnf.sync.SyncWorker
+import io.github.sandroroque.getnf.theme.Calmo
 import io.github.sandroroque.getnf.ui.Format
-import java.time.LocalDate
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import io.github.sandroroque.getnf.ui.calmo.AmountRow
+import io.github.sandroroque.getnf.ui.calmo.Avatar
+import io.github.sandroroque.getnf.ui.calmo.BackHeader
+import io.github.sandroroque.getnf.ui.calmo.ButtonKind
+import io.github.sandroroque.getnf.ui.calmo.Hairline
+import io.github.sandroroque.getnf.ui.calmo.Icons
+import io.github.sandroroque.getnf.ui.calmo.LeadCard
+import io.github.sandroroque.getnf.ui.calmo.ScreenTitle
+import io.github.sandroroque.getnf.ui.calmo.SectionLabel
+import io.github.sandroroque.getnf.ui.calmo.Sub
+import io.github.sandroroque.getnf.ui.calmo.SwitchRow
+import io.github.sandroroque.getnf.ui.calmo.TextLink
+import io.github.sandroroque.getnf.ui.calmo.Wide
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Where Ajustes' rows lead (D123): each its own screen. */
+class SettingsRoutes(
+  val back: () -> Unit,
+  val signIn: () -> Unit,
+  val account: () -> Unit,
+  val cadernetas: () -> Unit,
+  val ledger: (String) -> Unit,
+  val backup: () -> Unit,
+  val developer: () -> Unit,
+  val leaveDemo: () -> Unit,
+)
+
+/**
+ * Ajustes as an index (D123): the account in a card at the top (what an account gives, or who is signed in and when
+ * it last synced), then short rows grouped by what they're about, each opening its own screen.
+ */
 @Composable
-fun SettingsScreen(onDone: () -> Unit, onOpenLedger: (String) -> Unit = {}, onLeaveDemo: () -> Unit = {}) {
-  val app = LocalContext.current.applicationContext as GetNFApp
-  var signedIn by remember { mutableStateOf(app.accountSettings.account() != null) }
-  Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
+fun SettingsScreen(go: SettingsRoutes) {
+  val context = LocalContext.current
+  val app = context.applicationContext as GetNFApp
+  // Read again on every return here (plain remember): signing in and out happen on the screens this one opens.
+  val account = remember { app.accountSettings.account() }
+  Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 32.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp)) {
-      io.github.sandroroque.getnf.ui.calmo.BackHeader("Voltar", onDone)
-      io.github.sandroroque.getnf.ui.calmo.ScreenTitle("Ajustes")
-      // In the demo (D115) nothing here applies to made-up receipts: no account, no backups, no photos to send.
-      if (app.accountSettings.demo) {
-        io.github.sandroroque.getnf.ui.calmo.Sub("Você está vendo o exemplo: notas inventadas de uma casa em Florianópolis, de maio a outubro. " +
-          "Mexa à vontade; nada daqui é guardado nem enviado. Conta, cópias de segurança e o resto dos ajustes ficam nas suas notas.")
-        io.github.sandroroque.getnf.ui.calmo.Pill("Sair do exemplo", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Solid, onClick = onLeaveDemo)
-        return@Column
+    BackHeader("Voltar", go.back)
+    ScreenTitle("Ajustes")
+    // In the demo (D115) nothing here applies to made-up receipts: no account, no backups, no photos to send.
+    if (app.accountSettings.demo) {
+      LeadCard {
+        Text("Você está vendo o exemplo", style = MaterialTheme.typography.titleSmall, color = Calmo.fg)
+        Sub("Notas inventadas de uma casa em Florianópolis, de maio a outubro. Mexa à vontade; nada daqui é guardado nem " +
+          "enviado. Conta, cópias de segurança e o resto dos ajustes ficam nas suas notas.")
+        Wide("Sair do exemplo", ButtonKind.Solid, onClick = go.leaveDemo)
       }
-      AccountSection(app, onDone) { signedIn = it }
-      HorizontalDivider()
-      if (signedIn) {
-        CadernetasSection(app, onOpenLedger)
-        HorizontalDivider()
+      return@Column
+    }
+
+    if (account == null) SignedOutCard(go.signIn)
+    else {
+      val sync = syncState(app)
+      AccountCard(account, sync, go.account)
+      Group("Caderneta")
+      // The first sync picks the caderneta to open: read again after each.
+      LedgerRows(app, remember(sync.last) { app.accountSettings.ledgerId() }, go)
+    }
+
+    Group("Este celular")
+    Column {
+      AmountRow("Cópia de segurança", null, subtitle = "Guardar tudo num arquivo, ou restaurar de um", onClick = go.backup)
+      ContributionRow(app, signedIn = account != null)
+    }
+
+    Group("Sobre")
+    Column {
+      AmountRow("Política de privacidade", null, subtitle = "caderneta.roqlab.com.br", onClick = {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://caderneta.roqlab.com.br/privacidade/")))
+      })
+      if (BuildConfig.DEBUG) AmountRow("Desenvolvimento", null, subtitle = "Servidor, revisor, testes de captura", onClick = go.developer)
+    }
+    Sub("Versão ${BuildConfig.VERSION_NAME}")
+  }
+}
+
+@Composable
+private fun Group(label: String) {
+  Spacer(Modifier.height(4.dp))
+  SectionLabel(label)
+}
+
+/** Signed out: what an account adds, and the one way in. */
+@Composable
+private fun SignedOutCard(onSignIn: () -> Unit) {
+  LeadCard {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+      Avatar(null)
+      Column {
+        Text("Sem conta", style = MaterialTheme.typography.titleSmall, color = Calmo.fg)
+        Sub("Suas notas ficam só neste celular.")
       }
-      HealthSection(app)
-      HorizontalDivider()
-      BackupSection(app)
-      HorizontalDivider()
-      ContributionSection(app)
-      if (io.github.sandroroque.getnf.BuildConfig.DEBUG) {
-        HorizontalDivider()
-        DeveloperSection(app)
+    }
+    Text("Com uma conta, os itens ganham categoria sozinhos, as notas ficam guardadas online e dá para dividir uma " +
+      "caderneta com quem mora com você.", style = MaterialTheme.typography.bodyMedium, color = Calmo.fg)
+    Wide("Entrar ou criar conta", ButtonKind.Solid, onClick = onSignIn)
+  }
+}
+
+private class SyncState(val running: Boolean, val retrying: Boolean, val last: Long)
+
+@Composable
+private fun syncState(app: GetNFApp): SyncState {
+  val infos by remember { WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow(SyncWorker.NAME) }
+    .collectAsStateWithLifecycle(emptyList())
+  val last = remember(infos) { app.accountSettings.lastSync }
+  return SyncState(
+    running = infos.any { it.state == WorkInfo.State.RUNNING },
+    retrying = infos.any { it.state == WorkInfo.State.ENQUEUED && it.runAttemptCount > 0 },
+    last = last,
+  )
+}
+
+/** Signed in: who, and how the sync is going; the card opens the account. */
+@Composable
+private fun AccountCard(account: Account, sync: SyncState, onOpen: () -> Unit) {
+  val context = LocalContext.current
+  val running = sync.running
+  val retrying = sync.retrying
+  val last = sync.last
+  LeadCard(onClick = onOpen) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+      Avatar(displayName(account))
+      Column(Modifier.weight(1f)) {
+        Text(displayName(account), style = MaterialTheme.typography.titleSmall, color = Calmo.fg)
+        Sub(account.email)
       }
+      Icon(Icons.Chevron, null, Modifier.size(14.dp), tint = Calmo.mute)
+    }
+    Hairline()
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      Icon(if (running || retrying) Icons.Sync else Icons.Check, null, Modifier.size(16.dp), tint = Calmo.mute)
+      Sub(
+        when {
+          running -> "Sincronizando…"
+          retrying -> "Sem conexão com o servidor; tenta de novo sozinho"
+          last > 0 -> "Sincronizado ${ago(last)}"
+          else -> "Ainda não sincronizou"
+        },
+        Modifier.weight(1f),
+      )
+      if (!running) TextLink("Sincronizar") { SyncWorker.enqueue(context) }
+    }
+  }
+}
+
+/** The name given at sign-up, else the e-mail's first part. */
+internal fun displayName(account: Account) = account.name.ifBlank { account.email.substringBefore('@') }
+
+private fun ago(millis: Long): String {
+  val minutes = (System.currentTimeMillis() - millis) / 60_000
+  return when {
+    minutes < 1 -> "agora há pouco"
+    minutes < 60 -> "há $minutes min"
+    minutes < 24 * 60 -> "há ${minutes / 60} h"
+    else -> "em ${Format.dateTime(millis)}"
+  }
+}
+
+/** The caderneta open on this phone, and the way to the others (D104). */
+@Composable
+private fun LedgerRows(app: GetNFApp, open: String?, go: SettingsRoutes) {
+  var mine by remember { mutableStateOf<List<LedgerInfo>?>(null) }
+  LaunchedEffect(open) { if (open != null) mine = runCatching { LedgerService(app.accountSettings).mine() }.getOrNull() }
+  val current = mine?.find { it.id == open }
+  Column {
+    when {
+      open == null -> {}
+      current != null -> AmountRow(current.name, null,
+        subtitle = "aberta neste celular · ${if (current.members == 1) "só você" else "${current.members} pessoas"}",
+        onClick = { go.ledger(open) })
+      // Someone else's (another account signed in here, or this one left it): nothing syncs until another is opened.
+      mine != null -> AmountRow("Nenhuma caderneta sua aberta", null,
+        subtitle = "A deste celular não é desta conta. Abra uma em Cadernetas.", onClick = go.cadernetas)
+      else -> AmountRow("Caderneta aberta", null, subtitle = "aberta neste celular", onClick = { go.ledger(open) })
+    }
+    AmountRow("Cadernetas", null, subtitle = "Todas as suas: criar, entrar com um código, trocar", onClick = go.cadernetas)
   }
 }
 
 /** Photos for improving the app (D103): off until the user turns it on; turning it off takes them back (D105). */
 @Composable
-private fun ContributionSection(app: GetNFApp) {
+private fun ContributionRow(app: GetNFApp, signedIn: Boolean) {
   val context = LocalContext.current
   var enabled by remember { mutableStateOf(app.photoContribution.enabled) }
   var withdrawing by remember { mutableStateOf(app.photoContribution.withdrawPending) }
-  io.github.sandroroque.getnf.ui.calmo.SectionLabel("Ajudar a melhorar o app")
-  Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-    Column(Modifier.weight(1f)) {
-      Text("Enviar fotos das notas que o app não leu bem", style = MaterialTheme.typography.bodyLarge)
-      io.github.sandroroque.getnf.ui.calmo.Sub("Só dessas notas, com os dados do cartão e o CPF cobertos.")
-    }
-    androidx.compose.material3.Switch(checked = enabled, onCheckedChange = {
-      enabled = it
-      app.photoContribution.enabled = it
-      withdrawing = app.photoContribution.withdrawPending
-      if (withdrawing) SyncWorker.enqueue(context)
-    })
+  SwitchRow("Ajudar a melhorar o app", "Enviar fotos das notas que o app não leu bem, com os dados do cartão e o CPF cobertos.", enabled) {
+    enabled = it
+    app.photoContribution.enabled = it
+    withdrawing = app.photoContribution.withdrawPending
+    if (withdrawing) SyncWorker.enqueue(context)
   }
-  if (withdrawing) io.github.sandroroque.getnf.ui.calmo.Sub(
-    if (app.accountSettings.account() != null) "As fotos já enviadas serão apagadas do servidor na próxima sincronização."
-    else "As fotos já enviadas serão apagadas do servidor quando você entrar na conta de novo."
+  if (withdrawing) Sub(
+    if (signedIn) "As fotos já enviadas serão apagadas do servidor na próxima sincronização."
+    else "As fotos já enviadas serão apagadas do servidor quando você entrar na conta de novo.",
+    Modifier.padding(top = 8.dp),
   )
-}
-
-/** The project's minimum (supabase/config.toml, and the online project's Auth settings). */
-private const val MIN_PASSWORD = 6
-
-/** What went wrong signing up or in, in words the person can act on; the server's own text when it's something else. */
-private fun authError(t: Throwable): String {
-  val code = (t as? io.github.sandroroque.getnf.sync.SupabaseException)?.code
-  val text = t.message.orEmpty()
-  return when {
-    code == "invalid_credentials" -> "E-mail ou senha errados."
-    code == "email_not_confirmed" -> "Falta confirmar o e-mail: toque no link que mandamos (olhe também o spam)."
-    code == "user_already_exists" -> "Já existe uma conta com esse e-mail. Entre com a senha dela."
-    code == "weak_password" -> "Senha fraca: use pelo menos $MIN_PASSWORD caracteres."
-    code == "email_address_invalid" || code == "validation_failed" -> "Esse e-mail não parece certo."
-    code == "over_email_send_rate_limit" || "rate limit" in text -> "Muitos e-mails mandados agora. Tente de novo daqui a uma hora."
-    t is java.io.IOException -> "Sem conexão com o servidor. Tente de novo."
-    else -> "Não deu certo: $text"
-  }
-}
-
-/** Debug builds only (D99). */
-@Composable
-private fun DeveloperSection(app: GetNFApp) {
-  var testing by remember { mutableStateOf(app.devSettings.testingCapture) }
-  io.github.sandroroque.getnf.ui.calmo.SectionLabel("Desenvolvimento")
-  Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-    Column(Modifier.weight(1f)) {
-      Text("Testando a captura", style = MaterialTheme.typography.bodyLarge)
-      io.github.sandroroque.getnf.ui.calmo.Sub("Ao terminar, não oferece a página da SEFAZ nem lembra dela depois: as consultas não se gastam em notas já conhecidas.")
-    }
-    androidx.compose.material3.Switch(checked = testing, onCheckedChange = { testing = it; app.devSettings.testingCapture = it })
-  }
-}
-
-/**
- * Sign in to the Supabase project (D70). Only the refresh token is kept, never the password. The project's address
- * and publishable key come with the build; they can be changed here (say, to a local Supabase for development).
- */
-@Composable
-private fun AccountSection(app: GetNFApp, onDone: () -> Unit, onSignedIn: (Boolean) -> Unit) {
-  val context = LocalContext.current
-  val scope = rememberCoroutineScope()
-  val initial = remember { app.accountSettings.project() }
-  var account by remember { mutableStateOf(app.accountSettings.account()) }
-  var url by remember { mutableStateOf(initial.url) }
-  var key by remember { mutableStateOf(initial.key) }
-  var email by remember { mutableStateOf(account?.email ?: "") }
-  var password by remember { mutableStateOf("") }
-  var repeat by remember { mutableStateOf("") }
-  // An e-mail waiting for its confirmation link, which can be sent again.
-  var awaiting by remember { mutableStateOf<String?>(null) }
-  var showProject by remember { mutableStateOf(!initial.isComplete) }
-  var creating by remember { mutableStateOf(false) }
-  var name by remember { mutableStateOf("") }
-  var deleting by remember { mutableStateOf<List<String>?>(null) }
-  var status by remember { mutableStateOf<String?>(null) }
-  var busy by remember { mutableStateOf(false) }
-
-  Text("Conta", style = MaterialTheme.typography.titleMedium)
-  val current = account
-  if (current != null) {
-    Text("Conectado como ${current.email}. As notas e o catálogo sincronizam com o servidor.")
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-      Button(onClick = { SyncWorker.enqueue(context); onDone() }) { Text("Sincronizar agora") }
-      OutlinedButton(onClick = { app.accountSettings.signOut(); account = null; onSignedIn(false); status = "Desconectado. Nada foi apagado do celular." }) { Text("Sair") }
-    }
-    TextButton(enabled = !busy, onClick = {
-      busy = true
-      scope.launch {
-        runCatching { io.github.sandroroque.getnf.sync.LedgerService(app.accountSettings).toHandOver() }
-          .onSuccess { deleting = it }.onFailure { status = "Não deu certo: ${it.message}" }
-        busy = false
-      }
-    }) { Text("Apagar minha conta") }
-  } else {
-    Text("Sem conta, tudo fica só neste celular. Com uma, você pode dividir uma caderneta com outras pessoas.", style = MaterialTheme.typography.bodySmall)
-    if (creating) OutlinedTextField(name, { name = it }, label = { Text("Seu nome (como os outros vão te ver)") }, singleLine = true,
-      modifier = Modifier.fillMaxWidth())
-    OutlinedTextField(email, { email = it }, label = { Text("E-mail") }, singleLine = true,
-      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
-    OutlinedTextField(password, { password = it }, label = { Text("Senha") }, singleLine = true,
-      visualTransformation = PasswordVisualTransformation(),
-      supportingText = if (creating) ({ Text("Pelo menos $MIN_PASSWORD caracteres.") }) else null,
-      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
-    // A new password is typed twice: a typo there would lock the person out of the account they just made.
-    val mismatch = creating && repeat.isNotEmpty() && repeat != password
-    if (creating) OutlinedTextField(repeat, { repeat = it }, label = { Text("Repita a senha") }, singleLine = true,
-      visualTransformation = PasswordVisualTransformation(), isError = mismatch,
-      supportingText = if (mismatch) ({ Text("As senhas não são iguais.") }) else null,
-      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
-    val ready = email.isNotBlank() && password.isNotEmpty() &&
-      (!creating || (name.isNotBlank() && password.length >= MIN_PASSWORD && repeat == password))
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-      Button(enabled = !busy && ready, onClick = {
-        busy = true; status = if (creating) "Criando a conta…" else "Entrando…"
-        scope.launch {
-          val project = ProjectConfig(url, key)
-          val address = email.trim()
-          status = withContext(Dispatchers.IO) {
-            runCatching {
-              val client = SupabaseClient(project.url.trim(), project.key.trim())
-              if (creating) client.signUp(address, password, name.trim()) else SupabaseClient.SignUp.Done(client.signIn(address, password))
-            }
-          }.fold(
-            { result ->
-              when (result) {
-                is SupabaseClient.SignUp.Done -> {
-                  app.accountSettings.setProject(project)
-                  app.accountSettings.signedIn(result.session)
-                  account = app.accountSettings.account(); password = ""; repeat = ""; awaiting = null; onSignedIn(true)
-                  SyncWorker.enqueue(context)
-                  "Conectado ✓ Sincronizando…"
-                }
-                SupabaseClient.SignUp.ConfirmEmail -> {
-                  awaiting = address; creating = false; repeat = ""
-                  "Conta criada. Mandamos um link para $address: toque nele e depois entre aqui. Se não chegar em alguns minutos, olhe o spam."
-                }
-                SupabaseClient.SignUp.Exists -> {
-                  creating = false; repeat = ""
-                  "Já existe uma conta com $address. Entre com a senha dela."
-                }
-              }
-            },
-            {
-              // Signing in before confirming: the link can be sent again from here.
-              when ((it as? io.github.sandroroque.getnf.sync.SupabaseException)?.code) {
-                "email_not_confirmed" -> awaiting = address
-                // Where confirmations are off, Supabase says so outright: on to signing in, as for [SignUp.Exists].
-                "user_already_exists" -> { creating = false; repeat = "" }
-              }
-              authError(it)
-            },
-          )
-          busy = false
-        }
-      }) { Text(if (creating) "Criar conta" else "Entrar") }
-      TextButton(onClick = { creating = !creating; status = null }) { Text(if (creating) "Já tenho conta" else "Criar conta") }
-    }
-    awaiting?.let { address ->
-      TextButton(enabled = !busy, onClick = {
-        busy = true
-        scope.launch {
-          status = withContext(Dispatchers.IO) {
-            runCatching { SupabaseClient(url.trim(), key.trim()).resendConfirmation(address) }
-          }.fold({ "Link mandado de novo para $address." }, { authError(it) })
-          busy = false
-        }
-      }) { Text("Mandar o link de novo") }
-    }
-  }
-  TextButton(onClick = { showProject = !showProject }) { Text(if (showProject) "Ocultar servidor" else "Servidor…") }
-  if (showProject) {
-    OutlinedTextField(url, { url = it }, label = { Text("Endereço do projeto") }, singleLine = true,
-      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), modifier = Modifier.fillMaxWidth())
-    OutlinedTextField(key, { key = it }, label = { Text("Chave pública (publishable)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-    if (current != null) Text("Trocar de servidor desconecta a conta.", style = MaterialTheme.typography.bodySmall)
-    OutlinedButton(onClick = {
-      app.accountSettings.setProject(ProjectConfig(url, key)); account = app.accountSettings.account(); status = "Servidor salvo."
-    }) { Text("Salvar servidor") }
-  }
-  status?.let { Text(it) }
-
-  deleting?.let { blocked ->
-    AlertDialog(
-      onDismissRequest = { deleting = null },
-      title = { Text(if (blocked.isEmpty()) "Apagar sua conta?" else "Antes, passe suas cadernetas") },
-      text = {
-        Text(
-          if (blocked.isNotEmpty()) "Você é a única pessoa responsável por ${blocked.joinToString(", ")}, que têm outras pessoas. " +
-            "Torne alguém responsável (Ajustes › Cadernetas) e volte aqui."
-          else "Sua conta sai do servidor, e você sai de todas as cadernetas: as fotos que você enviou saem com você; as notas e o " +
-            "catálogo ficam com quem continua. Cadernetas só suas são apagadas do servidor.\n\nNeste celular nada é apagado. " +
-            "Se quiser guardar tudo num arquivo, use \"Exportar\" em Cópia de segurança antes.",
-        )
-      },
-      confirmButton = {
-        if (blocked.isEmpty()) TextButton(onClick = {
-          deleting = null; busy = true; status = "Apagando a conta…"
-          scope.launch {
-            runCatching { io.github.sandroroque.getnf.sync.LedgerService(app.accountSettings).deleteMe() }
-              .onSuccess { app.accountSettings.signOut(); app.photoContribution.withdrawPending = false; account = null; onSignedIn(false); status = "Conta apagada. O que está neste celular continua aqui." }
-              .onFailure { status = "Não deu certo: ${it.message}" }
-            busy = false
-          }
-        }) { Text("Apagar a conta") }
-      },
-      dismissButton = { TextButton(onClick = { deleting = null }) { Text(if (blocked.isEmpty()) "Cancelar" else "Entendi") } },
-    )
-  }
-}
-
-/** The LLM worker's last health report (D65, D69, stage 8), in plain words. */
-@Composable
-private fun HealthSection(app: GetNFApp) {
-  val row by remember { app.database.edit().latestReport() }.collectAsStateWithLifecycle(null)
-  Text("Saúde dos dados", style = MaterialTheme.typography.titleMedium)
-  val r = row?.let { runCatching { kotlinx.serialization.json.Json.parseToJsonElement(it.report) as kotlinx.serialization.json.JsonObject }.getOrNull() }
-  if (row == null || r == null) {
-    Text("O revisor ainda não rodou para esta conta.", style = MaterialTheme.typography.bodySmall)
-    return
-  }
-  fun n(key: String) = (r[key] as? kotlinx.serialization.json.JsonPrimitive)?.takeUnless { it is kotlinx.serialization.json.JsonNull }?.content
-  val lines = listOfNotNull(
-    "Última revisão: ${Format.dateTime(row!!.at)}",
-    n("audited")?.let { "Conferidas pelo revisor: $it, discordou de ${n("disagreed") ?: "0"}" },
-    n("automatic_unconfirmed")?.let { "Categorias automáticas ainda não confirmadas: $it (nunca conferidas: ${n("never_checked") ?: "?"})" },
-    n("sample_error_rate")?.let { "Erro medido na amostra: ${Math.round(it.toDouble() * 100)}% de ${n("sample_size")} conferências" },
-    n("abbreviations_added")?.takeIf { it != "0" }?.let { "Abreviações aprendidas: $it" },
-    n("links_proposed")?.takeIf { it != "0" }?.let { "Mesmos produtos sugeridos: $it" },
-    n("sizes_proposed")?.takeIf { it != "0" }?.let { "Tamanhos sugeridos: $it" },
-    n("backup_age_hours")?.let { "Último backup: há ${it.toDouble().toInt()} h" },
-  )
-  lines.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
-}
-
-/** Export everything to a file the user picks, or replace everything from one (D47). */
-@Composable
-private fun BackupSection(app: GetNFApp) {
-  val scope = rememberCoroutineScope()
-  var status by remember { mutableStateOf<String?>(null) }
-  var busy by remember { mutableStateOf(false) }
-  var candidate by remember { mutableStateOf<BackupManifest?>(null) }
-  val receipts by app.receiptStore.receipts.collectAsStateWithLifecycle()
-
-  val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
-    if (uri == null) return@rememberLauncherForActivityResult
-    busy = true
-    scope.launch {
-      status = runCatching { app.backup.export(uri) { done, total -> status = "Exportando… $done de $total arquivos" } }
-        .fold({ "Exportadas ${it.receipts} notas e ${it.photos} fotos ✓" }, { "A exportação falhou: ${it.message}" })
-      busy = false
-    }
-  }
-  val restore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-    if (uri == null) return@rememberLauncherForActivityResult
-    busy = true
-    status = "Conferindo a cópia…"
-    scope.launch {
-      runCatching { app.backup.inspect(uri) }
-        .onSuccess { candidate = it; status = null }
-        .onFailure { status = "Não dá para restaurar este arquivo: ${it.message}" }
-      busy = false
-    }
-  }
-
-  Text("Cópia de segurança", style = MaterialTheme.typography.titleMedium)
-  Text("Notas, fotos, páginas e o banco de dados do celular, num arquivo que você escolhe. A conta não vai junto.", style = MaterialTheme.typography.bodySmall)
-  Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-    OutlinedButton(enabled = !busy, onClick = { export.launch("getnf-backup-${LocalDate.now()}.zip") }) { Text("Exportar") }
-    OutlinedButton(enabled = !busy, onClick = { restore.launch(arrayOf("application/zip", "application/octet-stream")) }) { Text("Restaurar") }
-  }
-  status?.let { Text(it) }
-
-  candidate?.let { m ->
-    AlertDialog(
-      onDismissRequest = { candidate = null; app.backup.discardInspected() },
-      title = { Text("Substituir tudo?") },
-      text = {
-        Text(
-          "Cópia de ${Format.dateTime(m.createdAt)}: ${m.receipts} notas, ${m.photos} fotos.\n" +
-            "Neste celular agora: ${receipts.size} notas, ${receipts.sumOf { it.photos.size }} fotos.\n\n" +
-            "Tudo neste celular é substituído pela cópia, e o app reinicia.",
-        )
-      },
-      confirmButton = {
-        TextButton(onClick = {
-          candidate = null; busy = true; status = "Restaurando…"
-          scope.launch {
-            runCatching { app.backup.restoreAndRestart() }.onFailure { status = "A restauração falhou: ${it.message}"; busy = false }
-          }
-        }) { Text("Substituir") }
-      },
-      dismissButton = { TextButton(onClick = { candidate = null; app.backup.discardInspected() }) { Text("Cancelar") } },
-    )
-  }
 }

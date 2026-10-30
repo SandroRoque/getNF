@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src %CONNECT%; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>Nova senha · %APP%</title>
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="config.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+<main>
+  <header class="top">
+    <a class="brand" href="/">%APP%</a>
+    <nav><a href="/privacidade/">Privacidade</a></nav>
+  </header>
+  <!-- Shown as is without the link's answer (the page opened again, say); app.js picks one of the others. -->
+  <section id="neutro">
+    <h1>Nova senha</h1>
+    <p>Esta página abre pelo link do e-mail de nova senha. Para pedir um, no app, em
+      <strong>Ajustes › Entrar ou criar conta</strong>, toque em <strong>Esqueci a senha</strong>.</p>
+  </section>
+  <noscript><p class="note">Esta página precisa de JavaScript.</p></noscript>
+  <form id="form" class="card" hidden>
+    <h1>Escolha uma nova senha</h1>
+    <p class="small" id="quem"></p>
+    <label>Nova senha <input id="senha" type="password" autocomplete="new-password" minlength="6" required></label>
+    <label>Repita a senha <input id="repita" type="password" autocomplete="new-password" minlength="6" required></label>
+    <p class="small">Pelo menos 6 caracteres.</p>
+    <button type="submit" id="salvar">Salvar a senha</button>
+    <p id="estado" role="status" aria-live="polite"></p>
+  </form>
+  <section id="ok" hidden>
+    <h1>Senha trocada ✓</h1>
+    <p>Volte ao app e entre com seu e-mail e a senha nova em <strong>Ajustes › Entrar ou criar conta</strong>.</p>
+    <p class="note">Pode fechar esta página. Nada foi guardado neste navegador.</p>
+  </section>
+  <section id="erro" hidden>
+    <h1>Este link não vale mais</h1>
+    <p>Ele expirou ou já foi usado. Peça outro no app: <strong>Ajustes › Entrar ou criar conta › Esqueci a senha</strong>.</p>
+    <p class="note" id="detalhe" hidden></p>
+  </section>
+</main>
+</body>
+</html>

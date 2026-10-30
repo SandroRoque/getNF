@@ -64,6 +64,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
       }
       // Then the other cadernetas this phone holds, each from its own files.
       OtherLedgers(app, app.accountSettings, app.photoArchiver).sync(client, session, mine, app.accountSettings.ledgerId())
+      app.accountSettings.lastSync = System.currentTimeMillis()
       Result.success()
     } catch (e: IOException) {
       Log.w(TAG, "server unreachable, will retry", e)
@@ -99,7 +100,10 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
           .build()
       // REPLACE: start now, even if an earlier run is waiting out a retry backoff. Cancelling a run mid-sync is
       // harmless: pushes are idempotent upserts and the next run picks up everything still dirty.
-      WorkManager.getInstance(context).enqueueUniqueWork("sync", ExistingWorkPolicy.REPLACE, request)
+      WorkManager.getInstance(context).enqueueUniqueWork(NAME, ExistingWorkPolicy.REPLACE, request)
     }
+
+    /** The unique work's name, to watch it run (Ajustes, D123). */
+    const val NAME = "sync"
   }
 }

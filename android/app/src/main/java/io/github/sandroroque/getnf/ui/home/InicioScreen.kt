@@ -53,7 +53,7 @@ import io.github.sandroroque.getnf.ui.spending.label
 @Composable
 fun InicioScreen(
   onSpending: () -> Unit, onDecisions: () -> Unit, onIpci: () -> Unit, onReceipt: (String) -> Unit, onSettings: () -> Unit,
-  onScan: () -> Unit = {}, onDemo: () -> Unit = {},
+  onScan: () -> Unit = {}, onDemo: () -> Unit = {}, onSignIn: () -> Unit = onSettings,
 ) {
   val app = LocalContext.current.applicationContext as GetNFApp
   val lines by remember { app.database.spending().lines() }.collectAsStateWithLifecycle(null)
@@ -75,7 +75,7 @@ fun InicioScreen(
   // The first steps (D115): not in the demo, and gone once done or hidden.
   var stepsHidden by remember { mutableStateOf(app.accountSettings.demo || app.onboarding.firstStepsHidden) }
   val steps = remember(receipts, account) {
-    firstSteps(receipts, account != null, onScan = onScan, onFetch = onDecisions, onAccount = onSettings)
+    firstSteps(receipts, account != null, onScan = onScan, onFetch = onDecisions, onAccount = onSignIn)
   }
 
   val month = spending?.periods?.lastOrNull()
@@ -86,8 +86,8 @@ fun InicioScreen(
   ) {
     item {
       Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Sub(month?.let { label(it, long = true).replaceFirstChar { c -> c.uppercase() } } ?: "getNF", Modifier.weight(1f))
-        AccountBadge(account?.email?.take(1), onSettings)
+        Sub(month?.let { label(it, long = true).replaceFirstChar { c -> c.uppercase() } } ?: "Caderneta", Modifier.weight(1f))
+        AccountBadge(account?.let { io.github.sandroroque.getnf.ui.settings.displayName(it) }?.take(1), onSettings)
       }
     }
     if (spending == null) return@LazyColumn

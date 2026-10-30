@@ -1,5 +1,7 @@
 package io.github.sandroroque.getnf.ui.onboarding
 
+import io.github.sandroroque.getnf.ui.calmo.Wide
+import io.github.sandroroque.getnf.ui.calmo.TextLink
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -112,16 +114,4 @@ private fun Dots(selected: Int, count: Int) {
         .background(if (i == selected) Calmo.fg else Calmo.line))
     }
   }
-}
-
-/** A pill as wide as the screen, for the one thing to do. */
-@Composable
-fun Wide(label: String, kind: ButtonKind, onClick: () -> Unit) {
-  Pill(label, kind, modifier = Modifier.fillMaxWidth().height(48.dp), onClick = onClick)
-}
-
-@Composable
-fun TextLink(label: String, onClick: () -> Unit) {
-  Text(label, style = MaterialTheme.typography.labelLarge, color = Calmo.fg,
-    modifier = Modifier.clip(CircleShape).clickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 8.dp))
 }

@@ -1,5 +1,6 @@
 package io.github.sandroroque.getnf.ui.onboarding
 
+import io.github.sandroroque.getnf.ui.calmo.Wide
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

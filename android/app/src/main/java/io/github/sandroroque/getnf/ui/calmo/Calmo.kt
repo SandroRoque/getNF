@@ -74,6 +74,10 @@ object Icons {
   val Focus = line("focus", "M12 3v4M12 17v4M3 12h4M17 12h4M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z")
   val Arrow = line("arrow", "M12 19V5M5.5 11.5 12 5l6.5 6.5")
   val Check = line("check", "M5 12.5l4.5 4.5L19 7")
+  val Eye = line("eye", "M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z", "M14.8 12a2.8 2.8 0 1 1-5.6 0 2.8 2.8 0 0 1 5.6 0z")
+  val EyeOff = line("eye-off", "M4 4l16 16", "M9.9 5.8A9.6 9.6 0 0 1 12 5.5C18 5.5 21.5 12 21.5 12a17 17 0 0 1-2.6 3.4M6.4 6.9C3.9 8.6 2.5 12 2.5 12S6 18.5 12 18.5c1.6 0 3-.4 4.2-1", "M10 10a2.8 2.8 0 0 0 4 4")
+  val Mail = line("mail", "M3.5 6h17v12h-17z", "M3.8 6.4 12 13l8.2-6.6")
+  val Sync = line("sync", "M19.5 12a7.5 7.5 0 0 1-13 5.1M4.5 12a7.5 7.5 0 0 1 13-5.1", "M17.5 3v4h-4M6.5 21v-4h4")
   val Person = line("person", "M15.5 8a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0zM5 20c.8-3.4 3.6-5.5 7-5.5s6.2 2.1 7 5.5")
 }
 
@@ -215,7 +219,8 @@ fun Pill(
 ) {
   val shape = RoundedCornerShape(999.dp)
   val (bg, fg, border) = when (kind) {
-    ButtonKind.Solid -> Triple(Calmo.fg, Calmo.bg, Calmo.fg)
+    // A disabled solid button goes quiet instead of keeping its weight.
+    ButtonKind.Solid -> if (enabled) Triple(Calmo.fg, Calmo.bg, Calmo.fg) else Triple(Calmo.line, Calmo.mute, Calmo.line)
     ButtonKind.Outline -> Triple(Color.Transparent, Calmo.fg, Calmo.fg)
     ButtonKind.Ghost -> Triple(Color.Transparent, Calmo.mute, Calmo.line)
   }

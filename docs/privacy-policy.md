@@ -99,7 +99,7 @@ consentimento e pedir a exclusão.
   e o banco de dados do celular.
 - **Correção:** tudo é editável no app.
 - **Sair de uma caderneta:** Ajustes › Cadernetas.
-- **Apagar a conta:** Ajustes › Conta › Apagar minha conta, ou pela página **[endereço da página de exclusão]**, ou
+- **Apagar a conta:** Ajustes › sua conta › Apagar a conta, ou pela página **[endereço da página de exclusão]**, ou
   por e-mail para **[e-mail de contato]**. Se você for o único responsável por uma caderneta com outros membros, será
   preciso passá-la a outro membro antes.
 - **Envio de fotos:** desligue em Ajustes a qualquer momento. Ao desligar, as fotos que você já enviou são apagadas

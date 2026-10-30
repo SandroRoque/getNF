@@ -9,6 +9,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -27,7 +28,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 class SupabaseException(val status: Int, message: String, val code: String? = null) : Exception(message)
 
 /** A signed-in user. The refresh token is what's kept; access tokens last an hour and are renewed each sync. */
-data class SupabaseSession(val userId: String, val email: String, val accessToken: String, val refreshToken: String)
+/** [name] is the one given at sign-up (D104), "" for an account made before names. */
+data class SupabaseSession(val userId: String, val email: String, val accessToken: String, val refreshToken: String, val name: String = "")
 
 /**
  * Minimal client for the project's Auth, Data API (PostgREST) and Storage, over plain HTTP (D70). Blocking: call it
@@ -67,6 +69,13 @@ class SupabaseClient(val url: String, private val key: String, private val http:
     call(Request.Builder().url(target).header("apikey", key).post(body.toString().toRequestBody(JSON)).build())
   }
 
+  /** Sends the e-mail with a link to choose a new password, which lands on [NEW_PASSWORD_PAGE] (D123). */
+  fun recover(email: String) {
+    val target = base.newBuilder().addPathSegments("auth/v1/recover").addQueryParameter("redirect_to", NEW_PASSWORD_PAGE).build()
+    val body = buildJsonObject { put("email", email) }
+    call(Request.Builder().url(target).header("apikey", key).post(body.toString().toRequestBody(JSON)).build())
+  }
+
   fun refresh(refreshToken: String): SupabaseSession =
     session(auth("refresh_token", buildJsonObject { put("refresh_token", refreshToken) }))
 
@@ -80,6 +89,7 @@ class SupabaseClient(val url: String, private val key: String, private val http:
     return SupabaseSession(
       userId = user["id"]!!.jsonPrimitive.content, email = user["email"]?.jsonPrimitive?.content ?: "",
       accessToken = o["access_token"]!!.jsonPrimitive.content, refreshToken = o["refresh_token"]!!.jsonPrimitive.content,
+      name = ((user["user_metadata"] as? JsonObject)?.get("name") as? JsonPrimitive)?.contentOrNull.orEmpty(),
     )
   }
 
@@ -185,6 +195,8 @@ class SupabaseClient(val url: String, private val key: String, private val http:
      * URLs; otherwise it uses the Site URL.
      */
     const val CONFIRMED_PAGE = "https://caderneta.roqlab.com.br/conta-confirmada/"
+    /** Where the reset-password e-mail's link lands (D123); listed with the other in Redirect URLs. */
+    const val NEW_PASSWORD_PAGE = "https://caderneta.roqlab.com.br/nova-senha/"
     val JSON = "application/json".toMediaType()
   }
 }

@@ -162,7 +162,7 @@ site_url = "http://127.0.0.1:3000"
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 # The confirmation e-mail's landing page (D120); the online project needs it in its Redirect URLs too.
-additional_redirect_urls = ["https://127.0.0.1:3000", "https://caderneta.roqlab.com.br/conta-confirmada/"]
+additional_redirect_urls = ["https://127.0.0.1:3000", "https://caderneta.roqlab.com.br/conta-confirmada/", "https://caderneta.roqlab.com.br/nova-senha/"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -249,6 +249,10 @@ otp_expiry = 3600
 [auth.email.template.confirmation]
 subject = "Confirme seu e-mail · Caderneta"
 content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Nova senha · Caderneta"
+content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

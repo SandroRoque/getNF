@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-30. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D122). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
+`docs/decisions.md` (D1–D123). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
@@ -39,14 +39,19 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
   [capture-backlog.md](capture-backlog.md).
 - **First start (D115):** a three-page welcome, a how-to before the first scan, "Primeiros passos" on Início until the
   first page is fetched (D116), and a read-only demo caderneta (bundled, never synced) one tap away.
+- **Ajustes (D123):** an index. The account in a card at the top (what an account gives, or who and when it last
+  synced), then rows that open their own screens: the open caderneta and Cadernetas, Cópia de segurança, the photo
+  switch, privacy. Entrar / Criar conta is its own screen ("Confira seu e-mail" after a sign-up, "Esqueci a senha" by
+  e-mail to `/nova-senha/` on the site); the account screen signs out and deletes. Servidor, Saúde dos dados and
+  Testando a captura are under Desenvolvimento, in debug builds only.
 - **After a scan (D99–D101):** "Nota salva" offers the page at once or reminds 3 h later; a receipt waiting for its
   page has its own screen; once fetched, the receipt opens and its photos' discounts are read by themselves.
 - **Photos (D98, D103):** stay on the phone. Copies go online only if the user opts in, and then only for receipts the
   app failed with, with the card slip, any CPF and the operator blanked.
 - **Cadernetas (D104):** a person can own several cadernetas and be in others; everyone in one sees everything. Each
   has its own database and receipts folder on the phone; opening another restarts the app. Ajustes › Cadernetas
-  creates, joins by code, invites, changes roles, copies receipts to another caderneta and leaves; Conta creates a
-  login and deletes it. Other cadernetas this phone has files for sync in the background; receipts another member
+  creates, joins by code, invites, changes roles, copies receipts to another caderneta and leaves; Entrar /
+  Criar conta makes a login and the account screen deletes it. Other cadernetas this phone has files for sync in the background; receipts another member
   scanned say "por Ana". Store items and parser-made products have code-derived ids, so two phones make the same rows;
   a row the server refuses is parked instead of failing every sync. Pages lose the buyer's CPF and name when saved. A
   member claims a receipt before fetching its page; a page another member fetched is adopted. The pages already
@@ -87,8 +92,8 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 ## Open items
 
 - **Cadernetas, not built yet (D104):**
-  - Parked rows (`sync_parked`, a row the server refused) aren't shown anywhere yet; D104 says they are. They belong in
-    Ajustes › Saúde dos dados, with a way to retry or drop one.
+  - Parked rows (`sync_parked`, a row the server refused) aren't shown anywhere yet; D104 says they are. They belong next to
+    the sync line on Ajustes' account card (D123), with a way to retry or drop one.
   - A caderneta joined but never opened on this phone isn't downloaded until it's opened.
   - No screen for a caderneta's setup history (`ledger_event`).
   - Leaving a caderneta (or being removed) leaves its database and receipts folder on the phone; nothing clears them.
@@ -134,13 +139,10 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
 
 ## Pending, by the user
 
-- **E-mail for sign-ups (D119, D120):** the online project sends with Supabase's built-in sender, which delivers only
-  to the organisation's members, a few an hour. Before anyone else signs up, in the Supabase dashboard:
-  Authentication › Emails › SMTP Settings with Resend (`smtp.resend.com`, 465, user `resend`, an API key with send
-  access, sender `nao-responda@roqlab.com.br` on a domain verified in Resend); Templates › Confirm signup from
-  `supabase/templates/confirmation.html` (subject "Confirme seu e-mail · Caderneta"); URL Configuration: Site URL
-  `https://caderneta.roqlab.com.br` and `https://caderneta.roqlab.com.br/conta-confirmada/` in Redirect URLs; then
-  redeploy the site (`web/README.md`) so the page exists.
+- **"Esqueci a senha" (D123):** in the Supabase dashboard, Authentication › Emails › Templates › Reset password from
+  `supabase/templates/recovery.html` (subject "Nova senha · Caderneta"), and add
+  `https://caderneta.roqlab.com.br/nova-senha/` to URL Configuration › Redirect URLs. Until then the e-mail is
+  Supabase's English default and its link lands on the Site URL instead of the page.
 - Run `sudo bash tools/setup-system.sh` once (udev rules for the phone, Docker at boot for the local Supabase, adb and
   kvm groups).
 - Back up `~/.config/getnf/` (the upload key, made 2026-10-30) and its password somewhere off this PC: without
