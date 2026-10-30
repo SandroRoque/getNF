@@ -202,9 +202,13 @@ private fun TabBar(selected: NavKey?, onTab: (NavKey) -> Unit, onScan: () -> Uni
       horizontalArrangement = Arrangement.SpaceEvenly) {
       TabItem(Icons.Home, "Início", selected == Inicio) { onTab(Inicio) }
       TabItem(Icons.Chart, "Gastos", selected == Spending) { onTab(Spending) }
-      Box(Modifier.size(52.dp).clip(CircleShape).border(1.5.dp, Calmo.fg, CircleShape).clickable(onClick = onScan),
-        contentAlignment = Alignment.Center) {
-        Icon(Icons.Scan, "Escanear nota", Modifier.size(25.dp), tint = Calmo.fg)
+      // The receipt in a circle, named like the tabs around it (D118).
+      Column(Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp)).clickable(onClick = onScan).padding(horizontal = 6.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(46.dp).clip(CircleShape).border(1.5.dp, Calmo.fg, CircleShape), contentAlignment = Alignment.Center) {
+          Icon(Icons.Scan, null, Modifier.size(24.dp), tint = Calmo.fg)
+        }
+        Text("Escanear", style = MaterialTheme.typography.labelMedium, color = Calmo.fg)
       }
       TabItem(Icons.Inbox, "Para você", selected == ParaVoce) { onTab(ParaVoce) }
       TabItem(Icons.Grid, "Catálogo", selected is Catalog) { onTab(Catalog()) }

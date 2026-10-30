@@ -26,5 +26,6 @@ size; nothing is cropped). Same steps as above, plus:
 - `adb -e shell wm size 1080x2160` before, `adb -e shell wm size reset` after.
 - A clean status bar also needs `-e command network -e wifi show -e level 4 -e fully true` (or the Wi-Fi icon shows
   "!" on the emulator) and `-e command notifications -e visible false`.
+- They predate D115–D118: no onboarding, and the old scan button (a frame, no label).
 - Keep the files as PNG (Play takes PNG or JPEG, not WebP). The WebP ones above are from 2026-10-28 and still show
   the "JEV" marks and the old account button.

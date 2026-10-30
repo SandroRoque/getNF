@@ -128,6 +128,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D115 | app | current | A new user starts clean and is guided; the demo is a separate, read-only visit |
 | D116 | app | current | The first steps are one sitting; what comes with time is said where it will appear |
 | D117 | capture | current | The torch is on from the start of every capture |
+| D118 | app | current | The scan button is the receipt, named "Escanear" |
 
 ---
 
@@ -2948,3 +2949,11 @@ Asked by the user. D93 turned it on only once the frames were too dark to read; 
 whatever the light, since the print reads better lit. The button still turns it off, and once touched the capture
 leaves it alone (the D93 rule for when it's dark stays, for a torch turned off and a room going dark). A camera
 without a flash is left as it is. The how-to before the first scan says the torch starts on.
+
+## D118. The scan button is the receipt, named "Escanear" (2026-10-30)
+
+The user found the scan button unclear: a scan frame with a line, the only item in the bar without a name. Four
+icons were drawn in the bar (a camera, the receipt, the receipt in a scan frame, a QR Code), all with a label; chosen
+by the user: **the receipt**, the same one as in the app's icon (D114), since it says what the button reads rather
+than the device it uses, and with "Escanear" under it like the tabs around it. The circle went from 52 to 46 dp so
+the label fits the bar's height. The Play screenshots (2026-10-30) still show the old button.
