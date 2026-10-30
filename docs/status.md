@@ -93,7 +93,8 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
   - LGPD: get a legal read before opening cadernetas to people outside the family (D104).
 - **Photos (D103):** abandoned captures aren't kept for opted-in users; the photos uploaded before D103 stay until the
   user turns the opt-in on and off again, which takes them back too (D105). How long the phone keeps its own copies is open.
-- **Discounts from photos:** confirming each value against its photo snippet, and undo back to prorated.
+- **Discounts from photos:** confirming each value against its photo snippet, and undo back to prorated. Only a
+  partial reading asks the user now (D111).
 - **Stage 4 leftovers:** automatic assignments aren't re-run after a category tree change (D69).
 - **Manual-chave fallback** for damaged QR codes (D3/D13): not built.
 - **Size parsing gaps:** the parser still doesn't understand "1K" (= 1 kg) or "1 25KG" (= 1.25 kg). Since D108,

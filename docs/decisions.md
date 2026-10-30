@@ -121,6 +121,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D108 | categorizer | current | System-1 reads more than the category; a powerful LLM, run sparingly, replaces a cheap one run liberally |
 | D109 | dev | current | The local Supabase stack is kept off the network with a DOCKER-USER rule, not a rebind |
 | D110 | categorizer | current | An unsure "how it's sold" is a card; the user's answer is final; a pack shows its price per item |
+| D111 | discounts | current | Photo discounts that add up to the page's discount need no card |
 
 ---
 
@@ -2804,3 +2805,19 @@ Two of D108's open follow-ups, taken up at the user's go-ahead.
 **Deployed (2026-10-29),** by the user (`db push`); the v13 build went on the phone afterwards. The 6 store items D108
 had left without an answer were read again: all six "by the unit", unsure (0.61 to 0.88), so six cards. The phone
 pulled them; no row was refused or parked.
+
+## D111. Photo discounts that add up to the page's discount need no card (2026-10-30)
+
+Asked by the user: why so many cards for checking discounts, and can't code verify them? On the phone, all 8
+receipts waiting for a check (23 discounts, R$ 144,61) were D54's `COMPLETE`: the photos' readings add up exactly to
+the page's discount, nothing prorated. That sum is a check no person improves by looking: the page is SEFAZ's record,
+the reading is anchored on each item's code, a discount above its line or photos that disagree are a conflict, and a
+conflict applies nothing (D54).
+
+- **A card only when the photos explain part of the discount:** the readings, with any discount set by hand, add up to
+  less than the page's. Then the rest was prorated, and a person can say which items it belongs to.
+- **The lines stay `unreviewed`.** Nobody looked, and saying otherwise would make "confirmed" mean less (D51). No
+  server change: it's the phone's query (`photoDiscountChecks`). The receipt screen still lets the user confirm one.
+- **What the sum doesn't catch:** a discount read under the wrong item when the total still matches. D54's anchors
+  and distance limit make that unlikely, and the receipt's and the month's totals stay right either way; only that
+  item's price history would be off by the discount.

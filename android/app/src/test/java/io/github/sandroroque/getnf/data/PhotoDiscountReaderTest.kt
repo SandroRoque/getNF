@@ -4,6 +4,7 @@ import io.github.sandroroque.getnf.discounts.PhotoDiscounts.Verdict
 import io.github.sandroroque.getnf.discounts.PhotoText
 import io.github.sandroroque.getnf.discounts.TextLine
 import java.io.File
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -55,6 +56,20 @@ class PhotoDiscountReaderTest {
     // A re-parse keeps what the photo said (ReceiptParser, D49).
     ReceiptParser(db, tmp.root, log = { _, _ -> }).parse(r)
     assertEquals(30L to "photo", dao.lines(chave).single { it.lineNo == 2 }.let { it.discountCents to it.discountSource })
+  }
+
+  @Test fun onlyAPartialReadingAsksThePerson() = runTest {
+    val r = receipt()
+    // R$ 0,30 of R$ 0,50 found: the rest is prorated, and a person has to look (D111).
+    reader.read(r)
+    assertEquals(30L, db.lists().photoDiscountChecks().first().single().cents)
+    // All R$ 0,50 found: the page's total has checked the reading, no card.
+    discountText = "Desconto: 0,50"
+    File(store.dir(chave), r.photos.single() + PhotoDiscountReader.CACHE_SUFFIX).delete()
+    dao.deleteLines(chave)
+    ReceiptParser(db, tmp.root, log = { _, _ -> }).parse(r)
+    assertEquals(Verdict.COMPLETE, reader.read(r).result.verdict)
+    assertTrue(db.lists().photoDiscountChecks().first().isEmpty())
   }
 
   @Test fun theOcrIsCachedNextToThePhoto() = runTest {

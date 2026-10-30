@@ -32,7 +32,10 @@ internal const val SCANNED_BY = """(CASE WHEN r.scannedHere OR EXISTS (SELECT 1 
 private fun dayOf(millis: Long) = java.time.Instant.ofEpochMilli(millis).atOffset(java.time.ZoneOffset.ofHours(-3)).toLocalDate()
   .let { "%02d/%02d/%d".format(it.dayOfMonth, it.monthValue, it.year) }
 
-/** A receipt whose photo-read discounts haven't been checked against the photos yet (D54). */
+/**
+ * A receipt whose photo-read discounts haven't been checked against the photos yet (D54), and need a person: the
+ * photos explain only part of the page's discount, the rest prorated (D111).
+ */
 data class PhotoDiscountCheck(val chave: String, val storeName: String?, val issuedAt: Long?, val lines: Int, val cents: Long)
 
 @Dao
@@ -63,6 +66,10 @@ abstract class ListsDao {
     FROM receipt_line l LEFT JOIN receipt_parsed rp ON rp.chave = l.receipt LEFT JOIN issuer i ON i.cnpj = rp.issuerCnpj
     WHERE l.discountSource = 'photo' AND l.discountReview = 'unreviewed'
     GROUP BY l.receipt
+    -- When the photos' readings (with any set by hand) add up to the page's discount, the page's arithmetic has
+    -- checked them already (D111): no card.
+    HAVING (SELECT SUM(k.discountCents) FROM receipt_line k WHERE k.receipt = l.receipt AND k.discountSource IN ('photo', 'manual'))
+      < COALESCE(rp.discountCents, 0)
     """,
   )
   abstract fun photoDiscountChecks(): Flow<List<PhotoDiscountCheck>>
