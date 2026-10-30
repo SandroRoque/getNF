@@ -1,7 +1,16 @@
 package io.github.sandroroque.getnf.ui.catalog
 
 import android.widget.Toast
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.Alignment
+import io.github.sandroroque.getnf.ui.calmo.Icons
+import io.github.sandroroque.getnf.ui.calmo.Mark
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -92,7 +101,8 @@ fun CalmoSheet(title: String, onDismiss: () -> Unit, content: @Composable Column
 /**
  * Picks a category from the tree, searchable by label or description. A search keeps the matches' parents visible.
  * [exclude] hides categories (and their subtrees) that can't be chosen, such as the one being moved; [noneLabel]
- * offers "no category" / "top level".
+ * offers "no category" / "top level". The tree opens collapsed, except down to [current]; + and − open and close a
+ * category's children (D124). A search shows every match, opened.
  */
 @Composable
 fun CategoryPickerDialog(
@@ -105,15 +115,18 @@ fun CategoryPickerDialog(
   noneLabel: String? = null,
 ) {
   var query by remember { mutableStateOf("") }
+  val byId = remember(categories) { categories.associateBy { it.id } }
+  fun ancestors(id: String?) = generateSequence(byId[id]?.parentId) { p -> byId[p]?.parentId }
   val visible = remember(categories, exclude) {
     val hidden = mutableSetOf<String>().apply { addAll(exclude) }
     flatten(categories).filter { (c, _) -> (c.id !in hidden && c.parentId !in hidden).also { if (!it) hidden += c.id } }
   }
+  val parents = remember(visible) { visible.mapNotNull { it.first.parentId }.toSet() }
+  val expanded = remember(categories) { mutableStateListOf<String>().apply { addAll(ancestors(current)) } }
   val q = fold(query.trim())
-  val shown = if (q.isEmpty()) visible else {
+  val shown = if (q.isEmpty()) visible.filter { (c, _) -> ancestors(c.id).all { it in expanded } } else {
     val matches = visible.filter { (c, _) -> q in fold(c.label) || q in fold(c.description.orEmpty()) }.map { it.first.id }.toSet()
-    val byId = categories.associateBy { it.id }
-    val keep = matches + matches.flatMap { generateSequence(byId[it]?.parentId) { p -> byId[p]?.parentId }.toList() }
+    val keep = matches + matches.flatMap { ancestors(it).toList() }
     visible.filter { it.first.id in keep }
   }
   CalmoSheet(title, onDismiss) {
@@ -124,13 +137,28 @@ fun CategoryPickerDialog(
           modifier = Modifier.fillMaxWidth().clickable { onPick(null) }.padding(vertical = 12.dp))
       }
       items(shown, key = { it.first.id }) { (c, depth) ->
-        Text(
-          c.label,
-          style = if (depth == 0) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyLarge,
-          fontWeight = if (c.id == current) FontWeight.Bold else null,
-          color = Calmo.fg,
-          modifier = Modifier.fillMaxWidth().clickable { onPick(c.id) }.padding(start = (depth * 18).dp, top = 11.dp, bottom = 11.dp),
-        )
+        val open = q.isNotEmpty() || c.id in expanded
+        Row(Modifier.fillMaxWidth().clickable { onPick(c.id) }.padding(start = (depth * 18).dp),
+          verticalAlignment = Alignment.CenterVertically) {
+          // The toggle has its own touch target, so opening a category never picks it.
+          Box(Modifier.size(44.dp).then(if (c.id in parents && q.isEmpty()) Modifier.clickable {
+            if (open) expanded.remove(c.id) else expanded.add(c.id)
+          } else Modifier), contentAlignment = Alignment.Center) {
+            if (c.id in parents) Box(Modifier.size(22.dp).border(1.dp, if (q.isEmpty()) Calmo.fg else Calmo.line, RoundedCornerShape(6.dp)),
+              contentAlignment = Alignment.Center) {
+              Icon(if (open) Icons.Minus else Icons.Plus, if (open) "Fechar ${c.label}" else "Abrir ${c.label}",
+                Modifier.size(14.dp), tint = if (q.isEmpty()) Calmo.fg else Calmo.mute)
+            }
+          }
+          Text(
+            c.label,
+            style = if (depth == 0) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyLarge,
+            fontWeight = if (c.id == current) FontWeight.Bold else null,
+            color = Calmo.fg,
+            modifier = Modifier.weight(1f).padding(vertical = 11.dp),
+          )
+          if (c.id == current) Mark("atual")
+        }
       }
     }
   }

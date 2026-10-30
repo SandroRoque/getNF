@@ -134,6 +134,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D121 | sync | current | After sending new items, the phone comes back for the categorizer's answers |
 | D122 | catalog | current | Personal care: "Higiene e banho" and "Beleza" |
 | D123 | UI | current | Ajustes as an index; signing in, the account and backups get screens of their own |
+| D124 | UI | current | The category picker opens collapsed, with + and − on each branch |
 
 ---
 
@@ -3089,3 +3090,15 @@ Checked on the emulator against the local Supabase, light and dark:
 The new-password page was checked in a browser against the local project: mismatched passwords are refused, the new
 password signs in, and the token is gone from the address. JVM tests and pgTAP pass. Online, the reset template and the
 Redirect URL wait for the user (status.md › Pending, by the user).
+
+## D124. The category picker opens collapsed, with + and − on each branch (2026-10-30)
+
+Picking a category by hand meant scrolling the whole tree, every subcategory always open. The user asked for + and −
+to collapse the hierarchy. The picker (`CategoryPickerDialog`, used by every "Outra" and "Categoria") now opens with
+only the top level showing, plus the branch down to the product's current category, which is marked "atual". A box
+with + or − sits before each category that has children, with its own touch target, so opening a branch never picks
+it; tapping the name still picks. A search shows every match with its parents, already open (the boxes go grey).
+
+Checked on the emulator with the demo: the current branch opens on its own, collapsing and opening work, and a search
+shows its matches opened. A search for "perfume" finds nothing: on the phone, categories carry a description only when
+the user writes one, since the categorizer's English descriptions stay on the server. Not changed here.
