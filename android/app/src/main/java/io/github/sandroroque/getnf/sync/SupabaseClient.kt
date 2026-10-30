@@ -50,7 +50,7 @@ class SupabaseClient(val url: String, private val key: String, private val http:
 
   /** A new login, with the [name] others in a caderneta will see (D104). */
   fun signUp(email: String, password: String, name: String): SignUp {
-    val target = base.newBuilder().addPathSegments("auth/v1/signup").build()
+    val target = base.newBuilder().addPathSegments("auth/v1/signup").addQueryParameter("redirect_to", CONFIRMED_PAGE).build()
     val body = buildJsonObject { put("email", email); put("password", password); put("data", buildJsonObject { put("name", name) }) }
     val o = call(Request.Builder().url(target).header("apikey", key).post(body.toString().toRequestBody(JSON)).build()).jsonObject
     return when {
@@ -62,7 +62,7 @@ class SupabaseClient(val url: String, private val key: String, private val http:
 
   /** Sends the sign-up's confirmation e-mail again. */
   fun resendConfirmation(email: String) {
-    val target = base.newBuilder().addPathSegments("auth/v1/resend").build()
+    val target = base.newBuilder().addPathSegments("auth/v1/resend").addQueryParameter("redirect_to", CONFIRMED_PAGE).build()
     val body = buildJsonObject { put("type", "signup"); put("email", email) }
     call(Request.Builder().url(target).header("apikey", key).post(body.toString().toRequestBody(JSON)).build())
   }
@@ -180,6 +180,11 @@ class SupabaseClient(val url: String, private val key: String, private val http:
 
   companion object {
     const val BUCKET = "receipts"
+    /**
+     * Where the confirmation e-mail's link lands (D120). Supabase only goes there when it's in the project's Redirect
+     * URLs; otherwise it uses the Site URL.
+     */
+    const val CONFIRMED_PAGE = "https://caderneta.roqlab.com.br/conta-confirmada/"
     val JSON = "application/json".toMediaType()
   }
 }

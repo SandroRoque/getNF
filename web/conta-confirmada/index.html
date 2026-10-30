@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>Conta confirmada · %APP%</title>
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+<main>
+  <header class="top">
+    <a class="brand" href="/">%APP%</a>
+    <nav><a href="/privacidade/">Privacidade</a></nav>
+  </header>
+  <!-- Shown as is when the page opens without the link's answer (opened again, say); app.js picks one of the others. -->
+  <section id="neutro">
+    <h1>Confirmação de e-mail</h1>
+    <p>Se você chegou aqui pelo link do e-mail, sua conta está confirmada. Volte ao app e entre com seu e-mail e senha
+      em <strong>Ajustes › Conta</strong>.</p>
+  </section>
+  <section id="ok" hidden>
+    <h1>E-mail confirmado ✓</h1>
+    <p>Sua conta do <strong>%APP%</strong> está pronta. Volte ao app e entre com seu e-mail e senha em
+      <strong>Ajustes › Conta</strong>.</p>
+    <p class="note">Pode fechar esta página. Nada foi guardado neste navegador.</p>
+  </section>
+  <section id="erro" hidden>
+    <h1>Este link não vale mais</h1>
+    <p>Ele expirou ou já foi usado. Se a conta já foi confirmada, é só entrar no app. Se não, no app, em
+      <strong>Ajustes › Conta</strong>, toque em <strong>Entrar</strong> e depois em
+      <strong>Mandar o link de novo</strong>.</p>
+    <p class="note" id="detalhe" hidden></p>
+  </section>
+</main>
+</body>
+</html>

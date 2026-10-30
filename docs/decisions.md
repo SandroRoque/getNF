@@ -130,6 +130,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D117 | capture | current | The torch is on from the start of every capture |
 | D118 | app | current | The scan button is the receipt, named "Escanear" |
 | D119 | app | current | Signing up: the password typed twice, an existing account said plainly, the link sent again |
+| D120 | online | current | The confirmation e-mail is in Portuguese and lands on a page of the site |
 
 ---
 
@@ -2982,3 +2983,23 @@ Checked on the emulator against the local Supabase: mismatch, creating (signed i
 password. **Not solved here: e-mail delivery.** The project has no SMTP of its own, so Supabase's built-in sender is
 used, which only delivers to the organisation's own members and a few an hour; real sign-ups need custom SMTP
 (Resend, say) set up in the dashboard, with a verified sending domain.
+
+## D120. The confirmation e-mail is in Portuguese and lands on a page of the site (2026-10-30)
+
+Following D119. Supabase's default confirmation e-mail is in English and its link lands on the project's Site URL
+with the session in the address, which the landing page doesn't read. Now:
+
+- **The e-mail** is `supabase/templates/confirmation.html` ("Confirme seu e-mail · Caderneta", one button, what to do
+  next, what to do if it wasn't you), the source for the dashboard's Confirm signup template and, through
+  `supabase/config.toml`, the local one. The other templates (password reset, change of e-mail, invite, magic link)
+  stay as they are: the app doesn't use those flows yet.
+- **The link** lands on `caderneta.roqlab.com.br/conta-confirmada/`: the app sends `redirect_to` with the sign-up and
+  with "Mandar o link de novo". The page tells confirmed ("volte ao app e entre") from a link that expired or was used
+  (how to get another), and shows a neutral line when opened without either. It only reads which happened: the
+  tokens are dropped from the address at once and never kept or used; signing in happens on the app, as before. A
+  page with a small script of its own (`script-src 'self'`), no third-party code. Supabase goes there only when the
+  address is in the project's Redirect URLs; until then the Site URL is used.
+
+Checked: the page in a browser with a success address, an expired link and a server error (tokens gone from the
+address each time); the app builds and its tests pass. Not checked end to end: no e-mail can be sent until the user
+sets up SMTP (status.md › Pending, by the user).

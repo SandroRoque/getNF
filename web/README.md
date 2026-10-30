@@ -10,6 +10,9 @@ framework, no third-party code, nothing kept in the browser.
   e-mail and password, lists the person's cadernetas, stops if they're the only owner of one that has other people
   (as the app does), and otherwise deletes their files and calls `delete_me`, exactly like Ajustes › Conta › Apagar
   minha conta (`sync/LedgerService.deleteMe`). Change one, change the other.
+- `/conta-confirmada/`: where the sign-up confirmation e-mail's link lands (D120). Says whether it worked from what
+  Supabase puts in the address, drops the tokens from the address at once, keeps and sends nothing. The app asks for
+  it with `redirect_to`; the online project must list it in Authentication › URL Configuration › Redirect URLs.
 - `assets/`: the shared stylesheet and the screenshots (540 px wide, from `docs/screenshots/`).
 - `_headers`: security headers the pages can't set themselves (`frame-ancestors`, HSTS).
 

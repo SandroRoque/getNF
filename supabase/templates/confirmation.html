@@ -1,0 +1,13 @@
+<!-- Confirm signup (D120). Online: paste into Authentication › Emails › Templates › Confirm signup, with the subject
+     "Confirme seu e-mail · Caderneta". Locally, supabase/config.toml points at this file. -->
+<div style="font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; color: #22252A; max-width: 480px; margin: 0 auto; padding: 24px 16px; line-height: 1.5;">
+  <h2 style="font-weight: 600; margin: 0 0 16px;">Confirme seu e-mail</h2>
+  <p style="margin: 0 0 16px;">Você criou uma conta na Caderneta com este e-mail. Toque no botão para confirmar; depois,
+    volte ao app e entre com seu e-mail e senha.</p>
+  <p style="margin: 24px 0;">
+    <a href="{{ .ConfirmationURL }}" style="background: #22252A; color: #F7F7F5; text-decoration: none; padding: 12px 22px; border-radius: 999px; display: inline-block;">Confirmar meu e-mail</a>
+  </p>
+  <p style="margin: 0 0 16px; color: #6F747C; font-size: 14px;">O link vale por pouco tempo; se expirar, peça outro no app. Se não foi você, ignore
+    esta mensagem: sem a confirmação, a conta não é usada.</p>
+  <p style="margin: 0; color: #6F747C; font-size: 14px;">Caderneta · caderneta.roqlab.com.br</p>
+</div>

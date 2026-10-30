@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-30. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D119). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
+`docs/decisions.md` (D1–D120). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
@@ -134,10 +134,13 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
 
 ## Pending, by the user
 
-- **E-mail for sign-ups (D119):** the online project sends with Supabase's built-in sender, which delivers only to
-  the organisation's members, a few an hour. Before anyone else signs up: custom SMTP (e.g. Resend with a verified
-  domain) in Authentication › Emails › SMTP, and the Site URL / redirect for the confirmation link.
-
+- **E-mail for sign-ups (D119, D120):** the online project sends with Supabase's built-in sender, which delivers only
+  to the organisation's members, a few an hour. Before anyone else signs up, in the Supabase dashboard:
+  Authentication › Emails › SMTP Settings with Resend (`smtp.resend.com`, 465, user `resend`, an API key with send
+  access, sender `nao-responda@roqlab.com.br` on a domain verified in Resend); Templates › Confirm signup from
+  `supabase/templates/confirmation.html` (subject "Confirme seu e-mail · Caderneta"); URL Configuration: Site URL
+  `https://caderneta.roqlab.com.br` and `https://caderneta.roqlab.com.br/conta-confirmada/` in Redirect URLs; then
+  redeploy the site (`web/README.md`) so the page exists.
 - Run `sudo bash tools/setup-system.sh` once (udev rules for the phone, Docker at boot for the local Supabase, adb and
   kvm groups).
 - Back up `~/.config/getnf/` (the upload key, made 2026-10-30) and its password somewhere off this PC: without
