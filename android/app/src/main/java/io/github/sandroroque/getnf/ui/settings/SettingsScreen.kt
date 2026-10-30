@@ -48,13 +48,20 @@ import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onDone: () -> Unit, onOpenLedger: (String) -> Unit = {}) {
+fun SettingsScreen(onDone: () -> Unit, onOpenLedger: (String) -> Unit = {}, onLeaveDemo: () -> Unit = {}) {
   val app = LocalContext.current.applicationContext as GetNFApp
   var signedIn by remember { mutableStateOf(app.accountSettings.account() != null) }
   Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp)) {
       io.github.sandroroque.getnf.ui.calmo.BackHeader("Voltar", onDone)
       io.github.sandroroque.getnf.ui.calmo.ScreenTitle("Ajustes")
+      // In the demo (D115) nothing here applies to made-up receipts: no account, no backups, no photos to send.
+      if (app.accountSettings.demo) {
+        io.github.sandroroque.getnf.ui.calmo.Sub("Você está vendo o exemplo: notas inventadas de uma casa em Florianópolis, de maio a outubro. " +
+          "Mexa à vontade; nada daqui é guardado nem enviado. Conta, cópias de segurança e o resto dos ajustes ficam nas suas notas.")
+        io.github.sandroroque.getnf.ui.calmo.Pill("Sair do exemplo", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Solid, onClick = onLeaveDemo)
+        return@Column
+      }
       AccountSection(app, onDone) { signedIn = it }
       HorizontalDivider()
       if (signedIn) {

@@ -72,6 +72,7 @@ object Icons {
   val More = line("more", "M5 11.2a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM12 11.2a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM19 11.2a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z")
   val Focus = line("focus", "M12 3v4M12 17v4M3 12h4M17 12h4M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z")
   val Arrow = line("arrow", "M12 19V5M5.5 11.5 12 5l6.5 6.5")
+  val Check = line("check", "M5 12.5l4.5 4.5L19 7")
   val Person = line("person", "M15.5 8a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0zM5 20c.8-3.4 3.6-5.5 7-5.5s6.2 2.1 7 5.5")
 }
 
@@ -205,9 +206,12 @@ fun Segments(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
 
 enum class ButtonKind { Solid, Outline, Ghost }
 
-/** A pill button; an optional [mark] says whose answer it is (Jev, LLM). */
+/** A pill button; an optional [mark] says whose answer it is. */
 @Composable
-fun Pill(label: String, kind: ButtonKind = ButtonKind.Outline, mark: String? = null, enabled: Boolean = true, onClick: () -> Unit) {
+fun Pill(
+  label: String, kind: ButtonKind = ButtonKind.Outline, mark: String? = null, enabled: Boolean = true,
+  modifier: Modifier = Modifier, onClick: () -> Unit,
+) {
   val shape = RoundedCornerShape(999.dp)
   val (bg, fg, border) = when (kind) {
     ButtonKind.Solid -> Triple(Calmo.fg, Calmo.bg, Calmo.fg)
@@ -215,9 +219,9 @@ fun Pill(label: String, kind: ButtonKind = ButtonKind.Outline, mark: String? = n
     ButtonKind.Ghost -> Triple(Color.Transparent, Calmo.mute, Calmo.line)
   }
   Row(
-    Modifier.clip(shape).background(bg).border(1.dp, border, shape).clickable(enabled = enabled, onClick = onClick)
+    modifier.clip(shape).background(bg).border(1.dp, border, shape).clickable(enabled = enabled, onClick = onClick)
       .padding(horizontal = 14.dp, vertical = 8.dp),
-    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
   ) {
     Text(label, style = MaterialTheme.typography.labelLarge, color = if (enabled) fg else Calmo.mute)
     if (mark != null) Text(mark.uppercase(), style = MaterialTheme.typography.labelSmall, color = fg.copy(alpha = .7f))

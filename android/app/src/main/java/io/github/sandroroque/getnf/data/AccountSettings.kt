@@ -16,6 +16,9 @@ data class ProjectConfig(val url: String, val key: String) {
  */
 data class LocalFiles(val database: String, val receipts: String) {
   companion object {
+    /** The demo caderneta's (D115). */
+    val DEMO = LocalFiles("getnf-demo.db", "receipts-demo")
+
     fun of(open: String?, legacy: String?): LocalFiles =
       if (open == null || open == legacy) LocalFiles(ReceiptDatabase.NAME, "receipts") else LocalFiles("getnf-$open.db", "receipts-$open")
   }
@@ -65,8 +68,17 @@ class AccountSettings(context: Context) {
     if (prefs.getString(LEGACY, null) == null) putString(LEGACY, id)
   }
 
-  /** Where the open caderneta's data lives on this phone. */
-  fun localFiles(): LocalFiles = filesFor(ledgerId())
+  /** Where the open caderneta's data lives on this phone; the demo's own files while it's open (D115). */
+  fun localFiles(): LocalFiles = if (demo) LocalFiles.DEMO else filesFor(ledgerId())
+
+  /**
+   * The demo caderneta is open (D115): made-up receipts in files of their own, never synced. Takes effect on the next
+   * start, like a caderneta.
+   */
+  var demo: Boolean
+    get() = prefs.getBoolean(DEMO, false)
+    // commit: the app restarts right after.
+    set(value) { prefs.edit(commit = true) { putBoolean(DEMO, value) } }
 
   fun filesFor(ledger: String?): LocalFiles = LocalFiles.of(ledger, prefs.getString(LEGACY, null))
 
@@ -78,5 +90,6 @@ class AccountSettings(context: Context) {
     const val REFRESH = "refresh"
     const val LEDGER = "ledger"
     const val LEGACY = "legacy_ledger"
+    const val DEMO = "demo"
   }
 }

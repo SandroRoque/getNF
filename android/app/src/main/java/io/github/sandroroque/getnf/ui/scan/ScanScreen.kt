@@ -52,10 +52,14 @@ import java.util.concurrent.TimeUnit
 @Composable
 fun ScanScreen(onCaptured: () -> Unit, onCancel: () -> Unit, onOpenPage: (String) -> Unit) {
   val context = LocalContext.current
+  val onboarding = (context.applicationContext as io.github.sandroroque.getnf.GetNFApp).onboarding
   var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
+  // The first time, how the capture goes comes before the camera and its permission (D115).
+  var intro by remember { mutableStateOf(!onboarding.scanIntroSeen) }
   val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
-  LaunchedEffect(Unit) { if (!granted) permission.launch(Manifest.permission.CAMERA) }
-  if (granted) ContinuousCapture(onCaptured, onCancel, onOpenPage)
+  LaunchedEffect(intro) { if (!intro && !granted) permission.launch(Manifest.permission.CAMERA) }
+  if (intro) io.github.sandroroque.getnf.ui.onboarding.ScanIntro(onStart = { onboarding.scanIntroSeen = true; intro = false }, onCancel = onCancel)
+  else if (granted) ContinuousCapture(onCaptured, onCancel, onOpenPage)
   else Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
     io.github.sandroroque.getnf.ui.calmo.ScreenTitle("A câmera lê a nota")
     io.github.sandroroque.getnf.ui.calmo.Sub("O getNF usa a câmera para ler o QR Code e fotografar a nota. As fotos ficam no celular e, se você entrar numa conta, numa cópia pequena no servidor.")

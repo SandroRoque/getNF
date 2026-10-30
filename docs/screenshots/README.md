@@ -6,7 +6,8 @@ October 2026, 86 receipts, 47 products. No real receipt, store, chave or brand. 
 
 To take them again after a UI change:
 
-1. Write the demo backup (seeded, the same every run):
+1. Write the demo backup (seeded, the same every run). The app also bundles one for "Ver um exemplo" (D115), so the
+   quickest way is to tap that; to write the file:
    `cd android && GETNF_DEMO_OUT=/tmp/caderneta-demo.zip ./gradlew :app:testDebugUnitTest --tests '*DemoCaderneta*' --rerun`
 2. On the **emulator, signed out** (so the demo never syncs anywhere): `adb push /tmp/caderneta-demo.zip
    /sdcard/Download/`, then Ajustes › Cópia de segurança › Restaurar and pick it.

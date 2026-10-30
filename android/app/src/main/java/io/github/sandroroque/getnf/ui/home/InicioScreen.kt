@@ -15,6 +15,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +41,8 @@ import io.github.sandroroque.getnf.ui.calmo.MidNumber
 import io.github.sandroroque.getnf.ui.calmo.SectionLabel
 import io.github.sandroroque.getnf.ui.calmo.Sub
 import io.github.sandroroque.getnf.ui.catalog.flatten
+import io.github.sandroroque.getnf.ui.onboarding.FirstStepsCard
+import io.github.sandroroque.getnf.ui.onboarding.firstSteps
 import io.github.sandroroque.getnf.ui.spending.label
 
 /**
@@ -48,6 +52,7 @@ import io.github.sandroroque.getnf.ui.spending.label
 @Composable
 fun InicioScreen(
   onSpending: () -> Unit, onDecisions: () -> Unit, onIpci: () -> Unit, onReceipt: (String) -> Unit, onSettings: () -> Unit,
+  onScan: () -> Unit = {}, onDemo: () -> Unit = {},
 ) {
   val app = LocalContext.current.applicationContext as GetNFApp
   val lines by remember { app.database.spending().lines() }.collectAsStateWithLifecycle(null)
@@ -66,6 +71,11 @@ fun InicioScreen(
   }
   val ipci = remember(lines) { lines?.let { Ipci.compute(it) }?.lastOrNull { it.reading != null } }
   val colorOf = rememberCategoryColor(categories)
+  // The first steps (D115): not in the demo, and gone once done or hidden.
+  var stepsHidden by remember { mutableStateOf(app.accountSettings.demo || app.onboarding.firstStepsHidden) }
+  val steps = remember(receipts, lines, ipci, account) {
+    firstSteps(receipts, lines.orEmpty(), ipci != null, account != null, onScan = onScan, onFetch = onDecisions, onAccount = onSettings)
+  }
 
   val month = spending?.periods?.lastOrNull()
   LazyColumn(
@@ -80,8 +90,9 @@ fun InicioScreen(
       }
     }
     if (spending == null) return@LazyColumn
+    val showSteps = !stepsHidden && !steps.all { it.done }
     if (month == null) {
-      item { EmptyState("Nenhuma nota ainda. Toque no botão do meio para escanear o QR Code de uma nota fiscal.") }
+      if (!showSteps) item { EmptyState("Nenhuma nota ainda. Toque no botão do meio para escanear o QR Code de uma nota fiscal.") }
     } else {
       val previous = spending.periods.dropLast(1).lastOrNull()
       item {
@@ -102,7 +113,10 @@ fun InicioScreen(
         }
       }
     }
-    item { QueueCard(queue, onDecisions) }
+    if (showSteps) item {
+      FirstStepsCard(steps, onDemo = onDemo.takeIf { receipts.isEmpty() }) { app.onboarding.firstStepsHidden = true; stepsHidden = true }
+    }
+    if (receipts.isNotEmpty() || queue.isNotEmpty()) item { QueueCard(queue, onDecisions) }
     if (ipci != null) item {
       Row(Modifier.fillMaxWidth().clickable(onClick = onIpci).padding(vertical = 4.dp), verticalAlignment = Alignment.Bottom) {
         Sub("Inflação pessoal, ${label(ipci.period, long = true)}", Modifier.weight(1f))

@@ -20,6 +20,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,7 +41,14 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import io.github.sandroroque.getnf.data.Demo
 import io.github.sandroroque.getnf.theme.Calmo
+import io.github.sandroroque.getnf.ui.calmo.ButtonKind
+import io.github.sandroroque.getnf.ui.calmo.Sub
+import io.github.sandroroque.getnf.ui.catalog.CalmoSheet
+import io.github.sandroroque.getnf.ui.onboarding.TextLink
+import io.github.sandroroque.getnf.ui.onboarding.WelcomeScreen
+import io.github.sandroroque.getnf.ui.onboarding.Wide
 import io.github.sandroroque.getnf.ui.calmo.Hairline
 import io.github.sandroroque.getnf.ui.calmo.Icons
 import io.github.sandroroque.getnf.ui.catalog.CatalogScreen
@@ -55,9 +72,29 @@ import io.github.sandroroque.getnf.ui.spending.SpendingScreen
 fun MainNavigation() {
   val backStack = rememberNavBackStack(Inicio)
   val root = backStack.firstOrNull()
+  val context = LocalContext.current
+  val app = context.applicationContext as GetNFApp
+  val demo = remember { app.accountSettings.demo }
+  val scope = rememberCoroutineScope()
+  var leavingDemo by remember { mutableStateOf(false) }
+  var scanInDemo by remember { mutableStateOf(false) }
   fun tab(key: NavKey) { if (backStack.size != 1 || root != key) { backStack.clear(); backStack.add(key) } }
-  fun open(key: NavKey) { backStack.add(key) }
+  fun open(key: NavKey) { if (key == Scan && demo) scanInDemo = true else backStack.add(key) }
   fun back() { backStack.removeLastOrNull() }
+  fun enterDemo() { scope.launch { Demo.enter(context) } }
+
+  // The first start (D115): the welcome, unless there are receipts already (an update, or a restore).
+  val receipts by remember { app.database.lists().receipts() }.collectAsStateWithLifecycle(null)
+  var welcomeSeen by remember { mutableStateOf(demo || app.onboarding.welcomeSeen) }
+  LaunchedEffect(receipts) { if (!welcomeSeen && receipts?.isNotEmpty() == true) { app.onboarding.welcomeSeen = true; welcomeSeen = true } }
+  if (!welcomeSeen) {
+    if (receipts?.isEmpty() != true) return
+    fun done(then: () -> Unit) { app.onboarding.welcomeSeen = true; welcomeSeen = true; then() }
+    WelcomeScreen(
+      onScan = { done { open(Scan) } }, onDemo = { done(::enterDemo) }, onExplore = { done {} }, onSignIn = { done { open(Settings) } },
+    )
+    return
+  }
 
   // NavDisplay only handles Back with more than one screen open; at a tab's root, Back goes to Início first.
   BackHandler(enabled = backStack.size == 1 && root != Inicio) { tab(Inicio) }
@@ -65,6 +102,7 @@ fun MainNavigation() {
   Scaffold(
     containerColor = Calmo.bg,
     contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    topBar = { if (demo) DemoBar { leavingDemo = true } },
     bottomBar = {
       if (backStack.size == 1) TabBar(
         selected = root?.let { if (it is Catalog) Catalog() else it },
@@ -73,7 +111,7 @@ fun MainNavigation() {
     },
   ) { padding ->
     NavDisplay(
-      modifier = Modifier.padding(bottom = padding.calculateBottomPadding()).consumeWindowInsets(padding),
+      modifier = Modifier.padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding()).consumeWindowInsets(padding),
       backStack = backStack,
       entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
       onBack = { back() },
@@ -82,6 +120,7 @@ fun MainNavigation() {
           InicioScreen(
             onSpending = { tab(Spending) }, onDecisions = { tab(ParaVoce) }, onIpci = { open(IpciKey(null)) },
             onReceipt = { open(ReceiptDetail(it)) }, onSettings = { open(Settings) },
+            onScan = { open(Scan) }, onDemo = ::enterDemo,
           )
         }
         entry<Spending> {
@@ -119,10 +158,38 @@ fun MainNavigation() {
           ProductScreen(key.productId, onOpenProduct = { back(); open(ProductDetail(it)) }, onBack = ::back,
             onOpenReceipt = { open(ReceiptDetail(it)) })
         }
-        entry<Settings> { SettingsScreen(onDone = ::back, onOpenLedger = { open(LedgerDetail(it)) }) }
+        entry<Settings> { SettingsScreen(onDone = ::back, onOpenLedger = { open(LedgerDetail(it)) }, onLeaveDemo = { leavingDemo = true }) }
         entry<LedgerDetail> { key -> io.github.sandroroque.getnf.ui.settings.CadernetaScreen(key.ledgerId, onBack = ::back) }
       },
     )
+  }
+  DemoDialogs(leavingDemo, scanInDemo) { leavingDemo = false; scanInDemo = false }
+}
+
+@Composable
+private fun DemoDialogs(leaving: Boolean, scanning: Boolean, onDismiss: () -> Unit) {
+  val context = LocalContext.current
+  if (leaving) CalmoSheet("Sair do exemplo?", onDismiss = onDismiss) {
+    Sub("O app volta para as suas notas. O exemplo não guarda nada: da próxima vez ele começa do zero.")
+    Wide("Sair do exemplo", ButtonKind.Solid) { Demo.leave(context) }
+    Wide("Continuar vendo", ButtonKind.Ghost, onDismiss)
+  }
+  if (scanning) CalmoSheet("Escanear uma nota", onDismiss = onDismiss) {
+    Sub("No exemplo não dá para escanear: as notas aqui são inventadas. Saia do exemplo para escanear as suas.")
+    Wide("Sair do exemplo", ButtonKind.Solid) { Demo.leave(context) }
+    Wide("Continuar vendo", ButtonKind.Ghost, onDismiss)
+  }
+}
+
+/** Always on top in the demo (D115): what this is, and the way out. */
+@Composable
+private fun DemoBar(onLeave: () -> Unit) {
+  Column(Modifier.background(Calmo.sheet).statusBarsPadding()) {
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 2.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+      Text("Exemplo · dados inventados", style = MaterialTheme.typography.labelLarge, color = Calmo.fg, modifier = Modifier.weight(1f))
+      TextLink("Sair do exemplo", onLeave)
+    }
+    Hairline()
   }
 }
 

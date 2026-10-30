@@ -125,6 +125,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D112 | app | current | The app never names its models: System-1 is "auto", the LLM worker "revisor" |
 | D113 | app | current | The app's id is br.com.roqlab.caderneta; debug builds add .debug |
 | D114 | app | current | The icon: a caderneta with a receipt laid across it, askew |
+| D115 | app | current | A new user starts clean and is guided; the demo is a separate, read-only visit |
 
 ---
 
@@ -2887,3 +2888,40 @@ from the site for good. Play frees a deleted app's id only if it never had an in
 that id is spent; `br.com.roqlab.caderneta` was still free. The user created the app again with it and deleted the
 `caderneta1` one. The project is back to `br.com.roqlab.caderneta` (debug `.debug`), versionCode 1 again: it's a new
 app to Play.
+
+## D115. A new user starts clean and is guided; the demo is a separate, read-only visit (2026-10-30)
+
+Until now a first start dropped the user on an empty Início with one line of text. Two ways were weighed: start new
+users inside a demo caderneta full of receipts, or start them clean and guide the first capture. Chosen with the
+user: **clean, guided, with the demo one tap away but kept apart.** A demo as the starting point mixes made-up
+receipts with real ones (totals, the IPCI and categories would be wrong until someone remembers to clear it), would
+have to be kept from syncing and from the categorizer, and shows everything except the one thing to learn: scanning.
+A clean start alone shows almost nothing for weeks, since price history needs a second purchase and the IPCI two
+months, so the guide says what each receipt unlocks and the demo shows the payoff.
+
+- **Welcome** (first start only, and skipped when the phone already has receipts: an update, a restore, or a
+  caderneta pulled after signing in): three short pages. What the app does; what the first receipt, a second purchase
+  and two months give; what to know first (SC's NFC-e only, no account needed, photos stay on the phone). Then
+  "Escanear minha primeira nota", "Ver um exemplo", "Explorar o app" or "Já tenho conta" (Ajustes).
+- **How to scan**, once, before the camera and its permission: the receipt on a table with light, go along it slowly
+  (the map at the side), show the QR Code, then SEFAZ's page and its occasional check. "Agora não" leaves it for next
+  time.
+- **Primeiros passos** on Início: scan a receipt, fetch its page, buy something again, two months, an account
+  (optional). Each ticks itself from the data; the next one is drawn strong; the card goes when all are done or when
+  hidden. With no receipts it also offers the demo. Never in the demo.
+- **The demo** is the D105 household, bundled as `app/src/main/assets/demo.zip` (an ordinary backup, 230 KB, all
+  invented). Opening it stages that backup into files of its own (`getnf-demo.db`, `receipts-demo`, the D104
+  per-caderneta mechanism and the D47 restore swap) and restarts; a bar on every screen says "Exemplo · dados
+  inventados" with the way out. In it: sync never runs (the worker returns at once), scanning explains it can't, and
+  Ajustes shows only the way out. Editing is allowed and thrown away: each visit starts from the bundled copy, and
+  leaving restarts into the user's own caderneta and deletes the demo's files. It also gives Play's reviewers, who
+  can't scan a Santa Catarina receipt, an app to look at. Regenerate it after changing the generator:
+  `GETNF_DEMO_OUT=$PWD/app/src/main/assets/demo.zip ./gradlew :app:testDebugUnitTest --tests '*DemoCaderneta*' --rerun`
+  in `android/`. An older one still opens after a schema change (Room migrates it).
+- **A pile of old receipts** needs nothing new: "Depois" on "Nota salva" queues each page in Para você with a
+  reminder, and the budget warning (D17, D105) explains the limit when it's reached.
+
+The demo's dates are fixed (May to October 2026), so it will look older with time; shifting them to end "today" when
+it's opened is possible later. Checked on the emulator from a cleared app: the welcome, the steps card, the how-to
+and the camera's permission prompt, the demo (Início full, the bar, scan refused), and back to an empty caderneta
+with the demo's files gone.

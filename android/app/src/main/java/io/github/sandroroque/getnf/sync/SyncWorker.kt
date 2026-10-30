@@ -25,6 +25,8 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
   override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
     val app = applicationContext as GetNFApp
+    // The demo's made-up receipts never leave the phone (D115).
+    if (app.accountSettings.demo) return@withContext Result.success()
     val store = app.receiptStore
     store.load()
     val project = app.accountSettings.project()
