@@ -104,7 +104,7 @@ class DemoCaderneta {
     Item(gtin(29), "PAPEL HIG FOLHA DUPLA MACIO 12UN", "UN", 2190, "household.paper_goods", "Papel higiênico"),
     Item(gtin(30), "PAPEL TOALHA COZINHA C/2", "UN", 799, "household.kitchen_disposables", "Papel-toalha"),
     Item(gtin(31), "CREME DENTAL MENTA 90G", "UN", 499, "personal_care.hygiene", "Creme dental", qty = { 2.0 }),
-    Item(gtin(32), "SHAMPOO CABELO LEVE 350ML", "UN", 1690, "personal_care.cosmetics", "Xampu"),
+    Item(gtin(32), "SHAMPOO CABELO LEVE 350ML", "UN", 1690, "personal_care.hygiene", "Xampu"),
     Item(gtin(33), "RACAO GATO ADULTO MIAU 1KG", "UN", 2990, "pets", "Ração de gato", drift = .01),
   )
   private val bakery = listOf(

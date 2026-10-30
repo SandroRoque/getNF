@@ -132,6 +132,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D119 | app | current | Signing up: the password typed twice, an existing account said plainly, the link sent again |
 | D120 | online | current | The confirmation e-mail is in Portuguese and lands on a page of the site |
 | D121 | sync | current | After sending new items, the phone comes back for the categorizer's answers |
+| D122 | taxonomy | current | Personal care: "Higiene e banho" and "Beleza" |
 
 ---
 
@@ -3014,3 +3015,15 @@ start). Now a sync that sent store items schedules another 45 seconds later, and
 category or a suggestion, up to two more a minute apart (`SyncWorker`, unique work `sync-follow-up`). Three rounds
 cover the categorizer's own retry, which runs every minute; a product it can't answer doesn't keep the phone syncing.
 `SyncEngine.Report.storeItems` says how many store items went up.
+
+## D122. Personal care: "Higiene e banho" and "Beleza" (2026-10-30)
+
+The user didn't like "Cosméticos e cabelo": shampoo next to soap is fine, but perfume and nail polish don't belong
+with either. Personal care is now **Higiene e banho** (soap, body wash, shampoo, conditioner, toothpaste, floss,
+deodorant, razors, sanitary pads) and **Beleza** (perfume, makeup, nail polish, skin creams, sunscreen, hair dye and
+styling). Only labels and the categorizer's descriptions changed; the slugs stay (`personal_care.hygiene`,
+`personal_care.cosmetics`), since a slug is a category's identity (D78) and renaming one needs a data migration for
+nothing. Every caderneta gets the new labels on its next sync unless it renamed the category itself. Products already
+categorized aren't moved: online, the old "Cosméticos e cabelo" held one, a shampoo the user had confirmed, which the
+user moves with a tap. The demo's shampoo moved to Higiene e banho and its backup was regenerated. Applied locally
+(pgTAP passes); online it needs `npx supabase db push`.

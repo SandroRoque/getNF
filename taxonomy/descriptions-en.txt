@@ -59,9 +59,9 @@ household.laundry	Laundry detergent, softener
 household.kitchen_disposables	Paper towel, coffee filters, foil, bags
 household.paper_goods	Toilet paper, tissues
 household.home_maintenance	Bulbs, batteries, tools
-personal_care	Personal care, hygiene, cosmetics
-personal_care.hygiene	Soap, toothpaste, floss, deodorant, cotton swabs
-personal_care.cosmetics	Shampoo, hair care, makeup, skin care
+personal_care	Personal care: hygiene and bath, beauty
+personal_care.hygiene	Soap, body wash, shampoo, conditioner, toothpaste, floss, mouthwash, deodorant, cotton swabs, razors, sanitary pads
+personal_care.cosmetics	Beauty: perfume, makeup, nail polish, skin creams and lotions, sunscreen, hair dye and styling products
 pets	Pet food and supplies
 baby	Diapers, baby food
 eating_out	Restaurants, delivery

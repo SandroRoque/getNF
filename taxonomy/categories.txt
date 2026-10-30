@@ -74,8 +74,8 @@ household                     Produtos para casa
   home_maintenance            Pequenos reparos domésticos  # bulbs, batteries, tools
 
 personal_care                 Cuidados pessoais
-  hygiene                     Higiene  # soap, toothpaste, deodorant
-  cosmetics                   Cosméticos e cabelo
+  hygiene                     Higiene e banho  # soap, shampoo, toothpaste, deodorant (D122)
+  cosmetics                   Beleza  # perfume, makeup, nail polish, skin creams (D122; the slug stays, it's the identity)
 
 pets                          Animais de estimação
 baby                          Bebês
