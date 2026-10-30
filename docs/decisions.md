@@ -132,7 +132,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D119 | app | current | Signing up: the password typed twice, an existing account said plainly, the link sent again |
 | D120 | online | current | The confirmation e-mail is in Portuguese and lands on a page of the site |
 | D121 | sync | current | After sending new items, the phone comes back for the categorizer's answers |
-| D122 | taxonomy | current | Personal care: "Higiene e banho" and "Beleza" |
+| D122 | catalog | current | Personal care: "Higiene e banho" and "Beleza" |
 
 ---
 
