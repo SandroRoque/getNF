@@ -131,6 +131,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D118 | app | current | The scan button is the receipt, named "Escanear" |
 | D119 | app | current | Signing up: the password typed twice, an existing account said plainly, the link sent again |
 | D120 | online | current | The confirmation e-mail is in Portuguese and lands on a page of the site |
+| D121 | sync | current | After sending new items, the phone comes back for the categorizer's answers |
 
 ---
 
@@ -3003,3 +3004,13 @@ with the session in the address, which the landing page doesn't read. Now:
 Checked: the page in a browser with a success address, an expired link and a server error (tokens gone from the
 address each time); the app builds and its tests pass. Not checked end to end: no e-mail can be sent until the user
 sets up SMTP (status.md › Pending, by the user).
+
+## D121. After sending new items, the phone comes back for the categorizer's answers (2026-10-30)
+
+The user scanned a receipt signed out, then created an account. The first sync sent its 15 items; the categorizer
+online answered within 12 seconds (12 categories set, 3 suggestions), but the phone had already pulled and nothing
+made it sync again, so all 15 stayed "escolha a categoria" decisions until the next sync (an edit, or the app's next
+start). Now a sync that sent store items schedules another 45 seconds later, and while products are still without a
+category or a suggestion, up to two more a minute apart (`SyncWorker`, unique work `sync-follow-up`). Three rounds
+cover the categorizer's own retry, which runs every minute; a product it can't answer doesn't keep the phone syncing.
+`SyncEngine.Report.storeItems` says how many store items went up.

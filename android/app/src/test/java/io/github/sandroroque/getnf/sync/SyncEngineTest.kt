@@ -73,6 +73,9 @@ class SyncEngineTest {
     assertTrue(server.objects.containsKey("ledger-1/$chave/page.html"))
     assertEquals(dao.lines(chave).size, server.rows("receipt_line").size)
     assertEquals(dao.storeItems().size, server.rows("store_item").size)
+    // Each store item sent is a job for the categorizer: the worker comes back for its answers (D121).
+    assertEquals(dao.storeItems().size, report.storeItems)
+    assertTrue(db.sync().awaitingCategory() > 0)
     assertEquals(fruit.id, server.rows("product").single { it.str("id") == apple.productId }.str("category_id"))
     assertEquals(1, server.rows("receipt_photo").size)
     assertTrue(server.objects.keys.any { it.endsWith(".webp") })
@@ -83,7 +86,7 @@ class SyncEngineTest {
 
     // A second run sends nothing new.
     val writes = server.writes
-    engine.sync(server)
+    assertEquals(0, engine.sync(server).storeItems)
     assertEquals(writes, server.writes)
   }
 

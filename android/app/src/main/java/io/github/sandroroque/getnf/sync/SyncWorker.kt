@@ -55,7 +55,12 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val report = app.syncEngine.sync(remote)
         report.errors.forEach { Log.w(TAG, it) }
         // Receipts adopted from the server came with their page: read it on the phone too (D49), and push the result.
-        if (app.receiptParser.parsePending(store.receipts.value) > 0) app.syncEngine.sync(remote)
+        val again = if (app.receiptParser.parsePending(store.receipts.value) > 0) app.syncEngine.sync(remote) else null
+        // New store items are jobs for the categorizer online, done within seconds to a minute: come back for its
+        // answers instead of leaving every item a decision until the next sync (D121). A few rounds at most.
+        val round = inputData.getInt(ROUND, 0)
+        val sent = report.storeItems + (again?.storeItems ?: 0)
+        if ((sent > 0 || round > 0) && round < FOLLOW_UPS && app.database.sync().awaitingCategory() > 0) followUp(app, round + 1)
       }
       // Then the other cadernetas this phone holds, each from its own files.
       OtherLedgers(app, app.accountSettings, app.photoArchiver).sync(client, session, mine, app.accountSettings.ledgerId())
@@ -73,6 +78,18 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
   companion object {
     private const val TAG = "SyncWorker"
+    private const val ROUND = "round"
+    private const val FOLLOW_UPS = 3
+
+    /** Another sync in a while, to pull what the categorizer answered (D121): 45 s, then a minute each round. */
+    private fun followUp(context: Context, round: Int) {
+      val request = OneTimeWorkRequestBuilder<SyncWorker>()
+        .setInitialDelay(if (round == 1) 45L else 60L, TimeUnit.SECONDS)
+        .setInputData(androidx.work.workDataOf(ROUND to round))
+        .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+        .build()
+      WorkManager.getInstance(context).enqueueUniqueWork("sync-follow-up", ExistingWorkPolicy.REPLACE, request)
+    }
 
     fun enqueue(context: Context) {
       val request =

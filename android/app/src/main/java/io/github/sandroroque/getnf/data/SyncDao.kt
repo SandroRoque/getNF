@@ -31,6 +31,10 @@ data class MemberRow(@androidx.room.PrimaryKey val userId: String, val name: Str
 
 @Dao
 abstract class SyncDao {
+  /** Products with neither a category nor a model's suggestion: on a signed-in phone, waiting for the categorizer (D121). */
+  @Query("SELECT COUNT(*) FROM product WHERE deleted = 0 AND archived = 0 AND categoryId IS NULL AND suggestionCategoryId IS NULL")
+  abstract suspend fun awaitingCategory(): Int
+
   @Insert(onConflict = OnConflictStrategy.IGNORE) abstract suspend fun putScans(rows: List<ReceiptScanRow>)
   @Query("DELETE FROM member") abstract suspend fun clearMembers()
   @Insert abstract suspend fun putMembers(rows: List<MemberRow>)

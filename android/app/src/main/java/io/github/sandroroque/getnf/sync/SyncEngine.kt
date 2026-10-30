@@ -84,7 +84,8 @@ class SyncEngine(
   private val mutex = Mutex()
   private val json = Json { ignoreUnknownKeys = true }
 
-  data class Report(val pushed: Int, val pulled: Int, val photos: Int, val errors: List<String>)
+  /** [storeItems]: how many of [pushed] were store items, each a job for the categorizer online (D74, D121). */
+  data class Report(val pushed: Int, val pulled: Int, val photos: Int, val errors: List<String>, val storeItems: Int = 0)
 
   suspend fun sync(remote: SyncRemote): Report = mutex.withLock {
     val errors = mutableListOf<String>()
@@ -93,19 +94,23 @@ class SyncEngine(
     val (pushed, photos) = push(remote, errors)
     pulled += pull(remote, TABLES)
     pullMembers(remote)
-    Report(pushed, pulled, photos, errors).also { log("sync: $it") }
+    Report(pushed, pulled, photos, errors, storeItemsPushed).also { log("sync: $it") }
   }
 
   // ---- push ----
 
+  private var storeItemsPushed = 0
+
   private suspend fun push(remote: SyncRemote, errors: MutableList<String>): Pair<Int, Int> {
+    storeItemsPushed = 0
     var n = 0
     n += pushRows(remote, errors, "issuer", "ledger_id,cnpj", dao.dirtyIssuers(), { it.cnpj }, ::issuerJson, { dao.issuer(it.cnpj) }) { dao.upsertIssuer(it.copy(dirty = false)) }
     n += pushReceipts(remote, errors)
     n += pushRows(remote, errors, "category", BY_ID, dao.dirtyCategories(), { it.id }, ::categoryJson, { dao.category(it.id) }) { dao.upsertCategory(it.copy(dirty = false)) }
     n += pushRows(remote, errors, "tag", BY_ID, dao.dirtyTags(), { it.id }, ::tagJson, { dao.tag(it.id) }) { dao.upsertTag(it.copy(dirty = false)) }
     n += pushRows(remote, errors, "product", BY_ID, dao.dirtyProducts(), { it.id }, ::productJson, { dao.product(it.id) }) { dao.upsertProduct(it.copy(dirty = false)) }
-    n += pushRows(remote, errors, "store_item", BY_ID, dao.dirtyStoreItems(), { it.id }, ::storeItemJson, { dao.storeItem(it.id) }) { dao.upsertStoreItem(it.copy(dirty = false)) }
+    storeItemsPushed = pushRows(remote, errors, "store_item", BY_ID, dao.dirtyStoreItems(), { it.id }, ::storeItemJson, { dao.storeItem(it.id) }) { dao.upsertStoreItem(it.copy(dirty = false)) }
+    n += storeItemsPushed
     n += pushRows(remote, errors, "product_tag", "ledger_id,product_id,tag_id", dao.dirtyProductTags(), { "${it.productId}/${it.tagId}" },
       ::productTagJson, { dao.productTag(it.productId, it.tagId) }) { dao.upsertProductTag(it.copy(dirty = false)) }
     n += pushLines(remote, errors)
