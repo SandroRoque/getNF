@@ -12,6 +12,12 @@ release name like `1 (1.0)`, notes in pt-BR, Save › Review release › Start r
 accept, and install from Play. Internal testing doesn't need the 12 testers for 14 days that personal accounts need
 before production; it's also not reviewed the way production is.
 
+The phone's Play app may show an empty black sheet for the opt-in link. Accepting on the PC's browser (same Google
+account) works; then install from the PC's Play page or open
+`https://play.google.com/store/apps/details?id=br.com.roqlab.caderneta1` on the phone.
+
+Version 1 (1.0) went to Internal testing on 2026-10-30 and was installed on the user's phone.
+
 Each new upload needs a higher `versionCode` (`android/app/build.gradle.kts`).
 
 ## App content
