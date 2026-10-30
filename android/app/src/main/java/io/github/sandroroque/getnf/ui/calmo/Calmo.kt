@@ -175,7 +175,7 @@ fun FactRow(label: String, value: String, mark: String? = null, onClick: (() -> 
   }
 }
 
-/** Who set a value: "você", "Jev", "LLM", "da foto", "rateio", "da nota". */
+/** Who set a value: "você", "auto", "revisor", "da foto", "rateio", "da nota" (D112). */
 @Composable
 fun Mark(text: String, you: Boolean = false) {
   val color = if (you) Calmo.acc else Calmo.mute

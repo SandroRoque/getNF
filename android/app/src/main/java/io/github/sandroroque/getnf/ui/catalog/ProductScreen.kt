@@ -247,8 +247,8 @@ private fun byWeight(unit: String?) = unit?.uppercase() in setOf("KG", "G", "L",
 private fun origin(p: ProductRow): String? = when {
   p.categoryId == null -> null
   p.categorySource == "user" -> "você"
-  p.categorySource?.startsWith("jev") == true -> "Jev"
-  p.categorySource?.startsWith("llm") == true -> "LLM"
+  p.categorySource?.startsWith("jev") == true -> "auto"
+  p.categorySource?.startsWith("llm") == true -> "revisor"
   p.categorySource == "import" -> "antes"
   else -> p.categorySource
 }
@@ -274,7 +274,7 @@ private fun size(p: ProductRow, items: List<StoreItemDetail>): String {
 
 private fun sizeMark(p: ProductRow, items: List<StoreItemDetail>) = when {
   p.sizeSource == "manual" -> "você"
-  items.any { it.readSizeSource != null } -> "Jev"
+  items.any { it.readSizeSource != null } -> "auto"
   items.any { it.parsedSizeE6 != null } -> "da nota"
   else -> null
 }

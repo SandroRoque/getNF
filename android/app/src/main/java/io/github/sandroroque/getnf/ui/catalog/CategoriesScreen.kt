@@ -82,7 +82,7 @@ fun CategoryTree() {
           Column(Modifier.weight(1f).padding(start = if (depth == 0) 10.dp else 0.dp)) {
             Text(c.label, style = if (depth == 0) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium, color = Calmo.fg)
             c.description?.let { Sub(it) }
-              ?: c.descriptionSuggestion?.let { Text("Sugestão do LLM: $it", style = MaterialTheme.typography.bodySmall, color = Calmo.acc) }
+              ?: c.descriptionSuggestion?.let { Text("Sugestão do revisor: $it", style = MaterialTheme.typography.bodySmall, color = Calmo.acc) }
           }
           val n = totals[c.id] ?: 0
           if (n > 0) Sub("$n")
@@ -97,7 +97,7 @@ fun CategoryTree() {
         Column {
           val hasChildren = categories.any { it.parentId == a.c.id }
           if (a.c.description == null && a.c.descriptionSuggestion != null) {
-            Text("Sugestão do LLM: ${a.c.descriptionSuggestion}", style = MaterialTheme.typography.bodySmall)
+            Text("Sugestão do revisor: ${a.c.descriptionSuggestion}", style = MaterialTheme.typography.bodySmall)
             Text("Usar a descrição sugerida", style = MaterialTheme.typography.bodyLarge,
               modifier = Modifier.fillMaxWidth().clickable { val id = a.c.id; action = null; edit { editor.acceptDescription(id); done() } }.padding(vertical = 12.dp))
           }

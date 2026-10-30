@@ -234,13 +234,13 @@ private fun HealthSection(app: GetNFApp) {
   Text("Saúde dos dados", style = MaterialTheme.typography.titleMedium)
   val r = row?.let { runCatching { kotlinx.serialization.json.Json.parseToJsonElement(it.report) as kotlinx.serialization.json.JsonObject }.getOrNull() }
   if (row == null || r == null) {
-    Text("O revisor (LLM no PC) ainda não rodou para esta conta.", style = MaterialTheme.typography.bodySmall)
+    Text("O revisor ainda não rodou para esta conta.", style = MaterialTheme.typography.bodySmall)
     return
   }
   fun n(key: String) = (r[key] as? kotlinx.serialization.json.JsonPrimitive)?.takeUnless { it is kotlinx.serialization.json.JsonNull }?.content
   val lines = listOfNotNull(
     "Última revisão: ${java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(row!!.at)}",
-    n("audited")?.let { "Conferidas pelo LLM: $it, discordou de ${n("disagreed") ?: "0"}" },
+    n("audited")?.let { "Conferidas pelo revisor: $it, discordou de ${n("disagreed") ?: "0"}" },
     n("automatic_unconfirmed")?.let { "Categorias automáticas ainda não confirmadas: $it (nunca conferidas: ${n("never_checked") ?: "?"})" },
     n("sample_error_rate")?.let { "Erro medido na amostra: ${Math.round(it.toDouble() * 100)}% de ${n("sample_size")} conferências" },
     n("abbreviations_added")?.takeIf { it != "0" }?.let { "Abreviações aprendidas: $it" },

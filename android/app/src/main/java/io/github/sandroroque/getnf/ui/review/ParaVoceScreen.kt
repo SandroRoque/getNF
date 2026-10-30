@@ -116,10 +116,10 @@ fun ParaVoceScreen(onOpenPage: (String) -> Unit, onOpenProduct: (String) -> Unit
         }
         is Decision.Dispute -> {
           val p = d.product
-          DecisionCard(title = p.title, amount = Format.brl(p.spentCents), why = "${who(p.categorySource)} e o LLM discordam.",
+          DecisionCard(title = p.title, amount = Format.brl(p.spentCents), why = "O revisor discorda da categoria ${if (p.categorySource == "import") "de antes" else "automática"}.",
             onOpen = { onOpenProduct(p.productId) }) {
             Pill(label(p.categoryId), ButtonKind.Solid, mark = who(p.categorySource)) { edit { editor.confirm(p.productId); done() } }
-            Pill(label(p.suggestionCategoryId), ButtonKind.Outline, mark = "LLM") {
+            Pill(label(p.suggestionCategoryId), ButtonKind.Outline, mark = "revisor") {
               edit { editor.setCategory(p.productId, p.suggestionCategoryId); done() }
             }
             Pill("Outra", ButtonKind.Ghost) { picking = p.productId to p.categoryId }
@@ -127,7 +127,7 @@ fun ParaVoceScreen(onOpenPage: (String) -> Unit, onOpenProduct: (String) -> Unit
         }
         is Decision.SameProduct -> {
           val l = d.link
-          DecisionCard(title = "Mesmo produto?", amount = null, why = l.reason?.let { "O LLM: $it" } ?: "O LLM acha que são o mesmo item.",
+          DecisionCard(title = "Mesmo produto?", amount = null, why = l.reason?.let { "O revisor: $it" } ?: "O revisor acha que são o mesmo item.",
             extra = {
               Column {
                 Row(Modifier.fillMaxWidth()) { Text(l.itemDescription, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = Calmo.fg); Sub(l.itemStore ?: "") }
@@ -142,7 +142,7 @@ fun ParaVoceScreen(onOpenPage: (String) -> Unit, onOpenProduct: (String) -> Unit
           val z = d.size
           val size = sizeText(z.sizeE6, z.unit)
           DecisionCard(title = z.name ?: z.description ?: "?", amount = null,
-            why = "Tamanho lido pelo LLM: $size. Com ele, o preço por kg entra no índice.", onOpen = { onOpenProduct(z.productId) }) {
+            why = "Tamanho sugerido: $size. Com ele, o preço por kg entra no índice.", onOpen = { onOpenProduct(z.productId) }) {
             Pill(size, ButtonKind.Solid) { edit { editor.acceptSize(z.productId); done() } }
             Pill("Outro", ButtonKind.Ghost) { onOpenProduct(z.productId) }
           }
@@ -152,11 +152,11 @@ fun ParaVoceScreen(onOpenPage: (String) -> Unit, onOpenProduct: (String) -> Unit
           val ways = listOf(i.suggestion) + SOLD_BY.keys.filter { it != i.suggestion }
           DecisionCard(title = i.name ?: i.description, amount = Format.brl(d.cents), onOpen = { onOpenProduct(i.productId) },
             why = listOfNotNull(
-              "Como é vendido? O Jev acha que é ${SOLD_BY.getValue(i.suggestion).lowercase()}, com ${percent(i.confidence)} de confiança.",
+              "Como é vendido? Parece ser ${SOLD_BY.getValue(i.suggestion).lowercase()} (${percent(i.confidence)} de certeza).",
               i.unit?.let { u -> "Na nota${i.storeName?.let { " de $it" } ?: ""}: ${u.uppercase()}." },
             ).joinToString(" ")) {
             for (w in ways) Pill(SOLD_BY.getValue(w), if (w == i.suggestion) ButtonKind.Solid else ButtonKind.Outline,
-              mark = if (w == i.suggestion) "Jev" else null) { edit { editor.setSoldBy(i.storeItemId, w); done() } }
+              mark = if (w == i.suggestion) "auto" else null) { edit { editor.setSoldBy(i.storeItemId, w); done() } }
           }
         }
         is Decision.CheckPhotoDiscounts -> {
@@ -168,7 +168,7 @@ fun ParaVoceScreen(onOpenPage: (String) -> Unit, onOpenProduct: (String) -> Unit
         }
         is Decision.Description -> {
           val c = d.category
-          DecisionCard(title = "Descrição de ${c.label}", amount = null, why = "Sugerida pelo LLM: ${c.descriptionSuggestion}") {
+          DecisionCard(title = "Descrição de ${c.label}", amount = null, why = "Sugerida pelo revisor: ${c.descriptionSuggestion}") {
             Pill("Usar", ButtonKind.Solid) { edit { editor.acceptDescription(c.id); done() } }
             Pill("Editar", ButtonKind.Ghost, onClick = onCategories)
           }
@@ -186,10 +186,11 @@ fun ParaVoceScreen(onOpenPage: (String) -> Unit, onOpenProduct: (String) -> Unit
   budgetCheck.Dialog()
 }
 
+/** Who set or suggested a value, in the user's words (D112): System-1 is "auto", the LLM worker "revisor". */
 private fun who(source: String?) = when {
   source == null -> "?"
-  source.startsWith("jev") -> "Jev"
-  source.startsWith("llm") -> "LLM"
+  source.startsWith("jev") -> "auto"
+  source.startsWith("llm") -> "revisor"
   source == "import" -> "Antes"
   source == "user" -> "Você"
   else -> source

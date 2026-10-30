@@ -122,6 +122,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D109 | dev | current | The local Supabase stack is kept off the network with a DOCKER-USER rule, not a rebind |
 | D110 | categorizer | current | An unsure "how it's sold" is a card; the user's answer is final; a pack shows its price per item |
 | D111 | discounts | current | Photo discounts that add up to the page's discount need no card |
+| D112 | app | current | The app never names its models: System-1 is "auto", the LLM worker "revisor" |
 
 ---
 
@@ -2821,3 +2822,15 @@ conflict applies nothing (D54).
 - **What the sum doesn't catch:** a discount read under the wrong item when the total still matches. D54's anchors
   and distance limit make that unlikely, and the receipt's and the month's totals stay right either way; only that
   item's price history would be off by the discount.
+
+## D112. The app never names its models: System-1 is "auto", the LLM worker "revisor" (2026-10-30)
+
+The user, reading D110's card ("O Jev acha que é por unidade"): who on earth is Jev, a user would ask. Jev and LLM
+were internal names that had leaked into the screens: marks (JEV, LLM), "Jev e o LLM discordam", "O LLM acha que
+são o mesmo item", "Sugestão do LLM".
+
+- **Two words, both already in the app:** the Catálogo marked model-set categories "auto", and Ajustes called the
+  LLM worker "o revisor". So System-1's answers are marked **auto**, the LLM's **revisor**; "você" and "antes" stay.
+- **Prose names no one** where it can: "Parece ser por unidade (71% de certeza)", "Tamanho sugerido: 1,25 kg". Where
+  the two disagree: "O revisor discorda da categoria automática".
+- Code, columns and docs keep Jev, System-1 and LLM: those are the right names for whoever reads them.
