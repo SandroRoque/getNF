@@ -34,7 +34,12 @@ import io.github.sandroroque.getnf.ui.calmo.SectionLabel
 import io.github.sandroroque.getnf.ui.calmo.Sub
 import io.github.sandroroque.getnf.ui.calmo.Wide
 import io.github.sandroroque.getnf.ui.catalog.CalmoSheet
+import io.github.sandroroque.getnf.sync.SupabaseClient
+import io.github.sandroroque.getnf.sync.SupabaseException
+import io.github.sandroroque.getnf.ui.calmo.Field
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The signed-in account (D123): who, signing out, and, apart at the bottom, deleting the account. Both ask first in a
@@ -92,12 +97,25 @@ fun AccountScreen(onBack: () -> Unit) {
         "continua. Cadernetas só suas são apagadas do servidor. Não dá para desfazer.",
         style = MaterialTheme.typography.bodyMedium, color = Calmo.fg)
       Sub("Neste celular nada é apagado. Para guardar tudo num arquivo antes, use Ajustes › Cópia de segurança.")
-      Wide("Apagar a conta", ButtonKind.Solid, enabled = !busy) {
-        deleting = null; busy = true; error = null
+      // The password again (D125): two taps on an unlocked phone shouldn't be enough to delete an account.
+      var password by remember { mutableStateOf("") }
+      var wrong by remember { mutableStateOf<String?>(null) }
+      Field(password, { password = it; wrong = null }, "Sua senha", password = true, last = true, error = wrong,
+        hint = "Para confirmar que é você.")
+      Wide(if (busy) "Apagando…" else "Apagar a conta", ButtonKind.Solid, enabled = !busy) {
+        if (password.isEmpty()) { wrong = "Digite a senha."; return@Wide }
+        busy = true; error = null
         scope.launch {
+          val project = app.accountSettings.project()
+          val checked = withContext(Dispatchers.IO) { runCatching { SupabaseClient(project.url, project.key).signIn(account?.email.orEmpty(), password) } }
+          checked.onFailure {
+            wrong = if ((it as? SupabaseException)?.code == "invalid_credentials") "Senha errada." else authError(it)
+            busy = false
+            return@launch
+          }
           runCatching { LedgerService(app.accountSettings).deleteMe() }
-            .onSuccess { app.accountSettings.signOut(); app.photoContribution.withdrawPending = false; onBack() }
-            .onFailure { error = reason(it) }
+            .onSuccess { app.accountSettings.signOut(); app.photoContribution.withdrawPending = false; deleting = null; onBack() }
+            .onFailure { wrong = reason(it) }
           busy = false
         }
       }

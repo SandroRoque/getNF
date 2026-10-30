@@ -135,6 +135,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D122 | catalog | current | Personal care: "Higiene e banho" and "Beleza" |
 | D123 | UI | current | Ajustes as an index; signing in, the account and backups get screens of their own |
 | D124 | UI | current | The category picker opens collapsed, with + and − on each branch |
+| D125 | accounts | current | Deleting the account in the app asks for the password again |
 
 ---
 
@@ -3102,3 +3103,20 @@ it; tapping the name still picks. A search shows every match with its parents, a
 Checked on the emulator with the demo: the current branch opens on its own, collapsing and opening work, and a search
 shows its matches opened. A search for "perfume" finds nothing: on the phone, categories carry a description only when
 the user writes one, since the categorizer's English descriptions stay on the server. Not changed here.
+
+## D125. Deleting the account in the app asks for the password again (2026-10-30)
+
+The user deleted a test account and found it too easy: on an unlocked phone with the app signed in, two taps did it.
+They suggested confirming by e-mail. Asking for the password instead covers the same two risks, a tap by mistake and
+someone else holding the phone. It needs nothing new on the server, and it still works for someone who no longer
+reads that e-mail. Play wants deletion to be simple, and deleting loses less than it seems: every receipt stays on the
+phone, and a new account uploads them again. What leaves is the online copy, the place in shared cadernetas and the
+photos sent. The web page (`/apagar-conta/`) already signed in with the password first.
+
+The "Apagar sua conta?" sheet now has a "Sua senha" field. The app checks it by signing in again
+(`SupabaseClient.signIn`, nothing kept) and deletes only if that works. A wrong one says "Senha errada." under the
+field and nothing is deleted. Not done: a grace period (a marked account that comes back if its owner signs in within
+some days), which needs a server job to finish the deletion later.
+
+Checked on the emulator against the local Supabase: a wrong password is refused and the account stays; the right one
+deletes it (gone from `auth.users`) and Ajustes shows "Sem conta".
