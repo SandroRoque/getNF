@@ -72,6 +72,7 @@ object Icons {
   val More = line("more", "M5 11.2a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM12 11.2a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM19 11.2a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z")
   val Focus = line("focus", "M12 3v4M12 17v4M3 12h4M17 12h4M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z")
   val Arrow = line("arrow", "M12 19V5M5.5 11.5 12 5l6.5 6.5")
+  val Person = line("person", "M15.5 8a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0zM5 20c.8-3.4 3.6-5.5 7-5.5s6.2 2.1 7 5.5")
 }
 
 // ---- type helpers ----
@@ -123,10 +124,12 @@ fun BackHeader(label: String, onBack: () -> Unit, trailing: @Composable RowScope
 
 /** A small round initial: the way to Ajustes. */
 @Composable
-fun AccountBadge(initial: String, onClick: () -> Unit) {
+fun AccountBadge(initial: String?, onClick: () -> Unit) {
   Box(Modifier.size(32.dp).clip(CircleShape).border(1.dp, Calmo.line, CircleShape).clickable(onClick = onClick),
     contentAlignment = Alignment.Center) {
-    Text(initial.uppercase(), style = MaterialTheme.typography.labelMedium, color = Calmo.fg)
+    // Signed out there's no initial: a person outline instead.
+    if (initial == null) Icon(Icons.Person, "Ajustes", Modifier.size(18.dp), tint = Calmo.fg)
+    else Text(initial.uppercase(), style = MaterialTheme.typography.labelMedium, color = Calmo.fg)
   }
 }
 

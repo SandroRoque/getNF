@@ -105,8 +105,6 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 - **IPCI:** with four months of receipts in two years, only June 2026 has a reading so far (+2,3%); the rest say
   "dados insuficientes", as intended.
 - **Minor:** a few details-page assets slip past the blocking before `onPageStarted` fires (D16).
-- **Minor:** signed out, the account button on Início shows only a "·" (no initial to show); visible in the
-  screenshots.
 
 ## Resuming
 

@@ -76,7 +76,7 @@ fun InicioScreen(
     item {
       Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Sub(month?.let { label(it, long = true).replaceFirstChar { c -> c.uppercase() } } ?: "getNF", Modifier.weight(1f))
-        AccountBadge(account?.email?.take(1) ?: "·", onSettings)
+        AccountBadge(account?.email?.take(1), onSettings)
       }
     }
     if (spending == null) return@LazyColumn

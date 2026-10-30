@@ -124,8 +124,9 @@ fun ProductScreen(productId: String, onOpenProduct: (String) -> Unit, onBack: ()
         if (byWeight) FactRow("Vendido", "por ${purchases.first().unit!!.lowercase()}")
         else {
           val soldBy = items.mapNotNull { it.soldBy }.distinct().singleOrNull()
-          FactRow("Vendido", soldBy?.let { SOLD_BY.getValue(it).lowercase() } ?: "a definir",
-            mark = if (soldBy != null && items.any { it.soldByUser != null }) "você" else null, onClick = { sheet = Sheet.SoldBy })
+          // Shown once it's known; until then it's asked in Para você or set from Editar (D110).
+          if (soldBy != null) FactRow("Vendido", SOLD_BY.getValue(soldBy).lowercase(),
+            mark = if (items.any { it.soldByUser != null }) "você" else null, onClick = { sheet = Sheet.SoldBy })
           if (soldBy == null || soldBy == "unit") FactRow("Tamanho", size(p, items), mark = sizeMark(p, items), onClick = { sheet = Sheet.Size })
         }
         FactRow("Compras", "${Format.count(purchases.size, "compra", "compras")} · ${Format.brl(purchases.sumOf { it.netCents })}")
@@ -196,6 +197,7 @@ private fun EditSheet(
       FactRow("Nome", p.name ?: "o da nota", onClick = { onPick(Sheet.Name) })
       FactRow("Categoria", "trocar", onClick = { onPick(Sheet.Category) })
       FactRow("Tamanho", "definir", onClick = { onPick(Sheet.Size) })
+      FactRow("Vendido", "por unidade, quilo ou litro", onClick = { onPick(Sheet.SoldBy) })
       FactRow("Juntar", "outro produto a este", onClick = { onPick(Sheet.Join) })
     }
     if (tags.isNotEmpty()) {
