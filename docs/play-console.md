@@ -27,7 +27,7 @@ Each new upload needs a higher `versionCode` (`android/app/build.gradle.kts`).
 | Task | Answer | Why |
 |---|---|---|
 | Privacy policy | https://caderneta.roqlab.com.br/privacidade/ | |
-| Sign-in details | Some functionality is restricted; give a review login | The app works without an account, but cadernetas and sync need one. Google asks for credentials whenever any part needs a login. A dedicated account (made by the user in the app, not a personal one), with instructions: "Toque no ícone da conta em Início › Ajustes › Conta e entre". Add: "Sem uma nota fiscal de Santa Catarina, toque em Ver um exemplo na primeira tela (ou em Início) para ver o app com notas inventadas" (D115). |
+| Sign-in details | Some functionality is restricted; give a review login | The app works without an account, but cadernetas and sync need one. Google asks for credentials whenever any part needs a login. A dedicated account (made by the user in the app, not a personal one), with instructions: "Toque no ícone da conta no alto de Início › Entrar ou criar conta, e entre". Add: "Sem uma nota fiscal de Santa Catarina, toque em Ver um exemplo na primeira tela (ou em Início) para ver o app com notas inventadas" (D115). |
 | Ads | No | |
 | Content rating | Category "All other app types"; no to violence, sexual content, language, drugs, gambling; users interact or share content: **yes** (a caderneta's members see each other's receipts); shares location: no; digital purchases: no | Expected result: Livre/Everyone, with "Users interact". |
 | Target audience | 18 and over; doesn't appeal to children | It's about purchases and money; any age under 13 brings the Families policy. |
