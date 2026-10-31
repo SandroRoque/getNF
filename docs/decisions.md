@@ -140,6 +140,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D127 | cadernetas | current | "Trazer notas" brings the categories the person decided |
 | D128 | cadernetas | current | "Yours" means scanned by you anywhere, not only on this phone |
 | D129 | testing | current | Checks before every push, frame timings in the dumps, an on-device benchmark before releases |
+| D130 | catalog | current | Looking a product up by barcode: every caderneta on the phone, shelf prices, latest per store |
 
 ---
 
@@ -3218,3 +3219,30 @@ right technique is on Android; the answer is three layers, each where its number
 Checked: `tools/check.sh` passes (0 regressions); on the emulator, the device benchmark runs end to end and leaves
 nothing installed (its timings mean nothing there), and a capture with dumps on writes `timing.tsv` with every column.
 The baselines themselves need the phone: the device benchmark once, and about five real capture sessions.
+
+## D130. Looking a product up by barcode: every caderneta on the phone, shelf prices, latest per store (2026-10-31)
+
+Step 1 of the camera plan ([camera-plan.md](camera-plan.md)): given a code the camera read, what the person paid for
+it. No camera or screen yet (steps 2 and 3); `data/ProductLookup.kt`, with JVM tests.
+
+- **Which codes are looked up:** only a product's GTIN (Derive.isGtin). A GTIN-13 starting with 2 is the store's scale
+  label, whose code changes with every weighing: its own answer, "Etiqueta da balança da loja". A GTIN-8 starting with
+  0 or 2 (the store's own code), a bad check digit or anything else is not a product, and nothing is searched.
+- **Spellings:** the scanner reads a UPC-A as 12 digits and a receipt may print it as 13 or 14 with zeros in front, or
+  the other way round. The search tries every spelling that only adds or drops leading zeros.
+- **Where:** the open caderneta, then every other caderneta with files on the phone (D104), each opened and closed in
+  turn, without its receipt files. The open one comes first, then the most recent purchase. In the demo, only the
+  demo: invented receipts don't mix with real ones.
+- **What it matches:** store items with that GTIN (one row at every store, D14), through their own product. A line
+  corrected to another product (an override) still counts: it was the same barcode. Deleted store items and products
+  don't.
+- **What it returns per caderneta:** the product's name there (else the store's description) and category, the latest
+  purchase, the latest price at each store (cheapest first), the average over the last 90 days, and how many
+  purchases. Prices are shelf prices per unit, before discounts, as a price tag (like PricePoint). A GTIN sold by
+  weight or volume is priced per kg or litre; purchases in another basis than the newest are left out, so a unit
+  price and a price per kg never average together.
+- **Never bought** is its own answer: there's no GTIN registry, only what the person bought.
+
+Checked on copies of the phone's databases (deleted afterwards): 66 GTIN store items in the main caderneta, 22 of them
+bought more than once, all 13-digit except one 8-digit; the most bought one returns its 7 purchases, dated and
+categorized. Neither product from the user's first product sessions (D129) was ever bought: "never bought".

@@ -58,6 +58,26 @@ abstract class SpendingDao {
   )
   abstract fun lines(): Flow<List<SpendingLine>>
 
+  /**
+   * Every purchase of the store items with these GTIN spellings (the product lookup, camera plan step 1), with the
+   * store item's product, by its own link: a line corrected to another product was still this barcode.
+   */
+  @Query(
+    """
+    SELECT l.receipt AS chave, l.lineNo, rp.issuedAt, rp.issuerCnpj AS storeCnpj, i.name AS storeName, l.qtyE4, l.unit,
+      l.unitPriceE4, l.grossCents, l.discountCents, s.code, s.description, p.id AS productId, p.name AS productName,
+      c.label AS categoryLabel
+    FROM store_item s
+    JOIN receipt_line l ON l.storeItemId = s.id
+    JOIN product p ON p.id = s.productId
+    LEFT JOIN category c ON c.id = p.categoryId AND c.deleted = 0
+    LEFT JOIN receipt_parsed rp ON rp.chave = l.receipt
+    LEFT JOIN issuer i ON i.cnpj = rp.issuerCnpj
+    WHERE s.codeKind = 'gtin' AND s.code IN (:codes) AND s.deleted = 0 AND p.deleted = 0
+    """,
+  )
+  abstract suspend fun gtinLines(codes: List<String>): List<GtinLine>
+
   /** Receipts scanned whose page wasn't fetched yet: spending the reports can't show. */
   @Query("SELECT COUNT(*) FROM receipt WHERE pageFile IS NULL") abstract fun waitingForPage(): Flow<Int>
 }

@@ -80,6 +80,16 @@ class LocalCadernetas(private val context: Context, private val settings: Accoun
     return parent!!
   }
 
+  /** Opens [id]'s database alone (no receipt files) for [block], then closes it. */
+  internal suspend fun <T> withDatabase(id: String, block: suspend (ReceiptDatabase) -> T): T {
+    val database = ReceiptDatabase.open(context, settings.filesFor(id).database)
+    try {
+      return block(database)
+    } finally {
+      database.close()
+    }
+  }
+
   private suspend fun <T> withLedger(id: String, block: suspend (ReceiptDatabase, ReceiptStore) -> T): T {
     val files = settings.filesFor(id)
     val database = ReceiptDatabase.open(context, files.database)
