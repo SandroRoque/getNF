@@ -79,10 +79,16 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
   // spend two lookups. Offline or signed out, the phone goes ahead: the receipt is its own until it syncs.
   val ledger = remember { app.accountSettings.ledgerId().takeIf { app.accountSettings.account() != null } }
   val ledgers = remember { io.github.sandroroque.getnf.sync.LedgerService(app.accountSettings) }
-  var mayFetch by remember { mutableStateOf<Boolean?>(if (ledger == null) true else null) }
+  var claim by remember { mutableStateOf(if (ledger == null) io.github.sandroroque.getnf.sync.LedgerService.FetchClaim.MINE else null) }
   LaunchedEffect(chave) {
-    if (ledger != null) mayFetch = runCatching { kotlinx.coroutines.withTimeout(8_000) { ledgers.claimFetch(ledger, chave) } }.getOrDefault(true)
+    if (ledger != null) claim = runCatching { kotlinx.coroutines.withTimeout(8_000) { ledgers.claimFetch(ledger, chave) } }
+      .getOrDefault(io.github.sandroroque.getnf.sync.LedgerService.FetchClaim.MINE)
   }
+  val mayFetch = claim?.let { it == io.github.sandroroque.getnf.sync.LedgerService.FetchClaim.MINE }
+  // The page already in the caderneta (a receipt scanned again, D136): a sync brings it down, then the receipt opens.
+  val pageHere = receipts.find { it.chave == chave }?.pageFile != null
+  LaunchedEffect(claim) { if (claim == io.github.sandroroque.getnf.sync.LedgerService.FetchClaim.SAVED) SyncWorker.enqueue(context) }
+  LaunchedEffect(claim, pageHere) { if (claim != io.github.sandroroque.getnf.sync.LedgerService.FetchClaim.MINE && pageHere) onSaved(chave) }
   fun release() { if (ledger != null) scope.launch { runCatching { ledgers.releaseFetch(ledger, chave) } } }
   // Leaving this screen ends the capture, page or not: push whatever we have.
   DisposableEffect(Unit) { onDispose { SyncWorker.enqueue(context) } }
@@ -106,8 +112,13 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
       if (mayFetch != true) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
           horizontalAlignment = Alignment.CenterHorizontally) {
-          if (mayFetch == null) CircularProgressIndicator()
-          else {
+          if (claim == null) CircularProgressIndicator()
+          else if (claim == io.github.sandroroque.getnf.sync.LedgerService.FetchClaim.SAVED) {
+            CircularProgressIndicator()
+            Text("A página desta nota já está na caderneta.", style = MaterialTheme.typography.bodyLarge)
+            Text("Ela chega neste celular com a sincronização, sem gastar uma consulta. A nota abre sozinha.", style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onDone) { Text("Voltar") }
+          } else {
             Text("Outra pessoa da caderneta está buscando esta página agora.", style = MaterialTheme.typography.bodyLarge)
             Text("Quando ela salvar, a página chega aqui sozinha, sem gastar uma consulta desta rede.", style = MaterialTheme.typography.bodyMedium)
             TextButton(onClick = onDone) { Text("Voltar") }

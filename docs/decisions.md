@@ -146,6 +146,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D133 | capture | current | A barcode counts once confirmed over several frames; the debug dump drops frames instead of queueing |
 | D134 | capture | current | Faint print adds no rows; reading starts at the first item; a row with something over its start isn't read |
 | D135 | capture | current | Markers read with OCR's misreads; a QR code is never unread text; show-through explains the pharmacy's faint rows |
+| D136 | cadernetas | current | A receipt scanned again whose page the caderneta has: "already here", not "someone is fetching it" |
 
 ---
 
@@ -3384,3 +3385,19 @@ Result: that session finishes at 1.3 s with 2 photos and both items legible, and
 instead of 50.6. The three pharmacy sessions finish. One short session (2026-10-26T21-57-50, seven frames, the
 user stopped at 4.7 s) that started finishing with D134 doesn't again; it missed the same rows either way and never
 finished before D134, so the baseline was accepted with it.
+
+## D136. A receipt scanned again whose page the caderneta has: "already here", not "someone is fetching it" (2026-10-31)
+
+The user scanned the pharmacy's receipt again (it finished in under 3 s with D135) and, on "Buscar a página", got
+"Outra pessoa da caderneta está buscando esta página agora", alone in their caderneta. `claim_fetch` (D104) says no
+both when another member holds the claim and when the receipt's page is already saved on the server; the app read
+every no as the first. The receipt's page had been fetched days before.
+
+The app now tells them apart without a server change: when the claim is refused, it reads the receipt's row (members
+can), and a `page_path` there means the page is saved. Then the screen says "A página desta nota já está na caderneta"
+and that it comes down with the sync, without a lookup; it starts a sync and opens the receipt once the page is on the
+phone. The phone's upload of the receipt without a page doesn't clear the server's (`keep_page`, D104) and bumps its
+`updated_at`, so the next pull brings the page down. "Outra pessoa…" stays for a claim actually held.
+
+Checked: it builds; the path through the server wasn't run end to end here (it needs a second scan of a receipt with a
+page on the local Supabase).

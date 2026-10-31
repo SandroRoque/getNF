@@ -102,12 +102,26 @@ class LedgerService(private val settings: AccountSettings) {
     c.rpc(s, "delete_me"); Unit
   }
 
+  /** What [claimFetch] found. */
+  enum class FetchClaim {
+    /** This phone may spend the lookup. */
+    MINE,
+    /** The caderneta already has the page (scanned again, D136): it comes down with the next sync. */
+    SAVED,
+    /** Another member's phone is fetching it right now. */
+    CLAIMED,
+  }
+
   /**
-   * Whether this phone may spend a lookup on [chave] now (D104): true unless another member's phone claimed it in the
-   * last few minutes. A receipt the server doesn't know yet is this phone's alone.
+   * Whether this phone may spend a lookup on [chave] now (D104): yes unless another member's phone claimed it in the
+   * last few minutes, or the page is already saved in the caderneta (the server's "no" covers both; the receipt's row
+   * tells them apart). A receipt the server doesn't know yet is this phone's alone.
    */
-  suspend fun claimFetch(ledger: String, chave: String): Boolean =
-    signedIn { c, s -> c.rpc(s, "claim_fetch", args { put("lid", ledger); put("chave", chave) }).jsonPrimitive.content == "true" }
+  suspend fun claimFetch(ledger: String, chave: String): FetchClaim = signedIn { c, s ->
+    if (c.rpc(s, "claim_fetch", args { put("lid", ledger); put("chave", chave) }).jsonPrimitive.content == "true") return@signedIn FetchClaim.MINE
+    val row = c.select(s, "receipt", listOf("ledger_id" to "eq.$ledger", "chave" to "eq.$chave")).firstOrNull()
+    if (row?.textOrNull("page_path") != null) FetchClaim.SAVED else FetchClaim.CLAIMED
+  }
 
   suspend fun releaseFetch(ledger: String, chave: String) =
     signedIn { c, s -> c.rpc(s, "release_fetch", args { put("lid", ledger); put("chave", chave) }); Unit }
