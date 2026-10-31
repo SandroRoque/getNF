@@ -157,6 +157,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D144 | catalog | current | A product's price is the package's while every purchase was the same size; per kg or litre otherwise |
 | D145 | online | current | Rows the server refused show in Ajustes, to send again or report; none is dropped |
 | D146 | app | current | "Enviar comentário" in Ajustes, the demo included: version and phone written in; by e-mail once there's a contact address |
+| D147 | capture | current | The photo reader's measurement: a first reader and its benchmark against the saved pages; baseline 388 of 499 items, no trusted reading wrong |
 
 ---
 
@@ -3557,4 +3558,32 @@ There's no public contact address yet (the privacy policy still says "[e-mail de
 needs one): until there is, the share sheet, where the person picks how to send it; once `FEEDBACK_EMAIL`
 (`ui/settings/SettingsScreen.kt`) is set, an e-mail to it. The developer's personal address isn't put in the app.
 Play's closed testing also takes testers' private feedback on the store page.
+
+## D147. The photo reader's measurement: a first reader and its benchmark against the saved pages (2026-10-31)
+
+Milestone 0.1 put the photo reader (D106) in "only if time is left": measure it against the saved pages, nothing in
+the app yet. The question it answers: how often do the capture's photos alone give the receipt exactly, and can the
+reader tell when they do?
+
+- **The reader** (`discounts/PhotoReceiptReader.kt`, pure Kotlin, not called by the app): rebuilds each photo's
+  printed rows from the OCR lines' positions (OCR splits a row into the item number, the left part and the right
+  part), reads item rows by the national DANFE NFC-e layout ("number code description qty unit price total", a
+  "Desconto: 0,60" row under a discounted item), and the totals ("Qtd. total de itens", "Total produtos" / "Valor
+  total" / "Valor a pagar", whose meaning varies by store). The same item in several photos is one, keyed by its
+  printed number; among its readings that add up, the one whose photo read most cleanly wins. A row that holds pieces
+  of two (a second price or code, another item's number: a tilted photo) is dropped rather than guessed.
+- **Its checks**, all from the print itself: quantity × unit price, less the item's discount, is the line total
+  (stores print it before or after the discount); no item number missing up to the printed count; GTIN check
+  digits; the items add up to a printed total. A reading that passes every check is *trusted*.
+- **The benchmark** (`PhotoReaderBenchTest`, local, GETNF_BENCH like D89): every dev session of the capture corpus
+  whose receipt has a page in `test-media/truth/`, reading the frames the capture committed in its last run, item by
+  item against the page. The number that must stay at zero: a trusted reading that's wrong.
+
+**Baseline (29 sessions, 10 receipts):** items exact 388 of 499 (78%); 4 sessions read exactly, all 4 trusted;
+trusted and wrong: 0. Where it fails, in order: items not read (rows of a tilted photo run together and are dropped,
+or the item is in no committed photo); an OCR digit wrong in a code (the GTIN check catches most); a weighed item's
+right part on a line of its own; the pharmacy's receipt (another layout, "De R$ … por R$ …") reads nothing; a
+discount row missed. Descriptions match the page letter for letter in about 60% of items (OCR's spelling; the code is
+what identifies an item). Next: rebuild rows along each line's own slope, not one angle per photo; read the
+pharmacy's layout; weighed items. SEFAZ stays the source (D106) until trusted readings are many and never wrong.
 
