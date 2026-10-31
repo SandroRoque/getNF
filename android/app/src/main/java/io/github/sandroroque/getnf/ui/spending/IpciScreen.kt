@@ -1,5 +1,7 @@
 package io.github.sandroroque.getnf.ui.spending
 
+import io.github.sandroroque.getnf.ui.calmo.ButtonKind
+import io.github.sandroroque.getnf.ui.calmo.Pill
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -70,8 +72,7 @@ fun IpciScreen(initialCategory: String?, onOpenProduct: (String) -> Unit, onBack
   ) {
     item {
       BackHeader("Voltar", onBack) {
-        Text(scope?.let { categories.firstOrNull { c -> c.id == it }?.label } ?: "Todos os gastos", style = MaterialTheme.typography.bodyMedium,
-          color = Calmo.acc, modifier = Modifier.clickable { picking = true }.padding(8.dp))
+        Pill((scope?.let { categories.firstOrNull { c -> c.id == it }?.label } ?: "Todos os gastos") + " ▾", ButtonKind.Outline) { picking = true }
       }
     }
     val ms = months ?: return@LazyColumn

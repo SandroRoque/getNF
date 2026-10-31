@@ -1,5 +1,7 @@
 package io.github.sandroroque.getnf.ui.spending
 
+import io.github.sandroroque.getnf.ui.calmo.ButtonKind
+import io.github.sandroroque.getnf.ui.calmo.Pill
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -79,10 +81,9 @@ fun SpendingScreen(
   ) {
     item {
       TabHeader("Gastos") {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-          for ((i, l) in listOf("Mês", "Ano").withIndex()) Text(l, style = MaterialTheme.typography.bodyMedium,
-            color = if ((i == 1) == yearly) Calmo.fg else Calmo.mute,
-            modifier = Modifier.clickable { yearly = i == 1; selectedKey = null })
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          for ((i, l) in listOf("Mês", "Ano").withIndex())
+            Pill(l, if ((i == 1) == yearly) ButtonKind.Solid else ButtonKind.Ghost) { yearly = i == 1; selectedKey = null }
         }
       }
     }
@@ -112,11 +113,11 @@ fun SpendingScreen(
     if (path.isNotEmpty()) item {
       // Where we are in the tree; each step goes back up.
       Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("Tudo", style = MaterialTheme.typography.bodySmall, color = Calmo.acc, modifier = Modifier.clickable { path = emptyList() })
+        Pill("Tudo", ButtonKind.Outline) { path = emptyList() }
         path.forEachIndexed { i, id ->
           Sub("›")
-          Text(byId[id]?.label ?: "?", style = MaterialTheme.typography.bodySmall,
-            color = if (i == path.lastIndex) Calmo.fg else Calmo.acc, modifier = Modifier.clickable { path = path.take(i + 1) })
+          if (i == path.lastIndex) Text(byId[id]?.label ?: "?", style = MaterialTheme.typography.labelLarge, color = Calmo.fg)
+          else Pill(byId[id]?.label ?: "?", ButtonKind.Outline) { path = path.take(i + 1) }
         }
       }
     }

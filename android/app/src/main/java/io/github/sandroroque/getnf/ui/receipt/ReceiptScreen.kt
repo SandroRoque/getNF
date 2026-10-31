@@ -1,6 +1,5 @@
 package io.github.sandroroque.getnf.ui.receipt
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -102,7 +101,7 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
   ) {
     item {
       BackHeader("Voltar", onBack) {
-        Text("Mais", style = MaterialTheme.typography.bodyMedium, color = Calmo.acc, modifier = Modifier.clickable { more = true }.padding(8.dp))
+        Pill("Mais", ButtonKind.Outline) { more = true }
       }
     }
     item {
@@ -242,7 +241,7 @@ private fun WaitingForPage(chave: String, photos: List<String>, onBack: () -> Un
   ) {
     item {
       BackHeader("Voltar", onBack) {
-        Text("Mais", style = MaterialTheme.typography.bodyMedium, color = Calmo.acc, modifier = Modifier.clickable { more = true }.padding(8.dp))
+        Pill("Mais", ButtonKind.Outline) { more = true }
       }
     }
     item {

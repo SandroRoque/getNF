@@ -55,11 +55,12 @@ fun Wide(label: String, kind: ButtonKind, enabled: Boolean, onClick: () -> Unit)
 @Composable
 fun TextLink(label: String, onClick: () -> Unit) = TextLink(label, Modifier, onClick)
 
+/**
+ * A secondary action. Drawn as an outlined pill, like every tappable thing that isn't a row with a chevron or a header
+ * icon: bare text didn't read as something to tap (the user's review, milestone 0.1; D142).
+ */
 @Composable
-fun TextLink(label: String, modifier: Modifier, onClick: () -> Unit) {
-  Text(label, style = MaterialTheme.typography.labelLarge, color = Calmo.fg,
-    modifier = modifier.clip(CircleShape).clickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 8.dp))
-}
+fun TextLink(label: String, modifier: Modifier, onClick: () -> Unit) = Pill(label, ButtonKind.Outline, modifier = modifier, onClick = onClick)
 
 /**
  * A text field: the label above while typing, an [error] in its place under the field (or a [hint] when there's

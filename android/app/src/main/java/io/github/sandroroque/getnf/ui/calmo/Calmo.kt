@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -195,16 +199,21 @@ fun Mark(text: String, you: Boolean = false) {
     modifier = Modifier.border(1.dp, if (you) Calmo.acc else Calmo.line, RoundedCornerShape(4.dp)).padding(horizontal = 4.dp))
 }
 
-/** Text tabs with an underline under the selected one. */
+/**
+ * Tabs across the whole width, each an equal share (the whole share is the touch target), the selected one dark and
+ * underlined edge to edge. Text alone didn't read as something to tap (the user's review, milestone 0.1).
+ */
 @Composable
 fun Segments(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
   Column {
-    Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+    Row(Modifier.fillMaxWidth()) {
       options.forEachIndexed { i, label ->
-        Column(Modifier.clickable { onSelect(i) }.padding(top = 6.dp)) {
-          Text(label, style = MaterialTheme.typography.bodyMedium, color = if (i == selected) Calmo.fg else Calmo.mute)
-          Spacer(Modifier.height(7.dp))
-          Box(Modifier.height(2.dp).width(if (i == selected) 24.dp else 0.dp).background(Calmo.fg))
+        val on = i == selected
+        Column(Modifier.weight(1f).clickable { onSelect(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
+          Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (on) Calmo.fg else Calmo.mute, textAlign = TextAlign.Center, maxLines = 2,
+            modifier = Modifier.heightIn(min = 48.dp).wrapContentHeight(Alignment.CenterVertically).padding(horizontal = 4.dp, vertical = 10.dp))
+          Box(Modifier.fillMaxWidth().height(3.dp).background(if (on) Calmo.fg else Color.Transparent))
         }
       }
     }

@@ -1,6 +1,5 @@
 package io.github.sandroroque.getnf.ui.catalog
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -99,8 +98,7 @@ fun ProductScreen(productId: String, onOpenProduct: (String) -> Unit, onBack: ()
   ) {
     item {
       BackHeader("Voltar", onBack) {
-        Text("Editar", style = MaterialTheme.typography.bodyMedium, color = Calmo.acc,
-          modifier = Modifier.clickable { sheet = Sheet.Edit }.padding(8.dp))
+        Pill("Editar", ButtonKind.Outline) { sheet = Sheet.Edit }
       }
     }
     item {

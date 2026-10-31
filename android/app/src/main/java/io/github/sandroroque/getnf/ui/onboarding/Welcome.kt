@@ -5,7 +5,6 @@ import io.github.sandroroque.getnf.ui.calmo.TextLink
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,8 +50,7 @@ fun WelcomeScreen(onScan: () -> Unit, onDemo: () -> Unit, onExplore: () -> Unit,
     Row(Modifier.fillMaxWidth().height(40.dp), verticalAlignment = Alignment.CenterVertically) {
       Dots(page, 3)
       Spacer(Modifier.weight(1f))
-      if (page < 2) Text("Pular", style = MaterialTheme.typography.labelLarge, color = Calmo.mute,
-        modifier = Modifier.clip(CircleShape).clickable { page = 2 }.padding(horizontal = 10.dp, vertical = 6.dp))
+      if (page < 2) Pill("Pular", ButtonKind.Ghost) { page = 2 }
     }
     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(18.dp, Alignment.CenterVertically)) {

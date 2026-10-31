@@ -1,5 +1,11 @@
 package io.github.sandroroque.getnf.ui.catalog
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -42,17 +48,23 @@ fun CatalogScreen(
   initialSegment: Int, onOpenProduct: (String) -> Unit, onOpenStore: (String) -> Unit, onOpenReceipt: (String) -> Unit,
   onOpenPage: (String) -> Unit, onScanProduct: () -> Unit = {},
 ) {
-  var segment by rememberSaveable { mutableStateOf(initialSegment) }
+  // Swiping sideways changes the tab too (the user's review, milestone 0.1).
+  val pager = rememberPagerState(initialPage = initialSegment) { 4 }
+  val scope = rememberCoroutineScope()
   Column(Modifier.fillMaxSize().statusBarsPadding()) {
     Column(Modifier.padding(horizontal = 20.dp)) {
       TabHeader("Catálogo")
-      Segments(listOf("Produtos", "Categorias", "Lojas", "Notas"), segment) { segment = it }
+      Segments(listOf("Produtos", "Categorias", "Lojas", "Notas"), pager.targetPage) { scope.launch { pager.animateScrollToPage(it) } }
     }
-    when (segment) {
-      0 -> ProductList(onOpenProduct, onScanProduct)
-      1 -> CategoryTree()
-      2 -> StoreList(onOpenStore)
-      else -> ReceiptList(onOpenReceipt, onOpenPage)
+    HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1, verticalAlignment = Alignment.Top) { page ->
+      Box(Modifier.fillMaxSize()) {
+        when (page) {
+          0 -> ProductList(onOpenProduct, onScanProduct)
+          1 -> CategoryTree()
+          2 -> StoreList(onOpenStore)
+          else -> ReceiptList(onOpenReceipt, onOpenPage)
+        }
+      }
     }
   }
 }

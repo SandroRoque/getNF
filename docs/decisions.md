@@ -152,6 +152,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D139 | dev | current | Every Play upload gets a `play/<versionCode>` tag on the commit it was built from |
 | D140 | dev | current | Checks on GitHub for every push; the app writes down its crashes and offers to send them |
 | D141 | catalog | current | A purchase is a product on one receipt; the product screen leads with the price paid per unit |
+| D142 | UI | current | Everything tappable looks tappable: rows with a chevron, pills, or the back header; tabs fill the width and swipe |
 
 ---
 
@@ -3490,4 +3491,19 @@ line for a purchase.
 - **"Nas notas" only when it says more than the title:** the product was renamed, or it joins items printed
   differently. A product without a name of its own is titled with the receipt's text, which was then shown twice.
 - A mark beside a long category path ("VOCÊ") no longer breaks over two lines.
+
+## D142. Everything tappable looks tappable: rows with a chevron, pills, or the back header; tabs fill the width and swipe (2026-10-31)
+
+From the user's review (milestone 0.1): the Catálogo's four tabs were small text taking part of the width, with
+nothing saying they were buttons, and "text that's a button without looking like one" came back on several screens.
+
+- **The rule:** something tappable is a row with a chevron (›), a pill (solid, outlined or ghost, D81), or the back
+  header's "‹ Voltar". No bare text acts as a button. `TextLink` is now an outlined pill, so its uses (Sincronizar,
+  Esqueci a senha, Usar outro e-mail, Ver um exemplo, Todas / Nenhuma, Sair do exemplo, the welcome's links) follow
+  at once; the header actions (the product's Editar, the receipt's Mais, the IPCI's scope ▾), Gastos' Mês / Ano, its
+  breadcrumb, the first steps' Esconder, the welcome's Pular and the SEFAZ page's Pular / Pronto / Voltar became pills.
+  Option lists inside a sheet (pickers) stay full-width rows.
+- **Tabs** (`Segments`, used by Catálogo, Gastos, Entrar / Criar conta and the invite roles) take the whole width in
+  equal shares, each share the touch target, at body size, the selected one semi-bold and underlined edge to edge.
+  The Catálogo's tabs also change by swiping sideways (a pager).
 

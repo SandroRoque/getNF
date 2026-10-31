@@ -1,5 +1,7 @@
 package io.github.sandroroque.getnf.ui.page
 
+import io.github.sandroroque.getnf.ui.calmo.ButtonKind
+import io.github.sandroroque.getnf.ui.calmo.Pill
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.util.Log
@@ -20,7 +22,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -98,7 +99,7 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
       TopAppBar(
         title = { Text("Página da nota") },
         actions = {
-          TextButton(onClick = onDone) { Text(if (status == Status.Saved) "Pronto" else "Pular") }
+          Pill(if (status == Status.Saved) "Pronto" else "Pular", ButtonKind.Outline, onClick = onDone)
         },
       )
     },
@@ -117,11 +118,11 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
             CircularProgressIndicator()
             Text("A página desta nota já está na caderneta.", style = MaterialTheme.typography.bodyLarge)
             Text("Ela chega neste celular com a sincronização, sem gastar uma consulta. A nota abre sozinha.", style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = onDone) { Text("Voltar") }
+            Pill("Voltar", ButtonKind.Outline, onClick = onDone)
           } else {
             Text("Outra pessoa da caderneta está buscando esta página agora.", style = MaterialTheme.typography.bodyLarge)
             Text("Quando ela salvar, a página chega aqui sozinha, sem gastar uma consulta desta rede.", style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = onDone) { Text("Voltar") }
+            Pill("Voltar", ButtonKind.Outline, onClick = onDone)
           }
         }
       } else if (url == null) {
@@ -170,7 +171,7 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
             when (status) {
               Status.Loading -> { CircularProgressIndicator(); Text("Buscando a página da SEFAZ…", style = MaterialTheme.typography.bodyLarge) }
               Status.Saved -> { CircularProgressIndicator(); Text("Página salva. Lendo os itens…", style = MaterialTheme.typography.bodyLarge) }
-              else -> { Text(status.text, style = MaterialTheme.typography.bodyLarge); TextButton(onClick = onDone) { Text("Voltar") } }
+              else -> { Text(status.text, style = MaterialTheme.typography.bodyLarge); Pill("Voltar", ButtonKind.Outline, onClick = onDone) }
             }
           }
         }

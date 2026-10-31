@@ -1,5 +1,7 @@
 package io.github.sandroroque.getnf.ui.onboarding
 
+import io.github.sandroroque.getnf.ui.calmo.ButtonKind
+import io.github.sandroroque.getnf.ui.calmo.Pill
 import io.github.sandroroque.getnf.ui.calmo.TextLink
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -63,8 +65,7 @@ fun FirstStepsCard(steps: List<FirstStep>, onDemo: (() -> Unit)?, onHide: () -> 
     Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
       if (onDemo != null) TextLink("Ver um exemplo", onDemo)
       Spacer(Modifier.weight(1f))
-      Text("Esconder", style = MaterialTheme.typography.labelLarge, color = Calmo.mute,
-        modifier = Modifier.clip(CircleShape).clickable(onClick = onHide).padding(horizontal = 6.dp, vertical = 8.dp))
+      Pill("Esconder", ButtonKind.Ghost, onClick = onHide)
     }
   }
 }
