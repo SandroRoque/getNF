@@ -95,8 +95,9 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
    and the test/benchmark layers: [camera-plan.md](camera-plan.md). Step 0 done (D129, baselines 2026-10-31: a
    receipt frame ~470 ms, all OCR; the product formats cost ~1 ms). Step 1 done (D130, `data/ProductLookup.kt`).
    Step 2 done (D131: one camera decides receipt or product; packaging isn't receipt paper). Step 3 done (D132: the
-   answer in a sheet over the camera; Catálogo › "Pelo código de barras"). Next: step 4, measure on the phone against
-   step 0 and decide one camera or two entries.
+   answer in a sheet over the camera; Catálogo › "Pelo código de barras"). Step 4 done (D138): measured
+   against step 0, the one camera stays. Parked (the user: deterministic first): purchases at stores that print their
+   own code instead of the GTIN can't be found by barcode (camera-plan.md).
 7. **Later, to discuss: recognising items without a barcode by machine vision.** Produce, cold cuts and anything
    weighed in store carry a scale label with an in-store code (GTIN-13 starting with 2) that changes with every
    weighing. The idea: point the camera at the product; a barcode is looked up by GTIN, otherwise an image classifier

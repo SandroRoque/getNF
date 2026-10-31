@@ -142,7 +142,7 @@ session thread:                                   [frame N: paper, rows, decisio
    - The camera hint becomes "…ou o código de barras de um produto". The scan how-to is unchanged.
    - The torch keeps its current behaviour.
    - The Catálogo shortcut.
-4. **Measure again and decide:** microbenchmark, new receipt sessions, against step 0. Record the decision (one
+4. **Measure again and decide. Done (D138): one camera.** microbenchmark, new receipt sessions, against step 0. Record the decision (one
    camera or two entries) with the numbers.
 
 **A gap found on the phone (2026-10-31): stores that print their own code.** The box the user scanned (GTIN

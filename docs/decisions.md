@@ -148,6 +148,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D135 | capture | current | Markers read with OCR's misreads; a QR code is never unread text; show-through explains the pharmacy's faint rows |
 | D136 | cadernetas | current | A receipt scanned again whose page the caderneta has: "already here", not "someone is fetching it" |
 | D137 | capture | current | The end of a capture says when the receipt was already in the caderneta |
+| D138 | capture | current | One camera for receipts and products: measured against step 0, it stays |
 
 ---
 
@@ -3415,3 +3416,23 @@ to fetch: the screen offers "Ver a nota" and "Fechar" instead of the page. Witho
 Checked on the emulator: a receipt video captured twice showed "Nota salva", then "Esta nota já estava na caderneta ·
 Escaneada antes em 31 out" with the page still offered (none fetched). The variant with the page wasn't run here (it
 needs a real lookup).
+
+## D138. One camera for receipts and products: measured against step 0, it stays (2026-10-31)
+
+Step 4 of the camera plan ([camera-plan.md](camera-plan.md)): measure the one camera (D131–D133) against step 0's
+baseline (D129) and decide between one camera and two entries. Every criterion set in step 0 holds:
+
+| criterion | result |
+|---|---|
+| capture benchmark: no regressions | none; better since (D134, D135: the pharmacy's three sessions finish) |
+| per-frame p95 at most 10% slower | device benchmark, same 48 frames, ms median: OCR beside the QR scanner 137 (147 at step 0), beside QR + product formats 143 (151); the product formats add 1–2 ms to the scanner (8.7 → 10.8), which finishes long before OCR. Live, receipt frames: period 367 / 525 (median / p95) against 468 / 572 at step 0 (other receipts: OCR time follows the amount of text), scanner 36 / 97 against 32 / 67 |
+| time to finish a receipt unchanged | the capture benchmark replays the receipt sessions with the phone's timing: no session slower |
+| no receipt capture diverted to product mode | the five receipt sessions with the one camera (748 frames): product mode 0 frames, product barcodes read 0 |
+| product barcodes in receipt frames: zero or near | 0 |
+
+Product mode skips OCR: frames every 56 ms (median, p95 279) over the six product sessions, against about 160 with
+OCR. The scanner's own p95 rose 30 ms with the product formats, still under a fifth of OCR's.
+
+So the "Escanear" button stays one camera for both, with the Catálogo's shortcut for products only (D132). The
+receipt sessions measured with the one camera are all of one receipt (the pharmacy's); the capture benchmark's other
+28 receipt sessions, replayed on every push, cover the rest, and the device benchmark compares the same frames.
