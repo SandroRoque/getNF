@@ -24,7 +24,18 @@ Explain Android-specific concepts briefly when they come up.
   migrations; `npx supabase test db` runs the pgTAP tests.
 - `sudo` needs a password, so you can't run it. Put root steps in `tools/setup-system.sh` and ask the user to run it.
 
-## Data & privacy
+## Git
+
+- One task, one branch, named after the task (`claude/<task>`). A session's worktree comes with a made-up name: rename
+  its branch when the task is clear (`git branch -m claude/<task>`), and start a new branch from `origin/main` for a
+  new task instead of carrying on in the old one.
+- Verified work goes to main (`git push origin HEAD:main`), then the main checkout is fast-forwarded
+  (`git -C <main checkout> merge --ff-only origin/main`). Once merged, the branch has no further use: delete it when
+  its session ends, and tell the user about stale worktrees rather than leaving them to pile up.
+- Never commit build output (`build/`, APKs, bundles); check `git status` before committing new modules.
+- Every Play upload is tagged `play/<versionCode>` on the commit it was built from (D139, `docs/play-console.md`).
+
+
 
 - `test-media/` holds real receipts and is gitignored. Don't commit it, and don't copy it into tracked test dirs as-is.
   Make reduced/sanitized fixtures if tests need them.

@@ -170,6 +170,8 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
 - From another device on the LAN (the phone on Wi-Fi works with any port-check app, or a laptop with `nc -zv -w3
   192.168.4.4 54321`), confirm 54321-54324 time out, on IPv4 and the PC's IPv6 address. The firewall rule that should
   make them time out is in place (D109); the PC can't test this on itself.
+- A second Supabase project for development, so debug builds and tests stop using the database the Play app uses
+  (the user agrees it's needed; not now). Then debug builds point at it and migrations go there first.
 - Rotate the Supabase database password: the 2026-10-27 03:30 backup failed on DNS and its traceback wrote the
   connection URL, password included, to the systemd journal. Fixed for the future (a2cb28f, `PGPASSWORD`); change the
   password in the dashboard, then in `.env.local`.
