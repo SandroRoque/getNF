@@ -8,7 +8,7 @@ legal advice. Data safety has its own page: [play-data-safety.md](play-data-safe
 Test and release › Testing › **Internal testing** › Testers: create an e-mail list (the user's own address to begin
 with), save, and copy the opt-in link. Then Releases › Create new release › upload
 `android/app/build/outputs/bundle/release/app-release.aab` (`cd android && ./gradlew :app:bundleRelease`), a
-release name like `1 (1.0)`, notes in pt-BR, Save › Review release › Start rollout. Open the opt-in link on the phone,
+release name equal to `versionName` (`0.0.2`; the first was named 0.0.1 while the app still said 1.0), notes in pt-BR, Save › Review release › Start rollout. Open the opt-in link on the phone,
 accept, and install from Play. Internal testing doesn't need the 12 testers for 14 days that personal accounts need
 before production; it's also not reviewed the way production is.
 

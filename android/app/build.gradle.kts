@@ -47,7 +47,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 2
-        versionName = "1.1"
+        versionName = "0.0.2"
     }
 
     // The Supabase project baked into the APK (D70): its URL and publishable key, which are public by design (Row
