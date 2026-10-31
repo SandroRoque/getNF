@@ -72,12 +72,13 @@ internal class IngestSession {
    */
   fun toRead(): Set<RowAssembly.Entry> {
     val rows = assembly.rows
-    val header = rows.indexOfFirst { "DESCRICAO" in it.text && ("COD" in it.text || "QT" in it.text) }
+    // The markers as OCR reads small print: a couple of letters off ("CADIGODESCRICA" for Código Descrição, D134).
+    val header = rows.indexOfFirst { RowAssembly.nearly(it.text, "DESCRICAO", 2) && (RowAssembly.nearly(it.text, "CODIGO", 2) || "QT" in it.text) }
     // From the first item: the row after the header that starts with a code. The header's own rows are the columns'
     // names, archived (some stores print them small enough that OCR never reads them well, D134).
     val firstItem = if (header < 0) -1 else (header + 1 until rows.size).firstOrNull { ITEM_START.containsMatchIn(rows[it].text) } ?: -1
     val start = when { firstItem >= 0 -> firstItem; header >= 0 -> header; else -> 0 }
-    val consult = rows.indexOfFirst { "CONSULTEPELA" in it.text }
+    val consult = rows.indexOfFirst { RowAssembly.nearly(it.text, "CONSULTEPELA", 2) }
     val end = if (consult > start) consult else rows.size
     return (rows.subList(start, end) + rows.filter { r -> TAX_MARKERS.any { it in r.text } }).toSet()
   }
@@ -285,8 +286,10 @@ internal class IngestSession {
       if (rows[i + 1].down - rows[i].down < pitch * 1.6 || bottom - top < 4) continue
       val rowHeight = (rows[i].height + rows[i + 1].height) / 2
       val (total, longest) = band(image, across, down, a0, a1, top, bottom)
-      // Letters fill about 60% of OCR's box; a rule, however thick it renders, stays under half of it.
-      result[i] = total in UNREAD_PRINT_MIN..UNREAD_PRINT_MAX && longest >= rowHeight * .5
+      // Letters fill about 60% of OCR's box; a rule, however thick it renders, stays under half of it. Lines of text
+      // have blank space between them: print dark without a break for more than two and a half rows is a graphic (a
+      // QR code narrow beside a wide text block shades only a sixth of the band, as text does, D135).
+      result[i] = total in UNREAD_PRINT_MIN..UNREAD_PRINT_MAX && longest >= rowHeight * .5 && longest <= rowHeight * 2.5
     }
     return result
   }

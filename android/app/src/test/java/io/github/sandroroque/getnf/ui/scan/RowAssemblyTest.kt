@@ -106,4 +106,12 @@ class RowAssemblyTest {
     }
     assertEquals("no faint reading was added, and the good rows weren't added again", receipt.take(20), a.rows.map { it.text })
   }
+
+  @Test fun markersAreFoundWithOcrsUsualMisreads() {
+    assertTrue(RowAssembly.nearly("CADIGODESCRICA", "DESCRICAO", 2)) // the pharmacy's header (D135)
+    assertTrue(RowAssembly.nearly("CADIGODESCRICA", "CODIGO", 2))
+    assertTrue(RowAssembly.nearly("CONSULTAPELACHAVEDELCASSUEN", "CONSULTEPELA", 2))
+    assertFalse(RowAssembly.nearly("DOCUMENTOAUXDANOTAFISCALDECONSUMIDORELETRONICA", "DESCRICAO", 2))
+    assertFalse(RowAssembly.nearly("DOCUMENTOAUXDANOTAFISCALDECONSUMIDORELETRONICA", "CONSULTEPELA", 2))
+  }
 }

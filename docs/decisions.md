@@ -145,6 +145,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D132 | UI | current | A product's barcode answers in a sheet over the camera; the Catálogo opens the camera for products |
 | D133 | capture | current | A barcode counts once confirmed over several frames; the debug dump drops frames instead of queueing |
 | D134 | capture | current | Faint print adds no rows; reading starts at the first item; a row with something over its start isn't read |
+| D135 | capture | current | Markers read with OCR's misreads; a QR code is never unread text; show-through explains the pharmacy's faint rows |
 
 ---
 
@@ -3360,3 +3361,26 @@ were seen, 63 by the end of a three-minute session). Two sessions of it (`live-d
 Result: both pharmacy sessions finish with both items legible (7.4 s and 3 photos; 50.6 s and 4), a session from
 2026-10-26 that never finished now does, one finishes 5 s sooner, and no session got worse; the product sessions
 still commit 1 photo. A JVM test covers the faint rows.
+
+## D135. Markers read with OCR's misreads; a QR code is never unread text; show-through explains the pharmacy's faint rows (2026-10-31)
+
+The user tried the pharmacy's receipt again with D134 (session `live-dumps/phone/2026-10-31T12-34-16`, dev): the
+rows no longer multiplied (36, clean), but it still didn't finish, though every line is legible through the camera.
+They noticed the paper is thin enough to see the back's print through it, and asked whether that mattered.
+
+- **It did.** A crop of the frames shows the back printed in mirror behind the column header and the first item (app
+  store badges, a QR code, a line of text along the edge). OCR read those as the faint garbage rows of D134
+  ("VOHSLGOO", "29treoe910", a box running down the margin); D134's rule keeps them out of the map.
+- **The header wasn't recognised:** its best reading this time was "CADIGODESCRICA", without "DESCRICAO" or "COD",
+  so the rows to read started at the receipt's top again and the small-print title and header held it open. The
+  markers (the header's "DESCRICAO" with "CODIGO" or "QT", and "CONSULTEPELA") are now found with up to two letters
+  off (`RowAssembly.nearly`). D134 had worked on the earlier session only because OCR read the word right there.
+- **The QR code counted as unread print:** the check for rows OCR missed (print between two rows, by its share of dark
+  pixels) took the QR between "NFC-e Nº" and the consumer's line for text: narrow beside this store's wide text block,
+  it shades about a sixth of the band, as text does, and the capture waited for rows there for half a minute. Lines of
+  text have blank space between them; print dark without a break for more than two and a half rows is now a graphic.
+
+Result: that session finishes at 1.3 s with 2 photos and both items legible, and the session of 03:50 at 9.9 s
+instead of 50.6. The three pharmacy sessions finish. One short session (2026-10-26T21-57-50, seven frames, the
+user stopped at 4.7 s) that started finishing with D134 doesn't again; it missed the same rows either way and never
+finished before D134, so the baseline was accepted with it.

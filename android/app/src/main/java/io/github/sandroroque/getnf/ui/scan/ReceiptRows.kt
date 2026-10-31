@@ -271,6 +271,18 @@ internal class RowAssembly {
       return best >= shorter * .7
     }
 
+    /** Whether [word] is in [text] with at most [edits] letters changed, missing or extra (OCR's misreads). */
+    fun nearly(text: String, word: String, edits: Int): Boolean {
+      // Edit distance from the word to the best matching stretch of the text: a match may start anywhere.
+      var previous = IntArray(text.length + 1)
+      for (i in 1..word.length) {
+        val current = IntArray(text.length + 1); current[0] = i
+        for (j in 1..text.length) current[j] = minOf(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + if (word[i - 1] == text[j - 1]) 0 else 1)
+        previous = current
+      }
+      return previous.min() <= edits
+    }
+
     fun distance(a: String, b: String): Int {
       var previous = IntArray(b.length + 1) { it }
       for (i in 1..a.length) {
