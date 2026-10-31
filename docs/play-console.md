@@ -25,6 +25,15 @@ uploaded, even into a draft that's discarded: to change anything, build again wi
 0.0.1 (code 1, the app said 1.0) and code 2, which went out as "1.1" after a rebuild as 0.0.2 was refused for reusing
 code 2. Next: code 3, `0.0.3`.
 
+After uploading, tag the commit the bundle was built from (commit first: never build a release from uncommitted
+changes) and push the tag (D139):
+
+```bash
+git tag -a play/3 -m "Play internal testing: versionCode 3, versionName 0.0.3" && git push origin play/3
+```
+
+`git tag -n1 -l 'play/*'` lists what went out; `git diff play/2 play/3` is what changed between two releases.
+
 ## App content
 
 | Task | Answer | Why |

@@ -149,6 +149,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D136 | cadernetas | current | A receipt scanned again whose page the caderneta has: "already here", not "someone is fetching it" |
 | D137 | capture | current | The end of a capture says when the receipt was already in the caderneta |
 | D138 | capture | current | One camera for receipts and products: measured against step 0, it stays |
+| D139 | dev | current | Every Play upload gets a `play/<versionCode>` tag on the commit it was built from |
 
 ---
 
@@ -3436,3 +3437,16 @@ OCR. The scanner's own p95 rose 30 ms with the product formats, still under a fi
 So the "Escanear" button stays one camera for both, with the Catálogo's shortcut for products only (D132). The
 receipt sessions measured with the one camera are all of one receipt (the pharmacy's); the capture benchmark's other
 28 receipt sessions, replayed on every push, cover the rest, and the device benchmark compares the same frames.
+
+## D139. Every Play upload gets a `play/<versionCode>` tag on the commit it was built from (2026-10-31)
+
+Nothing recorded which commit a Play release was built from, so a bug reported on an installed version couldn't be
+traced to its code. From now on, each bundle sent to Play gets an annotated tag `play/<versionCode>` (the code is what
+Play keeps unique; the versionName has already changed meaning once) on the commit it was built from, with the
+versionName and the release name in its message, pushed with the release. The bundle is built from a clean, committed
+tree, so the tag says exactly what's in it.
+
+The two uploads so far were tagged from the session transcripts: `play/1` on de74ab7 (built 13:09 on 2026-10-30, at
+that commit) and `play/2` on f463087 (built 22:31 from the tree committed at 22:35 as f463087, nothing else changed).
+A code taken by a refused or discarded upload gets no tag.
+
