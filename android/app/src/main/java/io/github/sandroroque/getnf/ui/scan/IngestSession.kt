@@ -73,7 +73,10 @@ internal class IngestSession {
   fun toRead(): Set<RowAssembly.Entry> {
     val rows = assembly.rows
     val header = rows.indexOfFirst { "DESCRICAO" in it.text && ("COD" in it.text || "QT" in it.text) }
-    val start = if (header >= 0) header else 0
+    // From the first item: the row after the header that starts with a code. The header's own rows are the columns'
+    // names, archived (some stores print them small enough that OCR never reads them well, D134).
+    val firstItem = if (header < 0) -1 else (header + 1 until rows.size).firstOrNull { ITEM_START.containsMatchIn(rows[it].text) } ?: -1
+    val start = when { firstItem >= 0 -> firstItem; header >= 0 -> header; else -> 0 }
     val consult = rows.indexOfFirst { "CONSULTEPELA" in it.text }
     val end = if (consult > start) consult else rows.size
     return (rows.subList(start, end) + rows.filter { r -> TAX_MARKERS.any { it in r.text } }).toSet()
@@ -87,7 +90,10 @@ internal class IngestSession {
     if (done) return IngestStep(PaperFinder.find(frame.image, frame.ocr), null, false, emptyList(), IngestHint.DONE, true, null)
     val paper = PaperFinder.find(frame.image, frame.ocr) ?: return skip(null, IngestHint.FIND_RECEIPT, frame)
     val down = down(paper, frame.image)
-    val frameRows = RowAssembly.rows(paper, frame.image.width, frame.image.height)
+    val frameRows = RowAssembly.rows(paper, frame.image.width, frame.image.height).let { rows ->
+      val covered = covered(frame.image, paper, rows)
+      rows.mapIndexed { i, r -> if (covered[i]) r.copy(cut = true) else r }
+    }
     val readable = readable(frameRows)
     val at = assembly.add(frameRows, paper.topSeen, paper.bottomSeen, unreadPrint(frame.image, paper, frameRows))
     if (at == null) {
@@ -211,7 +217,7 @@ internal class IngestSession {
 
   /** Each row: its own confidence at least 0.5, and the median over three rows either side at least 0.6. */
   private fun readable(rows: List<Row>): BooleanArray = BooleanArray(rows.size) { i ->
-    rows[i].confidence >= MIN_ROW && rows[i].weakest >= MIN_BOX && zoneMedian(rows, i) >= MIN_ZONE && rows[i].height >= MIN_TEXT_PX
+    rows[i].confidence >= MIN_ROW && rows[i].weakest >= MIN_BOX && zoneMedian(rows, i) >= MIN_ZONE && rows[i].height >= MIN_TEXT_PX && !rows[i].cut
   }
 
   private fun neighboursReadable(readable: BooleanArray, i: Int): Boolean {
@@ -227,6 +233,46 @@ internal class IngestSession {
    * the usual spacing, the paper between them, across the text block, has sparse dark strokes (text). Clean paper is a
    * blank line; dense dark (a QR code, the logo) is not text.
    */
+  /**
+   * Rows something lies over (D134): a row that starts in from the text block's left edge has blank paper before it,
+   * light and neutral like the paper around its print; a finger, an object or a deep shadow there is darker or
+   * coloured all over, and may hide the row's start (a thumb over an item's code left "6121 VIT D3…" read well, without its
+   * code). Such a row is in view, not read.
+   */
+  private fun covered(image: GrayImage, paper: PaperOutline, rows: List<Row>): BooleanArray {
+    val result = BooleanArray(rows.size)
+    if (rows.size < 3 || paper.lines.isEmpty()) return result
+    val (across, down) = RowAssembly.printAxes(paper, image.width, image.height)
+    val starts = rows.map { it.start }.sorted()
+    val left = starts[starts.size / 10]
+    val right = paper.lines.flatMap { q -> q.corners.map { it.x * across.x + it.y * across.y } }.max()
+    /** Brightness less colourfulness (as PaperFinder's paper look) along the row's band, from [a0] to [a1]. */
+    fun looks(r: Row, a0: Double, a1: Double): List<Int> {
+      val out = mutableListOf<Int>()
+      var d = r.down - r.height * .3
+      while (d <= r.down + r.height * .3) {
+        var a = a0
+        while (a <= a1) {
+          val x = (a * across.x + d * down.x).toInt(); val y = (a * across.y + d * down.y).toInt()
+          if (x in 0 until image.width && y in 0 until image.height) out += image[x, y] - image.chroma(x, y)
+          a += 2.0
+        }
+        d += 2.0
+      }
+      return out
+    }
+    for ((i, r) in rows.withIndex()) {
+      if (r.start - left < r.height) continue // it starts at the edge: nothing before it to hide
+      // Just before the row's start, where something hiding it would be: a finger is far darker than the paper (about
+      // a fifth of it, measured), uneven light only somewhat (seven tenths), and print beside the text (a QR code at the
+      // left, as some stores print it) keeps a blank margin next to the text.
+      val margin = looks(r, max(left, r.start - r.height * 2), r.start - r.height * .3).sorted().ifEmpty { continue }
+      val paperLevel = looks(r, left, right).sorted().let { it[it.size * 9 / 10] }
+      result[i] = margin[margin.size / 2] < paperLevel * COVERED
+    }
+    return result
+  }
+
   private fun unreadPrint(image: GrayImage, paper: PaperOutline, rows: List<Row>): BooleanArray {
     val result = BooleanArray(max(0, rows.size - 1))
     if (rows.size < 3 || paper.lines.isEmpty()) return result
@@ -325,6 +371,10 @@ internal class IngestSession {
   }
 
   private companion object {
+    /** An item row's start: its code (or its number then code), at least four digits; OCR may read a digit as O. */
+    private val ITEM_START = Regex("^[0-9O]{4}")
+    /** The margin before a row is covered when its look is under this share of the paper's (D134). */
+    private const val COVERED = .45
     const val PATIENCE_MS = 1500L
     // A kept photo covers a row when it read it nearly as surely as the best saved read of it.
     const val KEEP_MARGIN = .05

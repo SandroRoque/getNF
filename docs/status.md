@@ -104,16 +104,6 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 
 ## Open items
 
-- **The receipt capture never finishes a pharmacy receipt (2026-10-31, receipt `…120948`, sessions
-  `live-dumps/phone/2026-10-31T03-21-20` and `T03-50-17`, both dev).** The more the camera passes over it, the more
-  rows the map gets: 35 rows when both ends were seen, 63 by the end, never complete. Its items print in two parts (the
-  description, then the values at the right), and OCR reads them differently frame to frame (joined, split, letters
-  swapped); a reading that doesn't match an assembled row is inserted as a new one ("doubtful"), and each joins the
-  rows to read, which never become legible. The column header ("Qtde Un Vl Unit Vl Total") became four rows; OCR also
-  "reads" text inside the QR code's modules (four garbage rows). Not the one camera: it locked the receipt at its QR
-  code, and the replay matches the phone. Directions: a reading placed where an assembled row already is (no room for
-  it between its neighbours) merges into it instead of being inserted; OCR lines inside the scanner's QR corners are
-  dropped; doubtful rows stop counting as rows to read.
 - **Cadernetas, not built yet (D104):**
   - Parked rows (`sync_parked`, a row the server refused) aren't shown anywhere yet; D104 says they are. They belong next to
     the sync line on Ajustes' account card (D123), with a way to retry or drop one.

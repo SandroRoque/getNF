@@ -144,6 +144,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D131 | capture | current | One camera decides: receipt or product; packaging is not receipt paper |
 | D132 | UI | current | A product's barcode answers in a sheet over the camera; the Catálogo opens the camera for products |
 | D133 | capture | current | A barcode counts once confirmed over several frames; the debug dump drops frames instead of queueing |
+| D134 | capture | current | Faint print adds no rows; reading starts at the first item; a row with something over its start isn't read |
 
 ---
 
@@ -3331,3 +3332,31 @@ The user's first try of steps 1–3 on the phone (D130–D132): the app closed s
   after looking into them, since the user reported a problem: one finished (15.3 s, 6 photos); the other never read
   two rows legibly and kept asking to hold still, which the replay reproduces exactly; the camera had locked on the
   receipt at its QR code, so it's the receipt capture's own limit, not the one camera.
+
+## D134. Faint print adds no rows; reading starts at the first item; a row with something over its start isn't read (2026-10-31)
+
+A pharmacy's receipt never finished: the more the camera passed over it, the more rows its map had (35 when both ends
+were seen, 63 by the end of a three-minute session). Two sessions of it (`live-dumps/phone/2026-10-31T03-21-20` and
+`T03-50-17`), both dev. Three changes, each checked on the capture benchmark:
+
+- **A row read badly that matches nothing isn't added** (`RowAssembly.add`). Its faint small print came out as
+  different garbage in every frame ("VOHSLGOO", "YOTSTPOO", "29TREOE910"), and each frame added its own reading as a
+  new row; the extra rows then pushed the frame's good reads out of line, so a well-read item line got added again too
+  (one item twice, read two ways). Rows under 0.5 confidence between matched rows are now left out, as they already
+  were past a closed end. The map stopped growing: 48 rows instead of 63.
+- **The rows to read start at the first item** (`IngestSession.toRead`): the first row after the column header that
+  starts with a code (four digits, O for 0). The header's own rows are the columns' names, now archived like the
+  store's: in view in a photo is enough. This store prints them small enough that OCR never read them well, and they
+  alone held the capture open. Where no item row follows the header, it starts at the header, as before.
+- **A row with something over its start isn't read** (`IngestSession.covered`). With the header no longer holding it
+  open, the first session finished at 1.5 s without item 2: the user's thumb covered the start of its line, and OCR
+  read "6121 VIT D3…" with good confidence, without the code. A row that starts in from the text block's left edge has
+  blank paper just before it; when that stretch (up to two row heights before the row) is under 45% of the paper's
+  look (brightness less colourfulness), something lies over it, and the row is in view, not read. Measured: the thumb
+  about 20% of the paper, uneven light about 70%; a QR code printed left of the text (one wholesaler does) keeps a
+  blank quiet zone next to it. A first try that looked at the whole margin marked those rows covered, and missed the
+  thumb when paper showed before it. Rows whose boxes at the frame's border were dropped are marked the same way.
+
+Result: both pharmacy sessions finish with both items legible (7.4 s and 3 photos; 50.6 s and 4), a session from
+2026-10-26 that never finished now does, one finishes 5 s sooner, and no session got worse; the product sessions
+still commit 1 photo. A JVM test covers the faint rows.

@@ -94,4 +94,16 @@ class RowAssemblyTest {
     assertTrue(a.rows.isEmpty())
     assertNotNull(a.add(frame(0, 20, .8), true, false))
   }
+
+  @Test fun faintPrintReadDifferentlyEveryFrameDoesntMultiplyRows() {
+    // A pharmacy's receipt (D134): one faint line between rows 10 and 11, read as different garbage in every frame.
+    val a = RowAssembly()
+    a.add(frame(0, 20), true, false)
+    val garbage = listOf("VOHSLGOO", "YOTSTPOO", "29TREOE910", "E9TR6OA9EO", "ESBCBVONAC")
+    for (g in garbage) {
+      val rows = frame(0, 20).toMutableList().apply { add(11, Row(g, .35, 10 * 30.0 + 15, 20.0)) }
+      assertNotNull(a.add(rows, true, false))
+    }
+    assertEquals("no faint reading was added, and the good rows weren't added again", receipt.take(20), a.rows.map { it.text })
+  }
 }

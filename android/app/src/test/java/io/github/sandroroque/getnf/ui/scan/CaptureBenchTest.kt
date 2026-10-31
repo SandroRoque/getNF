@@ -159,7 +159,7 @@ class CaptureBenchTest {
       step.paper?.let { p -> rowTexts[id] = RowAssembly.rows(p, grayImage.width, grayImage.height).filter { it.confidence >= .6 }.map { it.text } }
       if (System.getenv("GETNF_INGEST_ROWS")?.split(',')?.contains(id) == true) step.paper?.let { p ->
         println("rows of $id (top ${p.topSeen} bottom ${p.bottomSeen}):")
-        RowAssembly.rows(p, grayImage.width, grayImage.height).forEach { println("  %.2f h%.0f %s".format(it.confidence, it.height, it.text)) }
+        RowAssembly.rows(p, grayImage.width, grayImage.height).forEach { println("  %.2f h%.0f d%.0f %s".format(it.confidence, it.height, it.down, it.text)) }
       }
       if (System.getenv("GETNF_INGEST_TRACE")?.split(',')?.contains(id) == true) trace(image, grayImage, lines, step, File(out, "trace-$id.jpg"))
       val why = if (step.paper == null) PaperTrace().also { PaperFinder.find(grayImage, lines, it) }.stopped else null

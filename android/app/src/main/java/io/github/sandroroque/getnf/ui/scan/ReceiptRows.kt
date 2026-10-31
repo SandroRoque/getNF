@@ -5,9 +5,12 @@ import kotlin.math.*
 /**
  * One printed row of a receipt as one frame read it: OCR's boxes on the same line merged in reading order. [text] is
  * normalized for matching; [confidence] is the boxes' length-weighted mean; [down] is where it sits down the receipt
- * in frame pixels, [height] its height.
+ * in frame pixels, [height] its height, [start] where its first box begins along the rows. [cut]: part of the row
+ * can't have been read (a box across the frame's border left out, or something over the paper before it), so the text
+ * is only part of the row, however well read (D134).
  */
-internal data class Row(val text: String, val confidence: Double, val down: Double, val height: Double, val weakest: Double = confidence)
+internal data class Row(val text: String, val confidence: Double, val down: Double, val height: Double, val weakest: Double = confidence,
+                        val cut: Boolean = false, val start: Double = 0.0)
 
 /**
  * The receipt as the sequence of its printed rows, assembled from frames that each see part of it (D82): every frame's
@@ -80,6 +83,10 @@ internal class RowAssembly {
       val next = (i + 1..lastI).firstNotNullOf { ref[it] }
       val twin = listOf(previous, next).firstOrNull { sameRow(it.text, frame[i].text) }
       if (twin != null) { ref[i] = twin; continue }
+      // A row read badly that matches nothing is faint print OCR reads differently every time (a pharmacy's small
+      // print came out "VOHSLGOO", "YOTSTPOO"...): it isn't added, or each frame adds its own reading, and the extra
+      // rows push the frame's good reads out of line with the assembly's, which then get added again too.
+      if (frame[i].confidence < WEAK) continue
       val created = Entry(frame[i].text, frame[i].confidence)
       entries.add(entries.indexOf(previous) + 1, created)
       previous.unreadAfter = 0; previous.clearAfter = 0 // the rows that were missing there
@@ -313,12 +320,17 @@ internal class RowAssembly {
       val rowHeight = whole.map { it.height }.sorted()[whole.size / 2]
       val groups = mutableListOf<MutableList<Triple<OcrQuad, Double, Double>>>()
       for (p in placed) if (groups.isNotEmpty() && p.second - groups.last().map { it.second }.average() < rowHeight * .5) groups.last() += p else groups += mutableListOf(p)
+      // Where the boxes left out at the border sit down the receipt: the rows there are read in part.
+      val cutAt = (lines - whole.toSet()).map { q -> val c = centre(q); c.x * down.x + c.y * down.y }
       return groups.map { g ->
         val ordered = g.sortedBy { it.third }
         val text = normalize(ordered.joinToString("") { it.first.text })
         val weight = ordered.sumOf { max(1, it.first.text.length) }.toDouble()
-        Row(text, ordered.sumOf { it.first.confidence * max(1, it.first.text.length) } / weight, g.map { it.second }.average(), ordered.maxOf { it.first.height },
-          ordered.filter { normalize(it.first.text).length >= 3 }.ifEmpty { ordered }.minOf { it.first.confidence })
+        val at = g.map { it.second }.average()
+        Row(text, ordered.sumOf { it.first.confidence * max(1, it.first.text.length) } / weight, at, ordered.maxOf { it.first.height },
+          ordered.filter { normalize(it.first.text).length >= 3 }.ifEmpty { ordered }.minOf { it.first.confidence },
+          cut = cutAt.any { abs(it - at) < rowHeight * .5 },
+          start = ordered.first().first.corners.minOf { it.x * across.x + it.y * across.y })
       }.filter { it.text.isNotEmpty() }
     }
   }
