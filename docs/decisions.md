@@ -3324,8 +3324,10 @@ The user's first try of steps 1–3 on the phone (D130–D132): the app closed s
   when the code it shows comes back after a moment unread.
 - **Sessions filed:** the four sessions at 03:06 (the step 0 build, before steps 1–3 were installed) pointed at the
   coffee bag, and the old build found "paper" in them; one even reached "done", without a QR code, so no receipt was
-  made. The replay with D131's light-on-dark rule finds no paper in any of them: they are product sessions now, with
-  the three at 03:20–03:22 (no photo committed in any). The two receipt sessions (one receipt) were promoted to dev
+  made. They are product sessions now, with the three at 03:20–03:22 (no photo committed in any). D131's light-on-dark
+  rule still let one blurred frame through in three of them (a photo each): fewer than half its lines came out light
+  on dark. A third of the lines is now enough, against at most a tenth on the receipts recorded; all 28 receipt
+  sessions are unchanged and the product sessions commit 1 photo, the A4 sheets of D131. The two receipt sessions (one receipt) were promoted to dev
   after looking into them, since the user reported a problem: one finished (15.3 s, 6 photos); the other never read
   two rows legibly and kept asking to hold still, which the replay reproduces exactly; the camera had locked on the
   receipt at its QR code, so it's the receipt capture's own limit, not the one camera.

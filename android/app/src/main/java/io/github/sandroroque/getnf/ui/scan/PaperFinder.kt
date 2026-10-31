@@ -113,8 +113,9 @@ internal object PaperFinder {
     val blockV0 = block.minOf { it.corners.minOf(::v) }; val blockV1 = block.maxOf { it.corners.maxOf(::v) }
     trace?.block = listOf(xy(blockU0, blockV0), xy(blockU1, blockV0), xy(blockU1, blockV1), xy(blockU0, blockV1))
     if (blockU1 - blockU0 < lineHeight * 4) return stop("text block too narrow")
-    // A receipt is dark print on light paper. Light print on a dark ground (the back of a coffee bag) is packaging.
-    if (block.count { lightOnDark(image, it) } * 2 > block.size) return stop("light text on a dark background")
+    // A receipt is dark print on light paper. Light print on a dark ground (the back of a coffee bag) is packaging: a
+    // third of its lines is enough (blur hides some), against at most a tenth on the receipts recorded (D131, D133).
+    if (block.count { lightOnDark(image, it) } * 3 >= block.size) return stop("light text on a dark background")
 
     // 3. Paper: walk outwards on a smaller copy until the paper's look drops, against the paper's level nearby. The look
     //    is brightness less colourfulness: paper is light and neutral, and a coloured surface (an orange envelope in
