@@ -139,16 +139,15 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
 
 ## Pending, by the user
 
-- **"Esqueci a senha" (D123):** in the Supabase dashboard, Authentication › Emails › Templates › Reset password from
-  `supabase/templates/recovery.html` (subject "Nova senha · Caderneta"), and add
-  `https://caderneta.roqlab.com.br/nova-senha/` to URL Configuration › Redirect URLs. Until then the e-mail is
-  Supabase's English default and its link lands on the Site URL instead of the page.
 - Run `sudo bash tools/setup-system.sh` once (udev rules for the phone, Docker at boot for the local Supabase, adb and
   kvm groups).
 - Back up `~/.config/getnf/` (the upload key, made 2026-10-30) and its password somewhere off this PC: without
   them the Play app can't be updated.
-- The Play app (`br.com.roqlab.caderneta`, created again 2026-10-30, [play-console.md](play-console.md)) goes to Internal testing; the user starts fresh
-  in it, as a new user would. The old app (`getNF`, `io.github.sandroroque.getnf`) stays installed, since its photos
+- The Play app (`br.com.roqlab.caderneta`, created again 2026-10-30, [play-console.md](play-console.md)) is in Internal
+  testing: 0.0.1 (code 1) and code 2 (shows "1.1", D119–D128), published 2026-10-30 22:xx and still reaching the
+  phone. The next upload is code 3, `0.0.3`, already set in `build.gradle.kts`. The user's father is to create an
+  account from the Play app once code 2 reaches him; none existed at 22:25. Optional: a service account for
+  publishing from the command line (play-console.md would need a `tools/play-publish.py`; not made). The old app (`getNF`, `io.github.sandroroque.getnf`) stays installed, since its photos
   exist only on that phone, until the user decides about them. Before going public: the app content tasks, a review
   login, new screenshots, 12 testers for 14 days in closed testing.
 - From another device on the LAN (the phone on Wi-Fi works with any port-check app, or a laptop with `nc -zv -w3
