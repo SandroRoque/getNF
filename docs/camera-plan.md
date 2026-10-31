@@ -149,8 +149,8 @@ session thread:                                   [frame N: paper, rows, decisio
 7896714292687) is the vitamin D on the pharmacy's receipt, which prints the store's code (1000026121), not the GTIN.
 An NFC-e has both (`cProd`, the seller's code, and `cEAN`, the GTIN, required since 2019 or "SEM GTIN"), but the
 printout and SEFAZ SC's consultation page show only `cProd` (the saved page has no EAN anywhere). Supermarkets often
-use the GTIN as their code; pharmacies and others don't, so the lookup can't find those purchases by barcode. Ideas,
-not decided: when the lookup finds nothing, let the person pick the product in the catalogue and remember the barcode
+use the GTIN as their code; pharmacies and others don't, so the lookup can't find those purchases by barcode. Parked
+by the user (2026-10-31): for now, only what is deterministic. Ideas for later: when the lookup finds nothing, let the person pick the product in the catalogue and remember the barcode
 on it (the next scan finds it); later, read the package's name (OCR, or the classifier noted in status.md) to suggest
 the product.
 
