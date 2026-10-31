@@ -154,6 +154,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D141 | catalog | current | A purchase is a product on one receipt; the product screen leads with the price paid per unit |
 | D142 | UI | current | Everything tappable looks tappable: rows with a chevron, pills, or the back header; tabs fill the width and swipe |
 | D143 | UI | current | Price charts scrub: a finger on the chart marks the nearest point with its date, value and store |
+| D144 | catalog | current | A product's price is the package's while every purchase was the same size; per kg or litre otherwise |
 
 ---
 
@@ -3516,4 +3517,13 @@ the nearest point in time, enlarges the points there and writes, in a band above
 points), the date, the value and, with several stores, the store; lifting the finger clears it. Both charts have it:
 the product's price (date) and the IPCI (month). A sideways drag is taken by the chart; an up or down one still
 scrolls the screen.
+
+## D144. A product's price is the package's while every purchase was the same size; per kg or litre otherwise (2026-10-31)
+
+Since D141 the purchase list shows the price per unit, while the price block and chart above it showed the price per kg
+(R$ 58,04/kg over R$ 29,02 for the same 500 g coffee): both right, confusing side by side. Decided by the user: the
+package's price when the size never changes. `pricePoints` (`data/Spending.kt`) uses the package's price when every
+purchase has the same size (or none) and none is sold by weight; per kg or litre when sizes differ (500 g and 1 kg
+packs compare only that way) or it's sold by weight, as before (D19). A package's price is written without a unit;
+per kg or litre keeps its "/kg". The IPCI is unchanged (a ratio, the same either way for one size).
 

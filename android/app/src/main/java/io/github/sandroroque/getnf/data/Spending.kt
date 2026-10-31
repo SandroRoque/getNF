@@ -201,6 +201,16 @@ data class PricePoint(
   val perItemCents: Long? = null, val packCount: Int? = null,
 )
 
+/**
+ * The prices of one product's purchases (D144): per package when every purchase was of the same size (what the shelf tag
+ * and the purchase list say), per kg or litre when sizes differ (a 500 g and a 1 kg pack only compare that way) or the
+ * item is sold by weight.
+ */
+fun pricePoints(lines: List<SpendingLine>): List<PricePoint> {
+  val oneSize = lines.all { it.measure == null } && lines.map { it.sizeE6 to it.sizeUnit }.distinct().size == 1
+  return lines.mapNotNull { if (oneSize) pricePoint(it.copy(sizeE6 = null)) else pricePoint(it) }
+}
+
 fun pricePoint(line: SpendingLine): PricePoint? {
   val at = line.issuedAt ?: return null
   val measure = line.measure

@@ -32,7 +32,7 @@ import io.github.sandroroque.getnf.data.PricePoint
 import io.github.sandroroque.getnf.data.ProductRow
 import io.github.sandroroque.getnf.data.StoreItemDetail
 import io.github.sandroroque.getnf.data.TagRow
-import io.github.sandroroque.getnf.data.pricePoint
+import io.github.sandroroque.getnf.data.pricePoints
 import io.github.sandroroque.getnf.data.Purchase
 import io.github.sandroroque.getnf.data.onePerReceipt
 import io.github.sandroroque.getnf.sync.SyncWorker
@@ -82,7 +82,7 @@ fun ProductScreen(productId: String, onOpenProduct: (String) -> Unit, onBack: ()
   val products by remember { dao.products() }.collectAsStateWithLifecycle(emptyList())
   val allLines by remember { app.database.spending().lines() }.collectAsStateWithLifecycle(emptyList())
   // One price per receipt (D141): an item rung up twice on one receipt is one purchase.
-  val prices = remember(allLines, productId) { onePerReceipt(allLines.filter { it.productId == productId }).mapNotNull(::pricePoint) }
+  val prices = remember(allLines, productId) { pricePoints(onePerReceipt(allLines.filter { it.productId == productId })) }
   val bought = remember(purchases) { perReceipt(purchases) }
   var sheet by remember { mutableStateOf<Sheet?>(null) }
   val edit = rememberEdit()
@@ -232,7 +232,8 @@ private fun PriceBlock(points: List<PricePoint>) {
   Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
     Row(verticalAlignment = Alignment.Bottom) {
       MidNumber(Format.brl(last.cents))
-      Sub(" /${basis.key}", Modifier.padding(bottom = 4.dp).weight(1f))
+      // A package's price needs no unit; per kg or litre says so.
+      Sub(if (basis.key == "un") "" else " /${basis.key}", Modifier.padding(bottom = 4.dp).weight(1f))
       if (shown.size > 1) {
         val change = (last.cents - first.cents) * 100.0 / first.cents
         Text(if (change == 0.0) "igual a ${Format.date(first.at)}" else "%+.1f%% desde %s".format(change, Format.date(first.at)).replace('.', ','),

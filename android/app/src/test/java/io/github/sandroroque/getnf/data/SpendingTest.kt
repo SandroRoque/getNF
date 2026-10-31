@@ -130,4 +130,13 @@ class SpendingTest {
     // Another unit on the same receipt isn't merged into it.
     assertEquals(2, onePerReceipt(listOf(line("r1", 1, 1, 1000), line("r1", 2, 1, 2000, unit = "KG"))).size)
   }
+
+  /** D144: the package's price while the size never changes; per kg once sizes differ or it's sold by weight. */
+  @Test fun theChartShowsThePackagesPriceWhileTheSizeStaysTheSame() {
+    fun line(at: Long, cents: Long, size: Long?, unit: String = "UN") =
+      SpendingLine("r$at", 1, at, "s", "Loja", cents, 0, "html", "coffee", null, 10_000, unit, cents * 100, size, size?.let { "kg" })
+    assertEquals(listOf(2902L to "un", 2910L to "un"), pricePoints(listOf(line(1, 2902, 500_000), line(2, 2910, 500_000))).map { it.cents to it.basis })
+    assertEquals(listOf(5804L to "kg", 5600L to "kg"), pricePoints(listOf(line(1, 2902, 500_000), line(2, 5600, 1_000_000))).map { it.cents to it.basis })
+    assertEquals("kg", pricePoints(listOf(line(1, 1290, null, unit = "KG"), line(2, 1350, null, unit = "KG"))).first().basis)
+  }
 }
