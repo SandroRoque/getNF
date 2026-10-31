@@ -95,6 +95,10 @@ fun InicioScreen(
     }.getOrDefault(0)
   }
 
+  // The app closed on its own last time (D140): offered once, sent only by the person.
+  var crash by remember { mutableStateOf<io.github.sandroroque.getnf.data.CrashLog.Report?>(null) }
+  LaunchedEffect(Unit) { crash = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { app.crashLog.pending() } }
+
   val month = spending?.periods?.lastOrNull()
   LazyColumn(
     Modifier.fillMaxSize().statusBarsPadding(),
@@ -106,6 +110,9 @@ fun InicioScreen(
         Sub(month?.let { label(it, long = true).replaceFirstChar { c -> c.uppercase() } } ?: "Caderneta", Modifier.weight(1f))
         AccountBadge(account?.let { io.github.sandroroque.getnf.ui.settings.displayName(it) }?.take(1), onSettings)
       }
+    }
+    crash?.let { report ->
+      item { CrashCard(report) { app.crashLog.dismiss(report); crash = null } }
     }
     if (spending == null) return@LazyColumn
     val showSteps = !stepsHidden && !steps.finished() && elsewhere == 0
@@ -207,5 +214,24 @@ fun rememberCategoryColor(categories: List<CategoryNode>): (String?) -> Color {
       tops.indexOf(top?.id).let { i -> if (i < 0) c.none else c.categories[i % c.categories.size] }
     }
     f
+  }
+}
+
+/** The app's last crash (D140): what happened, and a way to send it, through whatever app the person picks. */
+@Composable
+private fun CrashCard(report: io.github.sandroroque.getnf.data.CrashLog.Report, onDone: () -> Unit) {
+  val context = LocalContext.current
+  LeadCard {
+    Text("O app fechou sozinho", style = MaterialTheme.typography.titleSmall, color = Calmo.fg)
+    Sub("Foi em ${Format.dateTime(report.at)}. O relatório mostra em que parte do app o erro aconteceu; mandar para " +
+      "quem faz o app ajuda a corrigir.")
+    Wide("Enviar o relatório", ButtonKind.Solid) {
+      val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
+        .putExtra(android.content.Intent.EXTRA_SUBJECT, "Caderneta: o app fechou sozinho")
+        .putExtra(android.content.Intent.EXTRA_TEXT, report.text)
+      context.startActivity(android.content.Intent.createChooser(send, "Enviar o relatório"))
+      onDone()
+    }
+    Wide("Agora não", ButtonKind.Ghost, onClick = onDone)
   }
 }

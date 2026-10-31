@@ -1,0 +1,35 @@
+# The same checks as the pre-push hook (tools/check.sh --quick, D129), on GitHub, for every push to main and every pull
+# request: the app and the benchmark module build, and the JVM tests pass. The capture benchmark needs test-media/
+# (real receipts, never on GitHub), so it runs only on the PC. Debug builds get no Supabase URL here (.env.local is
+# local), which the build and the tests don't need. See D140.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Build and JVM tests
+        run: tools/check.sh --quick
+      - name: Test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: android/*/build/reports/tests/

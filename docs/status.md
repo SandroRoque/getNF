@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-30. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D139). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
+`docs/decisions.md` (D1–D140). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
@@ -151,6 +151,10 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
   `timing.tsv` (D129). On the phone, before a release: `tools/device-bench.sh` (installs and removes only its own
   test APK, D129).
 - **Before every push:** `tools/check.sh` runs from the pre-push hook (build, JVM tests, capture benchmark; D129).
+- **On GitHub:** every push to main runs `tools/check.sh --quick` (`.github/workflows/check.yml`, D140); the result is
+  the ✓/✗ next to each commit.
+- **Crashes:** the app writes each crash to `files/crashes/` and offers it on Início at the next start (D140). Play
+  Console › Android vitals has the crashes and ANRs of Play installs: look there after each release.
 - **Parser:** `NfceParityTest` holds the parser to golden files first written from the old JS parser (D48); a
   deliberate parser change updates them.
 

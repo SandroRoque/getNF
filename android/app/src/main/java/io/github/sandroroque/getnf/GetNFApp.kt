@@ -38,6 +38,20 @@ class GetNFApp : Application() {
   /** Photos' online copies, with what's private blanked (D61, D98). */
   val photoArchiver by lazy { WebpArchiver { io.github.sandroroque.getnf.sync.SensitiveText.blanks(photoOcr.read(it)) } }
   val syncEngine by lazy { SyncEngine(database, receiptStore, photoArchiver, contribute = photoContribution::wants) }
+  /** Crashes written down for the next start to offer (D140). */
+  val crashLog by lazy {
+    val prefs = getSharedPreferences("crash", MODE_PRIVATE)
+    io.github.sandroroque.getnf.data.CrashLog(
+      File(filesDir, "crashes"),
+      about = "Caderneta ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}${if (BuildConfig.DEBUG) ", debug" else ""}) · " +
+        "Android ${android.os.Build.VERSION.RELEASE} · ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
+      prefs = object : io.github.sandroroque.getnf.data.CrashLog.Prefs {
+        override var dismissedAt: Long
+          get() = prefs.getLong("dismissedAt", 0)
+          set(v) { prefs.edit().putLong("dismissedAt", v).apply() }
+      },
+    )
+  }
   val lookupBudget by lazy {
     val prefs = getSharedPreferences("sefaz", MODE_PRIVATE)
     LookupBudget(load = { prefs.getString("lookups", "") ?: "" }, save = { prefs.edit().putString("lookups", it).apply() })
@@ -45,6 +59,7 @@ class GetNFApp : Application() {
 
   override fun onCreate() {
     super.onCreate()
+    crashLog.install()
     // RestartActivity's process only relaunches the app: it must not swap a restore or open the database.
     if (processName().endsWith(RestartActivity.PROCESS_SUFFIX)) return
     // Back from the demo (D115): its files go.

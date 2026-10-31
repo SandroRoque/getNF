@@ -150,6 +150,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D137 | capture | current | The end of a capture says when the receipt was already in the caderneta |
 | D138 | capture | current | One camera for receipts and products: measured against step 0, it stays |
 | D139 | dev | current | Every Play upload gets a `play/<versionCode>` tag on the commit it was built from |
+| D140 | dev | current | Checks on GitHub for every push; the app writes down its crashes and offers to send them |
 
 ---
 
@@ -3449,4 +3450,22 @@ tree, so the tag says exactly what's in it.
 The two uploads so far were tagged from the session transcripts: `play/1` on de74ab7 (built 13:09 on 2026-10-30, at
 that commit) and `play/2` on f463087 (built 22:31 from the tree committed at 22:35 as f463087, nothing else changed).
 A code taken by a refused or discarded upload gets no tag.
+
+## D140. Checks on GitHub for every push; the app writes down its crashes and offers to send them (2026-10-31)
+
+Two gaps of working alone, found in a review of the workflow: nothing checked a push but the PC's own hook (which
+skips pushes outside `android/` and `tools/`, and only runs where it's installed), and nobody would know the Play app
+crashed on someone else's phone (this week's crashes were known only because the user said so).
+
+- **GitHub Actions** (`.github/workflows/check.yml`) runs `tools/check.sh --quick` on every push to main and every
+  pull request: the app and the benchmark module build, the JVM tests pass. Free for a public repo. The capture
+  benchmark stays on the PC, since it needs `test-media/`. A debug build there has no Supabase URL (`.env.local` is
+  local), which neither the build nor the tests need; checked from a clean clone without it.
+- **Crashes** (`data/CrashLog.kt`): an uncaught exception is written to `files/crashes/<time>.txt` (the version, the
+  phone, the thread and the stack trace, the newest five kept), then the system's handler ends the app as before, so
+  Play's Android vitals still counts it. The next start shows a card on Início, "O app fechou sozinho", once: "Enviar
+  o relatório" opens Android's share sheet with the text, and the person picks where it goes (WhatsApp to the
+  developer, e-mail); nothing is sent by the app itself and no crash service is added. ANRs (the app frozen, not
+  crashed) aren't caught; Android vitals has them for Play installs. On the developer's phones the folder can be read
+  with `adb shell run-as <package> ls files/crashes`.
 
