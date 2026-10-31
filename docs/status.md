@@ -92,8 +92,8 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
    purchases of it: last price by store, history. GTIN store items are already the same row at every store
    (`parse/Derive.kt`), and ML Kit is in the app (QR only today). The search covers every caderneta on the phone, not
    only the open one; there's no full GTIN registry, so only what the person bought turns up. Plan, pipeline notes
-   and the test/benchmark layers: [camera-plan.md](camera-plan.md). Step 0 built (D129); its baselines wait for the
-   phone: `tools/device-bench.sh` once, and about five capture sessions with dumps on.
+   and the test/benchmark layers: [camera-plan.md](camera-plan.md). Step 0 done (D129, baselines 2026-10-31: a
+   receipt frame ~470 ms, all OCR; the product formats cost ~1 ms). Next: step 1, the GTIN lookup.
 7. **Later, to discuss: recognising items without a barcode by machine vision.** Produce, cold cuts and anything
    weighed in store carry a scale label with an in-store code (GTIN-13 starting with 2) that changes with every
    weighing. The idea: point the camera at the product; a barcode is looked up by GTIN, otherwise an image classifier

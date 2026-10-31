@@ -12,7 +12,8 @@ app=br.com.roqlab.caderneta.debug
 dest="$media/live-dumps/phone"; corpus="$media/bench/corpus.tsv"
 mkdir -p "$dest"
 for d in $(adb "${serial[@]}" shell run-as $app ls files/capture-dump | tr -d '\r' | grep -v '^enabled$'); do
-  [ -d "$dest/$d" ] && continue
+  # Already pulled, here or set apart since (live-dumps/products/: sessions that aren't receipts).
+  [ -d "$dest/$d" ] || [ -d "$media/live-dumps/products/$d" ] && continue
   adb "${serial[@]}" exec-out run-as $app tar c -C files/capture-dump "$d" | tar x -C "$dest"
   n=$(ls "$dest/$d" | grep -c '\.jpg$' || true)
   if [ "$n" -lt 3 ]; then echo "skipped $d: $n frames"; continue; fi

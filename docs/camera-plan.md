@@ -67,7 +67,7 @@ session thread:                                   [frame N: paper, rows, decisio
      have; no SEFAZ requests.
 
    **Built (D129):** `tools/check.sh` with the pre-push hook, `timing.tsv` with `tools/capture-timing.py`, and the
-   `:benchmark` module with `tools/device-bench.sh`. **Waiting for the phone:** the baseline sessions.
+   `:benchmark` module with `tools/device-bench.sh`. **Done 2026-10-31,** with the baseline below.
 
    First device benchmark (2026-10-31, motorola edge 50 pro, 48 frames from the phone sessions, ms per frame,
    median / min / max):
@@ -96,6 +96,26 @@ session thread:                                   [frame N: paper, rows, decisio
    - **Timing holds up on the phone:** one frame every 167 ms median (p95 288), OCR 162 ms median, the scanner 31 ms,
      the gray copy 45 ms, all from `timing.tsv`. The old 360–530 ms came from older builds. The receipt baseline (time
      to finish a receipt) still needs receipt sessions.
+
+   **The receipt baseline (2026-10-31, step 0 build, motorola edge 50 pro).** Four receipt sessions, scored blind
+   first as held out: 4 of 4 finished, no false finish, 64 of 64 items legible, 1.8 photos per receipt; the replay
+   matches what the phone decided in all four. Then promoted to dev and accepted as the capture benchmark's baseline
+   (`runs/20261031-021322-baseline-2026-10-31.json`), so every push is checked against them. Time to finish, in the
+   replay: 18.5, 1.5, 1.8 and 0.5 s.
+
+   | over the 69 frames, median / p95 ms | period | OCR | scanner | gray copy | session |
+   |---|---|---|---|---|---|
+   | receipts | 468 / 572 | 467 / 580 | 32 / 67 | 53 / 113 | 182 / 292 |
+   | products (the sessions above) | 167 / 288 | 162 / 279 | 31 / 55 | 45 / 93 | 0 / 183 |
+
+   What it says:
+   - **The period is OCR, and OCR is slow on a receipt.** A frame full of receipt text takes about 470 ms; packaging
+     about 160 ms. The device benchmark's 145 ms is OCR alone, over a mix of frames, with nothing else running: live,
+     it shares the cores with the preview, the camera and the session (182 ms, alongside). Making OCR faster is a
+     separate topic (a smaller image for the rows already read, say), not part of this plan.
+   - **The product formats can't lengthen a receipt frame:** the scanner finishes in about 32 ms, against OCR's 470,
+     and they add about 1 ms to it (device benchmark). The risk for one camera isn't time, it's the wrong mode: the
+     product sessions above.
 
    Criteria to keep one camera:
    - the capture benchmark has no regressions;
