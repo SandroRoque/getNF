@@ -307,11 +307,19 @@ internal class CaptureController(
   private val savedAs = mutableMapOf<String, CaptureSegment>()
   /** The debug dump writes on a thread of its own, off the session's. */
   private val dumping by lazy { java.util.concurrent.Executors.newSingleThreadExecutor() }
+  /**
+   * Frames waiting to be written. Writing one takes longer than analysing it once OCR is off (product mode): a frame
+   * is then left out of the dump (its `live.tsv` row stays) rather than queued, or the queue fills the memory.
+   */
+  private val dumpsPending = java.util.concurrent.atomic.AtomicInteger(0)
 
   fun offer(frame: CameraFrame, lines: List<OcrQuad>, scanned: List<ScannedCode>) {
     if (done) return
     val id = "f${frames++}"
-    dump?.let { dir -> dumping.execute { dumpFrame(dir, id, frame, lines) } }
+    dump?.takeIf { dumpsPending.get() < MAX_DUMPS_PENDING }?.let { dir ->
+      dumpsPending.incrementAndGet()
+      dumping.execute { try { dumpFrame(dir, id, frame, lines) } finally { dumpsPending.decrementAndGet() } }
+    }
     // One camera (camera plan, step 2): a receipt, or a product's barcode.
     val before = decider.mode
     val decided = decider.offer(frame.atMs, frame.image.width, frame.image.height, scanned)
@@ -536,6 +544,7 @@ internal class CaptureController(
 
   private companion object {
     const val MAX_PHOTOS = 30
+    const val MAX_DUMPS_PENDING = 2
     // Frames in normal light measured 111–160 (the benchmark's phone sessions); half the usual level means the camera
     // can't expose any longer, and print turns grainy and blurred.
     const val DARK_LUMA = 70

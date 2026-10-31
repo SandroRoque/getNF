@@ -169,6 +169,8 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOp
   LaunchedEffect(state.productShown) {
     val code = state.product ?: return@LaunchedEffect
     if (state.productShown == 0) return@LaunchedEffect
+    // The same product back after a moment unread (glare): its sheet stays as it is.
+    if (sheet && found?.code == code) return@LaunchedEffect
     sheet = true; found = null
     found = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
       runCatching { lookup.find(code) }.getOrElse { io.github.sandroroque.getnf.data.LookupResult.NotAProduct(code) }

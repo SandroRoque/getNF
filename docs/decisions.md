@@ -143,6 +143,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D130 | catalog | current | Looking a product up by barcode: every caderneta on the phone, shelf prices, latest per store |
 | D131 | capture | current | One camera decides: receipt or product; packaging is not receipt paper |
 | D132 | UI | current | A product's barcode answers in a sheet over the camera; the Catálogo opens the camera for products |
+| D133 | capture | current | A barcode counts once confirmed over several frames; the debug dump drops frames instead of queueing |
 
 ---
 
@@ -3305,3 +3306,26 @@ Checked on the emulator, in the demo, with a barcode image made for a demo produ
 stores): Catálogo › Pelo código de barras showed its sheet (R$ 2,50 at Ponta Leste, marked cheapest; R$ 2,55 at
 Figueira; average R$ 2,52), and "Ver o produto" opened the product, with Back returning to the Catálogo. A first
 version closed the capture before opening the product, and the capture's own exit popped the product screen too.
+
+## D133. A barcode counts once confirmed over several frames; the debug dump drops frames instead of queueing (2026-10-31)
+
+The user's first try of steps 1–3 on the phone (D130–D132): the app closed several times and behaved badly.
+
+- **The crashes were memory** (`OutOfMemoryError`, three times between 03:20 and 03:22), all in the debug dump. It
+  writes every analysed frame on a thread of its own, and in product mode, without OCR, frames come faster than one
+  can be written: the queue grew, about 15 MB a frame, until the heap ran out. Before D131 OCR held frames back to the
+  writer's pace. Now a frame is left out of the dump while two are waiting (its `live.tsv` row stays). Only debug
+  builds with dumps on were affected; the release build never dumps.
+- **The bad behaviour was misread barcodes.** With the torch's glare on the bars, the scanner now and then read the
+  box's code as another one with a valid check digit (five different ones in 60 frames; one of them came back four
+  times, twice two frames apart), and each would have opened the sheet with "Você ainda não comprou". A code now counts
+  only when read in at least 3 of the last 8 frames, and more often than any other; the real one gets there in about
+  half a second. Replaying that session's reads, only the real code is ever announced. The sheet doesn't search again
+  when the code it shows comes back after a moment unread.
+- **Sessions filed:** the four sessions at 03:06 (the step 0 build, before steps 1–3 were installed) pointed at the
+  coffee bag, and the old build found "paper" in them; one even reached "done", without a QR code, so no receipt was
+  made. The replay with D131's light-on-dark rule finds no paper in any of them: they are product sessions now, with
+  the three at 03:20–03:22 (no photo committed in any). The two receipt sessions (one receipt) were promoted to dev
+  after looking into them, since the user reported a problem: one finished (15.3 s, 6 photos); the other never read
+  two rows legibly and kept asking to hold still, which the replay reproduces exactly; the camera had locked on the
+  receipt at its QR code, so it's the receipt capture's own limit, not the one camera.
