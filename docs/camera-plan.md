@@ -85,6 +85,18 @@ session thread:                                   [frame N: paper, rows, decisio
    copies, the camera's delivery, sharing the cores with the preview and the session, heat). The baseline sessions'
    `timing.tsv` will show where.
 
+   **Product sessions (2026-10-31).** The user's first three sessions with the step 0 build pointed the camera at
+   products (a box, a coffee bag) to try the lookup, which doesn't exist yet. Kept apart in
+   `test-media/live-dumps/products/` (not in the receipt corpus), they are step 2's first negatives and showed two
+   things:
+   - **The receipt capture takes packaging for paper.** The back of a coffee bag (light text on a dark background) was
+     found as a receipt and 3 photos of it were committed; sheets of A4 on a desk too. Receipt paper is light with dark
+     text: the paper finder should reject the inverse, and a product barcode centred in view should keep the receipt
+     session from starting (the "product" state).
+   - **Timing holds up on the phone:** one frame every 167 ms median (p95 288), OCR 162 ms median, the scanner 31 ms,
+     the gray copy 45 ms, all from `timing.tsv`. The old 360–530 ms came from older builds. The receipt baseline (time
+     to finish a receipt) still needs receipt sessions.
+
    Criteria to keep one camera:
    - the capture benchmark has no regressions;
    - per-frame p95 is at most 10% slower;
