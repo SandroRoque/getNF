@@ -91,8 +91,8 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 6. **Looking a product up with the camera (being designed, 2026-10-31).** Scan a product's barcode and see your own
    purchases of it: last price by store, history. GTIN store items are already the same row at every store
    (`parse/Derive.kt`), and ML Kit is in the app (QR only today). The search covers every caderneta on the phone, not
-   only the open one; there's no full GTIN registry, so only what the person bought turns up. UX to be agreed before
-   building.
+   only the open one; there's no full GTIN registry, so only what the person bought turns up. Plan, pipeline notes
+   and the test/benchmark layers to build first: [camera-plan.md](camera-plan.md).
 7. **Later, to discuss: recognising items without a barcode by machine vision.** Produce, cold cuts and anything
    weighed in store carry a scale label with an in-store code (GTIN-13 starting with 2) that changes with every
    weighing. The idea: point the camera at the product; a barcode is looked up by GTIN, otherwise an image classifier
