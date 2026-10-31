@@ -31,3 +31,4 @@ plugins {
 
 rootProject.name = "getNF"
 include(":app")
+include(":benchmark")

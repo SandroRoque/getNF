@@ -26,6 +26,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.min
@@ -79,9 +80,18 @@ internal enum class ExitChoice { KEEP_CODE, DISCARD }
  * frame).
  */
 internal class CameraFrame(val image: GrayImage, val pixels: FramePixels, val mapping: FrameMapping, val atMs: Long) {
+  /** How long each branch of the analysis took on this frame; set once the slowest has finished. */
+  @Volatile var timing: FrameTiming? = null
   /** The frame's mean luminance (0–255): auto exposure holds it near 140 while there is light enough. */
   val luma: Int by lazy { image.pixels.let { p -> var sum = 0L; var n = 0; var i = 0; while (i < p.size) { sum += p[i].toInt() and 0xff; n++; i += 61 }; if (n == 0) 0 else (sum / n).toInt() } }
 }
+
+/**
+ * One frame's analysis, branch by branch, in ms from the frame's start (camera plan, step 0): the copy of its planes,
+ * the upright gray copy, OCR and the code scanner (those three run side by side), and when the last of them finished.
+ * [sinceLast] is the time since the previous analysed frame started: the capture's real period.
+ */
+internal data class FrameTiming(val sinceLast: Long?, val copy: Long, val gray: Long, val ocr: Long, val scan: Long, val done: Long)
 
 /** A copy of a YUV_420_888 camera frame's planes and how to turn them upright. */
 internal class FramePixels(
@@ -186,6 +196,7 @@ internal class IngestAnalyzer(
   private val busy = AtomicBoolean(false)
   @Volatile private var sensorToView: Matrix? = null
   @Volatile private var closing = false
+  private var lastStart = 0L
   private var closeAction: (() -> Unit)? = null
 
   override fun getDefaultTargetResolution() = Size(1920, 1440)
@@ -199,16 +210,24 @@ internal class IngestAnalyzer(
     if (media == null) { image.close(); busy.set(false); return }
     try {
       val started = System.nanoTime()
+      val sinceLast = lastStart.takeIf { it != 0L }?.let { (started - it) / 1_000_000 }
+      lastStart = started
+      fun ms() = (System.nanoTime() - started) / 1_000_000
       val rotation = image.imageInfo.rotationDegrees
       val pixels = FramePixels.of(image)
+      val copied = ms()
       val bufferToSensor = Matrix().also { check(image.imageInfo.sensorToBufferTransformMatrix.invert(it)) }
       val mapping = FrameMapping(image.width, image.height, rotation, bufferToSensor, sensorToView?.let(::Matrix), 0)
       val input = InputImage.fromMediaImage(media, rotation)
       val reading = text.process(input); val codes = qr.process(input)
+      // Each branch's end, taken on the thread that finishes it.
+      val ocrAt = AtomicLong(-1); val scanAt = AtomicLong(-1)
+      reading.addOnCompleteListener(Runnable::run) { ocrAt.set(ms()) }
+      codes.addOnCompleteListener(Runnable::run) { scanAt.set(ms()) }
       // The upright copy is made while OCR runs on its own threads.
       val gray = pixels.gray()
+      val grayAt = ms()
       val frame = CameraFrame(gray, pixels, mapping, image.imageInfo.timestamp / 1_000_000)
-      val converted = System.nanoTime()
       Tasks.whenAllComplete(reading, codes).addOnCompleteListener(executor) {
         image.close()
         try {
@@ -221,7 +240,9 @@ internal class IngestAnalyzer(
             // Unlike text, the barcode scanner reports its corners already turned upright.
             raw to code.cornerPoints.orEmpty().map { DocumentPoint(it.x.toDouble(), it.y.toDouble()) }
           } else emptyList()
-          if (BuildConfig.DEBUG) Log.d(TAG, "frame: convert %d ms, OCR done at %d ms".format((converted - started) / 1_000_000, (System.nanoTime() - started) / 1_000_000))
+          val done = ms()
+          frame.timing = FrameTiming(sinceLast, copied, grayAt, ocrAt.get().takeIf { it >= 0 } ?: done, scanAt.get().takeIf { it >= 0 } ?: done, done)
+          if (BuildConfig.DEBUG) Log.d(TAG, "frame: ${frame.timing}")
           // The session runs on its own thread: the next frame's OCR starts now, alongside it.
           if (active()) onFrame(frame, lines, found)
         } catch (failure: Exception) { onError(failure) }
@@ -275,7 +296,9 @@ internal class CaptureController(
     dump?.let { dir -> dumping.execute { dumpFrame(dir, id, frame, lines) } }
     val started = System.nanoTime()
     val step = ingest.offer(IngestFrame(id, frame.image, lines, frame.atMs))
-    if (BuildConfig.DEBUG) Log.d(TAG, "frame $id: session %d ms".format((System.nanoTime() - started) / 1_000_000))
+    val sessionMs = (System.nanoTime() - started) / 1_000_000
+    if (BuildConfig.DEBUG) Log.d(TAG, "frame $id: session $sessionMs ms")
+    dump?.let { dir -> frame.timing?.let { t -> dumping.execute { logTiming(dir, id, frame.atMs, t, sessionMs) } } }
     // The codes read: as many as the scanner saw, and how many of them inside the paper.
     val codesSeen = "${codes.size}/${step.paper?.let { p -> codes.count { it.second.isNotEmpty() && contains(p, it.second, frame.image) } } ?: 0}" +
       codes.firstOrNull()?.second?.takeIf { it.isNotEmpty() }?.let { c -> " @%.0f,%.0f".format(c.sumOf { it.x } / c.size, c.sumOf { it.y } / c.size) }.orEmpty()
@@ -328,6 +351,18 @@ internal class CaptureController(
     fun name(id: String) = "f%04d".format(id.removePrefix("f").toInt() + 1)
     val ends = step.paper?.let { (if (it.topSeen) "T" else "") + (if (it.bottomSeen) "B" else "") + "-" } ?: ""
     File(dir, "live.tsv").appendText(listOf(name(id), atMs, step.hint, step.hold, step.commits.joinToString(",", transform = ::name), step.complete, ends, codes)
+      .joinToString("\t") + "\n")
+  }
+
+  /**
+   * Appends the frame's timings to `timing.tsv` (camera plan, step 0): frame, camera time, then in ms the time since
+   * the last analysed frame, the plane copy, the gray copy, OCR, the scanner, the analysis done (each from the frame's
+   * start), and the session's own time, which runs alongside the next frame's analysis.
+   */
+  private fun logTiming(dir: File, id: String, atMs: Long, t: FrameTiming, sessionMs: Long) {
+    val file = File(dir, "timing.tsv")
+    if (!file.exists()) file.writeText("frame\tat\tsince_last\tcopy\tgray\tocr\tscan\tdone\tsession\n")
+    file.appendText(listOf("f%04d".format(id.removePrefix("f").toInt() + 1), atMs, t.sinceLast ?: "", t.copy, t.gray, t.ocr, t.scan, t.done, sessionMs)
       .joinToString("\t") + "\n")
   }
 

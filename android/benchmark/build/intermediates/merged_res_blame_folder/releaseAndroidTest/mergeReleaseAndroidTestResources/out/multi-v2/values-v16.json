@@ -1,0 +1,38 @@
+{
+    "logs": [
+        {
+            "outputFile": "br.com.roqlab.caderneta.benchmark.test.benchmark-mergeReleaseAndroidTestResources-23:/values-v16/values-v16.xml",
+            "map": [
+                {
+                    "source": "/home/roque/.gradle/caches/9.1.0/transforms/e6ed7f2c111582ef47abd7fc353102c2/transformed/core-1.9.0/res/values-v16/values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "65",
+                        "endOffsets": "116"
+                    }
+                },
+                {
+                    "source": "/home/roque/.gradle/caches/9.1.0/transforms/b8f608ba4b156928251b02355578b037/transformed/appcompat-1.6.1/res/values-v16/values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "5",
+                        "endColumns": "12",
+                        "endOffsets": "223"
+                    },
+                    "to": {
+                        "startLines": "3",
+                        "startColumns": "4",
+                        "startOffsets": "121",
+                        "endLines": "6",
+                        "endColumns": "12",
+                        "endOffsets": "289"
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,6 +1,6 @@
 # Camera plan: measuring first, then the barcode lookup (2026-10-31, being designed)
 
-Agreed with the user so far; nothing built yet. A decision entry follows once each part is built and measured.
+Agreed with the user so far; step 0 built (D129). A decision entry follows once each part is built and measured.
 
 ## What the user asked for
 
@@ -65,6 +65,10 @@ session thread:                                   [frame N: paper, rows, decisio
    - The microbenchmark module.
    - About 5 new sessions recorded by the user with the current build, as the speed baseline. Receipts they already
      have; no SEFAZ requests.
+
+   **Built (D129):** `tools/check.sh` with the pre-push hook, `timing.tsv` with `tools/capture-timing.py`, and the
+   `:benchmark` module with `tools/device-bench.sh`. **Waiting for the phone:** the device benchmark's first run and
+   the baseline sessions.
 
    Criteria to keep one camera:
    - the capture benchmark has no regressions;

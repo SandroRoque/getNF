@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Runs tools/check.sh before a push that changes the app or the tools (camera plan, step 0). Pushes that only touch
+# docs, the site or Supabase skip it. `git push --no-verify` skips it on purpose.
+set -euo pipefail
+root="$(git rev-parse --show-toplevel)"
+zero=0000000000000000000000000000000000000000
+changed=
+while read -r _ local_sha _ remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue # a deletion
+  if [ "$remote_sha" = "$zero" ]; then base="$(git merge-base "$local_sha" origin/main 2>/dev/null || true)"; else base="$remote_sha"; fi
+  if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then changed=1; break; fi
+  if git diff --name-only "$base" "$local_sha" | grep -qE '^(android|tools)/'; then changed=1; break; fi
+done
+[ -n "$changed" ] || exit 0
+exec "$root/tools/check.sh"

@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-30. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D128). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
+`docs/decisions.md` (D1–D129). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
@@ -92,7 +92,8 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
    purchases of it: last price by store, history. GTIN store items are already the same row at every store
    (`parse/Derive.kt`), and ML Kit is in the app (QR only today). The search covers every caderneta on the phone, not
    only the open one; there's no full GTIN registry, so only what the person bought turns up. Plan, pipeline notes
-   and the test/benchmark layers to build first: [camera-plan.md](camera-plan.md).
+   and the test/benchmark layers: [camera-plan.md](camera-plan.md). Step 0 built (D129); its baselines wait for the
+   phone: `tools/device-bench.sh` once, and about five capture sessions with dumps on.
 7. **Later, to discuss: recognising items without a barcode by machine vision.** Produce, cold cuts and anything
    weighed in store carry a scale label with an in-store code (GTIN-13 starting with 2) that changes with every
    weighing. The idea: point the camera at the product; a barcode is looked up by GTIN, otherwise an image classifier
@@ -142,7 +143,10 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
 - **Supabase:** `npx supabase test db` (pgTAP: isolation between cadernetas, roles, invites, leaving, the user-choice
   rule, the categorize queue). `SupabaseLocalTest` runs the phone's sync against the local Supabase when
   `GETNF_SUPABASE_LOCAL` is set.
-- **Capture:** `tools/capture-bench.sh` (D89).
+- **Capture:** `tools/capture-bench.sh` (D89). Frame timings per branch: `tools/capture-timing.py` over the dumps'
+  `timing.tsv` (D129). On the phone, before a release: `tools/device-bench.sh` (installs and removes only its own
+  test APK, D129).
+- **Before every push:** `tools/check.sh` runs from the pre-push hook (build, JVM tests, capture benchmark; D129).
 - **Parser:** `NfceParityTest` holds the parser to golden files first written from the old JS parser (D48); a
   deliberate parser change updates them.
 

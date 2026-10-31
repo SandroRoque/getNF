@@ -139,6 +139,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D126 | cadernetas | current | A new caderneta opens on "Trazer notas"; the first steps don't come back |
 | D127 | cadernetas | current | "Trazer notas" brings the categories the person decided |
 | D128 | cadernetas | current | "Yours" means scanned by you anywhere, not only on this phone |
+| D129 | testing | current | Checks before every push, frame timings in the dumps, an on-device benchmark before releases |
 
 ---
 
@@ -3188,3 +3189,32 @@ with no name on the server (one from a deleted account) is listed as "Caderneta 
 
 Checked by running the query on copies of the phone's databases, deleted afterwards: Pessoal goes from 0 receipts
 offered to 11, with 50 decided products among them. JVM tests pass.
+
+## D129. Checks before every push, frame timings in the dumps, an on-device benchmark before releases (2026-10-31)
+
+Step 0 of the camera plan ([camera-plan.md](camera-plan.md)): before the camera learns product barcodes, there must
+be numbers to compare it with, and a change that breaks the capture must not get pushed. The user asked what the
+right technique is on Android; the answer is three layers, each where its numbers mean something.
+
+- **Every push, on the PC (`tools/check.sh`, run by `tools/githooks/pre-push`):** the app and the benchmark module
+  build, the JVM tests pass, and the capture benchmark (D89) shows no regression against its baseline; otherwise the
+  push stops. About 2.5 minutes, most of it the capture benchmark; pushes that touch neither `android/` nor `tools/`
+  skip it, and `git push --no-verify` skips it on purpose. It can't be a GitHub workflow: the benchmark replays real
+  receipts and the repo is public. Installed with `tools/check.sh --install` (`core.hooksPath`, shared by the
+  worktrees).
+- **Real use (debug builds with dumps on):** each analysed frame's timings go to `timing.tsv` beside `live.tsv`: the
+  time since the last analysed frame (the real period), the plane copy, the gray copy, OCR, the scanner and the
+  analysis done, each from the frame's start, and the session's own time. Each branch's end is taken on the thread
+  that finishes it. `tools/capture-timing.py` gives median and p95 per session and overall. Nothing in the capture
+  changes.
+- **Before each release, on the phone (`tools/device-bench.sh`):** Jetpack Microbenchmark over recorded frames (every
+  sixth frame of the phone sessions, 48 by default): OCR, the QR scanner, QR plus product formats, and OCR beside each
+  scanner (the analysis period). The `:benchmark` module is a library, so its test APK
+  (`br.com.roqlab.caderneta.benchmark.test`) holds everything it runs: the script installs it, compiles it ahead of
+  time, pushes the frames to its own files, runs it and uninstalls it, and the app and its receipts are never touched.
+  Frames go in as NV21, the way camera frames reach ML Kit. It doesn't time the app's own session code: the JVM
+  benchmark and the dumps cover that. Results stay in `test-media/bench/device/`.
+
+Checked: `tools/check.sh` passes (0 regressions); on the emulator, the device benchmark runs end to end and leaves
+nothing installed (its timings mean nothing there), and a capture with dumps on writes `timing.tsv` with every column.
+The baselines themselves need the phone: the device benchmark once, and about five real capture sessions.
