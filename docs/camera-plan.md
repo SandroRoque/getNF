@@ -145,4 +145,13 @@ session thread:                                   [frame N: paper, rows, decisio
 4. **Measure again and decide:** microbenchmark, new receipt sessions, against step 0. Record the decision (one
    camera or two entries) with the numbers.
 
+**A gap found on the phone (2026-10-31): stores that print their own code.** The box the user scanned (GTIN
+7896714292687) is the vitamin D on the pharmacy's receipt, which prints the store's code (1000026121), not the GTIN.
+An NFC-e has both (`cProd`, the seller's code, and `cEAN`, the GTIN, required since 2019 or "SEM GTIN"), but the
+printout and SEFAZ SC's consultation page show only `cProd` (the saved page has no EAN anywhere). Supermarkets often
+use the GTIN as their code; pharmacies and others don't, so the lookup can't find those purchases by barcode. Ideas,
+not decided: when the lookup finds nothing, let the person pick the product in the catalogue and remember the barcode
+on it (the next scan finds it); later, read the package's name (OCR, or the classifier noted in status.md) to suggest
+the product.
+
 The user had more capture ideas to add before implementation starts. The first was parallelism, answered above.
