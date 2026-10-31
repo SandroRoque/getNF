@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-30. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D148). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
+`docs/decisions.md` (D1–D149). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
@@ -86,6 +86,9 @@ Claude:
 4. Fixes from the user's review of the screens and from the shared caderneta with the father: these come first.
    Done from the first review: one purchase per receipt and the unit price first (D141), tappable things look
    tappable and full-width swiping tabs (D142), chart scrubbing (D143), the package's price on the chart (D144).
+   From the capture discussion (D149): a provisional attempt drops after 2.5 s without the paper (R1, R2, done);
+   next R3 (an offer when stuck after the QR code: worn print or no progress) and R4 ("Recomeçar"). R3 needs a few
+   captures of a worn receipt to be measured.
 5. 0.1.0 (code 3): the release checklist (CI ✓, `tools/check.sh`, the release build on the emulator and the phone,
    tag `play/3`, Android vitals three days later).
 6. ~~Start the photo reader's measurement~~ started (D147, D148): `PhotoReaderBenchTest`, now 455 of 499 items

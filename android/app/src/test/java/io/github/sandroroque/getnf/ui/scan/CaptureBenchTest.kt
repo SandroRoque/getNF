@@ -46,6 +46,8 @@ class CaptureBenchTest {
     val session: String, val split: String, val receipt: String, val key: String, val frames: Int,
     val completed: Boolean, val seconds: Double?, val photos: Int, val items: Int, val legible: Int,
     val falseCompletion: Boolean, val missing: List<String>, val fidelity: String,
+    /** Provisional attempts dropped (D149): fine in a product session, a loss in a receipt session. */
+    val drops: Int = 0,
   )
 
   private class Entry(val path: String, val split: String, val stepMs: Long)
@@ -82,10 +84,10 @@ class CaptureBenchTest {
     println("%-28s %-8s %5s %6s %6s %9s  %s".format("session", "receipt", "done", "secs", "photos", "legible", "fidelity"))
     for (r in results) println("%-28s %-8s %5s %6s %6d %9s  %s%s".format(r.session.takeLast(28), r.receipt.takeLast(6), if (r.completed) "yes" else "no",
       r.seconds?.let { "%.1f".format(it) } ?: "-", r.photos, "${r.legible}/${r.items}${if (r.key == "consensus") "*" else ""}", r.fidelity,
-      (if (r.falseCompletion) "  FALSE COMPLETION" else "") + (if (r.missing.isNotEmpty()) "  missing: " + r.missing.take(3).joinToString(" | ") else "")))
+      (if (r.falseCompletion) "  FALSE COMPLETION" else "") + (if (r.drops > 0) "  dropped ${r.drops}×" else "") + (if (r.missing.isNotEmpty()) "  missing: " + r.missing.take(3).joinToString(" | ") else "")))
     println("(* answer key from the sessions' own reads: no page for that receipt)")
     results.filter { it.split == "product" }.takeIf { it.isNotEmpty() }?.let { p ->
-      println("product sessions: %d, %d photos committed, %d completed (both should be 0)".format(p.size, p.sumOf { it.photos }, p.count { it.completed }))
+      println("product sessions: %d, %d photos committed, %d completed (both should be 0), %d provisional attempts dropped".format(p.size, p.sumOf { it.photos }, p.count { it.completed }, p.sumOf { it.drops }))
     }
     if (!whole) return // a partial run isn't compared or kept
     val runs = File(bench, "runs").apply { mkdirs() }
@@ -103,6 +105,7 @@ class CaptureBenchTest {
       if (b.falseCompletion != r.falseCompletion) notes += r.falseCompletion to "false completion ${b.falseCompletion} → ${r.falseCompletion}"
       if (b.seconds != null && r.seconds != null && kotlin.math.abs(r.seconds - b.seconds) >= 1.0)
         notes += (r.seconds > b.seconds * 1.25 && r.seconds - b.seconds >= 2) to "seconds %.1f → %.1f".format(b.seconds, r.seconds)
+      if (b.drops != r.drops && r.split != "product") notes += (r.drops > b.drops) to "provisional attempts dropped ${b.drops} → ${r.drops}"
       if (b.photos != r.photos) notes += (r.photos >= b.photos + if (r.split == "product") 1 else 2) to "photos ${b.photos} → ${r.photos}"
       regressions += notes.count { it.first }
       for ((bad, note) in notes) println("%-9s %s: %s".format(if (bad) "WORSE" else "changed", r.session, note))
@@ -132,6 +135,11 @@ class CaptureBenchTest {
     var completeFrame: String? = null
     var divergence: String? = null
     val endsDiffer = mutableListOf<String>()
+    var drops = 0
+    // R1 and R2 (D149), as the phone applies them: proof is the receipt's QR code read inside the paper (the phone's
+    // log counts the codes it read there); a session without a log takes the access key in the frame's OCR instead.
+    val attempt = AttemptGuard()
+    var proven = false
     for ((i, file) in frames.withIndex()) {
       val id = file.nameWithoutExtension
       val at = live?.get(id)?.let { it[1].toLong() - start!! } ?: (i * entry.stepMs)
@@ -153,6 +161,14 @@ class CaptureBenchTest {
       lastMode = mode
       val closedBefore = session.topClosed to session.bottomClosed
       val step = session.offer(IngestFrame(id, grayImage, lines, at))
+      val qrInPaper = live?.get(id)?.getOrNull(7)?.substringAfter('/', "")?.takeWhile(Char::isDigit)?.toIntOrNull()?.let { it > 0 }
+        ?: (receipt != null && step.paper != null && ocr[id]?.lines.orEmpty().any { it.text.filter(Char::isDigit) == receipt })
+      if (qrInPaper) proven = true
+      if (attempt.offer(at, step.paper != null, proven, session.rows.isNotEmpty() || saved.isNotEmpty())) {
+        log.appendLine("        provisional attempt dropped at $id (the paper gone ${AttemptGuard.LOSS_MS} ms before its QR code)")
+        session = IngestSession(); saved.clear(); held.clear(); attempt.reset(); drops++
+        continue
+      }
       // The clock starts when a frame is first placed on the receipt: before that, the camera is still being aimed.
       if (step.view != null && engagedAt == null) engagedAt = at
       if ((session.topClosed to session.bottomClosed) != closedBefore) log.appendLine("        ends $closedBefore → ${session.topClosed to session.bottomClosed} at $id, ${session.rows.size} rows")
@@ -208,7 +224,7 @@ class CaptureBenchTest {
     if (System.getenv("GETNF_BENCH_KEY") != null) truth?.items?.forEach { k -> println("key ${k.label}: ${k.text} x${k.repeats} ${if (k.label in missing) "MISSING" else ""}") }
     val result = Result(dir.relativeTo(media).path, entry.split, receipt ?: "?", truth?.source ?: "none", frames.size, completeAt != null,
       completeAt?.let { (it - (engagedAt ?: 0)) / 1000.0 }, saved.size, items, items - missing.size,
-      completeAt != null && missing.isNotEmpty(), missing, fidelity)
+      completeAt != null && missing.isNotEmpty(), missing, fidelity, drops)
     if (entry.split == "holdout") return result // nothing written beside a held-out session
     File(out, "log.txt").writeText("$result\n$log")
     File(out, "rows.txt").writeText(session.rows.withIndex().joinToString("\n") { (i, r) ->

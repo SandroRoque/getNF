@@ -288,6 +288,8 @@ internal class CaptureController(
   productOnly: Boolean = false,
 ) {
   private var ingest = IngestSession()
+  /** Drops a provisional attempt that lost the paper (D149). */
+  private val attempt = AttemptGuard()
   private val decider = CameraModeDecider(productOnly)
   /** False while a product is in view: the analyzer then skips OCR. Read from the camera's thread. */
   @Volatile var wantsText = !productOnly
@@ -348,6 +350,14 @@ internal class CaptureController(
       codes.firstOrNull()?.second?.takeIf { it.isNotEmpty() }?.let { c -> " @%.0f,%.0f".format(c.sumOf { it.x } / c.size, c.sumOf { it.y } / c.size) }.orEmpty()
     dump?.let { dir -> dumping.execute { logDecision(dir, id, frame.atMs, step, codesSeen, decided.mode, products) } }
     identify(step.paper, codes, frame)
+    // R1 and R2 (D149): before its QR code is read, an attempt that lost the paper a while starts afresh.
+    if (attempt.offer(frame.atMs, step.paper != null, manifest.chave != null, ingest.rows.isNotEmpty() || manifest.segments.isNotEmpty())) {
+      // Beside live.tsv, which keeps one row per frame for the replay.
+      dump?.let { dir -> dumping.execute { File(dir, "events.txt").appendText("f%04d provisional attempt dropped\n".format(id.removePrefix("f").toInt() + 1)) } }
+      restartReceipt()
+      publish(state.copy(outline = null, down = null, hint = CaptureHint.FIND_RECEIPT, dark = dark(frame), mode = decided.mode, product = null))
+      return
+    }
     val score = lines.map { it.confidence }.sorted().let { if (it.isEmpty()) 0.0 else it[it.size / 2] }
     val current = step.paper?.let { Held(id, frame.pixels, it, step.view, score, lines) }
     for (commit in step.commits) when (commit) {
@@ -408,7 +418,7 @@ internal class CaptureController(
   /** Drops the receipt capture's attempt (its photos too) and starts a new one. */
   private fun restartReceipt() {
     if (manifest.segments.isNotEmpty() || manifest.chave != null) { sessions.remove(manifest); manifest = sessions.create() }
-    ingest = IngestSession(); held = null; savedAs.clear()
+    ingest = IngestSession(); held = null; savedAs.clear(); attempt.reset()
     state = state.copy(rows = emptyList(), view = null, topClosed = false, bottomClosed = false, saved = 0, qr = false, chave = null)
   }
 

@@ -1,4 +1,4 @@
-# The capture loop as a state machine (as of D148)
+# The capture loop as a state machine (as of D149)
 
 How the camera behaves today, from `ui/scan/CameraMode.kt` (`CameraModeDecider`), `ui/scan/IngestSession.kt` (the
 hints and completion) and `ui/scan/LiveCapture.kt` (QR, saving, exit). The notes mark the gaps discussed on
@@ -14,6 +14,7 @@ stateDiagram-v2
     Procurando: Procurando o papel<br/>Aponte para a nota ou um código
     Procurando --> Montando: papel encontrado
     Montando --> Procurando: papel some, a montagem fica
+    Montando --> Procurando: antes do QR, sem papel por 2,5 s, descarta (D149)
     state "Montando a nota" as Montando {
       [*] --> Guiando
       Guiando: Guiando<br/>Suba · Desça · Segure firme
@@ -25,9 +26,8 @@ stateDiagram-v2
       Voltar --> Guiando: encaixou
     }
     note right of Montando
-      Sem saída automática.
-      Sem tempo limite nem recomeço:
-      travada, só saindo da captura.
+      Depois do QR, sem saída automática:
+      travada, só saindo da captura (R3, R4 a fazer).
       Nota apagada fica aqui para sempre.
     end note
     FaltaQR: Montagem completa<br/>Mostre o QR Code

@@ -159,6 +159,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D146 | app | current | "Enviar comentário" in Ajustes, the demo included: version and phone written in; by e-mail once there's a contact address |
 | D147 | capture | current | The photo reader's measurement: a first reader and its benchmark against the saved pages; baseline 388 of 499 items, no trusted reading wrong |
 | D148 | capture | current | Photo reader: rows by their own slope, a GTIN's one unread digit, weighed items' right parts, the pharmacy's two-row layout; 455 of 499, 11 trusted, none wrong |
+| D149 | capture | current | Four rules instead of a new state machine; R1–R2: an attempt is provisional until its QR code, and a provisional one drops after 2.5 s without the paper |
 
 ---
 
@@ -3606,4 +3607,28 @@ coverage, not the reader's); most of the rest are a digit misread in a code or a
 leave unread. The pharmacy reads one of its two items in one session: its second item's quantity and unit are often
 missing from OCR, and they aren't filled in by guesswork. `PhotoReceiptReaderTest` covers the reader on made-up OCR,
 so it runs in CI.
+
+## D149. Four rules instead of a new state machine; R1–R2: a provisional attempt drops after 2.5 s without the paper (2026-10-31)
+
+The capture never dropped an attempt by itself, except for a product (D131): a sheet of paper or a package taken for
+a receipt held the capture until the person left it. Drawing the capture as a state machine
+([capture-fsm.md](capture-fsm.md), as it is) and then idealised ones showed, once critiqued with the user, that a
+redesign would mostly rename what the code already does: half the states were hints (the outputs of one state), the
+candidate and committed phases repeated per object, and the logic sat in guards anyway. The benchmark measures
+behaviour, so the same rules in another shape would replay frame for frame the same. Decided with the user: no
+rewrite; four rules in the current code, the only explicit state being whether an attempt is provisional.
+
+- **R1.** A provisional attempt that has started (rows assembled or a photo taken) and loses the paper for 2.5 s
+  (the product camera's own wait) is dropped, its photos too, and the capture starts afresh.
+- **R2.** An attempt is provisional until there's proof it's a receipt: its NFC-e QR code read inside the paper.
+  After that nothing drops without the person deciding. (Photos may be taken before; they go with the attempt.)
+- **R3** (next): stuck after the QR code, an offer: part of the receipt worn ("Salvar assim", with what it costs) or
+  no progress ("Recomeçar").
+- **R4** (next): "Recomeçar" always available.
+
+R1–R2 live in `ui/scan/AttemptGuard.kt`, fed frame by frame with the frame's time, used by `LiveCapture` and by the
+capture benchmark, which now replays them (proof: the phone's log of QR codes inside the paper, or the access key in
+the frame's OCR for sessions without a log) and reports drops; a drop in a receipt session counts as a regression.
+Debug dumps write `events.txt` beside `live.tsv`. Result: 0 regressions; the product sessions' committed photos 1 → 0
+(the A4 sheet's attempt drops once it's gone); no receipt session drops. Accepted as the baseline.
 
