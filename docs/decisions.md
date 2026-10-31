@@ -138,6 +138,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D125 | accounts | current | Deleting the account in the app asks for the password again |
 | D126 | cadernetas | current | A new caderneta opens on "Trazer notas"; the first steps don't come back |
 | D127 | cadernetas | current | "Trazer notas" brings the categories the person decided |
+| D128 | cadernetas | current | "Yours" means scanned by you anywhere, not only on this phone |
 
 ---
 
@@ -3169,3 +3170,21 @@ item's id comes from its code (D104), so it's the same in every caderneta.
 Checked on the emulator against the local Supabase, with the demo restored into a first caderneta and all 86 receipts
 brought into a new one: the 7 products confirmed by hand arrived categorized, and the 40 automatic ones without a
 category (there's no categorizer locally).
+
+## D128. "Yours" means scanned by you anywhere, not only on this phone (2026-10-30)
+
+The user's Pessoal caderneta had 11 receipts, but "Trazer notas" in a new caderneta offered only one. The phone's
+data showed why: the app had been reinstalled, and Pessoal's receipts had come back from the server, so none was
+marked `scannedHere`, although the caderneta's scan marks (`receipt_scan`) said the user scanned all 11. The one
+receipt offered came from the leftover files of a deleted test account's caderneta, scanned on this phone.
+
+A receipt is now the person's when it was scanned on this phone or when a scan mark names them
+(`ListsDao.scannedByMe`, the same test as "por Ana", D104). This applies to "Trazer notas" (D126) and to "Copiar para
+outra caderneta" (D104). What other members scanned still stays where it was shared.
+
+The user also thought the categories hadn't come with that one receipt. They had: its caderneta had one product
+confirmed and one corrected, and both arrived. The other 12 were automatic, which don't come along (D127). A caderneta
+with no name on the server (one from a deleted account) is listed as "Caderneta antiga deste celular".
+
+Checked by running the query on copies of the phone's databases, deleted afterwards: Pessoal goes from 0 receipts
+offered to 11, with 50 decided products among them. JVM tests pass.

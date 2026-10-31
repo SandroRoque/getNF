@@ -57,6 +57,14 @@ abstract class ListsDao {
   )
   abstract fun receipts(): Flow<List<ReceiptListItem>>
 
+  /**
+   * The receipts this person scanned: on this phone, or anywhere, by the caderneta's scan marks (D104). A phone that
+   * got its receipts back from the server (a reinstall) has them as scanned elsewhere, but they're still theirs (D128).
+   */
+  @Query("""SELECT r.chave FROM receipt r WHERE r.scannedHere OR EXISTS (SELECT 1 FROM receipt_scan s JOIN member m
+    ON m.userId = s.userId WHERE s.chave = r.chave AND m.you)""")
+  abstract suspend fun scannedByMe(): List<String>
+
   @Query("SELECT $SCANNED_BY FROM receipt r WHERE r.chave = :chave")
   abstract fun scannedBy(chave: String): Flow<String?>
 

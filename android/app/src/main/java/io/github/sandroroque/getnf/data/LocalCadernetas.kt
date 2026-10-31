@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.first
 
 /**
  * The other cadernetas this phone holds files for (D104), and bringing their receipts into the open one (D126): the
- * pull side of [ReceiptCopier]. Only receipts scanned on this phone, as for copying out: what other members scanned
- * stays in the caderneta they shared it with.
+ * pull side of [ReceiptCopier]. Only receipts this person scanned, here or on another phone (D128), as for copying
+ * out: what other members scanned stays in the caderneta they shared it with.
  */
 class LocalCadernetas(private val context: Context, private val settings: AccountSettings) {
   private companion object {
@@ -29,14 +29,15 @@ class LocalCadernetas(private val context: Context, private val settings: Accoun
   /** Each other caderneta's receipts scanned here; cadernetas without any are left out. */
   suspend fun sources(open: String?): List<Source> = others(open).mapNotNull { id ->
     withLedger(id) { database, store ->
-      val here = store.receipts.value.filter { it.scannedHere }.map { it.chave }.toSet()
-      Source(id, database.lists().receipts().first().filter { it.chave in here }).takeIf { it.receipts.isNotEmpty() }
+      val mine = database.lists().scannedByMe().toSet()
+      Source(id, database.lists().receipts().first().filter { it.chave in mine }).takeIf { it.receipts.isNotEmpty() }
     }
   }
 
   /** Copies [chaves] from [ledger] into [target] (the open caderneta's store); returns how many were new there. */
-  suspend fun copyInto(target: ReceiptStore, ledger: String, chaves: Set<String>): Int = withLedger(ledger) { _, store ->
-    store.receipts.value.filter { it.chave in chaves && it.scannedHere }.count { target.importCopy(it, store.dir(it.chave)) }
+  suspend fun copyInto(target: ReceiptStore, ledger: String, chaves: Set<String>): Int = withLedger(ledger) { database, store ->
+    val mine = store.receipts.value.map { it.chave }.toSet().intersect(database.lists().scannedByMe().toSet())
+    store.receipts.value.filter { it.chave in chaves && it.chave in mine }.count { target.importCopy(it, store.dir(it.chave)) }
   }
 
   /**

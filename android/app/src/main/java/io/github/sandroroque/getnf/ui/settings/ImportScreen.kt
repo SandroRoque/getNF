@@ -93,7 +93,7 @@ fun ImportScreen(onDone: () -> Unit) {
           val out = excluded[s.ledger].orEmpty()
           item(key = "h-${s.ledger}") {
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-              SectionLabel("${names[s.ledger] ?: "Outra caderneta"} · ${Format.count(s.receipts.size, "nota", "notas")}", Modifier.weight(1f))
+              SectionLabel("${names[s.ledger] ?: "Caderneta antiga deste celular"} · ${Format.count(s.receipts.size, "nota", "notas")}", Modifier.weight(1f))
               if (out.isEmpty()) TextLink("Nenhuma") { excluded[s.ledger] = s.receipts.map { it.chave }.toSet() }
               else TextLink("Todas") { excluded[s.ledger] = emptySet() }
             }

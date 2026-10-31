@@ -164,7 +164,10 @@ fun CadernetaScreen(ledgerId: String, onBack: () -> Unit, onImport: () -> Unit =
   var leaving by remember { mutableStateOf(false) }
   val isOpen = app.accountSettings.ledgerId() == ledgerId
   val receipts by app.receiptStore.receipts.collectAsStateWithLifecycle()
-  val scanned = receipts.filter { it.scannedHere }
+  // Theirs, also those that came back from the server after a reinstall (D128).
+  var mine by remember { mutableStateOf<Set<String>>(emptySet()) }
+  LaunchedEffect(receipts) { mine = app.database.lists().scannedByMe().toSet() }
+  val scanned = receipts.filter { it.chave in mine }
 
   suspend fun reload() {
     runCatching {
