@@ -14,6 +14,7 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.barcode.BarcodeScanner
+import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognizer
 import io.github.sandroroque.getnf.BuildConfig
@@ -56,6 +57,11 @@ internal data class CaptureUiState(
   val dark: Boolean = false,
   /** The receipt's access key, once its QR code is read. */
   val chave: String? = null,
+  /** What the camera decided it's looking at (camera plan, step 2). */
+  val mode: CameraMode = CameraMode.UNDECIDED,
+  /** In [CameraMode.PRODUCT], the barcode being shown; [productShown] counts the codes announced, to open the sheet. */
+  val product: String? = null,
+  val productShown: Int = 0,
 )
 
 internal data class RowMark(val captured: Boolean, val gapAfter: Double)
@@ -69,6 +75,7 @@ internal enum class CaptureHint(val label: String) {
   MOVE_DOWN("Desça pela nota"),
   SHOW_QR("Mostre o QR Code"),
   OTHER_RECEIPT("Outra nota à vista. Volte à desta captura"),
+  PRODUCT("Código de barras lido"),
   DONE("Pronto"),
 }
 
@@ -183,14 +190,17 @@ internal fun upright(x: Int, y: Int, width: Int, height: Int, rotation: Int): Do
 
 /**
  * Takes the newest camera frame whenever the last one is done (a few a second: OCR is the slow part), reads its text
- * and QR codes on the device, and hands everything to [onFrame]. Frames arriving meanwhile are dropped.
+ * and codes (QR, and products' EAN/UPC) on the device, and hands everything to [onFrame]. Frames arriving meanwhile
+ * are dropped. While [wantsText] says no (a product in view, camera plan step 2), OCR is skipped and frames come
+ * faster.
  */
 internal class IngestAnalyzer(
   private val text: TextRecognizer,
   private val qr: BarcodeScanner,
   private val executor: Executor,
   private val active: () -> Boolean,
-  private val onFrame: (CameraFrame, List<OcrQuad>, List<Pair<String, List<DocumentPoint>>>) -> Unit,
+  private val wantsText: () -> Boolean,
+  private val onFrame: (CameraFrame, List<OcrQuad>, List<ScannedCode>) -> Unit,
   private val onError: (Throwable) -> Unit,
 ) : ImageAnalysis.Analyzer {
   private val busy = AtomicBoolean(false)
@@ -219,26 +229,27 @@ internal class IngestAnalyzer(
       val bufferToSensor = Matrix().also { check(image.imageInfo.sensorToBufferTransformMatrix.invert(it)) }
       val mapping = FrameMapping(image.width, image.height, rotation, bufferToSensor, sensorToView?.let(::Matrix), 0)
       val input = InputImage.fromMediaImage(media, rotation)
-      val reading = text.process(input); val codes = qr.process(input)
+      val reading = if (wantsText()) text.process(input) else null
+      val codes = qr.process(input)
       // Each branch's end, taken on the thread that finishes it.
-      val ocrAt = AtomicLong(-1); val scanAt = AtomicLong(-1)
-      reading.addOnCompleteListener(Runnable::run) { ocrAt.set(ms()) }
+      val ocrAt = AtomicLong(if (reading == null) 0 else -1); val scanAt = AtomicLong(-1)
+      reading?.addOnCompleteListener(Runnable::run) { ocrAt.set(ms()) }
       codes.addOnCompleteListener(Runnable::run) { scanAt.set(ms()) }
       // The upright copy is made while OCR runs on its own threads.
       val gray = pixels.gray()
       val grayAt = ms()
       val frame = CameraFrame(gray, pixels, mapping, image.imageInfo.timestamp / 1_000_000)
-      Tasks.whenAllComplete(reading, codes).addOnCompleteListener(executor) {
+      Tasks.whenAllComplete(listOfNotNull(reading, codes)).addOnCompleteListener(executor) {
         image.close()
         try {
-          val lines = if (reading.isSuccessful) reading.result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
+          val lines = if (reading != null && reading.isSuccessful) reading.result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
             val corners = line.cornerPoints?.takeIf { it.size == 4 } ?: return@mapNotNull null
             OcrQuad(corners.map { upright(it.x, it.y, image.width, image.height, rotation) }, line.confidence.toDouble(), line.text.length, line.text)
           } else emptyList()
           val found = if (codes.isSuccessful) codes.result.mapNotNull { code ->
             val raw = code.rawValue ?: return@mapNotNull null
             // Unlike text, the barcode scanner reports its corners already turned upright.
-            raw to code.cornerPoints.orEmpty().map { DocumentPoint(it.x.toDouble(), it.y.toDouble()) }
+            ScannedCode(raw, code.format == Barcode.FORMAT_QR_CODE, code.cornerPoints.orEmpty().map { DocumentPoint(it.x.toDouble(), it.y.toDouble()) })
           } else emptyList()
           val done = ms()
           frame.timing = FrameTiming(sinceLast, copied, grayAt, ocrAt.get().takeIf { it >= 0 } ?: done, scanAt.get().takeIf { it >= 0 } ?: done, done)
@@ -270,7 +281,11 @@ internal class CaptureController(
   /** Debug builds: when set, every analysed frame and its OCR are written here, to replay the session on the PC. */
   private val dump: File? = null,
 ) {
-  private val ingest = IngestSession()
+  private var ingest = IngestSession()
+  private val decider = CameraModeDecider()
+  /** False while a product is in view: the analyzer then skips OCR. Read from the camera's thread. */
+  @Volatile var wantsText = true
+    private set
   private var manifest: CaptureSessionManifest = sessions.create()
   private class Held(val id: String, val pixels: FramePixels, val paper: PaperOutline, val view: IntRange?, val score: Double, val lines: List<OcrQuad>)
   private var held: Held? = null
@@ -290,10 +305,25 @@ internal class CaptureController(
   /** The debug dump writes on a thread of its own, off the session's. */
   private val dumping by lazy { java.util.concurrent.Executors.newSingleThreadExecutor() }
 
-  fun offer(frame: CameraFrame, lines: List<OcrQuad>, codes: List<Pair<String, List<DocumentPoint>>>) {
+  fun offer(frame: CameraFrame, lines: List<OcrQuad>, scanned: List<ScannedCode>) {
     if (done) return
     val id = "f${frames++}"
     dump?.let { dir -> dumping.execute { dumpFrame(dir, id, frame, lines) } }
+    // One camera (camera plan, step 2): a receipt, or a product's barcode.
+    val before = decider.mode
+    val decided = decider.offer(frame.atMs, frame.image.width, frame.image.height, scanned)
+    wantsText = decided.mode != CameraMode.PRODUCT
+    // The receipt capture's attempt was the packaging; back from a product, it starts afresh (frames were skipped).
+    if (decided.dropReceipt || (before == CameraMode.PRODUCT && decided.mode != CameraMode.PRODUCT)) restartReceipt()
+    val products = scanned.filter { !it.qr }.joinToString(";") { c -> c.raw + (c.corners.takeIf { it.isNotEmpty() }?.let { k -> "@%.0f,%.0f".format(k.sumOf { it.x } / k.size, k.sumOf { it.y } / k.size) } ?: "") }
+    if (decided.mode == CameraMode.PRODUCT) {
+      dump?.let { dir -> dumping.execute { logProduct(dir, id, frame.atMs, decided, products); frame.timing?.let { logTiming(dir, id, frame.atMs, it, 0) } } }
+      state = state.copy(outline = null, down = null, hint = CaptureHint.PRODUCT, view = null, mode = decided.mode, product = decided.product,
+        productShown = state.productShown + if (decided.newProduct) 1 else 0, dark = dark(frame))
+      publish(state)
+      return
+    }
+    val codes = scanned.filter { it.qr }.map { it.raw to it.corners }
     val started = System.nanoTime()
     val step = ingest.offer(IngestFrame(id, frame.image, lines, frame.atMs))
     val sessionMs = (System.nanoTime() - started) / 1_000_000
@@ -302,7 +332,7 @@ internal class CaptureController(
     // The codes read: as many as the scanner saw, and how many of them inside the paper.
     val codesSeen = "${codes.size}/${step.paper?.let { p -> codes.count { it.second.isNotEmpty() && contains(p, it.second, frame.image) } } ?: 0}" +
       codes.firstOrNull()?.second?.takeIf { it.isNotEmpty() }?.let { c -> " @%.0f,%.0f".format(c.sumOf { it.x } / c.size, c.sumOf { it.y } / c.size) }.orEmpty()
-    dump?.let { dir -> dumping.execute { logDecision(dir, id, frame.atMs, step, codesSeen) } }
+    dump?.let { dir -> dumping.execute { logDecision(dir, id, frame.atMs, step, codesSeen, decided.mode, products) } }
     identify(step.paper, codes, frame)
     val score = lines.map { it.confidence }.sorted().let { if (it.isEmpty()) 0.0 else it[it.size / 2] }
     val current = step.paper?.let { Held(id, frame.pixels, it, step.view, score, lines) }
@@ -327,7 +357,7 @@ internal class CaptureController(
       rows = ingest.rows.map { RowMark(ingest.isCaptured(it), it.gapAfter) },
       view = step.view, topClosed = ingest.topClosed, bottomClosed = ingest.bottomClosed,
       saved = manifest.segments.size, qr = manifest.chave != null, chave = manifest.chave,
-      dark = dark(frame),
+      dark = dark(frame), mode = decided.mode, product = null,
     )
     if (step.complete && manifest.chave != null) finish() else publish(state)
   }
@@ -345,13 +375,27 @@ internal class CaptureController(
   /**
    * Appends the session's decision on a frame to `live.tsv` (frame, its camera time, hint, held, committed, complete,
    * the paper's ends seen: `T`, `B`, `TB` or none, then `-`; empty when no paper was found; QR codes read / inside it),
-   * so the replay can use the frames' real timing and show where it would decide differently.
+   * then the camera's mode and the product barcodes read, `code@x,y` separated by `;` (camera plan, step 2), so the
+   * replay can use the frames' real timing and show where it would decide differently.
    */
-  private fun logDecision(dir: File, id: String, atMs: Long, step: IngestStep, codes: String) {
+  private fun logDecision(dir: File, id: String, atMs: Long, step: IngestStep, codes: String, mode: CameraMode, products: String) {
     fun name(id: String) = "f%04d".format(id.removePrefix("f").toInt() + 1)
     val ends = step.paper?.let { (if (it.topSeen) "T" else "") + (if (it.bottomSeen) "B" else "") + "-" } ?: ""
-    File(dir, "live.tsv").appendText(listOf(name(id), atMs, step.hint, step.hold, step.commits.joinToString(",", transform = ::name), step.complete, ends, codes)
+    File(dir, "live.tsv").appendText(listOf(name(id), atMs, step.hint, step.hold, step.commits.joinToString(",", transform = ::name), step.complete, ends, codes, mode, products)
       .joinToString("\t") + "\n")
+  }
+
+  /** A frame in product mode, in `live.tsv`'s columns: the receipt capture didn't see it. */
+  private fun logProduct(dir: File, id: String, atMs: Long, step: ModeStep, products: String) {
+    File(dir, "live.tsv").appendText(listOf("f%04d".format(id.removePrefix("f").toInt() + 1), atMs, "PRODUCT", false, "", false, "", "0/0", step.mode, products)
+      .joinToString("\t") + "\n")
+  }
+
+  /** Drops the receipt capture's attempt (its photos too) and starts a new one. */
+  private fun restartReceipt() {
+    if (manifest.segments.isNotEmpty() || manifest.chave != null) { sessions.remove(manifest); manifest = sessions.create() }
+    ingest = IngestSession(); held = null; savedAs.clear()
+    state = state.copy(rows = emptyList(), view = null, topClosed = false, bottomClosed = false, saved = 0, qr = false, chave = null)
   }
 
   /**

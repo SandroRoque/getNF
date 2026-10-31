@@ -141,6 +141,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D128 | cadernetas | current | "Yours" means scanned by you anywhere, not only on this phone |
 | D129 | testing | current | Checks before every push, frame timings in the dumps, an on-device benchmark before releases |
 | D130 | catalog | current | Looking a product up by barcode: every caderneta on the phone, shelf prices, latest per store |
+| D131 | capture | current | One camera decides: receipt or product; packaging is not receipt paper |
 
 ---
 
@@ -3246,3 +3247,34 @@ it. No camera or screen yet (steps 2 and 3); `data/ProductLookup.kt`, with JVM t
 Checked on copies of the phone's databases (deleted afterwards): 66 GTIN store items in the main caderneta, 22 of them
 bought more than once, all 13-digit except one 8-digit; the most bought one returns its 7 purchases, dated and
 categorized. Neither product from the user's first product sessions (D129) was ever bought: "never bought".
+
+## D131. One camera decides: receipt or product; packaging is not receipt paper (2026-10-31)
+
+Step 2 of the camera plan ([camera-plan.md](camera-plan.md)). The "Escanear" camera now reads products' barcodes too
+and decides what it's looking at (`CameraModeDecider`, `ui/scan/CameraMode.kt`). The sheet with the lookup's answer
+is step 3; for now product mode shows "Código de barras lido".
+
+- **The scanner** reads the NFC-e QR code plus EAN-13, EAN-8, UPC-A and UPC-E. Not Code 128: large NF-e printouts
+  carry the access key in one, and it isn't a product. The device benchmark measured these formats at about 1 ms more
+  per frame (D129).
+- **Three modes.** Undecided at open: the receipt capture runs exactly as before, and product barcodes are looked for
+  too. A receipt's QR code (one `Chave.fromQr` accepts) anywhere in the frame locks the receipt: product barcodes are
+  then ignored, since a product lying beside the receipt mustn't interrupt it. A product's GTIN, or a scale label,
+  with its centre in the middle 70% of the frame each way while undecided, makes it a product: whatever the receipt
+  capture had started is dropped (it was the packaging, or paper that isn't a receipt), OCR is skipped, and frames
+  come faster (about 210 ms instead of 290 on the emulator). A receipt's QR code switches to the receipt. No product
+  barcode for 2.5 s goes back to undecided, with a fresh receipt capture. The same code read again isn't announced
+  again; another code is.
+- **Light print on a dark ground isn't a receipt** (`PaperFinder.lightOnDark`): when most lines of the text block are
+  lighter than the ground around them (with half a line of ground around each box, since a box drawn tight around
+  bold print can be half print), there is no paper. On the user's product sessions this rejected the back of the
+  coffee bag on 70–88% of its lines, against at most 10% on receipts.
+- **Logs and benchmark.** `live.tsv` gains the mode and the product codes read (`code@x,y`, `;`-separated);
+  product-mode frames get a row and `timing.tsv` too, with OCR at 0. The capture benchmark gains `product` sessions
+  (D129's three): any photo they commit, or a completion, is wrong; the replay follows the mode the phone logged.
+
+Checked: the capture benchmark on all 26 receipt sessions is unchanged; the product sessions commit 1 photo (the A4
+sheets on the desk, before the box came into view; recorded with a QR-only scanner, so no barcode was read there),
+down from 6. On the emulator, a barcode from the user's session put the camera in product mode with no OCR, and a
+receipt video stayed undecided until its QR code was read, then locked the receipt and captured it as before.
+JVM tests for the decider. What's still to measure on the phone is step 4: the same criteria as step 0's baseline.

@@ -126,7 +126,7 @@ session thread:                                   [frame N: paper, rows, decisio
 1. **Lookup, no camera. Done (D130).** Given a GTIN, search every caderneta on the phone. For each match return the product, its
    category and caderneta, the last price and date, the last price at each store, and the 3-month average. Tell
    "never bought" apart from a scale label (GTIN-13 starting with 2, `parse/Derive.kt`). JVM tests.
-2. **The camera decides what it sees.** The scanner also reads EAN-13, EAN-8 and UPC (not Code 128, which large NF-e
+2. **The camera decides what it sees. Done (D131).** The scanner also reads EAN-13, EAN-8 and UPC (not Code 128, which large NF-e
    printouts use for the access key). Three states:
    - **undecided**, at open: looks for everything;
    - **receipt**, once an NFC-e QR code or receipt paper is seen: product codes are ignored and the capture is exactly

@@ -21,7 +21,9 @@ import org.junit.Test
  * The capture benchmark (D89): every recorded session (videos, and the frames phones dump in debug builds) played
  * through [IngestSession] as if live, scored against the receipt's content as SEFAZ has it, and compared with the
  * last accepted run. Local only: GETNF_BENCH = the `test-media/bench` directory, whose `corpus.tsv` lists the
- * sessions (path under test-media, `dev` or `holdout`, frame interval in ms when the session has no `live.tsv`).
+ * sessions (path under test-media, `dev`, `holdout` or `product`, frame interval in ms when the session has no
+ * `live.tsv`). A `product` session points the camera at products, not a receipt (camera plan, step 2): it runs with
+ * the dev ones, and any photo it commits, or a completion, is wrong.
  *
  * - Answer key: the receipt's page (`test-media/truth/<chave>/page.html`, saved by the app when it was fetched; no
  *   request is made here). Each item's code and description must be legible (read with confidence 0.6) in a saved
@@ -82,6 +84,9 @@ class CaptureBenchTest {
       r.seconds?.let { "%.1f".format(it) } ?: "-", r.photos, "${r.legible}/${r.items}${if (r.key == "consensus") "*" else ""}", r.fidelity,
       (if (r.falseCompletion) "  FALSE COMPLETION" else "") + (if (r.missing.isNotEmpty()) "  missing: " + r.missing.take(3).joinToString(" | ") else "")))
     println("(* answer key from the sessions' own reads: no page for that receipt)")
+    results.filter { it.split == "product" }.takeIf { it.isNotEmpty() }?.let { p ->
+      println("product sessions: %d, %d photos committed, %d completed (both should be 0)".format(p.size, p.sumOf { it.photos }, p.count { it.completed }))
+    }
     if (!whole) return // a partial run isn't compared or kept
     val runs = File(bench, "runs").apply { mkdirs() }
     val label = System.getenv("GETNF_BENCH_LABEL") ?: "run"
@@ -98,7 +103,7 @@ class CaptureBenchTest {
       if (b.falseCompletion != r.falseCompletion) notes += r.falseCompletion to "false completion ${b.falseCompletion} → ${r.falseCompletion}"
       if (b.seconds != null && r.seconds != null && kotlin.math.abs(r.seconds - b.seconds) >= 1.0)
         notes += (r.seconds > b.seconds * 1.25 && r.seconds - b.seconds >= 2) to "seconds %.1f → %.1f".format(b.seconds, r.seconds)
-      if (b.photos != r.photos) notes += (r.photos >= b.photos + 2) to "photos ${b.photos} → ${r.photos}"
+      if (b.photos != r.photos) notes += (r.photos >= b.photos + if (r.split == "product") 1 else 2) to "photos ${b.photos} → ${r.photos}"
       regressions += notes.count { it.first }
       for ((bad, note) in notes) println("%-9s %s: %s".format(if (bad) "WORSE" else "changed", r.session, note))
     }
@@ -116,7 +121,8 @@ class CaptureBenchTest {
     val receipt = receiptOf(ocr.values.filterNotNull())
     val truth = receipt?.let { truth(it, media) }
     val out = File(dir, "ingest").apply { mkdirs() }
-    val session = IngestSession()
+    var session = IngestSession()
+    var lastMode: String? = null
     val log = StringBuilder()
     val held = mutableMapOf<String, File>()
     val saved = mutableListOf<String>()
@@ -135,6 +141,16 @@ class CaptureBenchTest {
         l.corners?.chunked(2)?.map { (x, y) -> DocumentPoint(x.toDouble(), y.toDouble()) }?.let { OcrQuad(it, l.confidence.toDouble(), l.text.length, l.text) }
       }
       val grayImage = GrayImage(gray.width, gray.height, (gray.raster.dataBuffer as DataBufferByte).data, chroma(image))
+      // The camera's mode as the phone decided it (camera plan, step 2): its product frames never reached the receipt
+      // capture, and turning to a product dropped what the capture had taken.
+      val mode = live?.get(id)?.getOrNull(8)
+      if (mode == "PRODUCT") {
+        if (lastMode != "PRODUCT") { session = IngestSession(); saved.clear(); held.clear(); log.appendLine("        product: the receipt capture restarts at $id") }
+        lastMode = mode
+        continue
+      }
+      if (lastMode == "PRODUCT") session = IngestSession()
+      lastMode = mode
       val closedBefore = session.topClosed to session.bottomClosed
       val step = session.offer(IngestFrame(id, grayImage, lines, at))
       // The clock starts when a frame is first placed on the receipt: before that, the camera is still being aimed.

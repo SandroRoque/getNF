@@ -26,21 +26,24 @@ internal class CaptureViewModel(application: Application) : AndroidViewModel(app
   private val app = application as GetNFApp
   val executor = Executors.newSingleThreadExecutor()
   private val sessionThread = Executors.newSingleThreadExecutor()
-  private class Pending(val frame: CameraFrame, val lines: List<OcrQuad>, val codes: List<Pair<String, List<DocumentPoint>>>)
+  private class Pending(val frame: CameraFrame, val lines: List<OcrQuad>, val codes: List<ScannedCode>)
   private val pending = AtomicReference<Pending?>(null)
   private val attached = AtomicBoolean(false)
   private val closing = AtomicBoolean(false)
   private val _state = MutableStateFlow(CaptureUiState())
   val state = _state.asStateFlow()
   private val text = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-  private val qr = BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build())
+  // The receipt's QR code and products' barcodes (camera plan, step 2). Not Code 128: large NF-e printouts carry the
+  // access key in one, and it isn't a product.
+  private val qr = BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE,
+    Barcode.FORMAT_EAN_13, Barcode.FORMAT_EAN_8, Barcode.FORMAT_UPC_A, Barcode.FORMAT_UPC_E).build())
   private val controller by lazy {
     // Debug builds dump the frames analysed when files/capture-dump/enabled exists (to replay a session on the PC).
     val dump = java.io.File(app.filesDir, "capture-dump").takeIf { BuildConfig.DEBUG && java.io.File(it, "enabled").exists() }
       ?.let { java.io.File(it, java.time.LocalDateTime.now().toString().replace(':', '-').take(19)) }
     CaptureController(app.captureSessions, app.receiptStore, { _state.value = it }, { SyncWorker.enqueue(app) }, dump)
   }
-  val analyzer = IngestAnalyzer(text, qr, executor, { attached.get() && !closing.get() }, { frame, lines, codes ->
+  val analyzer = IngestAnalyzer(text, qr, executor, { attached.get() && !closing.get() }, { controller.wantsText }, { frame, lines, codes ->
     // A frame already waiting is dropped for this newer one; only when none was waiting is a run scheduled.
     if (pending.getAndSet(Pending(frame, lines, codes)) == null) sessionThread.execute(::drain)
   }, ::report)

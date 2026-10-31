@@ -43,6 +43,25 @@ internal class PaperTrace {
  *    and per end. Reaching the frame's border means the frame cuts the paper there.
  */
 internal object PaperFinder {
+  /**
+   * Whether a line of text is light print on a dark ground: inside its box the ground is most of the pixels, so the
+   * median is the ground's level, and the print is the tail on the far side, darker on paper, lighter on packaging.
+   */
+  internal fun lightOnDark(image: GrayImage, line: OcrQuad): Boolean {
+    // With half a line of ground around it: a box drawn tight around bold print can be half print.
+    val pad = line.height / 2
+    val x0 = (line.corners.minOf { it.x } - pad).toInt().coerceIn(0, image.width - 1); val x1 = (line.corners.maxOf { it.x } + pad).toInt().coerceIn(0, image.width - 1)
+    val y0 = (line.corners.minOf { it.y } - pad).toInt().coerceIn(0, image.height - 1); val y1 = (line.corners.maxOf { it.y } + pad).toInt().coerceIn(0, image.height - 1)
+    val counts = IntArray(256); var n = 0
+    var y = y0
+    while (y <= y1) { var x = x0; while (x <= x1) { counts[image[x, y]]++; n++; x += 2 }; y += 2 }
+    if (n < 50) return false
+    fun at(share: Double): Int { var seen = 0; val want = (n * share).toInt(); for (g in 0..255) { seen += counts[g]; if (seen > want) return g }; return 255 }
+    val median = at(.5)
+    return at(.97) - median > (median - at(.03)) * 1.5
+  }
+
+
   private const val SIZE = 1000        // long side of the working copy for the edge walk
   private const val EDGE = .72         // the paper ends where brightness falls under this share of the paper's
 
@@ -94,6 +113,8 @@ internal object PaperFinder {
     val blockV0 = block.minOf { it.corners.minOf(::v) }; val blockV1 = block.maxOf { it.corners.maxOf(::v) }
     trace?.block = listOf(xy(blockU0, blockV0), xy(blockU1, blockV0), xy(blockU1, blockV1), xy(blockU0, blockV1))
     if (blockU1 - blockU0 < lineHeight * 4) return stop("text block too narrow")
+    // A receipt is dark print on light paper. Light print on a dark ground (the back of a coffee bag) is packaging.
+    if (block.count { lightOnDark(image, it) } * 2 > block.size) return stop("light text on a dark background")
 
     // 3. Paper: walk outwards on a smaller copy until the paper's look drops, against the paper's level nearby. The look
     //    is brightness less colourfulness: paper is light and neutral, and a coloured surface (an orange envelope in
