@@ -113,4 +113,21 @@ class SpendingTest {
     dao.updateStoreItem(pulpItem.copy(soldBy = "unit", soldBySource = "jev", soldByUser = "weight", readPackCount = 4, readSizeSource = "jev"))
     with(pricePoint(pulp())!!) { assertEquals(listOf<Any?>(298L, "kg", null), listOf(cents, basis, perItemCents)) }
   }
+
+  /** D141: a store that rang one item up twice (3 cans, then 2) printed two lines of one purchase. */
+  @Test fun twoLinesOfOneItemOnOneReceiptAreOnePurchase() {
+    fun line(chave: String, no: Int, qty: Long, priceCents: Long, unit: String = "UN") =
+      SpendingLine(chave, no, 1_000, "s", "Loja", qty * priceCents, 0, "html", "tuna", null, qty * 10_000, unit, priceCents * 100, 170_000, "kg")
+    val lines = listOf(line("r1", 1, 3, 869), line("r1", 4, 2, 869), line("r2", 1, 1, 899))
+    val merged = onePerReceipt(lines).sortedBy { it.chave }
+    assertEquals(2, merged.size)
+    assertEquals(50_000L to (5L * 869), merged[0].qtyE4 to merged[0].grossCents)
+    assertEquals(86_900L, merged[0].unitPriceE4)
+    assertEquals(2, productsIn(lines).single().purchases)
+    // Different prices on one receipt: weighted by quantity.
+    val mixed = onePerReceipt(listOf(line("r1", 1, 3, 1000), line("r1", 2, 1, 600))).single()
+    assertEquals(90_000L, mixed.unitPriceE4)
+    // Another unit on the same receipt isn't merged into it.
+    assertEquals(2, onePerReceipt(listOf(line("r1", 1, 1, 1000), line("r1", 2, 1, 2000, unit = "KG"))).size)
+  }
 }

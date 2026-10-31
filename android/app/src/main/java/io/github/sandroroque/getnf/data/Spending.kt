@@ -166,12 +166,30 @@ class Spending(lines: List<SpendingLine>, private val parents: Map<String, Strin
 }
 
 /** A product's spending in a period, for the list under the chart. */
-data class ProductSpend(val productId: String, val netCents: Long, val lines: Int, val qty: Map<String, Long>)
+/** [purchases]: the receipts it was bought on (D141), however many lines each. */
+data class ProductSpend(val productId: String, val netCents: Long, val purchases: Int, val qty: Map<String, Long>)
 
 fun productsIn(lines: List<SpendingLine>): List<ProductSpend> = lines.groupBy { it.productId }.map { (id, ls) ->
   // Quantities add up only within a unit (D19): 1,2 kg and 3 UN stay apart.
-  ProductSpend(id, ls.sumOf { it.netCents }, ls.size, ls.groupBy { it.unit.orEmpty().uppercase() }.mapValues { (_, u) -> u.sumOf { it.qtyE4 } })
+  ProductSpend(id, ls.sumOf { it.netCents }, ls.map { it.chave }.distinct().size,
+    ls.groupBy { it.unit.orEmpty().uppercase() }.mapValues { (_, u) -> u.sumOf { it.qtyE4 } })
 }.sortedByDescending { it.netCents }
+
+/**
+ * One purchase per product and receipt (D141): a store that rang the same item up twice (3 cans, then 2) printed two
+ * lines of one purchase. Lines of a product on one receipt in one unit become one: quantities, amounts and discounts
+ * add up, and the unit price is the quantity-weighted one (the same price, nearly always).
+ */
+fun onePerReceipt(lines: List<SpendingLine>): List<SpendingLine> =
+  lines.groupBy { Triple(it.chave, it.productId, it.unit.orEmpty().uppercase()) }.values.map { same ->
+    if (same.size == 1) same.single() else {
+      val qty = same.sumOf { it.qtyE4 }
+      same.first().copy(
+        qtyE4 = qty, grossCents = same.sumOf { it.grossCents }, discountCents = same.sumOf { it.discountCents },
+        unitPriceE4 = if (qty == 0L) same.first().unitPriceE4 else Math.round(same.sumOf { it.unitPriceE4.toDouble() * it.qtyE4 } / qty),
+      )
+    }
+  }
 
 /**
  * One purchase's price, made comparable: per kg or litre when the line is sold by weight or the size is known, else per

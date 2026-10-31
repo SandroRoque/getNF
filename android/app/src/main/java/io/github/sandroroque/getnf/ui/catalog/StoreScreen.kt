@@ -48,7 +48,7 @@ fun StoreScreen(cnpj: String, onBack: () -> Unit, onOpenReceipt: (String) -> Uni
     item { BigNumber(Format.brl(here.sumOf { it.netCents })) }
     item { SectionLabel("Mais comprados aqui") }
     items(productsIn(here).take(8), key = { "p:${it.productId}" }) { p ->
-      AmountRow(titles[p.productId] ?: "?", Format.brl(p.netCents), subtitle = "${p.lines} ${if (p.lines == 1) "compra" else "compras"}",
+      AmountRow(titles[p.productId] ?: "?", Format.brl(p.netCents), subtitle = Format.count(p.purchases, "compra", "compras"),
         onClick = { onOpenProduct(p.productId) })
     }
     item { SectionLabel("Notas") }

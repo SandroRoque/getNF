@@ -34,6 +34,8 @@ import io.github.sandroroque.getnf.data.ProductRow
 import io.github.sandroroque.getnf.data.StoreItemDetail
 import io.github.sandroroque.getnf.data.TagRow
 import io.github.sandroroque.getnf.data.pricePoint
+import io.github.sandroroque.getnf.data.Purchase
+import io.github.sandroroque.getnf.data.onePerReceipt
 import io.github.sandroroque.getnf.sync.SyncWorker
 import io.github.sandroroque.getnf.theme.Calmo
 import io.github.sandroroque.getnf.ui.Format
@@ -80,7 +82,9 @@ fun ProductScreen(productId: String, onOpenProduct: (String) -> Unit, onBack: ()
   val tagIds by remember(productId) { dao.tagIds(productId) }.collectAsStateWithLifecycle(emptyList())
   val products by remember { dao.products() }.collectAsStateWithLifecycle(emptyList())
   val allLines by remember { app.database.spending().lines() }.collectAsStateWithLifecycle(emptyList())
-  val prices = remember(allLines, productId) { allLines.filter { it.productId == productId }.mapNotNull(::pricePoint) }
+  // One price per receipt (D141): an item rung up twice on one receipt is one purchase.
+  val prices = remember(allLines, productId) { onePerReceipt(allLines.filter { it.productId == productId }).mapNotNull(::pricePoint) }
+  val bought = remember(purchases) { perReceipt(purchases) }
   var sheet by remember { mutableStateOf<Sheet?>(null) }
   val edit = rememberEdit()
   val editor = app.catalogEditor
@@ -103,7 +107,7 @@ fun ProductScreen(productId: String, onOpenProduct: (String) -> Unit, onBack: ()
       Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         ScreenTitle(title)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-          Sub(pathOf(categories, p.categoryId) ?: "Sem categoria")
+          Sub(pathOf(categories, p.categoryId) ?: "Sem categoria", Modifier.weight(1f, fill = false))
           origin(p)?.let { Mark(it, you = it == "você") }
         }
       }
@@ -129,19 +133,26 @@ fun ProductScreen(productId: String, onOpenProduct: (String) -> Unit, onBack: ()
             mark = if (items.any { it.soldByUser != null }) "você" else null, onClick = { sheet = Sheet.SoldBy })
           if (soldBy == null || soldBy == "unit") FactRow("Tamanho", size(p, items), mark = sizeMark(p, items), onClick = { sheet = Sheet.Size })
         }
-        FactRow("Compras", "${Format.count(purchases.size, "compra", "compras")} · ${Format.brl(purchases.sumOf { it.netCents })}")
-        FactRow("Nas notas", items.joinToString(" · ") { it.description })
-        FactRow("Lojas", items.mapNotNull { it.issuerName }.distinct().joinToString(" · ").ifEmpty { "qualquer loja (código de barras)" })
+        FactRow("Compras", "${Format.count(bought.size, "compra", "compras")} · ${Format.brl(bought.sumOf { it.netCents })}")
+        // What the receipts print, when it says more than the title: the product was renamed, or joins several items.
+        val printed = items.map { it.description }.distinct()
+        if (printed != listOf(title)) FactRow("Nas notas", printed.joinToString(" · "))
         if (tagIds.isNotEmpty()) FactRow("Marcadores", tags.filter { it.id in tagIds }.joinToString(" · ") { it.description })
       }
     }
     item { SectionLabel("Compras", Modifier.padding(top = 6.dp)) }
-    items(purchases, key = { "${it.chave}/${it.lineNo}" }) { b ->
+    // The price paid per unit (or kg, litre) on the right, where the cheapest stands out; the store, quantity and
+    // amount under the date.
+    items(bought, key = { "${it.chave}/${it.unit}" }) { b ->
+      val unit = b.unit.orEmpty().lowercase()
+      val each = Math.round(b.unitPriceE4 / 100.0)
       AmountRow(
         title = b.issuedAt?.let(Format::date) ?: "?",
-        subtitle = "${b.issuerName ?: ""} · ${Format.e4(b.qtyE4)} ${b.unit.orEmpty().lowercase()} × ${Format.brl(Math.round(b.unitPriceE4 / 100.0))}" +
-          if (b.override) " · só esta linha" else "",
-        amount = Format.brl(b.netCents), onClick = { onOpenReceipt(b.chave) },
+        subtitle = listOfNotNull(b.issuerName, "${Format.e4(b.qtyE4)} $unit",
+          Format.brl(b.netCents).takeIf { b.netCents != each }, "só esta linha".takeIf { b.override })
+          .joinToString(" · "),
+        amount = Format.brl(each) + if (unit in setOf("kg", "l")) "/$unit" else "",
+        onClick = { onOpenReceipt(b.chave) },
       )
     }
   }
@@ -240,6 +251,15 @@ private fun PriceBlock(points: List<PricePoint>) {
     else Sub("Compre de novo e o histórico de preço aparece aqui, loja a loja.")
   }
 }
+
+/** One purchase per receipt and unit (D141), newest first, as [purchases] comes. */
+private fun perReceipt(purchases: List<Purchase>): List<Purchase> =
+  purchases.groupBy { it.chave to it.unit.orEmpty().uppercase() }.values.map { same ->
+    val qty = same.sumOf { it.qtyE4 }
+    if (same.size == 1 || qty == 0L) same.first()
+    else same.first().copy(qtyE4 = qty, netCents = same.sumOf { it.netCents }, override = same.any { it.override },
+      unitPriceE4 = Math.round(same.sumOf { it.unitPriceE4.toDouble() * it.qtyE4 } / qty))
+  }
 
 private suspend fun join(app: GetNFApp, other: String, into: String) {
   for (s in app.database.edit().storeItemsOf(other)) app.catalogEditor.link(s.id, into)

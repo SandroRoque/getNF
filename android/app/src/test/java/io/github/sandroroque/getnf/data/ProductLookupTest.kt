@@ -144,4 +144,15 @@ class ProductLookupTest {
     db.catalog().updateProduct(db.edit().productNow("p1")!!.copy(deleted = true))
     assertTrue(lookup("x" to db).find(coffee, now) is LookupResult.NeverBought)
   }
+
+  @Test fun oneItemRungUpTwiceOnAReceiptIsOnePurchase() = runTest {
+    val db = testDatabase()
+    Fixture(db).apply { product("p1", "Atum"); item("s1", coffee, "p1", "ATUM"); buy("s1", "A", now - day, 869, qtyE4 = 30_000) }
+    // A second line of the same item on that same receipt (D141).
+    val chave = "4226%040d".format(1)
+    db.catalog().insertLines(listOf(ReceiptLineRow(chave, 2, "X", "x", 20_000, "UN", 869 * 100, 2 * 869, "s1", discountCents = 0, discountSource = "html")))
+    val s = (lookup("x" to db).find(coffee, now) as LookupResult.Found).sightings.single()
+    assertEquals(1, s.purchases)
+    assertEquals(869L, s.last.cents)
+  }
 }

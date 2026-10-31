@@ -96,7 +96,13 @@ data class ProductSighting(
 
     /** Null when no line has a date (its page hasn't been read: nothing to say about prices yet). */
     fun of(ledger: String?, lines: List<GtinLine>, now: Long): ProductSighting? {
-      val dated = lines.filter { it.issuedAt != null }.sortedByDescending { it.issuedAt }
+      // One purchase per receipt (D141): the same item rung up twice on one receipt is one purchase.
+      val dated = lines.filter { it.issuedAt != null }.groupBy { it.chave to (Derive.unitKind(it.unit) ?: "un") }.values.map { same ->
+        val qty = same.sumOf { it.qtyE4 }
+        if (same.size == 1 || qty == 0L) same.first()
+        else same.first().copy(qtyE4 = qty, unitPriceE4 = Math.round(same.sumOf { it.unitPriceE4.toDouble() * it.qtyE4 } / qty),
+          grossCents = same.sumOf { it.grossCents }, discountCents = same.sumOf { it.discountCents })
+      }.sortedByDescending { it.issuedAt }
       val newest = dated.firstOrNull() ?: return null
       val basis = basisOf(newest)
       val same = dated.filter { basisOf(it) == basis }

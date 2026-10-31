@@ -151,6 +151,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D138 | capture | current | One camera for receipts and products: measured against step 0, it stays |
 | D139 | dev | current | Every Play upload gets a `play/<versionCode>` tag on the commit it was built from |
 | D140 | dev | current | Checks on GitHub for every push; the app writes down its crashes and offers to send them |
+| D141 | catalog | current | A purchase is a product on one receipt; the product screen leads with the price paid per unit |
 
 ---
 
@@ -3468,4 +3469,25 @@ crashed on someone else's phone (this week's crashes were known only because the
   developer, e-mail); nothing is sent by the app itself and no crash service is added. ANRs (the app frozen, not
   crashed) aren't caught; Android vitals has them for Play installs. On the developer's phones the folder can be read
   with `adb shell run-as <package> ls files/crashes`.
+
+## D141. A purchase is a product on one receipt; the product screen leads with the price paid per unit (2026-10-31)
+
+From the user's review of the screens on the phone (milestone 0.1). Five cans of tuna bought at once were "2 compras"
+with a lone dot on the price chart: the store rang them up as two lines (3, then 2), and every count took a receipt
+line for a purchase.
+
+- **A purchase is a product on one receipt.** Lines of one product on one receipt, in one unit, add up into one
+  purchase: quantities, amounts and discounts summed, the unit price weighted by quantity (the same price, nearly
+  always). `onePerReceipt` (`data/Spending.kt`) for the price chart, the Catálogo's and a store's counts by distinct
+  receipt, the product screen's list, and the barcode sheet's count, latest price and average (D130). A line moved to
+  another product by hand ("só esta linha") still counts there on its own. Totals were always right; only counts and
+  prices per purchase change. The IPCI already works per month and product.
+- **The purchase list leads with the price per unit** (per kg or litre when sold so), on the right, where the cheapest
+  stands out; the store, quantity and amount (when it differs from the unit price) under the date. The line total
+  there before couldn't be compared between 3 cans and 2.
+- **"Lojas" is gone** from the product's facts: each purchase names its store, and "qualquer loja (código de barras)"
+  was a detail of how store items are matched (D19), not something to read.
+- **"Nas notas" only when it says more than the title:** the product was renamed, or it joins items printed
+  differently. A product without a name of its own is titled with the receipt's text, which was then shown twice.
+- A mark beside a long category path ("VOCÊ") no longer breaks over two lines.
 

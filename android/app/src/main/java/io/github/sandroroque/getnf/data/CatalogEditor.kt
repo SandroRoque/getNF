@@ -92,7 +92,7 @@ abstract class EditDao {
     LEFT JOIN category c ON c.id = p.categoryId
     LEFT JOIN category sc ON sc.id = p.suggestionCategoryId
     LEFT JOIN (
-      SELECT COALESCE(l.productOverrideId, s.productId) AS pid, SUM(l.grossCents - l.discountCents) AS spent, COUNT(*) AS n
+      SELECT COALESCE(l.productOverrideId, s.productId) AS pid, SUM(l.grossCents - l.discountCents) AS spent, COUNT(DISTINCT l.receipt) AS n
       FROM receipt_line l JOIN store_item s ON s.id = l.storeItemId GROUP BY pid
     ) u ON u.pid = p.id
     WHERE p.deleted = 0 AND p.archived = 0 AND u.n > 0

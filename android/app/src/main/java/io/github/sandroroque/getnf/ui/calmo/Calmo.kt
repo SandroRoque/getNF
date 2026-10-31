@@ -190,7 +190,8 @@ fun FactRow(label: String, value: String, mark: String? = null, onClick: (() -> 
 @Composable
 fun Mark(text: String, you: Boolean = false) {
   val color = if (you) Calmo.acc else Calmo.mute
-  Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = color,
+  // Never broken over two lines ("VOC / Ê"): whatever sits beside it gives way.
+  Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = color, maxLines = 1, softWrap = false,
     modifier = Modifier.border(1.dp, if (you) Calmo.acc else Calmo.line, RoundedCornerShape(4.dp)).padding(horizontal = 4.dp))
 }
 
