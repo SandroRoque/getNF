@@ -12,7 +12,7 @@ import java.io.StringWriter
  * One file per crash, named by its time; the newest [KEEP] stay (`adb pull` the folder to read them). [dismissedAt]
  * remembers the newest one already offered, so a report is offered once.
  */
-class CrashLog(private val dir: File, private val about: String, private val prefs: Prefs) {
+class CrashLog(private val dir: File, val about: String, private val prefs: Prefs) {
   /** Where "dismissed up to" is kept: the app's SharedPreferences, a map in tests. */
   interface Prefs { var dismissedAt: Long }
 

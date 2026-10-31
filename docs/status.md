@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-30. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D144). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
+`docs/decisions.md` (D1–D145). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
@@ -78,13 +78,14 @@ Caderneta. New ideas go to "After the open store", not into the code.
 **Next 7 days: open the closed test**
 
 Claude:
-1. Parked sync rows (`sync_parked`) shown on Ajustes' account card, to retry or drop: no tester's data vanishes
-   silently (D104).
+1. ~~Parked sync rows shown in Ajustes~~ done (D145: "Não sincronizado", Tentar de novo, Enviar relatório).
 2. "Enviar comentário" in Ajustes: the share sheet with the version and phone filled in, like the crash report (D140).
 3. The Play listing in pt-BR: short and full description, feature graphic, the screenshots checked
    ([screenshots/](screenshots/)), the review login's instructions; the Data safety answers checked against the app
    ([play-data-safety.md](play-data-safety.md)).
 4. Fixes from the user's review of the screens and from the shared caderneta with the father: these come first.
+   Done from the first review: one purchase per receipt and the unit price first (D141), tappable things look
+   tappable and full-width swiping tabs (D142), chart scrubbing (D143), the package's price on the chart (D144).
 5. 0.1.0 (code 3): the release checklist (CI ✓, `tools/check.sh`, the release build on the emulator and the phone,
    tag `play/3`, Android vitals three days later).
 6. Only if time is left: start the photo reader (D106), measured against the saved pages, nothing in the app yet.
@@ -127,8 +128,6 @@ for receipts and products), CI on GitHub and the crash log (D140), Play upload t
 ## Open items
 
 - **Cadernetas, not built yet (D104):**
-  - Parked rows (`sync_parked`, a row the server refused) aren't shown anywhere yet; D104 says they are. They belong next to
-    the sync line on Ajustes' account card (D123), with a way to retry or drop one.
   - A caderneta joined but never opened on this phone isn't downloaded until it's opened.
   - No screen for a caderneta's setup history (`ledger_event`).
   - Leaving a caderneta (or being removed) leaves its database and receipts folder on the phone; nothing clears them.

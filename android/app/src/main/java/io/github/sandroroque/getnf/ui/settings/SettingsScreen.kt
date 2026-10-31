@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -92,6 +93,7 @@ fun SettingsScreen(go: SettingsRoutes) {
     else {
       val sync = syncState(app)
       AccountCard(account, sync, go.account)
+      RefusedRows(app, sync)
       Group("Caderneta")
       // The first sync picks the caderneta to open: read again after each.
       LedgerRows(app, remember(sync.last) { app.accountSettings.ledgerId() }, go)
@@ -236,3 +238,37 @@ private fun ContributionRow(app: GetNFApp, signedIn: Boolean) {
     Modifier.padding(top = 8.dp),
   )
 }
+
+/**
+ * Rows the server refused (D104, D145): they stay on this phone, unsynced, so the person sees it and can send them
+ * again or send the developer what happened. Read again after every sync.
+ */
+@Composable
+private fun RefusedRows(app: GetNFApp, sync: SyncState) {
+  val context = LocalContext.current
+  var rows by remember { mutableStateOf(emptyList<io.github.sandroroque.getnf.data.SyncParkedRow>()) }
+  LaunchedEffect(sync.last, sync.running) { rows = app.database.sync().parked() }
+  if (rows.isEmpty()) return
+  LeadCard {
+    Text("Não sincronizado", style = MaterialTheme.typography.titleSmall, color = Calmo.fg)
+    Sub("O servidor recusou ${Format.count(rows.size, "alteração", "alterações")}. Elas continuam neste celular; o resto " +
+      "sincroniza normalmente.")
+    Column {
+      for (r in rows.take(5).map(io.github.sandroroque.getnf.data.SyncProblems::describe))
+        AmountRow(r.title, null, subtitle = "${Format.dateTime(r.at)} · ${r.error}")
+      if (rows.size > 5) Sub("e mais ${rows.size - 5}")
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      io.github.sandroroque.getnf.ui.calmo.Pill("Tentar de novo", ButtonKind.Solid) {
+        kotlinx.coroutines.MainScope().launch { app.database.sync().unparkAll(); SyncWorker.enqueue(context) }
+      }
+      io.github.sandroroque.getnf.ui.calmo.Pill("Enviar relatório", ButtonKind.Outline) {
+        val send = Intent(Intent.ACTION_SEND).setType("text/plain")
+          .putExtra(Intent.EXTRA_SUBJECT, "Caderneta: alterações recusadas pelo servidor")
+          .putExtra(Intent.EXTRA_TEXT, io.github.sandroroque.getnf.data.SyncProblems.report(app.crashLog.about, rows))
+        context.startActivity(Intent.createChooser(send, "Enviar o relatório"))
+      }
+    }
+  }
+}
+

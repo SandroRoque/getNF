@@ -155,6 +155,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D142 | UI | current | Everything tappable looks tappable: rows with a chevron, pills, or the back header; tabs fill the width and swipe |
 | D143 | UI | current | Price charts scrub: a finger on the chart marks the nearest point with its date, value and store |
 | D144 | catalog | current | A product's price is the package's while every purchase was the same size; per kg or litre otherwise |
+| D145 | online | current | Rows the server refused show in Ajustes, to send again or report; none is dropped |
 
 ---
 
@@ -3526,4 +3527,21 @@ package's price when the size never changes. `pricePoints` (`data/Spending.kt`) 
 purchase has the same size (or none) and none is sold by weight; per kg or litre when sizes differ (500 g and 1 kg
 packs compare only that way) or it's sold by weight, as before (D19). A package's price is written without a unit;
 per kg or litre keeps its "/kg". The IPCI is unchanged (a ratio, the same either way for one size).
+
+## D145. Rows the server refused show in Ajustes, to send again or report; none is dropped (2026-10-31)
+
+D104 parks a row the server refuses (a 4xx) instead of failing every sync, and said it would be shown; it wasn't
+(an open item). With testers coming (milestone 0.1), a refused row is data that silently never reaches the
+caderneta. Now, signed in, Ajustes shows a card under the account, "Não sincronizado", when any row is parked: how
+many, the first five in words ("Produto: Café torrado 500 g", "Nota de 10/2026", from the payload's name, label or
+description, or the chave's month), each with when and the server's error, and two buttons:
+
+- **Tentar de novo** unparks every row and syncs: each goes again (useful once the server is fixed, e.g. a migration
+  that was missing, D108's case); one still refused is parked again.
+- **Enviar relatório** opens the share sheet with the app's version and phone (as D140) and, per row, its table, key,
+  error and what was sent, for the developer.
+
+No "discard": dropping a refused row would leave the phone and the caderneta apart for good, and the cause is nearly
+always on the server's side (a constraint or a column), fixed there. Checked on the emulator against the local
+Supabase with a test user and two parked rows: the card, the titles, and the card gone after "Tentar de novo".
 

@@ -42,6 +42,8 @@ abstract class SyncDao {
   @Query("SELECT * FROM sync_parked WHERE tableName = :table") abstract suspend fun parked(table: String): List<SyncParkedRow>
   @Query("SELECT * FROM sync_parked ORDER BY at DESC") abstract suspend fun parked(): List<SyncParkedRow>
   @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun park(row: SyncParkedRow)
+  /** Every refused row goes again on the next sync (D145). */
+  @Query("DELETE FROM sync_parked") abstract suspend fun unparkAll()
   @Query("DELETE FROM sync_parked WHERE tableName = :table AND rowKey IN (:keys)") abstract suspend fun unpark(table: String, keys: List<String>)
 
   @Query("SELECT * FROM issuer WHERE dirty = 1") abstract suspend fun dirtyIssuers(): List<IssuerRow>
