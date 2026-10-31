@@ -32,6 +32,10 @@ fi
 trap '"${adb[@]}" uninstall "$pkg" >/dev/null || true' EXIT
 # Compiled ahead of time, as Play installs end up: just-in-time compilation would be timed too.
 "${adb[@]}" shell cmd package compile -f -m speed "$pkg" >/dev/null
+# A first run with no frames, so the app makes its own files/ directory: one adb makes belongs to shell, and the app
+# can't read it on a phone. Every test skips on that run.
+runner="$pkg/androidx.benchmark.junit4.AndroidBenchmarkRunner"
+"${adb[@]}" shell am instrument -w -e class br.com.roqlab.caderneta.benchmark.FrameAnalysisBenchmark#ocr "$runner" >/dev/null
 dir="/sdcard/Android/data/$pkg/files/frames"
 "${adb[@]}" shell mkdir -p "$dir"
 i=0
@@ -39,12 +43,13 @@ for f in "${frames[@]}"; do "${adb[@]}" push -q "$f" "$dir/$(printf '%03d' $i).j
 echo "${#frames[@]} frames pushed; running (a few minutes; keep the phone still, screen on, charging is fine)"
 
 out="$("${adb[@]}" shell am instrument -w ${suppress:+-e androidx.benchmark.suppressErrors "$suppress"} \
-  "$pkg/androidx.benchmark.junit4.AndroidBenchmarkRunner" | tr -d '\r')"
+  "$runner" | tr -d '\r')"
 grep -qE '^OK \(' <<<"$out" || { echo "$out" >&2; exit 1; }
 
 mkdir -p "$media/bench/device"
 result="$media/bench/device/$(date +%Y%m%d-%H%M%S)-$model.json"
-json="$("${adb[@]}" shell "ls /sdcard/Android/media/$pkg/*benchmarkData.json" | tr -d '\r' | tail -1)"
+json="$("${adb[@]}" shell "ls /sdcard/Android/media/$pkg/*benchmarkData.json 2>/dev/null" | tr -d '\r' | tail -1)"
+[ -n "$json" ] || { echo "no results: every test skipped (the app couldn't read the frames pushed to $dir?)" >&2; exit 1; }
 "${adb[@]}" pull "$json" "$result" >/dev/null 2>&1
 "${adb[@]}" shell rm -f "/sdcard/Android/media/$pkg/*benchmarkData.json" || true
 python3 - "$result" <<'PY'

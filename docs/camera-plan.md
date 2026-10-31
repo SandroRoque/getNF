@@ -67,8 +67,23 @@ session thread:                                   [frame N: paper, rows, decisio
      have; no SEFAZ requests.
 
    **Built (D129):** `tools/check.sh` with the pre-push hook, `timing.tsv` with `tools/capture-timing.py`, and the
-   `:benchmark` module with `tools/device-bench.sh`. **Waiting for the phone:** the device benchmark's first run and
-   the baseline sessions.
+   `:benchmark` module with `tools/device-bench.sh`. **Waiting for the phone:** the baseline sessions.
+
+   First device benchmark (2026-10-31, motorola edge 50 pro, 48 frames from the phone sessions, ms per frame,
+   median / min / max):
+
+   | | median | min | max |
+   |---|---|---|---|
+   | OCR | 145 | 42 | 218 |
+   | QR scanner | 9 | 4 | 19 |
+   | QR + product formats | 10 | 6 | 21 |
+   | OCR beside QR (the analysis) | 147 | 43 | 223 |
+   | OCR beside QR + products | 151 | 42 | 220 |
+
+   The product formats cost about 1 ms in the scanner, which finishes long before OCR. But a frame alone analyses in
+   about 150 ms, while the recorded sessions ran at one frame every 360–530 ms: most of the period goes elsewhere (the
+   copies, the camera's delivery, sharing the cores with the preview and the session, heat). The baseline sessions'
+   `timing.tsv` will show where.
 
    Criteria to keep one camera:
    - the capture benchmark has no regressions;
