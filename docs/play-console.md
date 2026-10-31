@@ -8,7 +8,7 @@ legal advice. Data safety has its own page: [play-data-safety.md](play-data-safe
 Test and release › Testing › **Internal testing** › Testers: create an e-mail list (the user's own address to begin
 with), save, and copy the opt-in link. Then Releases › Create new release › upload
 `android/app/build/outputs/bundle/release/app-release.aab` (`cd android && ./gradlew :app:bundleRelease`), a
-release name equal to `versionName` (`0.0.2`; the first was named 0.0.1 while the app still said 1.0), notes in pt-BR, Save › Review release › Start rollout. Open the opt-in link on the phone,
+release name equal to `versionName`, notes in pt-BR, Save › Review release › Start rollout. Open the opt-in link on the phone,
 accept, and install from Play. Internal testing doesn't need the 12 testers for 14 days that personal accounts need
 before production; it's also not reviewed the way production is.
 
@@ -20,7 +20,10 @@ The app was first created as `br.com.roqlab.caderneta1` (the "1" came from nowhe
 internal releases and an install, then was deleted and created again as `br.com.roqlab.caderneta` (D113). An id with
 any install is never freed, so the "1" one is gone for good; its versionCodes don't carry over.
 
-Each new upload needs a higher `versionCode` (`android/app/build.gradle.kts`).
+Each new upload needs a higher `versionCode` (`android/app/build.gradle.kts`). A code is taken as soon as a bundle is
+uploaded, even into a draft that's discarded: to change anything, build again with the next code. Released so far:
+0.0.1 (code 1, the app said 1.0) and code 2, which went out as "1.1" after a rebuild as 0.0.2 was refused for reusing
+code 2. Next: code 3, `0.0.3`.
 
 ## App content
 
