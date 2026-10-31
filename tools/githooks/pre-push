@@ -9,7 +9,8 @@ while read -r _ local_sha _ remote_sha; do
   [ "$local_sha" = "$zero" ] && continue # a deletion
   if [ "$remote_sha" = "$zero" ]; then base="$(git merge-base "$local_sha" origin/main 2>/dev/null || true)"; else base="$remote_sha"; fi
   if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then changed=1; break; fi
-  if git diff --name-only "$base" "$local_sha" | grep -qE '^(android|tools)/'; then changed=1; break; fi
+  # Not `| grep -q`: under pipefail, grep quitting early makes git diff die of SIGPIPE, and the test reads false.
+  if [ -n "$(git diff --name-only "$base" "$local_sha" -- android tools)" ]; then changed=1; break; fi
 done
 [ -n "$changed" ] || exit 0
 exec "$root/tools/check.sh"
