@@ -68,40 +68,61 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 - **Repo:** public at github.com/SandroRoque/getNF, branch `main`. History was squashed before publishing to remove
   personal data. Commits use the GitHub noreply address.
 
-## Next
+## Next: milestone 0.1, the closed test (set 2026-10-31)
 
-1. **The user's review of the redesign (D81) on the phone,** now including the caderneta screens. The SEFAZ page
-   screen isn't redesigned yet.
-2. **System-1 reads more per item (D108), live since 2026-10-29:** category, how it's sold and the size (with pack
-   counts) for each new store item; the 94 existing ones were read. Live since 2026-10-29 (D110): a card for an unsure
-   "how it's sold" and a pack's price per item; the phone has the v13 build. Open: the LLM auditing System-1's sizes; then the LLM's
-   new role (a capable model, run rarely, for rules, lexicon and disagreements).
-3. **Going public (D105):** positioning, a new name, the portfolio entry at roqlab.com.br, Play listing, screenshots
-   from made-up data, a short manual. Running costs are estimated in [costs.md](costs.md). Done: the demo
-   caderneta, screenshots ([screenshots/](screenshots/)) and the brief for the roqlab entry
-   ([portfolio-brief.md](portfolio-brief.md)). Still being discussed.
-   Drafts of the privacy policy ([privacy-policy.md](privacy-policy.md)) and Play's Data safety answers
-   ([play-data-safety.md](play-data-safety.md)); before publishing: the legal read. The site is live at
-   https://caderneta.roqlab.com.br (landing page, `/privacidade/`, `/apagar-conta/`; `web/README.md` to redeploy).
-4. **Cadernetas with a second real person:** only checked with a test user played through the API on the emulator.
-   The first real member (a second phone) will be the first live test of invites, claims and "por".
-5. **Later: reading a receipt from its photos alone (D106).** Camera and OCR rest first. A reader that makes the receipt from the saved photos, checked
-   by the print's own sums, scored against the saved pages. SEFAZ stays the source until the numbers are in. The live
-   capture is put down: held-out sessions (D89) and its backlog wait for a reason found by the reader.
-6. **Looking a product up with the camera (being designed, 2026-10-31).** Scan a product's barcode and see your own
-   purchases of it: last price by store, history. GTIN store items are already the same row at every store
-   (`parse/Derive.kt`), and ML Kit is in the app (QR only today). The search covers every caderneta on the phone, not
-   only the open one; there's no full GTIN registry, so only what the person bought turns up. Plan, pipeline notes
-   and the test/benchmark layers: [camera-plan.md](camera-plan.md). Step 0 done (D129, baselines 2026-10-31: a
-   receipt frame ~470 ms, all OCR; the product formats cost ~1 ms). Step 1 done (D130, `data/ProductLookup.kt`).
-   Step 2 done (D131: one camera decides receipt or product; packaging isn't receipt paper). Step 3 done (D132: the
-   answer in a sheet over the camera; Catálogo › "Pelo código de barras"). Step 4 done (D138): measured
-   against step 0, the one camera stays. Parked (the user: deterministic first): purchases at stores that print their
-   own code instead of the GTIN can't be found by barcode (camera-plan.md).
-7. **Later, to discuss: recognising items without a barcode by machine vision.** Produce, cold cuts and anything
-   weighed in store carry a scale label with an in-store code (GTIN-13 starting with 2) that changes with every
-   weighing. The idea: point the camera at the product; a barcode is looked up by GTIN, otherwise an image classifier
-   names it.
+Google lets a new personal account publish only after a closed test: at least 12 testers opted in for the last 14
+days in a row (fewer than 12 on any day restarts the count; new versions during the test don't). The user wants it
+under way within 7 days, so 0.1 is the build that opens the closed test, Santa Catarina only, with the name
+Caderneta. New ideas go to "After the open store", not into the code.
+
+**Next 7 days: open the closed test**
+
+Claude:
+1. Parked sync rows (`sync_parked`) shown on Ajustes' account card, to retry or drop: no tester's data vanishes
+   silently (D104).
+2. "Enviar comentário" in Ajustes: the share sheet with the version and phone filled in, like the crash report (D140).
+3. The Play listing in pt-BR: short and full description, feature graphic, the screenshots checked
+   ([screenshots/](screenshots/)), the review login's instructions; the Data safety answers checked against the app
+   ([play-data-safety.md](play-data-safety.md)).
+4. Fixes from the user's review of the screens and from the shared caderneta with the father: these come first.
+5. 0.1.0 (code 3): the release checklist (CI ✓, `tools/check.sh`, the release build on the emulator and the phone,
+   tag `play/3`, Android vitals three days later).
+6. Only if time is left: start the photo reader (D106), measured against the saved pages, nothing in the app yet.
+
+The user:
+1. Review the screens on the phone (the redesign, D81) and pass on what bothers.
+2. A shared caderneta with the father: invite, join, both scan, check "por" (code 2 already has it). The first real
+   test of cadernetas with a second person.
+3. Recruit 15–20 testers (their Google account e-mails), from SC if possible: the critical item.
+4. Play Console: the listing, the app content tasks, a closed testing track (Brazil, the testers' list), the upload.
+5. Rotate the database password; back up the upload key (see "Pending, by the user").
+6. Decide on the legal read: suggested, the closed test with the published privacy policy, the legal read before the
+   open store.
+7. If possible, RJ receipts photographed with the app, for the photo reader.
+
+**During the 14 days (0.1.x updates)**
+- Fixes from the testers and Android vitals, first.
+- The photo reader (D106): photos → the same receipt the page parser makes, checked by the print's own arithmetic,
+  scored against the saved SC pages. The printed DANFE NFC-e follows a national layout, so the reader is also the way
+  to other states: QR codes of other states accepted, then RJ once the reader is good. Whether SEFAZ becomes optional
+  is decided by the reader's numbers.
+- Reconsider the development Supabase (see "Pending, by the user").
+- Remove the 93 MB benchmark APK from git history (b821915), which needs a force-push: only with the user's go-ahead.
+
+**After the open store (frozen until then)**
+- System-1 / LLM: the LLM auditing System-1's sizes (D108, D110); then the LLM's new role (a capable model, run
+  rarely, for rules, lexicon and disagreements).
+- Going public beyond the closed test (D105): positioning, the final name, the portfolio entry at roqlab.com.br
+  ([portfolio-brief.md](portfolio-brief.md)), a short manual. Running costs in [costs.md](costs.md). The site is live
+  at https://caderneta.roqlab.com.br (landing page, `/privacidade/`, `/apagar-conta/`; `web/README.md` to redeploy).
+- Products: stores that print their own code instead of the GTIN can't be found by barcode
+  ([camera-plan.md](camera-plan.md), parked: deterministic first); items without a barcode (scale labels) recognised
+  by machine vision, to discuss.
+- The capture backlog ([capture-backlog.md](capture-backlog.md)).
+- The open items below.
+
+Done before the milestone: the camera plan (D129–D138: a product's barcode looked up in every caderneta; one camera
+for receipts and products), CI on GitHub and the crash log (D140), Play upload tags (D139).
 
 ## Open items
 
