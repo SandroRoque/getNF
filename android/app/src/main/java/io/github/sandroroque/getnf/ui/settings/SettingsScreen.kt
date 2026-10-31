@@ -86,6 +86,8 @@ fun SettingsScreen(go: SettingsRoutes) {
           "enviado. Conta, cópias de segurança e o resto dos ajustes ficam nas suas notas.")
         Wide("Sair do exemplo", ButtonKind.Solid, onClick = go.leaveDemo)
       }
+      // Testers outside Santa Catarina see only the demo: they can still say what they think (D146).
+      Column { FeedbackRow(app) }
       return@Column
     }
 
@@ -107,6 +109,7 @@ fun SettingsScreen(go: SettingsRoutes) {
 
     Group("Sobre")
     Column {
+      FeedbackRow(app)
       AmountRow("Política de privacidade", null, subtitle = "caderneta.roqlab.com.br", onClick = {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://caderneta.roqlab.com.br/privacidade/")))
       })
@@ -270,5 +273,32 @@ private fun RefusedRows(app: GetNFApp, sync: SyncState) {
       }
     }
   }
+}
+
+/**
+ * "Enviar comentário" (D146): a message to the developer with the version and phone already written under it. To
+ * [FEEDBACK_EMAIL] by e-mail once there's a public contact address; until then the share sheet, the person picks how.
+ */
+@Composable
+private fun FeedbackRow(app: GetNFApp) {
+  val context = LocalContext.current
+  AmountRow("Enviar comentário", null, subtitle = "Um problema, uma ideia, uma dúvida", onClick = {
+    context.startActivity(feedbackIntent(app.crashLog.about))
+  })
+}
+
+/** The public contact address for feedback, once chosen (privacy policy, Play listing); null: the share sheet. */
+private val FEEDBACK_EMAIL: String? = null
+
+internal fun feedbackIntent(about: String): Intent {
+  val subject = "Caderneta: comentário"
+  val body = "\n\n\n---\n$about"
+  return FEEDBACK_EMAIL?.let { to ->
+    Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).putExtra(Intent.EXTRA_EMAIL, arrayOf(to))
+      .putExtra(Intent.EXTRA_SUBJECT, subject).putExtra(Intent.EXTRA_TEXT, body)
+  } ?: Intent.createChooser(
+    Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, subject).putExtra(Intent.EXTRA_TEXT, body),
+    "Enviar comentário",
+  )
 }
 

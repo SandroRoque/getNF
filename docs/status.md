@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-30. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D145). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
+`docs/decisions.md` (D1–D146). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
@@ -79,7 +79,7 @@ Caderneta. New ideas go to "After the open store", not into the code.
 
 Claude:
 1. ~~Parked sync rows shown in Ajustes~~ done (D145: "Não sincronizado", Tentar de novo, Enviar relatório).
-2. "Enviar comentário" in Ajustes: the share sheet with the version and phone filled in, like the crash report (D140).
+2. ~~"Enviar comentário" in Ajustes~~ done (D146); it e-mails once the user picks a public contact address.
 3. The Play listing in pt-BR: short and full description, feature graphic, the screenshots checked
    ([screenshots/](screenshots/)), the review login's instructions; the Data safety answers checked against the app
    ([play-data-safety.md](play-data-safety.md)).
@@ -97,9 +97,10 @@ The user:
 3. Recruit 15–20 testers (their Google account e-mails), from SC if possible: the critical item.
 4. Play Console: the listing, the app content tasks, a closed testing track (Brazil, the testers' list), the upload.
 5. Rotate the database password; back up the upload key (see "Pending, by the user").
-6. Decide on the legal read: suggested, the closed test with the published privacy policy, the legal read before the
+6. Pick the public contact address (privacy policy, Play listing, "Enviar comentário", D146).
+7. Decide on the legal read: suggested, the closed test with the published privacy policy, the legal read before the
    open store.
-7. If possible, RJ receipts photographed with the app, for the photo reader.
+8. If possible, RJ receipts photographed with the app, for the photo reader.
 
 **During the 14 days (0.1.x updates)**
 - Fixes from the testers and Android vitals, first.

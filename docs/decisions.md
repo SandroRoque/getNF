@@ -156,6 +156,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D143 | UI | current | Price charts scrub: a finger on the chart marks the nearest point with its date, value and store |
 | D144 | catalog | current | A product's price is the package's while every purchase was the same size; per kg or litre otherwise |
 | D145 | online | current | Rows the server refused show in Ajustes, to send again or report; none is dropped |
+| D146 | app | current | "Enviar comentário" in Ajustes, the demo included: version and phone written in; by e-mail once there's a contact address |
 
 ---
 
@@ -3544,4 +3545,16 @@ description, or the chave's month), each with when and the server's error, and t
 No "discard": dropping a refused row would leave the phone and the caderneta apart for good, and the cause is nearly
 always on the server's side (a constraint or a column), fixed there. Checked on the emulator against the local
 Supabase with a test user and two parked rows: the card, the titles, and the card gone after "Tentar de novo".
+
+## D146. "Enviar comentário" in Ajustes, the demo included: version and phone written in; by e-mail once there's a contact address (2026-10-31)
+
+Milestone 0.1: testers need a way to say what they think, and Google asks, after the closed test, what testers said
+and what changed. Ajustes › Sobre has "Enviar comentário" ("Um problema, uma ideia, uma dúvida"), also under the
+demo's card, since testers outside Santa Catarina see only the demo. It opens a message with the app's version and
+phone under a "---" line (the same line as the crash report, D140), the text above left for the person.
+
+There's no public contact address yet (the privacy policy still says "[e-mail de contato]", and the Play listing
+needs one): until there is, the share sheet, where the person picks how to send it; once `FEEDBACK_EMAIL`
+(`ui/settings/SettingsScreen.kt`) is set, an e-mail to it. The developer's personal address isn't put in the app.
+Play's closed testing also takes testers' private feedback on the store page.
 
