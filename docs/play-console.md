@@ -54,27 +54,47 @@ git tag -a play/3 -m "Play internal testing: versionCode 3, versionName 0.0.3" &
 - **Contact:** the same public e-mail as the site (`tools/build-web.py --contact`); website https://caderneta.roqlab.com.br.
 - **Store listing** (needs, besides text): the 512×512 icon `docs/brand/icon-512.png`, the 1024×500 feature graphic
   `docs/brand/feature-graphic.png` (both from `tools/make-icons.py`, D114), and 2–8 phone screenshots. Screenshots:
-  [screenshots/](screenshots/), from the demo caderneta, taken before D112 (they may show the old "JEV" mark).
+  [screenshots/play/](screenshots/play/), from the demo caderneta, retaken 2026-10-31 after D141–D146, in upload
+  order (Início, Gastos, a product, the IPCI, Para você, a receipt, Catálogo, Início in dark mode).
 
-### Listing text (draft, pt-BR)
+### Listing text (pt-BR, for the closed test, 2026-10-31)
 
-The name and positioning are still being discussed (D105); this is enough for internal testing.
+Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; nothing promised that it doesn't do.
 
-- **Short description** (≤ 80): Escaneie o QR da nota fiscal e veja seus gastos e sua inflação pessoal.
-- **Full description:**
+- **Short description** (75 of 80): Escaneie a nota fiscal e acompanhe seus gastos, seus preços e sua inflação.
+- **Full description** (about 1,500 of 4,000):
 
-> Aponte a câmera para o QR code da nota fiscal (NFC-e) e o app guarda a nota inteira: cada item, o preço, a loja e
-> os descontos. Com o tempo, você vê quanto gasta por categoria, como o preço de cada produto mudou e qual é a sua
-> inflação pessoal, calculada com o que você realmente compra.
+> Aponte a câmera para o QR Code da nota fiscal (NFC-e) e o Caderneta guarda a nota inteira: cada item, o preço, a
+> loja e os descontos. Com o tempo, você vê para onde vai o dinheiro e como mudam os preços do que você compra.
 >
-> • Lê notas fiscais de consumidor de Santa Catarina.
+> • Gastos por mês e por ano, por categoria, por produto e por loja.
+> • O histórico de preço de cada produto, loja a loja, com o menor preço à vista.
+> • Pelo código de barras: aponte a câmera para um produto e veja quanto você pagou por ele e onde.
+> • Sua inflação pessoal (IPCI), calculada com o que você realmente compra.
 > • Descontos por item, lidos da foto da nota.
-> • Gastos por mês, por categoria, por produto e por loja.
-> • Funciona sem conta. Com conta, os itens novos ganham categoria sozinhos (você confirma ou corrige), as notas
->   ficam salvas online e podem ser compartilhadas com a família numa caderneta.
+> • Funciona sem conta. Com uma conta, os itens novos ganham categoria sozinhos (você confirma ou corrige), as notas
+>   ficam guardadas online e dá para dividir uma caderneta com quem mora com você.
 >
-> Privacidade: as fotos ficam no seu celular. O CPF e o nome do comprador são removidos antes de salvar. Você pode
-> apagar sua conta e seus dados quando quiser, no app ou em caderneta.roqlab.com.br/apagar-conta.
+> Por enquanto, lê as notas fiscais de consumidor de Santa Catarina. Sem uma nota de SC, toque em "Ver um exemplo"
+> para conhecer o app com notas inventadas.
+>
+> Privacidade: as fotos das notas ficam no seu celular. O CPF e o nome do comprador são removidos antes de salvar.
+> Você pode apagar sua conta e seus dados quando quiser, no app ou em caderneta.roqlab.com.br/apagar-conta.
 >
 > Este app não é da SEFAZ nem de nenhum órgão do governo. Ele abre a página pública de consulta da nota, a mesma que
 > você abriria pelo navegador.
+
+- **Release notes, 0.1.0** (code 3; Play shows up to 500):
+
+> Primeira versão do teste fechado. Novidades: procure um produto pelo código de barras; uma compra por nota, mesmo
+> quando a loja registra o item duas vezes; o preço por unidade em cada compra; deslize o dedo no gráfico para ver
+> cada preço; abas e botões mais fáceis de tocar; o app avisa quando fechou sozinho e o que não sincronizou; envie
+> comentários em Ajustes › Enviar comentário.
+
+- **Closed testing › feedback channel** (shown to testers): the public contact e-mail, once chosen (D146).
+- **Review login instructions** (App content › App access), in English for the reviewer:
+
+> The app works without an account. To see cadernetas and sync, sign in: tap the account icon at the top of Início ›
+> Entrar ou criar conta, and sign in with the account below. Without a receipt from Santa Catarina (Brazil), tap
+> "Ver um exemplo" on the first screen (or on Início while there are no receipts) to explore the app with made-up receipts. Barcode
+> lookup: Catálogo › "Pelo código de barras" (it finds products already bought in the receipts on the phone).

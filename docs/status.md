@@ -80,9 +80,9 @@ Caderneta. New ideas go to "After the open store", not into the code.
 Claude:
 1. ~~Parked sync rows shown in Ajustes~~ done (D145: "Não sincronizado", Tentar de novo, Enviar relatório).
 2. ~~"Enviar comentário" in Ajustes~~ done (D146); it e-mails once the user picks a public contact address.
-3. The Play listing in pt-BR: short and full description, feature graphic, the screenshots checked
-   ([screenshots/](screenshots/)), the review login's instructions; the Data safety answers checked against the app
-   ([play-data-safety.md](play-data-safety.md)).
+3. ~~The Play listing in pt-BR~~ done 2026-10-31: texts, release notes and review instructions in
+   [play-console.md](play-console.md), screenshots retaken ([screenshots/play/](screenshots/play/)), the feature
+   graphic kept, Data safety checked (no change). Waits on the contact e-mail.
 4. Fixes from the user's review of the screens and from the shared caderneta with the father: these come first.
    Done from the first review: one purchase per receipt and the unit price first (D141), tappable things look
    tappable and full-width swiping tabs (D142), chart scrubbing (D143), the package's price on the chart (D144).

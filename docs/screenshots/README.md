@@ -18,7 +18,8 @@ To take them again after a UI change:
 
 ## For Play (`play/`)
 
-Taken 2026-10-30 after D112–D114, in upload order: Início, Gastos, a product (Café Montanha), the IPCI, Para você,
+Retaken 2026-10-31 after D141–D146 (the scan button with its label, full-width tabs, pills for every action, the
+unit price per purchase), in upload order: Início, Gastos, a product (Café Montanha), the IPCI, Para você,
 a receipt, the Catálogo, Início in dark mode. PNG at **1080×2160**: Play refuses a side more than twice the other, and
 the emulator's 1080×2400 is 2.22:1, so the screen is set to 2:1 while taking them (the app lays itself out at that
 size; nothing is cropped). Same steps as above, plus:
@@ -26,6 +27,7 @@ size; nothing is cropped). Same steps as above, plus:
 - `adb -e shell wm size 1080x2160` before, `adb -e shell wm size reset` after.
 - A clean status bar also needs `-e command network -e wifi show -e level 4 -e fully true` (or the Wi-Fi icon shows
   "!" on the emulator) and `-e command notifications -e visible false`.
-- They predate D115–D118: no onboarding, and the old scan button (a frame, no label).
+- The emulator's mobile signal shows as "3G" in the status bar (the demo mode's `datatype none` didn't take);
+  `-e command network -e mobile hide` should drop it next time.
 - Keep the files as PNG (Play takes PNG or JPEG, not WebP). The WebP ones above are from 2026-10-28 and still show
   the "JEV" marks and the old account button.

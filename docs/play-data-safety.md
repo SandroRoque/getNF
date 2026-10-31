@@ -55,6 +55,12 @@ CPFs are covered in uploaded photos (D98).
 
 ## Things worth knowing
 
+- **Checked again 2026-10-31 (D140–D146): no change to the answers.** The crash report (D140), the refused-rows
+  report (D145) and "Enviar comentário" (D146) leave the phone only when the person taps send and picks an app
+  (Android's share sheet, or their own e-mail app once there's a contact address): a user-initiated transfer through
+  another app, not data the app collects. The crash file itself stays on the phone. The barcode lookup (D130) searches
+  only the phone's own databases. Nothing new goes to the server.
+
 - **ML Kit is the only reason for "Required" rows.** The bundled barcode and text models send diagnostics to Google
   (developers.google.com/ml-kit/android-data-disclosure). If that's unwelcome, there's no switch for it in the
   bundled libraries; the alternative would be other OCR/barcode libraries.
