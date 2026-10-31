@@ -137,6 +137,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D124 | UI | current | The category picker opens collapsed, with + and − on each branch |
 | D125 | accounts | current | Deleting the account in the app asks for the password again |
 | D126 | cadernetas | current | A new caderneta opens on "Trazer notas"; the first steps don't come back |
+| D127 | cadernetas | current | "Trazer notas" brings the categories the person decided |
 
 ---
 
@@ -3149,3 +3150,22 @@ Checked on the emulator against the local Supabase, with the demo backup restore
 - creating "Casa" opened it on "Trazer notas" with the 86 receipts;
 - "Agora não" led to the empty-caderneta card, without the first steps;
 - bringing two receipts put them, read, in Casa's Início.
+
+## D127. "Trazer notas" brings the categories the person decided (2026-10-30)
+
+D126 copied receipts without their categories, since products and categories belong to each caderneta; the user
+asked for the confirmed ones to come along. After the copy and the open caderneta's parse,
+`LocalCadernetas.bringCategories` walks the brought receipts' lines and matches products by store item. A store
+item's id comes from its code (D104), so it's the same in every caderneta.
+
+- **What comes:** a product the person confirmed or corrected in the source passes its category to the product that
+  store item belongs to in the open caderneta, through `CatalogEditor.setCategory` (the person's source, so no model
+  replaces it, and it syncs). A product already decided by hand in the open caderneta keeps its own.
+- **Finding the category:** a seeded one by its taxonomy path. One the person made, by its labels from the top,
+  creating the missing part of the branch (with its description) when the open caderneta doesn't have it.
+- **What doesn't come:** automatic categories, suggestions, names given by hand, sizes and tags. A model's category
+  wasn't decided by the person, and the categorizer online sets it again within a minute of the sync (D121).
+
+Checked on the emulator against the local Supabase, with the demo restored into a first caderneta and all 86 receipts
+brought into a new one: the 7 products confirmed by hand arrived categorized, and the 40 automatic ones without a
+category (there's no categorizer locally).

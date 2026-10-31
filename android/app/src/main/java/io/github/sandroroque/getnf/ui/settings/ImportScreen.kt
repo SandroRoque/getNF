@@ -80,8 +80,8 @@ fun ImportScreen(onDone: () -> Unit) {
       item { BackHeader("Voltar", onDone) }
       item { ScreenTitle("Trazer notas") }
       item {
-        Text("Copie para ${here ?: "esta caderneta"} as notas que você escaneou em outra caderneta deste celular. A outra " +
-          "continua com elas.", style = MaterialTheme.typography.bodyMedium, color = Calmo.fg)
+        Text("Copie para ${here ?: "esta caderneta"} as notas que você escaneou em outra caderneta deste celular. As categorias " +
+          "que você confirmou vêm junto; a outra continua com tudo.", style = MaterialTheme.typography.bodyMedium, color = Calmo.fg)
       }
       when {
         list == null -> item { Sub("Procurando notas neste celular…") }
@@ -121,8 +121,12 @@ fun ImportScreen(onDone: () -> Unit) {
                 val out = excluded[s.ledger].orEmpty()
                 local.copyInto(app.receiptStore, s.ledger, s.receipts.map { it.chave }.filter { it !in out }.toSet())
               }
-              // They come with their pages: read them here, and send them up.
+              // They come with their pages: read them here, then the categories decided there (D127), and send them up.
               app.receiptParser.parsePending(app.receiptStore.receipts.value)
+              for (s in list) {
+                val out = excluded[s.ledger].orEmpty()
+                local.bringCategories(app.database, app.catalogEditor, s.ledger, s.receipts.map { it.chave }.filter { it !in out }.toSet())
+              }
               SyncWorker.enqueue(app)
             }.onSuccess { onDone() }.onFailure { error = "A cópia parou no meio: ${it.message}. O que já veio fica; tente de novo." }
             busy = false
