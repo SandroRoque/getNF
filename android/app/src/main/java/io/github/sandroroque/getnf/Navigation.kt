@@ -157,7 +157,8 @@ fun MainNavigation() {
         }
         entry<IpciKey> { key -> IpciScreen(key.categoryId, onOpenProduct = { open(ProductDetail(it)) }, onBack = ::back) }
         entry<Scan> {
-          ScanScreen(onCaptured = ::back, onCancel = ::back, onOpenPage = { back(); open(Page(it)) }, onOpenProduct = { back(); open(ProductDetail(it)) })
+          ScanScreen(onCaptured = ::back, onCancel = ::back, onOpenPage = { back(); open(Page(it)) }, onOpenProduct = { back(); open(ProductDetail(it)) },
+            onOpenReceipt = { back(); open(ReceiptDetail(it)) })
         }
         entry<ScanProduct> {
           ScanScreen(onCaptured = ::back, onCancel = ::back, onOpenPage = {}, productOnly = true, onOpenProduct = { back(); open(ProductDetail(it)) })

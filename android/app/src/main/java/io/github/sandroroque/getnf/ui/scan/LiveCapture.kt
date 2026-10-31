@@ -62,6 +62,9 @@ internal data class CaptureUiState(
   /** In [CameraMode.PRODUCT], the barcode being shown; [productShown] counts the codes announced, to open the sheet. */
   val product: String? = null,
   val productShown: Int = 0,
+  /** Done, the receipt was already in the caderneta (D137): when it was first captured, and whether it had its page. */
+  val knownSince: Long? = null,
+  val knownHasPage: Boolean = false,
 )
 
 internal data class RowMark(val captured: Boolean, val gapAfter: Double)
@@ -506,11 +509,12 @@ internal class CaptureController(
     held = null
     manifest = manifest.copy(committing = true)
     sessions.write(manifest)
+    val before = runBlocking { receipts.get(manifest.chave!!) }
     runBlocking { receipts.importCapture(manifest, sessions.dir(manifest.id)) }
     sessions.remove(manifest)
     done = true
     enqueueUpload()
-    state = state.copy(saving = false, completed = true, hint = CaptureHint.DONE)
+    state = state.copy(saving = false, completed = true, hint = CaptureHint.DONE, knownSince = before?.capturedAt, knownHasPage = before?.pageFile != null)
     publish(state)
   }
 

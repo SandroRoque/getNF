@@ -147,6 +147,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D134 | capture | current | Faint print adds no rows; reading starts at the first item; a row with something over its start isn't read |
 | D135 | capture | current | Markers read with OCR's misreads; a QR code is never unread text; show-through explains the pharmacy's faint rows |
 | D136 | cadernetas | current | A receipt scanned again whose page the caderneta has: "already here", not "someone is fetching it" |
+| D137 | capture | current | The end of a capture says when the receipt was already in the caderneta |
 
 ---
 
@@ -3401,3 +3402,16 @@ phone. The phone's upload of the receipt without a page doesn't clear the server
 
 Checked: it builds; the path through the server wasn't run end to end here (it needs a second scan of a receipt with a
 page on the local Supabase).
+
+## D137. The end of a capture says when the receipt was already in the caderneta (2026-10-31)
+
+The user captured the pharmacy's receipt again: the capture offered the SEFAZ page as for a new receipt, and nothing
+said it had been captured before. A receipt captured again keeps its earlier photos and gets the new ones added
+(`ReceiptStore.importCapture`), and the end screen now says so: "Esta nota já estava na caderneta", with the date it
+was first captured and that the new photos join the earlier ones. With its page already on the phone, there's nothing
+to fetch: the screen offers "Ver a nota" and "Fechar" instead of the page. Without it, the page is offered as before
+(and D136 covers a page another phone saved).
+
+Checked on the emulator: a receipt video captured twice showed "Nota salva", then "Esta nota já estava na caderneta ·
+Escaneada antes em 31 out" with the page still offered (none fetched). The variant with the page wasn't run here (it
+needs a real lookup).

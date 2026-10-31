@@ -54,7 +54,7 @@ import java.util.concurrent.TimeUnit
  */
 @Composable
 fun ScanScreen(onCaptured: () -> Unit, onCancel: () -> Unit, onOpenPage: (String) -> Unit, productOnly: Boolean = false,
-               onOpenProduct: (String) -> Unit = {}) {
+               onOpenProduct: (String) -> Unit = {}, onOpenReceipt: (String) -> Unit = {}) {
   val context = LocalContext.current
   val onboarding = (context.applicationContext as io.github.sandroroque.getnf.GetNFApp).onboarding
   var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
@@ -63,7 +63,7 @@ fun ScanScreen(onCaptured: () -> Unit, onCancel: () -> Unit, onOpenPage: (String
   val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
   LaunchedEffect(intro) { if (!intro && !granted) permission.launch(Manifest.permission.CAMERA) }
   if (intro) io.github.sandroroque.getnf.ui.onboarding.ScanIntro(onStart = { onboarding.scanIntroSeen = true; intro = false }, onCancel = onCancel)
-  else if (granted) ContinuousCapture(onCaptured, onCancel, onOpenPage, productOnly, onOpenProduct)
+  else if (granted) ContinuousCapture(onCaptured, onCancel, onOpenPage, productOnly, onOpenProduct, onOpenReceipt)
   else Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
     io.github.sandroroque.getnf.ui.calmo.ScreenTitle("A câmera lê a nota")
     io.github.sandroroque.getnf.ui.calmo.Sub("O getNF usa a câmera para ler o QR Code e fotografar a nota. As fotos ficam no celular e, se você entrar numa conta, numa cópia pequena no servidor.")
@@ -77,7 +77,7 @@ fun ScanScreen(onCaptured: () -> Unit, onCancel: () -> Unit, onOpenPage: (String
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOpenPage: (String) -> Unit, productOnly: Boolean,
-                              onOpenProduct: (String) -> Unit) {
+                              onOpenProduct: (String) -> Unit, onOpenReceipt: (String) -> Unit) {
   val context = LocalContext.current
   val model = viewModel { CaptureViewModel(context.applicationContext as android.app.Application, productOnly) }
   val lifecycle = LocalLifecycleOwner.current
@@ -181,7 +181,8 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOp
     if (state.completed && (state.chave == null || app.devSettings.testingCapture)) onCaptured() else if (state.exited) onCancel()
   }
   if (state.completed && state.chave != null && !app.devSettings.testingCapture) {
-    Saved(state.chave!!, onFetch = { onOpenPage(state.chave!!) }, onLater = onCaptured)
+    if (state.knownHasPage) AlreadyHere(state.knownSince, onOpen = { onOpenReceipt(state.chave!!) }, onClose = onCaptured)
+    else Saved(state.chave!!, state.knownSince, onFetch = { onOpenPage(state.chave!!) }, onLater = onCaptured)
     return
   }
   fun focusOnReceipt() {
@@ -365,7 +366,7 @@ private fun RoundLabel(text: String, onClick: () -> Unit) {
  * check. "Depois" leaves it queued ("Para você", the home list) and asks for a reminder in a few hours.
  */
 @Composable
-private fun Saved(chave: String, onFetch: () -> Unit, onLater: () -> Unit) {
+private fun Saved(chave: String, knownSince: Long?, onFetch: () -> Unit, onLater: () -> Unit) {
   val context = LocalContext.current
   val budgetCheck = io.github.sandroroque.getnf.ui.page.rememberBudgetCheck()
   val budget = remember {
@@ -382,7 +383,8 @@ private fun Saved(chave: String, onFetch: () -> Unit, onLater: () -> Unit) {
   androidx.activity.compose.BackHandler { later() }
   Column(Modifier.fillMaxSize().background(io.github.sandroroque.getnf.theme.Calmo.bg).safeDrawingPadding().padding(24.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
-    io.github.sandroroque.getnf.ui.calmo.ScreenTitle("Nota salva")
+    io.github.sandroroque.getnf.ui.calmo.ScreenTitle(if (knownSince != null) "Esta nota já estava na caderneta" else "Nota salva")
+    knownSince?.let { io.github.sandroroque.getnf.ui.calmo.Sub("Escaneada antes em ${io.github.sandroroque.getnf.ui.Format.date(it)}. As fotos novas ficam junto das anteriores.") }
     io.github.sandroroque.getnf.ui.calmo.Sub("As fotos estão no celular. Falta a página da SEFAZ, com os itens e os valores: buscar agora leva um instante, e às vezes a SEFAZ pede uma verificação.")
     io.github.sandroroque.getnf.ui.calmo.Sub(budget)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -393,4 +395,23 @@ private fun Saved(chave: String, onFetch: () -> Unit, onLater: () -> Unit) {
     }
   }
   budgetCheck.Dialog()
+}
+
+/**
+ * A receipt scanned again that the caderneta already has with its page (D137): nothing to fetch, and saying so, since
+ * the capture looks the same as a new one. The new photos join the earlier ones.
+ */
+@Composable
+private fun AlreadyHere(knownSince: Long?, onOpen: () -> Unit, onClose: () -> Unit) {
+  androidx.activity.compose.BackHandler { onClose() }
+  Column(Modifier.fillMaxSize().background(io.github.sandroroque.getnf.theme.Calmo.bg).safeDrawingPadding().padding(24.dp),
+    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
+    io.github.sandroroque.getnf.ui.calmo.ScreenTitle("Esta nota já estava na caderneta")
+    io.github.sandroroque.getnf.ui.calmo.Sub((knownSince?.let { "Escaneada antes em ${io.github.sandroroque.getnf.ui.Format.date(it)}, " } ?: "Já ") +
+      "com a página da SEFAZ: não há nada para buscar. As fotos desta captura ficam junto das anteriores.")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      io.github.sandroroque.getnf.ui.calmo.Pill("Ver a nota", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Solid, onClick = onOpen)
+      io.github.sandroroque.getnf.ui.calmo.Pill("Fechar", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Ghost, onClick = onClose)
+    }
+  }
 }
