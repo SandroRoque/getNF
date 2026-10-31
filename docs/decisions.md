@@ -158,6 +158,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D145 | online | current | Rows the server refused show in Ajustes, to send again or report; none is dropped |
 | D146 | app | current | "Enviar comentário" in Ajustes, the demo included: version and phone written in; by e-mail once there's a contact address |
 | D147 | capture | current | The photo reader's measurement: a first reader and its benchmark against the saved pages; baseline 388 of 499 items, no trusted reading wrong |
+| D148 | capture | current | Photo reader: rows by their own slope, a GTIN's one unread digit, weighed items' right parts, the pharmacy's two-row layout; 455 of 499, 11 trusted, none wrong |
 
 ---
 
@@ -3586,4 +3587,23 @@ right part on a line of its own; the pharmacy's receipt (another layout, "De R$ 
 discount row missed. Descriptions match the page letter for letter in about 60% of items (OCR's spelling; the code is
 what identifies an item). Next: rebuild rows along each line's own slope, not one angle per photo; read the
 pharmacy's layout; weighed items. SEFAZ stays the source (D106) until trusted readings are many and never wrong.
+
+## D148. Photo reader: rows by their own slope, a GTIN's one unread digit, weighed items, the pharmacy's layout (2026-10-31)
+
+Continuing D147 on the same benchmark (29 sessions, 10 receipts). Each change is deterministic and gated by the
+print's arithmetic; the number that must stay at zero did.
+
+| change | items exact | sessions read exactly (all trusted) |
+|---|---|---|
+| D147's baseline | 388 / 499 | 4 |
+| a row follows the slope of its longest line, and a piece (the item number, a price) joins the row whose line, extended, passes through it; one angle per photo ran rows together where the paper curves | 451 | 9 |
+| a GTIN with one unread character is completed by its check digit (one possibility or none); "IN", "UH", "VN" read as UN; a bare amount under an item is its discount only if it makes the item add up | 454 | 11 |
+| the two-row layout without item numbers (a pharmacy: "code description", then "qty UN R$ price R$ total", then "De R$ … por R$ … -R$ discount"), numbered by place under the column header | 454 | 11 |
+| a weighed item's right part on a row of its own, above or below, joined when the joined row adds up | 455 | 11 |
+
+Trusted and wrong: 0 throughout. Of the 44 items not read exactly, 9 aren't in the kept photos at all (the capture's
+coverage, not the reader's); most of the rest are a digit misread in a code or a price, which the checks catch and
+leave unread. The pharmacy reads one of its two items in one session: its second item's quantity and unit are often
+missing from OCR, and they aren't filled in by guesswork. `PhotoReceiptReaderTest` covers the reader on made-up OCR,
+so it runs in CI.
 

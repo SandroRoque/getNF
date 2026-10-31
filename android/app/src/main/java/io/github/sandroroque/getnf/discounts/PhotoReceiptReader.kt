@@ -39,18 +39,31 @@ object PhotoReceiptReader {
     val trusted: Boolean get() = problems.isEmpty()
   }
 
+  /** An OCR line's middle, size and slope (from its corners; a short one's is too unsure, so it counts as level). */
+  private class Placed(val line: TextLine) {
+    private val c = line.corners?.takeIf { it.size == 8 }
+    val cx = c?.let { (it[0] + it[2] + it[4] + it[6]) / 4.0 } ?: ((line.left + line.right) / 2.0)
+    val cy = c?.let { (it[1] + it[3] + it[5] + it[7]) / 4.0 } ?: line.centerY.toDouble()
+    val w = c?.let { kotlin.math.hypot((it[2] - it[0]).toDouble(), (it[3] - it[1]).toDouble()) } ?: (line.right - line.left).toDouble()
+    val h = c?.let { kotlin.math.hypot((it[6] - it[0]).toDouble(), (it[7] - it[1]).toDouble()) } ?: line.height.toDouble()
+    private val slope = if (c == null || w < h * 4) 0.0 else ((c[3] + c[5]) - (c[1] + c[7])) / 2.0 / ((c[2] + c[4]) - (c[0] + c[6])).toDouble().let { it / 2 }.coerceAtLeast(1.0)
+    fun yAt(x: Double) = cy + slope * (x - cx)
+  }
+
   /** A photo's rows, top to bottom, each the texts of the OCR lines on it, left to right. */
   fun rows(photo: PhotoText): List<String> {
-    val lines = photo.alongPrint().lines.filter { it.text.isNotBlank() }.sortedBy { it.centerY }
+    val lines = photo.alongPrint().lines.filter { it.text.isNotBlank() }.map(::Placed)
     if (lines.isEmpty()) return emptyList()
-    val h = lines.map { it.height }.sorted()[lines.size / 2].coerceAtLeast(1)
-    val rows = mutableListOf<MutableList<TextLine>>()
-    for (l in lines) {
-      // On the same row: its middle within half a line of the row's.
-      val row = rows.lastOrNull { r -> abs(r.map { it.centerY }.average() - l.centerY) < h * .5 }
+    val h = lines.map { it.h }.sorted()[lines.size / 2].coerceAtLeast(1.0)
+    // Paper isn't flat: rows curve and tilt differently across one photo, so each row follows the slope of its longest
+    // line, and a piece (the item number, a price) joins the row whose line, extended to it, passes through its middle.
+    val rows = mutableListOf<MutableList<Placed>>()
+    for (l in lines.sortedByDescending { it.w }) {
+      val row = rows.map { r -> r to abs(r.first().yAt(l.cx) - l.cy) }.filter { it.second < h * .5 }.minByOrNull { it.second }?.first
       if (row != null) row += l else rows += mutableListOf(l)
     }
-    return rows.sortedBy { r -> r.map { it.centerY }.average() }.map { r -> r.sortedBy { it.left }.joinToString(" ") { it.text.trim() } }
+    val middle = lines.map { it.cx }.average()
+    return rows.sortedBy { it.first().yAt(middle) }.map { r -> r.sortedBy { it.line.left }.joinToString(" ") { it.line.text.trim() } }
   }
 
   private fun digits(token: String) = token.map {
@@ -70,11 +83,13 @@ object PhotoReceiptReader {
 
   private val UNITS = setOf("UN", "KG", "L", "LT", "G", "ML", "CX", "PC", "PCT", "M", "FD", "DZ", "UND", "UNID")
   private fun unitOf(token: String): String? {
-    val t = token.uppercase().replace('0', 'O').replace('8', 'B').let { if (it == "ON" || it == "UM") "UN" else it }
+    val t = token.uppercase().replace('0', 'O').replace('8', 'B').let { if (it in setOf("ON", "UM", "IN", "UH", "VN")) "UN" else it }
     return t.takeIf { it in UNITS }
   }
 
   private val TAIL = Regex("""(\S+)\s*([A-Za-z0-9]{1,4})\s*(\d[\d.]*[,.]\d{2,3}|\d+)\s+(\d[\d.]*[,.]\d{2})\s*$""")
+  /** A row that is only an item's right part: "0,485 KG 3,98 1,93". */
+  private val ORPHAN = Regex("""^\W{0,2}\d[\d.,]*\s*[A-Za-z0-9]{1,4}\s*\d[\d.]*[,.]\d{2,3}\s+\d[\d.]*[,.]\d{2}$""")
   private val HEAD = Regex("""^\W{0,2}(\w{1,3})\s+(\w{3,14})\s+(.*)$""")
   private val DISCOUNT = Regex("""^\W{0,2}desc\w{0,6}\s*[:;.]?\s*(?:R\S?\s*)?(\d{1,4}[.,]\d{2})\s*$""", RegexOption.IGNORE_CASE)
 
@@ -83,7 +98,7 @@ object PhotoReceiptReader {
     val head = HEAD.find(row.trim()) ?: return null
     val (numberText, codeText, rest) = head.destructured
     val number = digits(numberText).toIntOrNull()?.takeIf { it in 1..999 } ?: return null
-    val code = digits(codeText).takeIf { c -> c.all(Char::isDigit) } ?: return null
+    val code = code(codeText) ?: return null
     // The right part: quantity, unit, unit price and total, possibly run together ("1 UN2,75 2,75").
     val spaced = rest.replace(Regex("""(?i)(\d)(UN|KG|LT?)(\d)"""), "$1 $2 $3").replace(Regex("""(?i)\b(UN|KG|LT?)(\d)"""), "$1 $2")
     val tail = TAIL.find(spaced) ?: return null
@@ -99,6 +114,37 @@ object PhotoReceiptReader {
     if (Regex("""(?:^|\s)\d{7,14}(?:\s|$)""").containsMatchIn(digits(description))) return null
     if (Regex("""(?:^|\s)0\d(?:\s|$)""").containsMatchIn(description)) return null
     return Item(number, code, description, qty, unit, price, total)
+  }
+
+  /**
+   * An item's code, its letters read as the digits OCR confuses them with. A GTIN with one character still unread
+   * ("78949n4687992") is completed by its check digit, which leaves exactly one possibility.
+   */
+  private fun code(text: String): String? {
+    val c = digits(text)
+    if (c.all(Char::isDigit)) return c
+    val bad = c.indices.filter { !c[it].isDigit() }
+    if (bad.size != 1 || c.length !in setOf(8, 12, 13, 14) || bad[0] == c.lastIndex) return null
+    return ('0'..'9').map { d -> c.replaceRange(bad[0], bad[0] + 1, d.toString()) }.singleOrNull(::gtinOk)
+  }
+
+  /**
+   * An item printed on two rows, without its number (a pharmacy's layout): "code description", then "qty unit R$
+   * price R$ total"; a "De R$ 256,51 por R$ 166,73 -R$ 89,78" row after it is its discount.
+   */
+  private val TWO_ROW_HEAD = Regex("""^\W{0,2}([0-9OoIl]{4,14})\s+([A-Za-z].*)$""")
+  private val TWO_ROW_TAIL = Regex("""^\W{0,2}(\S+?)\s*([A-Za-z]{1,4})\s*R\S?\s*(\d[\d.]*[,.]\s?\d{2})\s*\S*\s*R\S?\s*(\d[\d.]*[,.]\s?\d{2})\s*$""")
+  private val FROM_TO = Regex("""(?i)\bDe\s*R\S?\s*\d[\d.,\s]*?p\w?r\s*R\S?\s*\d[\d.,\s]*?-\s*R\S?\s*(\d[\d.]*[,.]\s?\d{2})""")
+
+  private fun twoRow(head: String, tail: String, number: Int): Item? {
+    val h = TWO_ROW_HEAD.find(head.trim()) ?: return null
+    val t = TWO_ROW_TAIL.find(tail.trim()) ?: return null
+    if (TAIL.containsMatchIn(head)) return null
+    val code = code(h.groupValues[1]) ?: return null
+    val (qtyText, unitText, priceText, totalText) = t.destructured
+    val unit = unitOf(unitText) ?: return null
+    return Item(number, code, h.groupValues[2].trim(), decimal(qtyText, 4) ?: return null, unit,
+      decimal(priceText.replace(" ", ""), 4) ?: return null, decimal(totalText.replace(" ", ""), 2) ?: return null)
   }
 
   private fun discount(row: String) = DISCOUNT.find(row.trim())?.groupValues?.get(1)?.let { decimal(it, 2) }
@@ -120,10 +166,25 @@ object PhotoReceiptReader {
       val itemLike = rows.count { r -> HEAD.find(r.trim())?.groupValues?.get(2)?.let { c -> digits(c).length >= 4 && digits(c).all(Char::isDigit) } == true }
       val mine = mutableListOf<Item>()
       var last: Item? = null
-      for (row in rows) {
-        val it = item(row)
+      // The two-row layout numbers its items by their order, so only from the column header down.
+      var headerSeen = false; var nextNumber = 1; var skip = -1
+      for ((k, row) in rows.withIndex()) {
+        if (k == skip) continue
+        if (Regex("(?i)c[oó0]d\\S*\\s+descri").containsMatchIn(row)) headerSeen = true
+        // A row's right part on a row of its own, just above or below (weighed items, a curved photo): joined only when
+        // the joined row reads as an item and adds up.
+        val one = item(row) ?: if (HEAD.containsMatchIn(row.trim()) && !TAIL.containsMatchIn(row)) listOf(k - 1, k + 1).firstNotNullOfOrNull { j ->
+          rows.getOrNull(j)?.takeIf { ORPHAN.matches(it.trim()) }?.let { item("$row $it") }?.takeIf { it.adds }?.also { if (j == k + 1) skip = j }
+        } else null
+        // Every "code description" row under the header is an item, read or not: its number is its place.
+        val head = one == null && headerSeen && TWO_ROW_HEAD.containsMatchIn(row.trim()) && !TAIL.containsMatchIn(row)
+        val it = one ?: if (head) rows.getOrNull(k + 1)?.let { next -> twoRow(row, next, nextNumber) }?.also { skip = k + 1 } else null
+        if (head) nextNumber++
         if (it != null) { mine += it; last = it; continue }
-        val d = discount(row)
+        val d = discount(row) ?: FROM_TO.find(row)?.groupValues?.get(1)?.replace(" ", "")?.let { decimal(it, 2) }
+          // A bare amount under an item that doesn't add up without it, and does with it: its discount, unlabelled.
+          ?: Regex("""^\W{0,2}(\d{1,4}[,.]\d{2})\s*$""").find(row.trim())?.groupValues?.get(1)?.let { decimal(it, 2) }
+            ?.takeIf { v -> last != null && !last!!.adds && last!!.copy(discountCents = v).adds }
         if (d != null && last != null) {
           // The discount row belongs to the item just above it.
           mine[mine.lastIndex] = last.copy(discountCents = d); last = null; continue
@@ -131,8 +192,8 @@ object PhotoReceiptReader {
         last = null
         Regex("""(?i)total\s*de\s*itens\D*([\dOoIl]{1,3})\s*$""").find(row)?.let { m -> digits(m.groupValues[1]).toIntOrNull()?.let { count = it } }
         moneyAfter(row, Regex("(?i)total\\s*(de\\s*)?produtos"))?.let { products = it }
-        moneyAfter(row, Regex("(?i)valor\\s*total"))?.let { total = it }
-        moneyAfter(row, Regex("(?i)valor\\s*a\\s*pagar"))?.let { payable = it }
+        moneyAfter(row, Regex("(?i)valor\\s*total|^\\W{0,2}t[eo]tal\\s*R"))?.let { total = it }
+        moneyAfter(row, Regex("(?i)(valor\\s*)?a\\s*paga"))?.let { payable = it }
         if (Regex("(?i)^\\W{0,2}desconto\\s*R").containsMatchIn(row)) moneyAfter(row, Regex("(?i)desconto"))?.let { discount = it }
       }
       val weight = if (itemLike == 0) 1.0 else mine.count { it.adds }.toDouble() / itemLike

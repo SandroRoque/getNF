@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-30. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D147). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
+`docs/decisions.md` (D1–D148). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
@@ -88,8 +88,8 @@ Claude:
    tappable and full-width swiping tabs (D142), chart scrubbing (D143), the package's price on the chart (D144).
 5. 0.1.0 (code 3): the release checklist (CI ✓, `tools/check.sh`, the release build on the emulator and the phone,
    tag `play/3`, Android vitals three days later).
-6. ~~Start the photo reader's measurement~~ started (D147): `PhotoReaderBenchTest`, baseline 388 of 499 items
-   exact, 4 of 29 sessions read exactly and trusted, no trusted reading wrong. Nothing in the app yet.
+6. ~~Start the photo reader's measurement~~ started (D147, D148): `PhotoReaderBenchTest`, now 455 of 499 items
+   exact, 11 of 29 sessions read exactly and trusted, no trusted reading wrong. Nothing in the app yet.
 
 The user:
 1. Review the screens on the phone (the redesign, D81) and pass on what bothers.

@@ -28,7 +28,7 @@ class PhotoReaderBenchTest {
     val sessions = File(bench, "corpus.tsv").readLines().filter { it.isNotBlank() && !it.startsWith("#") }.map { it.split('\t') }
       .filter { it[1] == "dev" && (only == null || only in it[0]) }.map { File(media, it[0]) }
     println("%-28s %-6s %6s %6s %6s %8s  %s".format("session", "receipt", "items", "exact", "desc", "trusted", "problems / wrong"))
-    var trustedWrong = 0; var trustedRight = 0; var exactReceipts = 0; var n = 0; var itemsAll = 0; var exactAll = 0
+    var trustedWrong = 0; var trustedRight = 0; var exactReceipts = 0; var n = 0; var itemsAll = 0; var exactAll = 0; var unseen = 0
     for (dir in sessions) {
       val log = File(dir, "ingest/log.txt").takeIf { it.exists() } ?: continue
       val committed = Regex("COMMIT (f\\d+)").findAll(log.readText()).map { it.groupValues[1] }.toSet()
@@ -45,7 +45,12 @@ class PhotoReaderBenchTest {
       var exact = 0; var desc = 0
       for (p in page.items) {
         val r = byNumber[p.line]
-        if (r == null) { wrong += "${p.line} not read"; continue }
+        if (r == null) {
+          wrong += "${p.line} not read"
+          // Not in the photos at all (the capture's coverage), as opposed to there but not read.
+          if (photos.none { ph -> ph.lines.any { p.code != null && p.code!!.length >= 4 && p.code!! in it.text.filter(Char::isDigit) } }) unseen++
+          continue
+        }
         val same = r.code == p.code && r.qtyE4 == p.qtyE4 && r.unit.equals(p.unit, true) && r.unitPriceE4 == p.unitPriceE4 &&
           (r.totalCents == p.totalCents || r.totalCents + r.discountCents == p.totalCents)
         if (same) exact++ else wrong += "${p.line}: read ${r.code} ${r.qtyE4} ${r.unit} ${r.unitPriceE4} ${r.totalCents}, page ${p.code} ${p.qtyE4} ${p.unit} ${p.unitPriceE4} ${p.totalCents}"
@@ -62,7 +67,8 @@ class PhotoReaderBenchTest {
         if (reading.trusted) (if (allExact) "yes" else "WRONG") else "no",
         (reading.problems.take(2) + wrong.take(2)).joinToString(" | ").take(160)))
     }
-    println("$n sessions: $exactReceipts read exactly; items exact $exactAll of $itemsAll; trusted and right $trustedRight, trusted and WRONG $trustedWrong")
+    println("$n sessions: $exactReceipts read exactly; items exact $exactAll of $itemsAll ($unseen of the rest not in the kept photos at all); " +
+      "trusted and right $trustedRight, trusted and WRONG $trustedWrong")
   }
 
   /** Letters and digits, with OCR's usual confusions folded. */
