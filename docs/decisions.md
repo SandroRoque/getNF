@@ -153,6 +153,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D140 | dev | current | Checks on GitHub for every push; the app writes down its crashes and offers to send them |
 | D141 | catalog | current | A purchase is a product on one receipt; the product screen leads with the price paid per unit |
 | D142 | UI | current | Everything tappable looks tappable: rows with a chevron, pills, or the back header; tabs fill the width and swipe |
+| D143 | UI | current | Price charts scrub: a finger on the chart marks the nearest point with its date, value and store |
 
 ---
 
@@ -3506,4 +3507,13 @@ nothing saying they were buttons, and "text that's a button without looking like
 - **Tabs** (`Segments`, used by Catálogo, Gastos, Entrar / Criar conta and the invite roles) take the whole width in
   equal shares, each share the touch target, at body size, the selected one semi-bold and underlined edge to edge.
   The Catálogo's tabs also change by swiping sideways (a pager).
+
+## D143. Price charts scrub: a finger on the chart marks the nearest point with its date, value and store (2026-10-31)
+
+From the user's review (milestone 0.1): "passar o dedo sobre o gráfico e ver o valor nos pontos". `TimeSeries`
+(`ui/spending/Charts.kt`) takes a `formatX`; with it, touching the chart and sliding sideways draws a vertical line at
+the nearest point in time, enlarges the points there and writes, in a band above the plot (so it never covers the
+points), the date, the value and, with several stores, the store; lifting the finger clears it. Both charts have it:
+the product's price (date) and the IPCI (month). A sideways drag is taken by the chart; an up or down one still
+scrolls the screen.
 

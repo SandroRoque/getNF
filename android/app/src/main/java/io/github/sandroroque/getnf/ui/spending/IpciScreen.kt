@@ -97,7 +97,8 @@ fun IpciScreen(initialCategory: String?, onOpenProduct: (String) -> Unit, onBack
       }
     }
     item {
-      TimeSeries(mapOf("" to ms.map { YearMonth.parse(it.period.key).atDay(15).toEpochDay() to it.index }), format = { "%.1f".format(it).replace('.', ',') })
+      TimeSeries(mapOf("" to ms.map { YearMonth.parse(it.period.key).atDay(15).toEpochDay() to it.index }), format = { "%.1f".format(it).replace('.', ',') },
+        formatX = { label(Period(YearMonth.from(java.time.LocalDate.ofEpochDay(it)).toString()), long = true) })
     }
     item { Split(ms) }
     item { SectionLabel("Mês a mês") }
