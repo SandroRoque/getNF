@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * another, so the next frame's OCR runs while the session takes the last (D88). A frame waiting for the session is
  * replaced by a newer one.
  */
-internal class CaptureViewModel(application: Application) : AndroidViewModel(application) {
+internal class CaptureViewModel(application: Application, private val productOnly: Boolean = false) : AndroidViewModel(application) {
   private val app = application as GetNFApp
   val executor = Executors.newSingleThreadExecutor()
   private val sessionThread = Executors.newSingleThreadExecutor()
@@ -30,7 +30,7 @@ internal class CaptureViewModel(application: Application) : AndroidViewModel(app
   private val pending = AtomicReference<Pending?>(null)
   private val attached = AtomicBoolean(false)
   private val closing = AtomicBoolean(false)
-  private val _state = MutableStateFlow(CaptureUiState())
+  private val _state = MutableStateFlow(if (productOnly) CaptureUiState(mode = CameraMode.PRODUCT, hint = CaptureHint.FIND_PRODUCT) else CaptureUiState())
   val state = _state.asStateFlow()
   private val text = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
   // The receipt's QR code and products' barcodes (camera plan, step 2). Not Code 128: large NF-e printouts carry the
@@ -41,7 +41,7 @@ internal class CaptureViewModel(application: Application) : AndroidViewModel(app
     // Debug builds dump the frames analysed when files/capture-dump/enabled exists (to replay a session on the PC).
     val dump = java.io.File(app.filesDir, "capture-dump").takeIf { BuildConfig.DEBUG && java.io.File(it, "enabled").exists() }
       ?.let { java.io.File(it, java.time.LocalDateTime.now().toString().replace(':', '-').take(19)) }
-    CaptureController(app.captureSessions, app.receiptStore, { _state.value = it }, { SyncWorker.enqueue(app) }, dump)
+    CaptureController(app.captureSessions, app.receiptStore, { _state.value = it }, { SyncWorker.enqueue(app) }, dump, productOnly)
   }
   val analyzer = IngestAnalyzer(text, qr, executor, { attached.get() && !closing.get() }, { controller.wantsText }, { frame, lines, codes ->
     // A frame already waiting is dropped for this newer one; only when none was waiting is a run scheduled.

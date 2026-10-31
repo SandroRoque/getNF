@@ -135,7 +135,7 @@ session thread:                                   [frame N: paper, rows, decisio
      camera keeps looking. A QR code later switches to receipt.
 
    The same code read twice in a row doesn't reopen the sheet.
-3. **Screens.**
+3. **Screens. Done (D132).**
    - A sheet over the live camera with the product, the last price and date, price by store with the cheapest
      marked, and the recent average, plus "Ver o produto".
    - "Você ainda não comprou este produto" and "Etiqueta da balança da loja" as their own states.

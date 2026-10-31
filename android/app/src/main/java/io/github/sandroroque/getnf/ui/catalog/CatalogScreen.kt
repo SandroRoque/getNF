@@ -40,7 +40,7 @@ import io.github.sandroroque.getnf.ui.page.rememberBudgetCheck
 @Composable
 fun CatalogScreen(
   initialSegment: Int, onOpenProduct: (String) -> Unit, onOpenStore: (String) -> Unit, onOpenReceipt: (String) -> Unit,
-  onOpenPage: (String) -> Unit,
+  onOpenPage: (String) -> Unit, onScanProduct: () -> Unit = {},
 ) {
   var segment by rememberSaveable { mutableStateOf(initialSegment) }
   Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -49,7 +49,7 @@ fun CatalogScreen(
       Segments(listOf("Produtos", "Categorias", "Lojas", "Notas"), segment) { segment = it }
     }
     when (segment) {
-      0 -> ProductList(onOpenProduct)
+      0 -> ProductList(onOpenProduct, onScanProduct)
       1 -> CategoryTree()
       2 -> StoreList(onOpenStore)
       else -> ReceiptList(onOpenReceipt, onOpenPage)
@@ -58,7 +58,7 @@ fun CatalogScreen(
 }
 
 @Composable
-private fun ProductList(onOpenProduct: (String) -> Unit) {
+private fun ProductList(onOpenProduct: (String) -> Unit, onScanProduct: () -> Unit) {
   val app = LocalContext.current.applicationContext as GetNFApp
   val products by remember { app.database.edit().products() }.collectAsStateWithLifecycle(emptyList())
   val categories by remember { app.database.edit().categories() }.collectAsStateWithLifecycle(emptyList())
@@ -71,6 +71,8 @@ private fun ProductList(onOpenProduct: (String) -> Unit) {
     .filter { q.isEmpty() || q in fold(it.title) || q in fold(it.description.orEmpty()) || q in fold(it.categoryLabel.orEmpty()) }
   LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 24.dp)) {
     item { SearchBox(query, { query = it }, "Buscar entre ${products.size} produtos") }
+    // The camera, to find one by its barcode (camera plan, step 3).
+    item { Row(Modifier.padding(top = 10.dp)) { Pill("Pelo código de barras", ButtonKind.Outline, onClick = onScanProduct) } }
     if (automatic > 0) item {
       Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Pill("Todos", if (!onlyAutomatic) ButtonKind.Solid else ButtonKind.Ghost) { onlyAutomatic = false }

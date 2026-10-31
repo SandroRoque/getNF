@@ -48,18 +48,22 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import android.util.Size
 import java.util.concurrent.TimeUnit
 
-/** Continuous local capture: quality, coverage and QR run independently. */
+/**
+ * Continuous local capture: quality, coverage and QR run independently. The same camera looks products up by their
+ * barcode (camera plan, steps 2 and 3); [productOnly] opens it for that alone (the Catálogo's shortcut).
+ */
 @Composable
-fun ScanScreen(onCaptured: () -> Unit, onCancel: () -> Unit, onOpenPage: (String) -> Unit) {
+fun ScanScreen(onCaptured: () -> Unit, onCancel: () -> Unit, onOpenPage: (String) -> Unit, productOnly: Boolean = false,
+               onOpenProduct: (String) -> Unit = {}) {
   val context = LocalContext.current
   val onboarding = (context.applicationContext as io.github.sandroroque.getnf.GetNFApp).onboarding
   var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
   // The first time, how the capture goes comes before the camera and its permission (D115).
-  var intro by remember { mutableStateOf(!onboarding.scanIntroSeen) }
+  var intro by remember { mutableStateOf(!onboarding.scanIntroSeen && !productOnly) }
   val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
   LaunchedEffect(intro) { if (!intro && !granted) permission.launch(Manifest.permission.CAMERA) }
   if (intro) io.github.sandroroque.getnf.ui.onboarding.ScanIntro(onStart = { onboarding.scanIntroSeen = true; intro = false }, onCancel = onCancel)
-  else if (granted) ContinuousCapture(onCaptured, onCancel, onOpenPage)
+  else if (granted) ContinuousCapture(onCaptured, onCancel, onOpenPage, productOnly, onOpenProduct)
   else Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
     io.github.sandroroque.getnf.ui.calmo.ScreenTitle("A câmera lê a nota")
     io.github.sandroroque.getnf.ui.calmo.Sub("O getNF usa a câmera para ler o QR Code e fotografar a nota. As fotos ficam no celular e, se você entrar numa conta, numa cópia pequena no servidor.")
@@ -72,9 +76,10 @@ fun ScanScreen(onCaptured: () -> Unit, onCancel: () -> Unit, onOpenPage: (String
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOpenPage: (String) -> Unit) {
+private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOpenPage: (String) -> Unit, productOnly: Boolean,
+                              onOpenProduct: (String) -> Unit) {
   val context = LocalContext.current
-  val model = viewModel { CaptureViewModel(context.applicationContext as android.app.Application) }
+  val model = viewModel { CaptureViewModel(context.applicationContext as android.app.Application, productOnly) }
   val lifecycle = LocalLifecycleOwner.current
   val state by model.state.collectAsStateWithLifecycle()
   val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -151,6 +156,24 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOp
     }
   }
   val app = context.applicationContext as io.github.sandroroque.getnf.GetNFApp
+  // A product's barcode (camera plan, step 3): looked up in every caderneta on the phone, its answer in a sheet over
+  // the camera, which keeps looking. A new code opens it again; the same one, while it stays in view, doesn't.
+  val lookup = remember { io.github.sandroroque.getnf.data.ProductLookup.onPhone(app, app.accountSettings, app.database) }
+  val openLedger = remember { app.accountSettings.ledgerId() }
+  var ledgerNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+  var sheet by remember { mutableStateOf(false) }
+  var found by remember { mutableStateOf<io.github.sandroroque.getnf.data.LookupResult?>(null) }
+  LaunchedEffect(Unit) {
+    ledgerNames = runCatching { io.github.sandroroque.getnf.sync.LedgerService(app.accountSettings).mine().associate { it.id to it.name } }.getOrDefault(emptyMap())
+  }
+  LaunchedEffect(state.productShown) {
+    val code = state.product ?: return@LaunchedEffect
+    if (state.productShown == 0) return@LaunchedEffect
+    sheet = true; found = null
+    found = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+      runCatching { lookup.find(code) }.getOrElse { io.github.sandroroque.getnf.data.LookupResult.NotAProduct(code) }
+    }
+  }
   LaunchedEffect(state.completed, state.exited) {
     // Testing the capture (D99): straight home, the page isn't offered.
     if (state.completed && (state.chave == null || app.devSettings.testingCapture)) onCaptured() else if (state.exited) onCancel()
@@ -205,7 +228,8 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOp
       Row(verticalAlignment = Alignment.CenterVertically) {
         RoundButton(io.github.sandroroque.getnf.ui.calmo.Icons.Close, "Sair da captura", enabled = !state.saving) { exit() }
         Spacer(Modifier.weight(1f))
-        if (!landscape) Text("Escaneando nota", color = onCamera, style = MaterialTheme.typography.titleSmall)
+        if (!landscape) Text(when { productOnly -> "Buscar produto"; state.mode == CameraMode.PRODUCT -> "Produto"; else -> "Escaneando nota" },
+          color = onCamera, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.weight(1f))
         RoundButton(io.github.sandroroque.getnf.ui.calmo.Icons.Torch, if (torch) "Apagar a lanterna" else "Acender a lanterna", selected = torch) {
           if (controller.cameraInfo?.hasFlashUnit() == true) {
@@ -265,8 +289,12 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOp
   if (showMore) io.github.sandroroque.getnf.ui.catalog.CalmoSheet("Câmera", onDismiss = { showMore = false }) {
     io.github.sandroroque.getnf.ui.calmo.Sub("A captura lê a nota enquanto você a percorre e guarda só as fotos que acrescentam linhas. " +
       "O mapa ao lado mostra o que já foi lido; as pontas ficam firmes quando o topo e o fim da nota aparecem.")
+    io.github.sandroroque.getnf.ui.calmo.Sub("Aponte para o código de barras de um produto para ver quanto você pagou por ele, em cada loja, " +
+      "nas notas de todas as cadernetas deste celular.")
     io.github.sandroroque.getnf.ui.calmo.Sub("Toque na tela para focar; pinça para zoom.")
   }
+  if (sheet) ProductSheet(found, openLedger, ledgerNames, onOpenProduct = { sheet = false; onOpenProduct(it) },
+    onDismiss = { sheet = false })
   if (showExit) io.github.sandroroque.getnf.ui.catalog.CalmoSheet("Sair sem terminar?", onDismiss = { showExit = false; model.setAttached(true) }) {
     io.github.sandroroque.getnf.ui.calmo.Sub("O QR Code já foi lido. As imagens desta tentativa são descartadas ao sair; as fotos anteriores desta nota ficam.")
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

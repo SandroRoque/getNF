@@ -26,8 +26,9 @@ internal data class ScannedCode(val raw: String, val qr: Boolean, val corners: L
  */
 internal data class ModeStep(val mode: CameraMode, val product: String?, val newProduct: Boolean, val dropReceipt: Boolean)
 
-internal class CameraModeDecider {
-  var mode = CameraMode.UNDECIDED
+/** [productOnly]: the camera opened to look a product up (the Catálogo's shortcut): no receipt is ever captured. */
+internal class CameraModeDecider(private val productOnly: Boolean = false) {
+  var mode = if (productOnly) CameraMode.PRODUCT else CameraMode.UNDECIDED
     private set
   private var product: String? = null
   private var announced: String? = null
@@ -35,7 +36,7 @@ internal class CameraModeDecider {
 
   fun offer(atMs: Long, width: Int, height: Int, codes: List<ScannedCode>): ModeStep {
     if (mode == CameraMode.RECEIPT) return ModeStep(mode, null, false, false)
-    if (codes.any { it.qr && Chave.fromQr(it.raw) != null }) {
+    if (!productOnly && codes.any { it.qr && Chave.fromQr(it.raw) != null }) {
       mode = CameraMode.RECEIPT; product = null
       return ModeStep(mode, null, false, false)
     }
@@ -46,7 +47,8 @@ internal class CameraModeDecider {
       if (mode == CameraMode.UNDECIDED) { mode = CameraMode.PRODUCT; drop = true }
       product = centred.raw.trim()
       productSeenAt = atMs
-    } else if (mode == CameraMode.PRODUCT && atMs - productSeenAt > PRODUCT_TIMEOUT_MS) {
+    } else if (mode == CameraMode.PRODUCT && product != null && atMs - productSeenAt > PRODUCT_TIMEOUT_MS) {
+      if (productOnly) { product = null; announced = null; return ModeStep(mode, null, false, false) }
       mode = CameraMode.UNDECIDED; product = null; announced = null
       return ModeStep(mode, null, false, false)
     }

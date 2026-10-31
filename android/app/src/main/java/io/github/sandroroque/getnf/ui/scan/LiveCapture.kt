@@ -67,7 +67,8 @@ internal data class CaptureUiState(
 internal data class RowMark(val captured: Boolean, val gapAfter: Double)
 
 internal enum class CaptureHint(val label: String) {
-  FIND_RECEIPT("Aponte para a nota"),
+  FIND_RECEIPT("Aponte para a nota ou um código de barras"),
+  FIND_PRODUCT("Aponte para o código de barras"),
   BACK_TO_CAPTURED("Volte ao trecho já lido"),
   CLOSER("Aproxime a câmera"),
   HOLD_STILL("Segure firme"),
@@ -280,11 +281,13 @@ internal class CaptureController(
   private val enqueueUpload: () -> Unit,
   /** Debug builds: when set, every analysed frame and its OCR are written here, to replay the session on the PC. */
   private val dump: File? = null,
+  /** Opened to look a product up (the Catálogo's shortcut): never a receipt (camera plan, step 3). */
+  productOnly: Boolean = false,
 ) {
   private var ingest = IngestSession()
-  private val decider = CameraModeDecider()
+  private val decider = CameraModeDecider(productOnly)
   /** False while a product is in view: the analyzer then skips OCR. Read from the camera's thread. */
-  @Volatile var wantsText = true
+  @Volatile var wantsText = !productOnly
     private set
   private var manifest: CaptureSessionManifest = sessions.create()
   private class Held(val id: String, val pixels: FramePixels, val paper: PaperOutline, val view: IntRange?, val score: Double, val lines: List<OcrQuad>)
@@ -318,7 +321,7 @@ internal class CaptureController(
     val products = scanned.filter { !it.qr }.joinToString(";") { c -> c.raw + (c.corners.takeIf { it.isNotEmpty() }?.let { k -> "@%.0f,%.0f".format(k.sumOf { it.x } / k.size, k.sumOf { it.y } / k.size) } ?: "") }
     if (decided.mode == CameraMode.PRODUCT) {
       dump?.let { dir -> dumping.execute { logProduct(dir, id, frame.atMs, decided, products); frame.timing?.let { logTiming(dir, id, frame.atMs, it, 0) } } }
-      state = state.copy(outline = null, down = null, hint = CaptureHint.PRODUCT, view = null, mode = decided.mode, product = decided.product,
+      state = state.copy(outline = null, down = null, hint = if (decided.product == null) CaptureHint.FIND_PRODUCT else CaptureHint.PRODUCT, view = null, mode = decided.mode, product = decided.product,
         productShown = state.productShown + if (decided.newProduct) 1 else 0, dark = dark(frame))
       publish(state)
       return

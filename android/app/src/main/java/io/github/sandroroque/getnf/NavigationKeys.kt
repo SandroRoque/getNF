@@ -19,6 +19,9 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object Scan : NavKey
 
+/** The camera opened to look a product up by its barcode (camera plan, step 3): from the Catálogo. */
+@Serializable data object ScanProduct : NavKey
+
 /** The SEFAZ page for an already-scanned receipt. */
 @Serializable data class Page(val chave: String) : NavKey
 

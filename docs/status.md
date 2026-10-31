@@ -1,7 +1,7 @@
 # Status and next steps
 
 Last updated 2026-10-30. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D131). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
+`docs/decisions.md` (D1–D132). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
@@ -94,8 +94,9 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
    only the open one; there's no full GTIN registry, so only what the person bought turns up. Plan, pipeline notes
    and the test/benchmark layers: [camera-plan.md](camera-plan.md). Step 0 done (D129, baselines 2026-10-31: a
    receipt frame ~470 ms, all OCR; the product formats cost ~1 ms). Step 1 done (D130, `data/ProductLookup.kt`).
-   Step 2 done (D131: one camera decides receipt or product; packaging isn't receipt paper). Next: step 3, the sheet
-   with the answer over the camera.
+   Step 2 done (D131: one camera decides receipt or product; packaging isn't receipt paper). Step 3 done (D132: the
+   answer in a sheet over the camera; Catálogo › "Pelo código de barras"). Next: step 4, measure on the phone against
+   step 0 and decide one camera or two entries.
 7. **Later, to discuss: recognising items without a barcode by machine vision.** Produce, cold cuts and anything
    weighed in store carry a scale label with an in-store code (GTIN-13 starting with 2) that changes with every
    weighing. The idea: point the camera at the product; a barcode is looked up by GTIN, otherwise an image classifier

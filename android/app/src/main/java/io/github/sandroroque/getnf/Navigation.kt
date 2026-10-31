@@ -149,14 +149,19 @@ fun MainNavigation() {
         entry<Catalog> { key ->
           CatalogScreen(
             initialSegment = key.segment, onOpenProduct = { open(ProductDetail(it)) }, onOpenStore = { open(StoreDetail(it)) },
-            onOpenReceipt = { open(ReceiptDetail(it)) }, onOpenPage = { open(Page(it)) },
+            onOpenReceipt = { open(ReceiptDetail(it)) }, onOpenPage = { open(Page(it)) }, onScanProduct = { open(ScanProduct) },
           )
         }
         entry<StoreDetail> { key ->
           StoreScreen(key.cnpj, onBack = ::back, onOpenReceipt = { open(ReceiptDetail(it)) }, onOpenProduct = { open(ProductDetail(it)) })
         }
         entry<IpciKey> { key -> IpciScreen(key.categoryId, onOpenProduct = { open(ProductDetail(it)) }, onBack = ::back) }
-        entry<Scan> { ScanScreen(onCaptured = ::back, onCancel = ::back, onOpenPage = { back(); open(Page(it)) }) }
+        entry<Scan> {
+          ScanScreen(onCaptured = ::back, onCancel = ::back, onOpenPage = { back(); open(Page(it)) }, onOpenProduct = { back(); open(ProductDetail(it)) })
+        }
+        entry<ScanProduct> {
+          ScanScreen(onCaptured = ::back, onCancel = ::back, onOpenPage = {}, productOnly = true, onOpenProduct = { back(); open(ProductDetail(it)) })
+        }
         entry<Page> { key ->
           // Saved: the receipt opens in its place, Back returning to where the fetch began.
           PageScreen(chave = key.chave, onDone = ::back, onSaved = { back(); open(ReceiptDetail(it)) })

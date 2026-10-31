@@ -87,4 +87,18 @@ class CameraModeTest {
     // Back to the same product later: announced again, since its sheet was left.
     assertTrue(d.offer(CameraModeDecider.PRODUCT_TIMEOUT_MS + 500, w, h, listOf(product(coffee))).newProduct)
   }
+
+  @Test fun openedForAProductItNeverTakesAReceipt() {
+    val d = CameraModeDecider(productOnly = true)
+    val start = d.offer(0, w, h, emptyList())
+    assertEquals(CameraMode.PRODUCT, start.mode)
+    assertNull(start.product)
+    assertFalse(start.newProduct)
+    assertEquals("a receipt's QR code doesn't start a capture", CameraMode.PRODUCT, d.offer(100, w, h, listOf(qr)).mode)
+    assertTrue(d.offer(200, w, h, listOf(product(coffee))).newProduct)
+    // Gone a while: still a product camera, and the same code is announced again when it's back.
+    val gone = d.offer(200 + CameraModeDecider.PRODUCT_TIMEOUT_MS + 1, w, h, emptyList())
+    assertEquals(CameraMode.PRODUCT to null, gone.mode to gone.product)
+    assertTrue(d.offer(4000, w, h, listOf(product(coffee))).newProduct)
+  }
 }

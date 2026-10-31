@@ -142,6 +142,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D129 | testing | current | Checks before every push, frame timings in the dumps, an on-device benchmark before releases |
 | D130 | catalog | current | Looking a product up by barcode: every caderneta on the phone, shelf prices, latest per store |
 | D131 | capture | current | One camera decides: receipt or product; packaging is not receipt paper |
+| D132 | UI | current | A product's barcode answers in a sheet over the camera; the Catálogo opens the camera for products |
 
 ---
 
@@ -3278,3 +3279,29 @@ sheets on the desk, before the box came into view; recorded with a QR-only scann
 down from 6. On the emulator, a barcode from the user's session put the camera in product mode with no OCR, and a
 receipt video stayed undecided until its QR code was read, then locked the receipt and captured it as before.
 JVM tests for the decider. What's still to measure on the phone is step 4: the same criteria as step 0's baseline.
+
+## D132. A product's barcode answers in a sheet over the camera; the Catálogo opens the camera for products (2026-10-31)
+
+Step 3 of the camera plan ([camera-plan.md](camera-plan.md)): the screens for the lookup (D130) and the camera's
+product mode (D131).
+
+- **The sheet** (`ui/scan/ProductSheet.kt`) opens over the live camera when a product's barcode is announced, and the
+  camera keeps looking: another code replaces the answer, the same one doesn't reopen it while it stays in view. It
+  shows the product's name and category, the last price large with its date and store, the latest price at each store
+  with the cheapest marked "mais barato" (when there's more than one store), and the average over the last 3 months
+  with the number of purchases. Prices per kg or litre say so. The open caderneta's product comes first; one found
+  only in another caderneta says which, and the others are listed under "Em outras cadernetas" with their last
+  price. "Ver o produto" opens the open caderneta's product; another caderneta's would need switching, so it has none.
+- **Its other answers:** "Você ainda não comprou este produto" (with the code) and "Etiqueta da balança da loja"
+  (its code changes with every weighing: find it in the Catálogo by name).
+- **The camera:** the first hint becomes "Aponte para a nota ou um código de barras"; the title says "Produto" in
+  product mode; "Mais opções" explains the lookup. The torch keeps its behaviour. The scan how-to is unchanged: it's
+  about receipts.
+- **The Catálogo's shortcut:** "Pelo código de barras" under Produtos' search opens the camera for products only
+  (`ScanProduct`): it never takes a receipt, skips OCR from the start, and skips the scan how-to. It works in the
+  demo too, where it looks up the demo's products only (D130), since it can't capture a receipt there.
+
+Checked on the emulator, in the demo, with a barcode image made for a demo product (sabonete, 19 purchases at two
+stores): Catálogo › Pelo código de barras showed its sheet (R$ 2,50 at Ponta Leste, marked cheapest; R$ 2,55 at
+Figueira; average R$ 2,52), and "Ver o produto" opened the product, with Back returning to the Catálogo. A first
+version closed the capture before opening the product, and the capture's own exit popped the product screen too.
