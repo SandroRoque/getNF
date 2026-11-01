@@ -3738,3 +3738,11 @@ the user: **Cloudflare Email Routing → Gmail**, replies from Gmail as the addr
 - Known costs: the mail sits in the personal Gmail; Cloudflare stores nothing, so a message Gmail refuses is lost
   (Cloudflare's Email Routing activity log shows them). The site, the policy (`/privacidade/`) and Play's contact and
   feedback fields change to it.
+
+**Set up (2026-11-01).** Through the Cloudflare API connector: Email Routing on for roqlab.com.br (Cloudflare added
+the MX records `route1–3.mx.cloudflare.net`, the SPF `v=spf1 include:_spf.mx.cloudflare.net ~all` and its DKIM
+`cf2024-1._domainkey`); a rule `contato@roqlab.com.br` → the user's Gmail (the destination came verified); and a
+`_dmarc` record `v=DMARC1; p=none` (monitoring only, so nothing is rejected). Resend's records (`send.`, `rsend.`,
+`resend._domainkey`) were already on subdomains and didn't conflict. The site was rebuilt with the new address (only
+the contact changes, on `/`, `/privacidade/` and `/apagar-conta/`), but publishing it through the API failed at the
+assets upload (401 for the upload token from the connector's sandbox), so it's deployed from the PC as before.
