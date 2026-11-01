@@ -111,8 +111,8 @@ The user:
 4. Play Console: the listing, the app content tasks, a closed testing track (Brazil, testers: the Google Group
    `testadores-da-caderneta@googlegroups.com`, D153), the upload.
 5. Rotate the database password; back up the upload key (see "Pending, by the user").
-6. ~~Pick the public contact address~~ contato@roqlab.com.br (D154): turn on Cloudflare Email Routing to Gmail and
-   Gmail's "Send mail as" through Resend, then rebuild the site and change Play's contact.
+6. ~~Pick the public contact address~~ contato@roqlab.com.br (D154): routing to Gmail works (tested
+   2026-11-01) and the site carries it. Left: Gmail's "Send mail as" through Resend, and Play's contact fields.
 6b. `npx supabase db push` for D152's tables (it also pushes D122's taxonomy labels if they aren't online yet), then
    Play Console › Data safety updated as [play-data-safety.md](play-data-safety.md) says, before the 0.1.0 upload.
 7. Decide on the legal read: suggested, the closed test with the published privacy policy, the legal read before the
