@@ -85,9 +85,10 @@ uploaded or tagged, and the Play Console's closed track doesn't exist yet. The u
 with 0.1.0 rather than promote code 2 (whose "Enviar comentário" predates D152's inbox).
 
 Do next, in order, with the user (they've done none of it yet):
-1. **Online database first:** the user runs `npx supabase db push` (D152's `feedback`/`ticket` tables; without them
-   0.1.0's reports are refused), then checks `python3 tools/tickets.py inbox` answers. Data safety in Play Console
-   as [play-data-safety.md](play-data-safety.md) says.
+1. ~~Online database first~~ done 2026-11-01: `db push` run by the user; a report sent with the publishable key
+   reached `tools/tickets.py inbox` and was deleted, anonymous reads are refused. Still to do: Data safety in Play
+   Console as [play-data-safety.md](play-data-safety.md) says. Build 0.1.0 from eb13406 or later (it has the
+   contact e-mail in "Enviar comentário").
 2. **0.1.0 release checklist** (item 5 below): `tools/check.sh`; `./gradlew :app:bundleRelease` (signs with
    `~/.config/getnf/upload-key.jks`); the release APK on the emulator (signed out, demo, a capture from a recorded
    video, Ajustes › Enviar comentário reaching the inbox) and on the user's phone (never connectedAndroidTest
@@ -109,8 +110,7 @@ sites, D151), and the steps under "The user" below.
 Claude:
 1. ~~Parked sync rows shown in Ajustes~~ done (D145: "Não sincronizado", Tentar de novo, Enviar relatório).
 2. ~~"Enviar comentário" in Ajustes~~ done (D146); since D152 it and the crash and refused-rows reports go to a
-   private inbox on the server, triaged into tickets with `tools/tickets.py`. Online it needs `npx supabase db push`
-   (the user); the privacy page with its section is live. "Prefiro mandar por e-mail" writes to contato@roqlab.com.br
+   private inbox on the server, triaged into tickets with `tools/tickets.py`. Online since 2026-11-01; the privacy page with its section is live. "Prefiro mandar por e-mail" writes to contato@roqlab.com.br
    (D154), or opens the share sheet on a phone without an e-mail app.
 3. ~~The Play listing in pt-BR~~ done 2026-10-31: texts, release notes and review instructions in
    [play-console.md](play-console.md), screenshots retaken ([screenshots/play/](screenshots/play/)), the feature
@@ -144,8 +144,7 @@ The user:
 6. ~~Pick the public contact address~~ contato@roqlab.com.br (D154): routing to Gmail works (tested
    2026-11-01) and the site carries it. Gmail sends as it through Resend's SMTP, and
    Play Console's contact uses it. Done.
-6b. `npx supabase db push` for D152's tables (it also pushes D122's taxonomy labels if they aren't online yet), then
-   Play Console › Data safety updated as [play-data-safety.md](play-data-safety.md) says, before the 0.1.0 upload.
+6b. ~~`npx supabase db push` for D152's tables~~ done 2026-11-01; next, Play Console › Data safety updated as [play-data-safety.md](play-data-safety.md) says, before the 0.1.0 upload.
 7. Decide on the legal read: suggested, the closed test with the published privacy policy, the legal read before the
    open store.
 8. If possible, RJ receipts photographed with the app, for the photo reader.
