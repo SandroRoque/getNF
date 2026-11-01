@@ -85,7 +85,7 @@ Claude:
 3. ~~The Play listing in pt-BR~~ done 2026-10-31: texts, release notes and review instructions in
    [play-console.md](play-console.md), screenshots retaken ([screenshots/play/](screenshots/play/)), the feature
    graphic kept. Data safety changed with D152 (reports reach the server: [play-data-safety.md](play-data-safety.md)).
-   Waits on the contact e-mail.
+   The contact e-mail is contato@roqlab.com.br (D154).
 4. Fixes from the user's review of the screens and from the shared caderneta with the father: these come first.
    Done from the first review: one purchase per receipt and the unit price first (D141), tappable things look
    tappable and full-width swiping tabs (D142), chart scrubbing (D143), the package's price on the chart (D144).
@@ -111,7 +111,8 @@ The user:
 4. Play Console: the listing, the app content tasks, a closed testing track (Brazil, testers: the Google Group
    `testadores-da-caderneta@googlegroups.com`, D153), the upload.
 5. Rotate the database password; back up the upload key (see "Pending, by the user").
-6. Pick the public contact address (privacy policy, Play listing, "Enviar comentário", D146).
+6. ~~Pick the public contact address~~ contato@roqlab.com.br (D154): turn on Cloudflare Email Routing to Gmail and
+   Gmail's "Send mail as" through Resend, then rebuild the site and change Play's contact.
 6b. `npx supabase db push` for D152's tables (it also pushes D122's taxonomy labels if they aren't online yet), then
    Play Console › Data safety updated as [play-data-safety.md](play-data-safety.md) says, before the 0.1.0 upload.
 7. Decide on the legal read: suggested, the closed test with the published privacy policy, the legal read before the

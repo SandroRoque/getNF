@@ -42,8 +42,8 @@ What makes the site's two steps work: a closed track whose testers are the Googl
    icon, feature graphic and screenshots). A closed release can't be sent for review without them.
 2. Test and release › Testing › **Closed testing** › the default track (or Create track) › Manage track.
 3. **Countries / regions:** Brazil.
-4. **Testers:** Google Groups, `testadores-da-caderneta@googlegroups.com`; feedback URL or e-mail: the contact
-   address. Save. The page then shows the opt-in link ("Join on the web"): it must match the site's
+4. **Testers:** Google Groups, `testadores-da-caderneta@googlegroups.com`; feedback URL or e-mail:
+   `contato@roqlab.com.br`. Save. The page then shows the opt-in link ("Join on the web"): it must match the site's
    `https://play.google.com/apps/testing/br.com.roqlab.caderneta`.
 5. **Releases › Create new release:** either "Add from library" (a bundle already uploaded to internal testing,
    promoted as is) or a new bundle (the next versionCode, tagged `play/<code>`). Release name = versionName, notes in
@@ -70,7 +70,7 @@ What makes the site's two steps work: a closed track whose testers are the Googl
 ## Organised and presented
 
 - **Category:** Finance (spending from receipts). Shopping is the alternative.
-- **Contact:** the same public e-mail as the site (`tools/build-web.py --contact`); website https://caderneta.roqlab.com.br.
+- **Contact:** `contato@roqlab.com.br` (D154), the same as the site (`tools/build-web.py --contact`); website https://caderneta.roqlab.com.br.
 - **Store listing** (needs, besides text): the 512×512 icon `docs/brand/icon-512.png`, the 1024×500 feature graphic
   `docs/brand/feature-graphic.png` (both from `tools/make-icons.py`, D114), and 2–8 phone screenshots. Screenshots:
   [screenshots/play/](screenshots/play/), from the demo caderneta, retaken 2026-10-31 after D141–D146, in upload
@@ -114,7 +114,7 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
   (https://groups.google.com/g/testadores-da-caderneta: anyone can join, members and conversations visible to
   managers only, posts by managers only). The opt-in link the site sends people to is
   `https://play.google.com/apps/testing/br.com.roqlab.caderneta`; check it against the one the console shows.
-- **Closed testing › feedback channel** (shown to testers): the public contact e-mail, once chosen (D146). The app's
+- **Closed testing › feedback channel** (shown to testers): `contato@roqlab.com.br` (D154). The app's
   own "Enviar comentário" goes to the server's inbox (D152), which is the channel to point testers to.
 - **Review login instructions** (App content › App access), in English for the reviewer:
 

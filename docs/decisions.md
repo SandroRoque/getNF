@@ -3718,3 +3718,23 @@ anyone.
   (`https://play.google.com/apps/testing/br.com.roqlab.caderneta`, the standard opt-in address for the package), then
   14 days with the app. It says the members don't see each other and how to leave. The contact address stays only in
   the footer. The opt-in link works once the closed track exists with the group as its testers.
+
+## D154. The public address is contato@roqlab.com.br: Cloudflare Email Routing to Gmail, replies through Resend (2026-11-01)
+
+Since D105 the site, the privacy policy and the Play listing were going to carry the user's personal Gmail. With the
+closed test about to send strangers there, the user wanted an address on the domain and an inbox for it at once.
+The domain already sends through Resend (send only) and is on Cloudflare.
+
+Compared (prices of 2026-11): Cloudflare Email Routing forwarding to the existing Gmail, free; Zoho Mail Forever
+Free (a separate inbox, web and Zoho's app only; Mail Lite with IMAP about US$1 a month); Google Workspace Business
+Starter (about R$35–42 a month); Microsoft 365 Basic, Proton Essentials and Fastmail (US$3–7 a month). Chosen with
+the user: **Cloudflare Email Routing → Gmail**, replies from Gmail as the address through Resend's SMTP
+(`smtp.resend.com`, user `resend`, an API key with sending access only).
+
+- What matters is the published address, not where the mail sits: moving to a real inbox later is a change of MX
+  records, with nothing on the site, the policy or Play to republish.
+- **One address for the lab:** `contato@roqlab.com.br`, not one named after the app, whose name may still change.
+  A Gmail filter labels what arrives for it.
+- Known costs: the mail sits in the personal Gmail; Cloudflare stores nothing, so a message Gmail refuses is lost
+  (Cloudflare's Email Routing activity log shows them). The site, the policy (`/privacidade/`) and Play's contact and
+  feedback fields change to it.

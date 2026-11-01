@@ -4,7 +4,7 @@
 framework, no third-party code, nothing kept in the browser.
 
 - `/` (`index.html`): what the app is, five screenshots of the demo caderneta, how it works in three steps, what it
-  does, the closed test (how to join, by e-mail to the contact address), questions (`<details>`, no script) and the
+  does, the closed test (join the testers' Google Group, then Play's opt-in, D153), questions (`<details>`, no script) and the
   privacy points (D151). Its claims follow the Play listing (`docs/play-console.md`): change one, check the other.
 - `/privacidade/`: built from `docs/privacy-policy.md` (cmark), which stays the one source; its draft note is dropped
   and its blanks filled in.
@@ -26,7 +26,7 @@ framework, no third-party code, nothing kept in the browser.
 ## Build and deploy
 
 ```bash
-tools/build-web.py --contact <public e-mail>     # web/dist/, with the online project's URL and publishable key
+tools/build-web.py --contact contato@roqlab.com.br     # D154; web/dist/, with the online project's URL and publishable key
 cd web && npx wrangler@4.150.0 deploy            # Cloudflare; the custom domain gets its DNS record by itself
 ```
 
