@@ -23,13 +23,13 @@ any install is never freed, so the "1" one is gone for good; its versionCodes do
 Each new upload needs a higher `versionCode` (`android/app/build.gradle.kts`). A code is taken as soon as a bundle is
 uploaded, even into a draft that's discarded: to change anything, build again with the next code. Released so far:
 0.0.1 (code 1, the app said 1.0) and code 2, which went out as "1.1" after a rebuild as 0.0.2 was refused for reusing
-code 2. Next: code 3, `0.0.3`.
+code 2. Next: code 3, `0.1.0` (the closed test's first build).
 
 After uploading, tag the commit the bundle was built from (commit first: never build a release from uncommitted
 changes) and push the tag (D139):
 
 ```bash
-git tag -a play/3 -m "Play internal testing: versionCode 3, versionName 0.0.3" && git push origin play/3
+git tag -a play/3 -m "Play closed testing: versionCode 3, versionName 0.1.0" && git push origin play/3
 ```
 
 `git tag -n1 -l 'play/*'` lists what went out; `git diff play/2 play/3` is what changed between two releases.
