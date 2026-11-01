@@ -4,6 +4,7 @@ For an agent working in the portfolio repo (`/home/roque/Documents/Projects/roql
 
 > **2026-11-01 (D151):** done and then some. The entry is now "Caderneta" (`#caderneta`, old `#getnf` links
 > redirect), with the Play screenshots and a link to the site. What follows is the original brief.
+
 Everything here is safe to publish: the screenshots and numbers come from the made-up demo caderneta, not real
 receipts.
 
