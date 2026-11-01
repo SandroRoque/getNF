@@ -52,6 +52,18 @@ class GetNFApp : Application() {
       },
     )
   }
+  /** Reports for the developer, waiting to be sent (D152). */
+  val feedback by lazy {
+    val prefs = getSharedPreferences("feedback", MODE_PRIVATE)
+    io.github.sandroroque.getnf.data.FeedbackOutbox(File(filesDir, "feedback"), crashLog.about) {
+      prefs.getString("install", null) ?: java.util.UUID.randomUUID().toString().also { prefs.edit().putString("install", it).commit() }
+    }
+  }
+  /** Keeps [text] for the developer and sends it as soon as there's a network. */
+  fun sendFeedback(kind: io.github.sandroroque.getnf.data.FeedbackOutbox.Kind, text: String) {
+    feedback.add(kind, text)
+    io.github.sandroroque.getnf.sync.FeedbackWorker.enqueue(this)
+  }
   val lookupBudget by lazy {
     val prefs = getSharedPreferences("sefaz", MODE_PRIVATE)
     LookupBudget(load = { prefs.getString("lookups", "") ?: "" }, save = { prefs.edit().putString("lookups", it).apply() })
@@ -85,6 +97,8 @@ class GetNFApp : Application() {
       // Push anything left over from a previous run (e.g. the app was killed mid-sync) and pull the server's changes
       // (D70). Not under instrumented tests: debug builds point at the real project.
       if (!underInstrumentation() && !accountSettings.demo) SyncWorker.enqueue(this@GetNFApp)
+      // Reports written while offline (D152).
+      if (!underInstrumentation() && feedback.pending().isNotEmpty()) io.github.sandroroque.getnf.sync.FeedbackWorker.enqueue(this@GetNFApp)
     }
   }
 

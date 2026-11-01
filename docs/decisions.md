@@ -3669,3 +3669,36 @@ portfolio still called the project getNF and said "Publicação em breve" with n
   decided).
 - **Not deployed.** The site builds with `tools/build-web.py --contact` (the contact address is still open, item 6
   of the milestone) and the portfolio deploys from its own repo; both wait for the user's go-ahead.
+
+## D152. Testers' reports go to a private inbox on the server and become tickets there; only the code is public (2026-10-31)
+
+Going through the closed test without a ticket system was a bad idea (the user's words): reports would arrive by
+four ways (D140's crash card, D145's refused rows, D146's comment, Play's private feedback), scattered over WhatsApp
+and e-mail, with nothing recording what was done about each. Google also asks, after the test, what testers said and
+what changed. Considered: GitHub Issues on the public repo (commits close them, but every ticket is public and has to
+be written around testers' details) or on the private getNF-business (private, but commits in getNF can't close
+them). Decided with the user: the ticket system's code is public, its rows aren't: both live in the Supabase project.
+
+- **Server** (`20261031000000_feedback_tickets.sql`): `feedback` (a report: kind `comentario` / `travamento` /
+  `sincronizacao`, the text, the app's version and phone, a random install id, the phone's time and the server's,
+  and triage: its ticket, or set aside with a note) and `ticket` (T-<id>: title, kind `bug` / `ideia` / `duvida`,
+  area, priority, state `aberto` / `andamento` / `resolvido` / `descartado`, notes, and when resolved the commit and
+  the version). Anyone with the app inserts a report, signed in or not, only its own columns; no role but the
+  service role reads anything, so a tester never sees another's report. A trigger turns away a 31st report from one
+  install in a day and a 301st from all in an hour (the publishable key is in every app; P0001, a 400 the app takes
+  as final). `tickets_abertos`, a view for the dashboard's table editor: open tickets, urgent and most reported first.
+- **Phone** (`data/FeedbackOutbox.kt`, `sync/FeedbackWorker.kt`): the three buttons write a report to a folder, and
+  WorkManager sends it when there's a network (retried with backoff; a refused one dropped). The account is never
+  attached: the install id (random, in the app's preferences) is what tells one phone's reports apart. "Enviar
+  comentário" now opens a sheet to write in, with "Prefiro mandar por outro app" (the share sheet, or e-mail once
+  `FEEDBACK_EMAIL` is set) kept one tap away; the crash card and "Enviar relatório" send directly. The demo's
+  comment row works the same (testers outside SC).
+- **Triage** (`tools/tickets.py`, with the secret key): `inbox`, `new`, `attach`, `drop`, `list`, `show`, `set`,
+  `note`, `resolve` (records HEAD's commit and the version), `discard`, `summary` (markdown for status.md). Claude
+  triages at the start of each session; commits and docs cite only the number ("T-12"), never a report's text.
+- **Privacy:** the reports now reach the project's server, so they're collected data: the privacy policy got a
+  section (what goes, who reads it, kept at most 12 months, deleted on request) and the Data safety answers changed
+  (Crash logs is a new row), to be updated in Play Console before the closed test's build.
+- **Checked:** pgTAP (93, 13 new), JVM tests for the outbox, and on the emulator against the local Supabase: a
+  comment sent signed out, one written in airplane mode that went when the network came back, a crash report from
+  the card, then a ticket made, reports attached and set aside, a note and a resolve, through the tool and the view.

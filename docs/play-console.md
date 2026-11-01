@@ -91,7 +91,8 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
 > cada preço; abas e botões mais fáceis de tocar; o app avisa quando fechou sozinho e o que não sincronizou; envie
 > comentários em Ajustes › Enviar comentário.
 
-- **Closed testing › feedback channel** (shown to testers): the public contact e-mail, once chosen (D146).
+- **Closed testing › feedback channel** (shown to testers): the public contact e-mail, once chosen (D146). The app's
+  own "Enviar comentário" goes to the server's inbox (D152), which is the channel to point testers to.
 - **Review login instructions** (App content › App access), in English for the reviewer:
 
 > The app works without an account. To see cadernetas and sync, sign in: tap the account icon at the top of Início ›

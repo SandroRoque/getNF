@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -266,33 +267,51 @@ private fun RefusedRows(app: GetNFApp, sync: SyncState) {
         kotlinx.coroutines.MainScope().launch { app.database.sync().unparkAll(); SyncWorker.enqueue(context) }
       }
       io.github.sandroroque.getnf.ui.calmo.Pill("Enviar relatório", ButtonKind.Outline) {
-        val send = Intent(Intent.ACTION_SEND).setType("text/plain")
-          .putExtra(Intent.EXTRA_SUBJECT, "Caderneta: alterações recusadas pelo servidor")
-          .putExtra(Intent.EXTRA_TEXT, io.github.sandroroque.getnf.data.SyncProblems.report(app.crashLog.about, rows))
-        context.startActivity(Intent.createChooser(send, "Enviar o relatório"))
+        app.sendFeedback(io.github.sandroroque.getnf.data.FeedbackOutbox.Kind.Refused,
+          io.github.sandroroque.getnf.data.SyncProblems.report(app.crashLog.about, rows))
+        android.widget.Toast.makeText(context, "Relatório enviado. Obrigado!", android.widget.Toast.LENGTH_SHORT).show()
       }
     }
   }
 }
 
 /**
- * "Enviar comentário" (D146): a message to the developer with the version and phone already written under it. To
- * [FEEDBACK_EMAIL] by e-mail once there's a public contact address; until then the share sheet, the person picks how.
+ * "Enviar comentário" (D146): a sheet to write it in, sent to the developer's inbox with the version and phone (D152),
+ * once there's a network. Another way stays one tap away: e-mail to [FEEDBACK_EMAIL] once there's a public address,
+ * until then the share sheet, the person picks how.
  */
 @Composable
 private fun FeedbackRow(app: GetNFApp) {
   val context = LocalContext.current
-  AmountRow("Enviar comentário", null, subtitle = "Um problema, uma ideia, uma dúvida", onClick = {
-    context.startActivity(feedbackIntent(app.crashLog.about))
-  })
+  var writing by remember { mutableStateOf(false) }
+  AmountRow("Enviar comentário", null, subtitle = "Um problema, uma ideia, uma dúvida", onClick = { writing = true })
+  if (!writing) return
+  var text by remember { mutableStateOf("") }
+  io.github.sandroroque.getnf.ui.catalog.CalmoSheet("Enviar comentário", onDismiss = { writing = false }) {
+    Sub("Um problema, uma ideia, uma dúvida. Vão junto a versão do app e o modelo do celular; seu nome e seu e-mail não.")
+    androidx.compose.material3.OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth(), minLines = 4, maxLines = 10,
+      placeholder = { Text("O que aconteceu, ou o que você gostaria") })
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      io.github.sandroroque.getnf.ui.calmo.Pill("Enviar", ButtonKind.Solid, enabled = text.isNotBlank()) {
+        app.sendFeedback(io.github.sandroroque.getnf.data.FeedbackOutbox.Kind.Comment, text.trim())
+        android.widget.Toast.makeText(context, "Enviado. Obrigado!", android.widget.Toast.LENGTH_SHORT).show()
+        writing = false
+      }
+      io.github.sandroroque.getnf.ui.calmo.Pill("Cancelar", ButtonKind.Ghost) { writing = false }
+    }
+    TextLink(if (FEEDBACK_EMAIL != null) "Prefiro mandar por e-mail" else "Prefiro mandar por outro app") {
+      context.startActivity(feedbackIntent(app.crashLog.about, text.trim()))
+      writing = false
+    }
+  }
 }
 
 /** The public contact address for feedback, once chosen (privacy policy, Play listing); null: the share sheet. */
 private val FEEDBACK_EMAIL: String? = null
 
-internal fun feedbackIntent(about: String): Intent {
+internal fun feedbackIntent(about: String, text: String = ""): Intent {
   val subject = "Caderneta: comentário"
-  val body = "\n\n\n---\n$about"
+  val body = "$text\n\n\n---\n$about"
   return FEEDBACK_EMAIL?.let { to ->
     Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).putExtra(Intent.EXTRA_EMAIL, arrayOf(to))
       .putExtra(Intent.EXTRA_SUBJECT, subject).putExtra(Intent.EXTRA_TEXT, body)

@@ -79,10 +79,13 @@ Caderneta. New ideas go to "After the open store", not into the code.
 
 Claude:
 1. ~~Parked sync rows shown in Ajustes~~ done (D145: "Não sincronizado", Tentar de novo, Enviar relatório).
-2. ~~"Enviar comentário" in Ajustes~~ done (D146); it e-mails once the user picks a public contact address.
+2. ~~"Enviar comentário" in Ajustes~~ done (D146); since D152 it and the crash and refused-rows reports go to a
+   private inbox on the server, triaged into tickets with `tools/tickets.py`. Online it needs `npx supabase db push`
+   (the user), and the privacy page redeployed.
 3. ~~The Play listing in pt-BR~~ done 2026-10-31: texts, release notes and review instructions in
    [play-console.md](play-console.md), screenshots retaken ([screenshots/play/](screenshots/play/)), the feature
-   graphic kept, Data safety checked (no change). Waits on the contact e-mail.
+   graphic kept. Data safety changed with D152 (reports reach the server: [play-data-safety.md](play-data-safety.md)).
+   Waits on the contact e-mail.
 4. Fixes from the user's review of the screens and from the shared caderneta with the father: these come first.
    Done from the first review: one purchase per receipt and the unit price first (D141), tappable things look
    tappable and full-width swiping tabs (D142), chart scrubbing (D143), the package's price on the chart (D144).
@@ -96,8 +99,8 @@ Claude:
    a run on the holdout sessions (totals only, as D89) to see whether it generalises beyond the 10 receipts it was
    tuned on; then measure on the second OCR pass (the saved JPEGs, as the app would read them) instead of the live
    frames' OCR the dumps keep.
-7. Install the current build on the user's phone: it has everything up to D144; D145–D150 (refused rows, Enviar
-   comentário, the capture's R1/R2/R4) aren't on it yet.
+7. Install the current build on the user's phone: it has everything up to D144; D145–D152 (refused rows, Enviar
+   comentário, the capture's R1/R2/R4, reports to the server) aren't on it yet.
 
 The user:
 1. Review the screens on the phone (the redesign, D81) and pass on what bothers.
@@ -107,6 +110,8 @@ The user:
 4. Play Console: the listing, the app content tasks, a closed testing track (Brazil, the testers' list), the upload.
 5. Rotate the database password; back up the upload key (see "Pending, by the user").
 6. Pick the public contact address (privacy policy, Play listing, "Enviar comentário", D146).
+6b. `npx supabase db push` for D152's tables (it also pushes D122's taxonomy labels if they aren't online yet), then
+   Play Console › Data safety updated as [play-data-safety.md](play-data-safety.md) says, before the 0.1.0 upload.
 7. Decide on the legal read: suggested, the closed test with the published privacy policy, the legal read before the
    open store.
 8. If possible, RJ receipts photographed with the app, for the photo reader.
@@ -114,6 +119,9 @@ The user:
    the QR code) can't be measured without them.
 
 **During the 14 days (0.1.x updates)**
+- Reports and tickets (D152): `python3 tools/tickets.py inbox` at the start of each session, triage, then
+  `tools/tickets.py summary` here. Play's private feedback and Android vitals come in by hand (the user pastes them,
+  or Claude reads the Console) and become tickets too.
 - Fixes from the testers and Android vitals, first.
 - The photo reader (D106): photos → the same receipt the page parser makes, checked by the print's own arithmetic,
   scored against the saved SC pages. The printed DANFE NFC-e follows a national layout, so the reader is also the way

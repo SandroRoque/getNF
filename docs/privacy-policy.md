@@ -17,6 +17,7 @@ Geral de Proteção de Dados, Lei 13.709/2018). Contato: **[e-mail de contato]**
   com quem você convidar para a sua caderneta.
 - As fotos das notas ficam no celular. Só saem dele se você ativar o envio, e só as de notas que o app não leu bem,
   com os dados do cartão e o CPF cobertos.
+- Comentários e relatórios de erro só saem do celular quando você toca em enviar, sem o seu nome nem o seu e-mail.
 - O CPF e o nome do comprador são removidos das páginas da SEFAZ antes de serem guardados.
 - Não há publicidade, não vendemos dados e não os usamos para traçar seu perfil.
 
@@ -46,6 +47,22 @@ Esses dados ficam no armazenamento privado do app. Não entram no backup automá
 - **Fotos, só com o envio ativado** (Ajustes › Ajudar a melhorar o app): as de notas que o app não conseguiu ler,
   recortadas, em tons de cinza, com o comprovante do cartão, qualquer CPF e o nome do operador cobertos. Servem para
   melhorar a leitura das notas.
+
+### Comentários e relatórios de erro (só quando você envia)
+
+Com ou sem conta, você pode mandar ao mantenedor um comentário (Ajustes › Enviar comentário), o relatório de um
+fechamento inesperado do app e o relatório de alterações que o servidor recusou. Cada um vai só quando você toca em
+enviar, e leva:
+
+- **o que você escreveu,** ou o relatório do erro: em que parte do app ele aconteceu e, no caso das alterações
+  recusadas, os dados dessas alterações (por exemplo, o nome de um produto ou a chave de uma nota);
+- **a versão do app, a versão do Android e o modelo do celular;**
+- **um identificador aleatório desta instalação,** criado pelo app, que só serve para saber que dois relatos vieram
+  do mesmo aparelho.
+
+Não vão o seu nome, o seu e-mail nem a sua conta. Os relatos ficam no servidor (Supabase, em São Paulo) e só o
+mantenedor os lê, para corrigir erros e melhorar o app. Se preferir, o mesmo comentário pode ir por outro app (e-mail,
+WhatsApp), à sua escolha.
 
 ### Caderneta compartilhada
 
@@ -79,13 +96,17 @@ você.
 
 - **Execução do serviço que você pede** (art. 7º, V): guardar e sincronizar suas notas e sua caderneta.
 - **Legítimo interesse** (art. 7º, IX): segurança, cópias de segurança e diagnóstico de falhas.
-- **Consentimento** (art. 7º, I): envio de fotos para melhorar o app, que você ativa e desativa em Ajustes.
+- **Consentimento** (art. 7º, I): envio de fotos para melhorar o app, que você ativa e desativa em Ajustes, e cada
+  comentário ou relatório de erro que você decide enviar.
 
 ## Por quanto tempo
 
 - No celular: até você apagar a nota, os dados do app ou desinstalá-lo.
 - No servidor: enquanto você tiver conta. Ao apagá-la, os dados são removidos na hora do banco, e das cópias de
   segurança em até 14 dias.
+- Comentários e relatórios de erro: enquanto servirem para corrigir o que relatam, e no máximo 12 meses. Como não
+  vão ligados à sua conta, para apagar um antes disso escreva para **[e-mail de contato]** dizendo o que enviou e
+  quando.
 - Em uma caderneta compartilhada que continua com outros membros, as notas e os itens que vieram de você ficam na
   caderneta, porque fazem parte do registro comum dela; suas fotos enviadas e as marcas de "escaneada por você" são
   apagadas. Antes de sair, você pode copiar suas notas para outra caderneta.

@@ -22,6 +22,8 @@ Explain Android-specific concepts briefly when they come up.
   are in `.env.local` at the repo root (a worktree uses the main checkout's). `npx supabase start` runs a local one
   (Docker); from the emulator it's `http://10.0.2.2:54321`. Schema changes go in `supabase/migrations/` as
   migrations; `npx supabase test db` runs the pgTAP tests.
+- Testers' reports and tickets live in Supabase, not the repo (D152): `python3 tools/tickets.py inbox` to triage. Cite
+  tickets by number ("T-12") in commits and docs, never a report's text.
 - `sudo` needs a password, so you can't run it. Put root steps in `tools/setup-system.sh` and ask the user to run it.
 
 ## Git

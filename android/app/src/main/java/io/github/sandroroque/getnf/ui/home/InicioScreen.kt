@@ -217,19 +217,18 @@ fun rememberCategoryColor(categories: List<CategoryNode>): (String?) -> Color {
   }
 }
 
-/** The app's last crash (D140): what happened, and a way to send it, through whatever app the person picks. */
+/** The app's last crash (D140): what happened, and a way to send it to the developer's inbox (D152). */
 @Composable
 private fun CrashCard(report: io.github.sandroroque.getnf.data.CrashLog.Report, onDone: () -> Unit) {
   val context = LocalContext.current
+  val app = context.applicationContext as GetNFApp
   LeadCard {
     Text("O app fechou sozinho", style = MaterialTheme.typography.titleSmall, color = Calmo.fg)
     Sub("Foi em ${Format.dateTime(report.at)}. O relatório mostra em que parte do app o erro aconteceu; mandar para " +
       "quem faz o app ajuda a corrigir.")
     Wide("Enviar o relatório", ButtonKind.Solid) {
-      val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
-        .putExtra(android.content.Intent.EXTRA_SUBJECT, "Caderneta: o app fechou sozinho")
-        .putExtra(android.content.Intent.EXTRA_TEXT, report.text)
-      context.startActivity(android.content.Intent.createChooser(send, "Enviar o relatório"))
+      app.sendFeedback(io.github.sandroroque.getnf.data.FeedbackOutbox.Kind.Crash, report.text)
+      android.widget.Toast.makeText(context, "Relatório enviado. Obrigado!", android.widget.Toast.LENGTH_SHORT).show()
       onDone()
     }
     Wide("Agora não", ButtonKind.Ghost, onClick = onDone)

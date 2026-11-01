@@ -107,6 +107,12 @@ class SupabaseClient(val url: String, private val key: String, private val http:
     }
   }
 
+  /** Inserts one row as nobody in particular (the `anon` role), for tables anyone with the app may write to (D152). */
+  fun insertAnonymous(table: String, row: JsonObject) {
+    call(Request.Builder().url(rest(table).build()).header("apikey", key).header("Prefer", "return=minimal")
+      .post(row.toString().toRequestBody(JSON)).build())
+  }
+
   /** Rows matching PostgREST [filters] (`column` to `op.value`), ordered and paged by the caller's filters. */
   fun select(session: SupabaseSession, table: String, filters: List<Pair<String, String>>): List<JsonObject> {
     val target = rest(table).addQueryParameter("select", "*").apply { filters.forEach { (k, v) -> addQueryParameter(k, v) } }.build()

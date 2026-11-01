@@ -43,10 +43,11 @@ Google's definitions.
 | Personal info › User IDs | Yes (account id) | No | No | Optional | App functionality, Account management |
 | Financial info › Purchase history | Yes (receipts, items, prices, stores, payment method) | No | No | Optional (only with an account) | App functionality |
 | Photos and videos › Photos | Yes (only with the opt-in, failed receipts, redacted) | No | No | Optional | Analytics (improving the reading of receipts) |
-| App activity › Other user-generated content | Yes (product names, categories, edits) | No | No | Optional | App functionality |
-| App info and performance › Diagnostics | Yes (ML Kit: error codes, events, performance) | No | No | Required (happens whenever the camera reads a receipt) | Analytics |
+| App activity › Other user-generated content | Yes (product names, categories, edits; comments the person sends, D152) | No | No | Optional | App functionality, Analytics |
+| App info and performance › Diagnostics | Yes (ML Kit: error codes, events, performance; the refused-rows report when the person sends it, D152) | No | No | Required (happens whenever the camera reads a receipt) | Analytics |
 | App info and performance › Other app performance data | Yes (ML Kit: latency, input/output sizes) | No | No | Required | Analytics |
-| Device or other IDs | Yes (ML Kit: a per-installation id) | No | No | Required | Analytics |
+| App info and performance › Crash logs | Yes (only when the person sends the report, D152) | No | No | Optional | Analytics |
+| Device or other IDs | Yes (ML Kit: a per-installation id; the app's own random install id, with a report) | No | No | Required | Analytics |
 
 **Not collected:** location (the store's address is on the receipt, but the device's location is never read), contacts,
 messages, audio, files outside the app, calendar, health, web browsing, installed apps, search history, financial
@@ -55,7 +56,13 @@ CPFs are covered in uploaded photos (D98).
 
 ## Things worth knowing
 
-- **Checked again 2026-10-31 (D140–D146): no change to the answers.** The crash report (D140), the refused-rows
+- **Changed 2026-10-31 (D152): the form must be updated in Play Console before the closed test's build.** Comments,
+  crash reports and refused-rows reports now go to the project's own server when the person taps send (they used to
+  go through another app the person picked). That makes them collected: **Crash logs** is a new row; **Other
+  user-generated content**, **Diagnostics** and **Device or other IDs** gain them (and Analytics). Still optional and
+  never shared; the account isn't attached. The privacy policy has a section for them.
+
+- **Checked 2026-10-31 (D140–D146), superseded by D152 above:** The crash report (D140), the refused-rows
   report (D145) and "Enviar comentário" (D146) leave the phone only when the person taps send and picks an app
   (Android's share sheet, or their own e-mail app once there's a contact address): a user-initiated transfer through
   another app, not data the app collects. The crash file itself stays on the phone. The barcode lookup (D130) searches
