@@ -277,8 +277,8 @@ private fun RefusedRows(app: GetNFApp, sync: SyncState) {
 
 /**
  * "Enviar comentário" (D146): a sheet to write it in, sent to the developer's inbox with the version and phone (D152),
- * once there's a network. Another way stays one tap away: e-mail to [FEEDBACK_EMAIL] once there's a public address,
- * until then the share sheet, the person picks how.
+ * once there's a network. Another way stays one tap away: an e-mail to [FEEDBACK_EMAIL] (D154), or the share sheet on
+ * a phone without an e-mail app.
  */
 @Composable
 private fun FeedbackRow(app: GetNFApp) {
@@ -299,20 +299,23 @@ private fun FeedbackRow(app: GetNFApp) {
       }
       io.github.sandroroque.getnf.ui.calmo.Pill("Cancelar", ButtonKind.Ghost) { writing = false }
     }
-    TextLink(if (FEEDBACK_EMAIL != null) "Prefiro mandar por e-mail" else "Prefiro mandar por outro app") {
-      context.startActivity(feedbackIntent(app.crashLog.about, text.trim()))
+    TextLink("Prefiro mandar por e-mail") {
+      val intent = feedbackIntent(app.crashLog.about, text.trim())
+      try { context.startActivity(intent) }
+      catch (_: android.content.ActivityNotFoundException) { context.startActivity(feedbackIntent(app.crashLog.about, text.trim(), email = null)) }
       writing = false
     }
   }
 }
 
-/** The public contact address for feedback, once chosen (privacy policy, Play listing); null: the share sheet. */
-private val FEEDBACK_EMAIL: String? = null
+/** The public contact address (D154): the site, the privacy policy and the Play listing carry the same one. */
+private const val FEEDBACK_EMAIL = "contato@roqlab.com.br"
 
-internal fun feedbackIntent(about: String, text: String = ""): Intent {
+/** An e-mail to [email]; with null, the share sheet, where the person picks how to send it. */
+internal fun feedbackIntent(about: String, text: String = "", email: String? = FEEDBACK_EMAIL): Intent {
   val subject = "Caderneta: comentário"
   val body = "$text\n\n\n---\n$about"
-  return FEEDBACK_EMAIL?.let { to ->
+  return email?.let { to ->
     Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).putExtra(Intent.EXTRA_EMAIL, arrayOf(to))
       .putExtra(Intent.EXTRA_SUBJECT, subject).putExtra(Intent.EXTRA_TEXT, body)
   } ?: Intent.createChooser(

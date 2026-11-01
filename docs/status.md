@@ -110,7 +110,8 @@ Claude:
 1. ~~Parked sync rows shown in Ajustes~~ done (D145: "Não sincronizado", Tentar de novo, Enviar relatório).
 2. ~~"Enviar comentário" in Ajustes~~ done (D146); since D152 it and the crash and refused-rows reports go to a
    private inbox on the server, triaged into tickets with `tools/tickets.py`. Online it needs `npx supabase db push`
-   (the user), and the privacy page redeployed.
+   (the user); the privacy page with its section is live. "Prefiro mandar por e-mail" writes to contato@roqlab.com.br
+   (D154), or opens the share sheet on a phone without an e-mail app.
 3. ~~The Play listing in pt-BR~~ done 2026-10-31: texts, release notes and review instructions in
    [play-console.md](play-console.md), screenshots retaken ([screenshots/play/](screenshots/play/)), the feature
    graphic kept. Data safety changed with D152 (reports reach the server: [play-data-safety.md](play-data-safety.md)).
