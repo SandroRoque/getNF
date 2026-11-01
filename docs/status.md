@@ -112,8 +112,8 @@ The user:
    `testadores-da-caderneta@googlegroups.com`, D153), the upload.
 5. Rotate the database password; back up the upload key (see "Pending, by the user").
 6. ~~Pick the public contact address~~ contato@roqlab.com.br (D154): routing to Gmail works (tested
-   2026-11-01) and the site carries it. Gmail sends as it through Resend's SMTP.
-   Left: Play's contact fields.
+   2026-11-01) and the site carries it. Gmail sends as it through Resend's SMTP, and
+   Play Console's contact uses it. Done.
 6b. `npx supabase db push` for D152's tables (it also pushes D122's taxonomy labels if they aren't online yet), then
    Play Console › Data safety updated as [play-data-safety.md](play-data-safety.md) says, before the 0.1.0 upload.
 7. Decide on the legal read: suggested, the closed test with the published privacy policy, the legal read before the
