@@ -92,7 +92,12 @@ Claude:
 5. 0.1.0 (code 3): the release checklist (CI ✓, `tools/check.sh`, the release build on the emulator and the phone,
    tag `play/3`, Android vitals three days later).
 6. ~~Start the photo reader's measurement~~ started (D147, D148): `PhotoReaderBenchTest`, now 455 of 499 items
-   exact, 11 of 29 sessions read exactly and trusted, no trusted reading wrong. Nothing in the app yet.
+   exact, 11 of 29 sessions read exactly and trusted, no trusted reading wrong. Nothing in the app yet. Next for it:
+   a run on the holdout sessions (totals only, as D89) to see whether it generalises beyond the 10 receipts it was
+   tuned on; then measure on the second OCR pass (the saved JPEGs, as the app would read them) instead of the live
+   frames' OCR the dumps keep.
+7. Install the current build on the user's phone: it has everything up to D144; D145–D150 (refused rows, Enviar
+   comentário, the capture's R1/R2/R4) aren't on it yet.
 
 The user:
 1. Review the screens on the phone (the redesign, D81) and pass on what bothers.
@@ -105,6 +110,8 @@ The user:
 7. Decide on the legal read: suggested, the closed test with the published privacy policy, the legal read before the
    open store.
 8. If possible, RJ receipts photographed with the app, for the photo reader.
+9. Two or three captures of a worn (faded) receipt, phone connected: R3 (the offer when the capture is stuck after
+   the QR code) can't be measured without them.
 
 **During the 14 days (0.1.x updates)**
 - Fixes from the testers and Android vitals, first.
@@ -127,8 +134,13 @@ The user:
 - The capture backlog ([capture-backlog.md](capture-backlog.md)).
 - The open items below.
 
+How the capture behaves, as a state machine: [capture-fsm.md](capture-fsm.md); the idealised redesign that was
+discussed and set aside for four rules: [capture-fsm-ideal.md](capture-fsm-ideal.md) (D149).
+
 Done before the milestone: the camera plan (D129–D138: a product's barcode looked up in every caderneta; one camera
-for receipts and products), CI on GitHub and the crash log (D140), Play upload tags (D139).
+for receipts and products), CI on GitHub and the crash log (D140), Play upload tags (D139), the workflow review of
+2026-10-31 (merged branches and stale worktrees removed, one branch per task in CLAUDE.md, the development Supabase
+left for later, the history rewrite awaiting a go-ahead).
 
 ## Open items
 
@@ -163,6 +175,10 @@ npx supabase start                                                  # local Supa
 
 Debug builds talk to the online Supabase with the URL and publishable key from `.env.local` at the repo root (a worktree falls
 back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` point the emulator at a local Supabase.
+Testing something that needs an account (D145's card) is done that way, against the local Supabase with a user made
+through its admin API (`SupabaseLocalTest.newUser` shows how), never on the online project. As of 2026-10-31 the
+emulator's debug build is the plain one again (online project, signed out, the demo caderneta restored for the
+screenshots).
 
 ## Tests
 
@@ -172,6 +188,8 @@ back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` poi
 - **Supabase:** `npx supabase test db` (pgTAP: isolation between cadernetas, roles, invites, leaving, the user-choice
   rule, the categorize queue). `SupabaseLocalTest` runs the phone's sync against the local Supabase when
   `GETNF_SUPABASE_LOCAL` is set.
+- **Photo reader:** `PhotoReaderBenchTest` with GETNF_BENCH (D147), after a capture benchmark run (it reads the
+  frames each session committed); `PhotoReceiptReaderTest` runs in CI on made-up OCR.
 - **Capture:** `tools/capture-bench.sh` (D89). Frame timings per branch: `tools/capture-timing.py` over the dumps'
   `timing.tsv` (D129). On the phone, before a release: `tools/device-bench.sh` (installs and removes only its own
   test APK, D129).
