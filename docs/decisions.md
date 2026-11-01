@@ -160,6 +160,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D147 | capture | current | The photo reader's measurement: a first reader and its benchmark against the saved pages; baseline 388 of 499 items, no trusted reading wrong |
 | D148 | capture | current | Photo reader: rows by their own slope, a GTIN's one unread digit, weighed items' right parts, the pharmacy's two-row layout; 455 of 499, 11 trusted, none wrong |
 | D149 | capture | current | Four rules instead of a new state machine; R1–R2: an attempt is provisional until its QR code, and a provisional one drops after 2.5 s without the paper |
+| D150 | capture | current | R4: "Recomeçar" on the capture screen once there's something to drop; asked first when it would lose photos or the code |
 
 ---
 
@@ -3631,4 +3632,14 @@ capture benchmark, which now replays them (proof: the phone's log of QR codes in
 the frame's OCR for sessions without a log) and reports drops; a drop in a receipt session counts as a regression.
 Debug dumps write `events.txt` beside `live.tsv`. Result: 0 regressions; the product sessions' committed photos 1 → 0
 (the A4 sheet's attempt drops once it's gone); no receipt session drops. Accepted as the baseline.
+
+## D150. R4: "Recomeçar" on the capture screen (2026-10-31)
+
+The fourth rule of D149: starting over no longer means leaving the capture and coming back. Under the hint and the
+count of rows read, a "Recomeçar" pill (white on the camera, like the hint) appears once the attempt has something to
+drop (rows assembled, a photo, or the QR code read), never in the product camera. When it would lose photos or the
+code it asks first ("Recomeçar a captura?", the photos and what was read are discarded, "Recomeçar" or "Continuar
+escaneando"); otherwise it starts over at once. It drops the attempt exactly as R1 does (`restartReceipt`: the
+session, its photos and its code), and debug dumps note it in `events.txt`. Checked on the emulator with a recorded
+receipt: 69 of 71 rows, 4 photos, QR read → "Recomeçar" → 0 rows, 0 photos, reading again.
 

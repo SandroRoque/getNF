@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import io.github.sandroroque.getnf.BuildConfig
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -88,6 +89,7 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOp
   // Once the person touches the torch, it is theirs: the capture no longer turns it on by itself.
   var torchTouched by remember { mutableStateOf(false) }
   var showMore by remember { mutableStateOf(false) }
+  var askRestart by remember { mutableStateOf(false) }
   val currentState by rememberUpdatedState(state)
   val exitDialogVisible by rememberUpdatedState(showExit)
   val controller = remember {
@@ -279,6 +281,10 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOp
         "${state.rows.count { it.captured }} de ${state.rows.size} linhas lidas · ${state.saved} ${if (state.saved == 1) "foto" else "fotos"}" +
           if (state.qr) " · QR Code lido" else "",
         color = onCamera.copy(alpha = .75f), style = MaterialTheme.typography.labelMedium)
+      // R4 (D150): start over without leaving, once there's something to drop. Asked first when it would lose photos or
+      // the code; otherwise at once.
+      if (!state.saving && !productOnly && state.mode != CameraMode.PRODUCT && (state.rows.isNotEmpty() || state.saved > 0 || state.qr))
+        CameraPill("Recomeçar") { if (state.saved > 0 || state.qr) askRestart = true else model.restart() }
       FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(10.dp),
         maxItemsInEachRow = if (landscape) 2 else 4) {
         RoundButton(io.github.sandroroque.getnf.ui.calmo.Icons.Focus, "Focar na nota") { focusOnReceipt() }
@@ -298,6 +304,13 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOp
   }
   if (sheet) ProductSheet(found, openLedger, ledgerNames, onOpenProduct = { sheet = false; onOpenProduct(it) },
     onDismiss = { sheet = false })
+  if (askRestart) io.github.sandroroque.getnf.ui.catalog.CalmoSheet("Recomeçar a captura?", onDismiss = { askRestart = false }) {
+    io.github.sandroroque.getnf.ui.calmo.Sub("As fotos e o que foi lido nesta tentativa são descartados, e a leitura volta do começo.")
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      io.github.sandroroque.getnf.ui.calmo.Pill("Recomeçar", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Solid) { askRestart = false; model.restart() }
+      io.github.sandroroque.getnf.ui.calmo.Pill("Continuar escaneando", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Ghost) { askRestart = false }
+    }
+  }
   if (showExit) io.github.sandroroque.getnf.ui.catalog.CalmoSheet("Sair sem terminar?", onDismiss = { showExit = false; model.setAttached(true) }) {
     io.github.sandroroque.getnf.ui.calmo.Sub("O QR Code já foi lido. As imagens desta tentativa são descartadas ao sair; as fotos anteriores desta nota ficam.")
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -351,6 +364,16 @@ private fun RoundButton(icon: androidx.compose.ui.graphics.vector.ImageVector, d
   Box(Modifier.size(48.dp).clip(CircleShape).background(if (selected) Color.White else Color.Black.copy(alpha = .45f))
     .clickable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
     Icon(icon, description, Modifier.size(22.dp), tint = if (selected) Color.Black else Color.White)
+  }
+}
+
+/** A labelled action over the camera, in the hint's look: white on a dark translucent pill, outlined. */
+@Composable
+private fun CameraPill(text: String, onClick: () -> Unit) {
+  Box(Modifier.clip(RoundedCornerShape(999.dp)).background(Color.Black.copy(alpha = .45f))
+    .border(1.dp, Color.White.copy(alpha = .6f), RoundedCornerShape(999.dp)).clickable(onClick = onClick)
+    .padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+    Text(text, color = Color.White, style = MaterialTheme.typography.labelLarge)
   }
 }
 

@@ -56,6 +56,10 @@ internal class CaptureViewModel(application: Application, private val productOnl
 
   fun setAttached(value: Boolean) { attached.set(value) }
 
+  fun restart() {
+    sessionThread.execute { try { controller.restart() } catch (failure: Exception) { report(failure) } }
+  }
+
   fun exit(choice: ExitChoice) {
     attached.set(false)
     sessionThread.execute { try { controller.exit(choice) } catch (failure: Exception) { report(failure) } }

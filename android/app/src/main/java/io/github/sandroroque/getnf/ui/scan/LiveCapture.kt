@@ -528,6 +528,15 @@ internal class CaptureController(
     publish(state)
   }
 
+  /** R4 (D150): the person drops this attempt (its photos and code too) and the capture starts over. */
+  fun restart() {
+    if (done) return
+    dump?.let { dir -> dumping.execute { File(dir, "events.txt").appendText("f%04d restarted by the person\n".format(frames)) } }
+    restartReceipt()
+    state = state.copy(outline = null, down = null, hint = CaptureHint.FIND_RECEIPT)
+    publish(state)
+  }
+
   fun exit(choice: ExitChoice) {
     if (done) return
     if (choice == ExitChoice.KEEP_CODE && manifest.chave != null) {
