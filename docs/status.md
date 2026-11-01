@@ -1,6 +1,6 @@
 # Status and next steps
 
-Last updated 2026-10-30. A handoff for picking the project up again. For *why* things are the way they are, read
+Last updated 2026-11-01. A handoff for picking the project up again. For *why* things are the way they are, read
 `docs/decisions.md` (D1–D150). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
@@ -74,6 +74,35 @@ Google lets a new personal account publish only after a closed test: at least 12
 days in a row (fewer than 12 on any day restarts the count; new versions during the test don't). The user wants it
 under way within 7 days, so 0.1 is the build that opens the closed test, Santa Catarina only, with the name
 Caderneta. New ideas go to "After the open store", not into the code.
+
+**Handoff, 2026-11-01 (a cloud session, no emulator or signing key; for the next session on the PC)**
+
+Done in that session: both sites refreshed (D151) and deployed; testers join the Google Group
+testadores-da-caderneta, then Play's opt-in (D153); contato@roqlab.com.br receives (Cloudflare Email Routing → Gmail)
+and sends (Gmail through Resend's SMTP), and is on the site, the policy and Play (D154); Cloudflare's injected Web
+Analytics beacon turned off by the user; `versionName` set to 0.1.0 (code 3, commit 57b9ae5). Nothing was built,
+uploaded or tagged, and the Play Console's closed track doesn't exist yet. The user chose to open the closed test
+with 0.1.0 rather than promote code 2 (whose "Enviar comentário" predates D152's inbox).
+
+Do next, in order, with the user (they've done none of it yet):
+1. **Online database first:** the user runs `npx supabase db push` (D152's `feedback`/`ticket` tables; without them
+   0.1.0's reports are refused), then checks `python3 tools/tickets.py inbox` answers. Data safety in Play Console
+   as [play-data-safety.md](play-data-safety.md) says.
+2. **0.1.0 release checklist** (item 5 below): `tools/check.sh`; `./gradlew :app:bundleRelease` (signs with
+   `~/.config/getnf/upload-key.jks`); the release APK on the emulator (signed out, demo, a capture from a recorded
+   video, Ajustes › Enviar comentário reaching the inbox) and on the user's phone (never connectedAndroidTest
+   there). Commit nothing uncommitted before building.
+3. **Play Console, closed testing** ([play-console.md](play-console.md) › "Opening the closed test"): Dashboard
+   tasks complete; track with Brazil, testers = Google Group `testadores-da-caderneta@googlegroups.com`, feedback
+   `contato@roqlab.com.br`; check the opt-in link equals the site's
+   `https://play.google.com/apps/testing/br.com.roqlab.caderneta` (if not, fix `web/index.html` and redeploy);
+   upload `app-release.aab`, release name `0.1.0`, notes from play-console.md; Send changes for review.
+4. Tag and push `play/3` on 57b9ae5 (or whatever commit the bundle was built from).
+5. While Google reviews: the user starts recruiting (the site's "Teste fechado" section is the link to send).
+   Android vitals three days after the first installs.
+
+Not done, waiting: dark screenshots for the sites (only Início has a current dark shot; the rest show light on both
+sites, D151), and the steps under "The user" below.
 
 **Next 7 days: open the closed test**
 
