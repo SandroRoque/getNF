@@ -34,6 +34,25 @@ git tag -a play/3 -m "Play internal testing: versionCode 3, versionName 0.0.3" &
 
 `git tag -n1 -l 'play/*'` lists what went out; `git diff play/2 play/3` is what changed between two releases.
 
+## Opening the closed test (D153)
+
+What makes the site's two steps work: a closed track whose testers are the Google Group, with a reviewed release.
+
+1. **Before:** every "Set up your app" task on the Dashboard done (App content below, the store listing with its
+   icon, feature graphic and screenshots). A closed release can't be sent for review without them.
+2. Test and release › Testing › **Closed testing** › the default track (or Create track) › Manage track.
+3. **Countries / regions:** Brazil.
+4. **Testers:** Google Groups, `testadores-da-caderneta@googlegroups.com`; feedback URL or e-mail: the contact
+   address. Save. The page then shows the opt-in link ("Join on the web"): it must match the site's
+   `https://play.google.com/apps/testing/br.com.roqlab.caderneta`.
+5. **Releases › Create new release:** either "Add from library" (a bundle already uploaded to internal testing,
+   promoted as is) or a new bundle (the next versionCode, tagged `play/<code>`). Release name = versionName, notes in
+   pt-BR (below). Next › Save › Publishing overview › **Send changes for review**.
+6. **Review:** Google reviews the first closed release; it can take from hours to several days. Until it's approved
+   the opt-in link says the app isn't available. After that, anyone in the group opts in and installs.
+7. **The count:** 12 testers opted in on each of 14 days in a row (Dashboard › the production access card shows it).
+   New releases during the test don't restart it; fewer than 12 on any day does.
+
 ## App content
 
 | Task | Answer | Why |
