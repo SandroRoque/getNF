@@ -3702,3 +3702,19 @@ them). Decided with the user: the ticket system's code is public, its rows aren'
 - **Checked:** pgTAP (93, 13 new), JVM tests for the outbox, and on the emulator against the local Supabase: a
   comment sent signed out, one written in airplane mode that went when the network came back, a crash report from
   the card, then a ticket made, reports attached and set aside, a note and a resolve, through the tool and the view.
+
+## D153. Testers join a Google Group on their own; the site no longer asks them to e-mail (2026-11-01)
+
+D151's closed-test section asked people to e-mail their Google account to the contact address. The user didn't want
+the page sending people to their inbox, and suggested a Google Form. A form still leaves the copying of each address
+into Play Console and telling each person when they can install. Play's closed testing accepts a Google Group as the
+testers' list, so the group is the list: a person joins it, opens Play's opt-in link, and installs; nobody waits on
+anyone.
+
+- **The group:** https://groups.google.com/g/testadores-da-caderneta, made by the user: findable on the web (so the
+  link works for people outside it), anyone can join without approval, members and conversations visible to managers
+  only, only managers post. It's a list, not a forum.
+- **The site:** two steps with two buttons, "1. Entrar no grupo" and "2. Aceitar o convite"
+  (`https://play.google.com/apps/testing/br.com.roqlab.caderneta`, the standard opt-in address for the package), then
+  14 days with the app. It says the members don't see each other and how to leave. The contact address stays only in
+  the footer. The opt-in link works once the closed track exists with the group as its testers.

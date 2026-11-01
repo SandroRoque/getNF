@@ -91,6 +91,10 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
 > cada preço; abas e botões mais fáceis de tocar; o app avisa quando fechou sozinho e o que não sincronizou; envie
 > comentários em Ajustes › Enviar comentário.
 
+- **Closed testing › testers** (D153): Google Groups, `testadores-da-caderneta@googlegroups.com`
+  (https://groups.google.com/g/testadores-da-caderneta: anyone can join, members and conversations visible to
+  managers only, posts by managers only). The opt-in link the site sends people to is
+  `https://play.google.com/apps/testing/br.com.roqlab.caderneta`; check it against the one the console shows.
 - **Closed testing › feedback channel** (shown to testers): the public contact e-mail, once chosen (D146). The app's
   own "Enviar comentário" goes to the server's inbox (D152), which is the channel to point testers to.
 - **Review login instructions** (App content › App access), in English for the reviewer:

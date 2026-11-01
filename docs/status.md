@@ -106,8 +106,10 @@ The user:
 1. Review the screens on the phone (the redesign, D81) and pass on what bothers.
 2. A shared caderneta with the father: invite, join, both scan, check "por" (code 2 already has it). The first real
    test of cadernetas with a second person.
-3. Recruit 15–20 testers (their Google account e-mails), from SC if possible: the critical item.
-4. Play Console: the listing, the app content tasks, a closed testing track (Brazil, the testers' list), the upload.
+3. Recruit 15–20 testers, from SC if possible: the critical item. They join themselves (D153): the site's
+   "Teste fechado" section, the group testadores-da-caderneta, then Play's opt-in link.
+4. Play Console: the listing, the app content tasks, a closed testing track (Brazil, testers: the Google Group
+   `testadores-da-caderneta@googlegroups.com`, D153), the upload.
 5. Rotate the database password; back up the upload key (see "Pending, by the user").
 6. Pick the public contact address (privacy policy, Play listing, "Enviar comentário", D146).
 6b. `npx supabase db push` for D152's tables (it also pushes D122's taxonomy labels if they aren't online yet), then
@@ -146,8 +148,8 @@ How the capture behaves, as a state machine: [capture-fsm.md](capture-fsm.md); t
 discussed and set aside for four rules: [capture-fsm-ideal.md](capture-fsm-ideal.md) (D149).
 
 Both sites refreshed (D151, 2026-11-01): roqlab's entry is Caderneta with current screens and a link; the site has
-how it works, questions and a closed-test section asking testers to e-mail the contact address. Not deployed yet:
-waits on the contact address and the user's go-ahead.
+how it works, questions and a closed-test section. Deployed 2026-11-01. Testers join a Google Group instead of
+e-mailing (D153).
 
 Done before the milestone: the camera plan (D129–D138: a product's barcode looked up in every caderneta; one camera
 for receipts and products), CI on GitHub and the crash log (D140), Play upload tags (D139), the workflow review of
