@@ -39,7 +39,8 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 
 /* Site pages (D105): the landing page and the privacy policy. */
 .top { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: 2.5rem; }
-.brand { font-family: Georgia, "Times New Roman", serif; font-size: 1.3rem; color: var(--ink); text-decoration: none; }
+.brand { font-family: Georgia, "Times New Roman", serif; font-size: 1.3rem; color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: .55rem; }
+.brand img { border-radius: 8px; }
 .top nav a { color: var(--muted); text-decoration: none; margin-left: 1rem; font-size: .95rem; }
 .top nav a:hover { color: var(--accent); }
 main.wide { max-width: 64rem; }
@@ -47,7 +48,7 @@ main.wide { max-width: 64rem; }
 .hero h1 { font-size: clamp(2rem, 5vw, 3rem); }
 .lead { font-size: 1.15rem; color: var(--muted); }
 .badge { display: inline-block; margin-top: .6rem; padding: .45rem .9rem; border: 1px solid var(--line); border-radius: 999px; font-size: .9rem; color: var(--muted); }
-.shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 2.5rem 0; }
+.shots { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; margin: 2.5rem 0 .5rem; }
 .shots figure { margin: 0; }
 .shots img { width: 100%; height: auto; display: block; border-radius: 22px; border: 1px solid var(--line); background: var(--surface); }
 .shots figcaption { font-size: .85rem; color: var(--muted); margin-top: .5rem; }
@@ -63,8 +64,36 @@ footer a { color: var(--muted); }
 .policy h2 { margin-top: 2rem; }
 .policy h3 { margin-top: 1.4rem; font-size: 1rem; }
 .policy li { margin: .3rem 0; }
-@media (max-width: 720px) {
-  .shots { grid-template-columns: repeat(3, 70%); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: .5rem; }
+/* Landing page sections (D151). */
+.actions { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.4rem 0 .4rem; }
+a.button { display: inline-block; padding: .65rem 1.3rem; border-radius: 999px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); text-decoration: none; }
+a.button.quiet { background: transparent; color: var(--ink); border-color: var(--line); }
+a.button:hover { opacity: .88; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+h2.title { font-family: Georgia, "Times New Roman", serif; font-weight: 500; font-size: clamp(1.5rem, 3.5vw, 2rem); line-height: 1.2; margin: .3rem 0 1rem; }
+section.block .eyebrow { margin-top: 0; }
+.steps { list-style: none; padding: 0 !important; margin: 1.5rem 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
+.steps h3, .test h3 { font-size: 1rem; margin: .3rem 0 .4rem; }
+.steps p { margin: 0; color: var(--muted); font-size: .95rem; }
+.features { row-gap: 2rem; margin-top: 1rem; }
+.features-head { margin-top: 3rem !important; }
+.test-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 2rem; align-items: start; margin-top: 1rem; }
+.test-grid .card { margin: 0; }
+.test-grid ol, .test-grid ul { padding-left: 1.2rem; }
+.test-grid li { margin: .45rem 0; }
+.faq details { border-bottom: 1px solid var(--line); padding: .85rem 0; max-width: 46rem; }
+.faq summary { cursor: pointer; font-weight: 600; }
+.faq summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.faq details p { color: var(--muted); margin: .6rem 0 .2rem; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+@media (max-width: 960px) {
+  .shots { grid-template-columns: repeat(5, 42%); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: .5rem; }
   .shots figure { scroll-snap-align: start; }
-  .features { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .shots { grid-template-columns: repeat(5, 68%); }
+  .features, .steps, .test-grid { grid-template-columns: 1fr; }
+  .top nav a { margin-left: .75rem; }
+  .top nav a[href="#como-funciona"] { display: none; }
 }

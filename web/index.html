@@ -5,53 +5,158 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'">
   <title>%APP% · notas fiscais, gastos e inflação pessoal</title>
-  <meta name="description" content="Um app Android que lê o QR Code da NFC-e e transforma cada item em histórico: quanto você gasta, em quê, onde, e quanto os preços que você paga subiram.">
+  <meta name="description" content="Um app Android que lê o QR Code da nota fiscal (NFC-e) e transforma cada item em histórico: quanto você gasta, em quê, onde, e quanto os preços que você paga subiram.">
+  <meta name="theme-color" content="#F6F5F1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141716" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="%APP%: da nota fiscal ao preço de cada coisa que você compra">
+  <meta property="og:description" content="Escaneie a nota fiscal e acompanhe seus gastos, seus preços e sua inflação. App Android, em teste em Santa Catarina.">
+  <meta property="og:url" content="https://caderneta.roqlab.com.br/">
+  <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/assets/site.css">
 </head>
 <body>
 <main class="wide">
   <header class="top">
-    <a class="brand" href="/">%APP%</a>
-    <nav><a href="/privacidade/">Privacidade</a><a href="https://roqlab.com.br">roqlab</a></nav>
+    <a class="brand" href="/"><img src="/assets/icon.svg" width="28" height="28" alt="">%APP%</a>
+    <nav><a href="#como-funciona">Como funciona</a><a href="#teste">Teste</a><a href="/privacidade/">Privacidade</a></nav>
   </header>
 
   <section class="hero">
-    <p class="eyebrow">Em desenvolvimento · Santa Catarina</p>
+    <p class="eyebrow">App Android · Santa Catarina</p>
     <h1>Da nota fiscal no papel ao preço de cada coisa que você compra.</h1>
-    <p class="lead">Um app Android que lê o QR Code da NFC-e, busca a nota na SEFAZ e transforma cada item em
-      histórico: quanto você gasta, em quê, onde, e quanto os preços que você paga subiram. Para uma pessoa ou para
-      a casa toda.</p>
-    <span class="badge">Em breve no Google Play</span>
+    <p class="lead">Aponte a câmera para o QR Code da nota fiscal e o %APP% guarda a nota inteira: cada item, o preço,
+      a loja e os descontos. Com o tempo, você vê para onde vai o dinheiro e quanto subiram os preços do que você
+      compra. Para uma pessoa ou para a casa toda.</p>
+    <p class="actions"><a class="button" href="#teste">Quero testar</a><a class="button quiet" href="#como-funciona">Como funciona</a></p>
+    <p class="small">Teste fechado no Google Play começando agora. Ainda não está na loja aberta.</p>
   </section>
 
-  <div class="shots">
-    <figure>
+  <div class="shots" role="list" aria-label="Telas do app">
+    <figure role="listitem">
       <picture><source srcset="/assets/inicio-dark.webp" media="(prefers-color-scheme: dark)">
-        <img src="/assets/inicio-light.webp" width="540" height="1200" alt="Tela inicial com os gastos de outubro por categoria e a inflação pessoal do mês."></picture>
+        <img src="/assets/inicio-light.webp" width="540" height="1015" alt="Tela inicial com os gastos de outubro por categoria, as decisões pendentes, a inflação pessoal do mês e as últimas notas."></picture>
       <figcaption>O mês, por categoria.</figcaption>
     </figure>
-    <figure>
-      <picture><source srcset="/assets/ipci-dark.webp" media="(prefers-color-scheme: dark)">
-        <img src="/assets/ipci-light.webp" width="540" height="1200" alt="Inflação pessoal com o gráfico do índice e a variação de cada mês." loading="lazy"></picture>
+    <figure role="listitem">
+      <img src="/assets/produto-light.webp" width="540" height="1015" alt="Histórico de preço do Café Montanha 500 g, com uma linha por loja e cada compra com data, loja e preço." loading="lazy">
+      <figcaption>O preço de cada produto, loja a loja.</figcaption>
+    </figure>
+    <figure role="listitem">
+      <img src="/assets/ipci-light.webp" width="540" height="1015" alt="Inflação pessoal de outubro, com o gráfico do índice e a variação de cada mês." loading="lazy">
       <figcaption>Sua inflação, não a média.</figcaption>
     </figure>
-    <figure>
-      <picture><source srcset="/assets/produto-dark.webp" media="(prefers-color-scheme: dark)">
-        <img src="/assets/produto-light.webp" width="540" height="1200" alt="Histórico de preço de um café por quilo, com uma linha por loja." loading="lazy"></picture>
-      <figcaption>O preço de cada produto, loja a loja.</figcaption>
+    <figure role="listitem">
+      <img src="/assets/gastos-light.webp" width="540" height="1015" alt="Gastos de outubro com barras de maio a outubro e as categorias do mês com sua parte no total." loading="lazy">
+      <figcaption>Mês a mês, por categoria ou por loja.</figcaption>
+    </figure>
+    <figure role="listitem">
+      <img src="/assets/nota-light.webp" width="540" height="1015" alt="Uma nota fiscal lida pelo app, com cada item, quantidade e preço." loading="lazy">
+      <figcaption>A nota inteira, item a item.</figcaption>
     </figure>
   </div>
   <p class="small">Interface real, dados fictícios.</p>
 
-  <section class="features">
-    <div><span class="index">01</span><h3>A captura se planeja sozinha</h3>
-      <p>Enquanto a câmera passa pela nota, o app lê as linhas impressas e guarda só as fotos que acrescentam algo.</p></div>
-    <div><span class="index">02</span><h3>Funciona sem servidor</h3>
-      <p>A página da SEFAZ é lida no próprio celular, e as fotos ficam nele. Com uma conta, a caderneta sincroniza e
-        pode ser dividida com a família.</p></div>
-    <div><span class="index">03</span><h3>Inflação pessoal honesta</h3>
-      <p>Cada produto é comparado com o próprio preço anterior. Trocar de marca muda o gasto, não a inflação; mês com
-        poucos dados não tem leitura.</p></div>
+  <section class="block" id="como-funciona">
+    <p class="eyebrow">Como funciona</p>
+    <h2 class="title">Três passos, e o resto o app faz.</h2>
+    <ol class="steps">
+      <li><span class="index">01</span><h3>Escaneie a nota</h3>
+        <p>Aponte a câmera para o QR Code e passe pela nota. O app lê as linhas impressas e guarda só as fotos que
+          acrescentam algo.</p></li>
+      <li><span class="index">02</span><h3>Busque na SEFAZ</h3>
+        <p>O app abre a página pública de consulta da nota, a mesma do navegador, e a lê no próprio celular. Se a
+          página pedir uma verificação, é só tocar em Validar.</p></li>
+      <li><span class="index">03</span><h3>Acompanhe</h3>
+        <p>Cada item vira histórico: gastos por categoria, produto e loja, o preço de cada coisa ao longo do tempo
+          e a sua inflação pessoal.</p></li>
+    </ol>
+  </section>
+
+  <p class="eyebrow features-head">O que ele faz</p>
+  <section class="features" aria-label="O que ele faz">
+    <div><h3>Pelo código de barras</h3>
+      <p>No mercado, aponte a câmera para um produto e veja quanto você já pagou por ele e em que loja.</p></div>
+    <div><h3>Inflação pessoal honesta</h3>
+      <p>Cada produto é comparado com o próprio preço anterior, por quilo ou litro quando o tamanho muda. Trocar de
+        marca muda o gasto, não a inflação; mês com poucos dados não tem leitura.</p></div>
+    <div><h3>Descontos de verdade</h3>
+      <p>Os descontos de cada item são lidos da foto da nota, então o preço guardado é o que você pagou.</p></div>
+    <div><h3>Categorias sozinhas</h3>
+      <p>Com uma conta, os itens novos ganham categoria automaticamente. Quando o app não tem certeza, ele pergunta
+        em Para você, e você confirma ou corrige.</p></div>
+    <div><h3>Uma caderneta para a casa</h3>
+      <p>Divida uma caderneta com quem mora com você: cada um escaneia as suas notas e todos veem tudo, com o nome de
+        quem escaneou.</p></div>
+    <div><h3>Funciona sem conta</h3>
+      <p>Sem conta, tudo fica no seu celular. Há uma cópia de segurança em um arquivo, e um exemplo com notas
+        inventadas para conhecer o app antes da primeira nota.</p></div>
+  </section>
+
+  <section class="block test" id="teste">
+    <p class="eyebrow">Teste fechado</p>
+    <h2 class="title">Ajude a abrir o %APP% para todo mundo.</h2>
+    <p>O Google só libera um app novo na loja depois de um teste fechado: pelo menos 12 pessoas com o app instalado
+      durante 14 dias seguidos. Se você mora em Santa Catarina e tem um celular Android, sua ajuda conta muito.</p>
+    <div class="test-grid">
+      <div class="card">
+        <h3>Para participar</h3>
+        <ol>
+          <li>Mande um e-mail para <a href="mailto:%CONTACT%?subject=Quero%20testar%20o%20%APP%">%CONTACT%</a> com o
+            endereço da sua Conta Google (o do Google Play).</li>
+          <li>Você recebe um convite para aceitar e o link para instalar pelo Google Play.</li>
+          <li>Mantenha o app instalado por 14 dias e escaneie as notas que puder.</li>
+        </ol>
+        <p><a class="button" href="mailto:%CONTACT%?subject=Quero%20testar%20o%20%APP%">Quero testar</a></p>
+      </div>
+      <div>
+        <h3>O que você precisa</h3>
+        <ul>
+          <li>Um celular Android.</li>
+          <li>Notas fiscais de consumidor (NFC-e) de Santa Catarina: as com QR Code, dos mercados, padarias e
+            farmácias.</li>
+          <li>Sem notas de SC, dá para ajudar mesmo assim: o exemplo com notas inventadas mostra o app inteiro.</li>
+        </ul>
+        <p class="small">Seu e-mail só é usado para a lista de testadores. Comentários e problemas: Ajustes › Enviar
+          comentário, no próprio app.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block faq">
+    <p class="eyebrow">Perguntas</p>
+    <details>
+      <summary>Por que só Santa Catarina?</summary>
+      <p>O app lê a página de consulta da nota de cada estado, e cada portal é diferente. Por enquanto só o de SC é
+        lido. A nota impressa segue um padrão nacional, e ler a nota direto das fotos é o caminho para outros
+        estados, ainda em desenvolvimento.</p>
+    </details>
+    <details>
+      <summary>Preciso criar uma conta?</summary>
+      <p>Não. Sem conta, tudo funciona no celular, menos a categoria automática dos itens novos. A conta serve para
+        guardar as notas online, usar mais de um celular e dividir uma caderneta com outras pessoas.</p>
+    </details>
+    <details>
+      <summary>Por que às vezes uma nota fica esperando?</summary>
+      <p>O portal da SEFAZ limita quantas notas uma mesma rede pode consultar por hora. O app espaça as consultas e
+        avisa antes de passar do limite; a nota fica salva e pode ser buscada depois. Ele também lembra de buscar as
+        que ficaram para trás.</p>
+    </details>
+    <details>
+      <summary>As fotos das notas vão para algum servidor?</summary>
+      <p>Não. As fotos ficam no seu celular. Só se você permitir, o app envia cópias das notas que ele não conseguiu
+        ler, com os dados do cartão, o CPF e o operador apagados, para melhorar a leitura.</p>
+    </details>
+    <details>
+      <summary>O app é da SEFAZ?</summary>
+      <p>Não. O %APP% não é da SEFAZ nem de nenhum órgão do governo. Ele abre a página pública de consulta da nota,
+        a mesma que você abriria pelo navegador.</p>
+    </details>
+    <details>
+      <summary>Quanto custa?</summary>
+      <p>Nada durante o teste. Não há anúncios, e nenhum dado é vendido.</p>
+    </details>
   </section>
 
   <section class="block">
@@ -59,13 +164,14 @@
     <ul>
       <li>Sem conta, tudo fica só no seu celular.</li>
       <li>O CPF e o nome do comprador são removidos das notas antes de serem guardadas.</li>
+      <li>Você pode apagar sua conta e seus dados quando quiser, no app ou nesta página.</li>
       <li>Sem anúncios. Nenhum dado é vendido.</li>
     </ul>
     <p><a href="/privacidade/">Política de privacidade</a> · <a href="/apagar-conta/">Apagar sua conta</a></p>
   </section>
 
   <footer>
-    <span>%APP% é um projeto do <a href="https://roqlab.com.br">roqlab</a>. Só lê notas de Santa Catarina por enquanto.</span>
+    <span>%APP% é um projeto do <a href="https://roqlab.com.br/#caderneta">roqlab</a>. Só lê notas de Santa Catarina por enquanto.</span>
     <a href="mailto:%CONTACT%">%CONTACT%</a>
   </footer>
 </main>

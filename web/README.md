@@ -3,7 +3,9 @@
 `caderneta.roqlab.com.br` (D105): a static Cloudflare Worker, like the roqlab portfolio. Plain HTML and CSS, no
 framework, no third-party code, nothing kept in the browser.
 
-- `/` (`index.html`): what the app is, three screenshots of the demo caderneta (light and dark), the privacy points.
+- `/` (`index.html`): what the app is, five screenshots of the demo caderneta, how it works in three steps, what it
+  does, the closed test (how to join, by e-mail to the contact address), questions (`<details>`, no script) and the
+  privacy points (D151). Its claims follow the Play listing (`docs/play-console.md`): change one, check the other.
 - `/privacidade/`: built from `docs/privacy-policy.md` (cmark), which stays the one source; its draft note is dropped
   and its blanks filled in.
 - `/apagar-conta/`: deleting an account without the app, the "delete account URL" Play asks for. Signs in with
@@ -17,7 +19,8 @@ framework, no third-party code, nothing kept in the browser.
   drops it at once, and uses it only to set the new password (`PUT /auth/v1/user`); nothing kept. Needs the project's
   URL and publishable key (`config.js`, written by the build, as for `/apagar-conta/`), and the address in Redirect
   URLs.
-- `assets/`: the shared stylesheet and the screenshots (540 px wide, from `docs/screenshots/`).
+- `assets/`: the shared stylesheet, the app's icon (`docs/brand/icon.svg`, also the favicon) and the screenshots: the
+  Play ones (`docs/screenshots/play/`) without the status bar, 540 px wide. Only Início has a current dark shot.
 - `_headers`: security headers the pages can't set themselves (`frame-ancestors`, HSTS).
 
 ## Build and deploy

@@ -3643,3 +3643,29 @@ escaneando"); otherwise it starts over at once. It drops the attempt exactly as 
 session, its photos and its code), and debug dumps note it in `events.txt`. Checked on the emulator with a recorded
 receipt: 69 of 71 rows, 4 photos, QR read → "Recomeçar" → 0 rows, 0 photos, reading again.
 
+
+## D151. The Caderneta on both sites: the name on roqlab, a fuller landing page that recruits testers (2026-11-01)
+
+The user asked to update and improve how the project is presented on roqlab.com.br and caderneta.roqlab.com.br.
+Both still showed the screens from before D141–D146 (the old scan button, the account dot, the "JEV" marks), and the
+portfolio still called the project getNF and said "Publicação em breve" with no link.
+
+- **The name on roqlab is Caderneta.** D105's brief kept getNF while a name was chosen; 0.1 goes to the closed test as
+  Caderneta (the Play listing, the site, `br.com.roqlab.caderneta`), so the portfolio follows. The entry is
+  `#caderneta`; `#getnf` and `#getnf-demo` still work (redirected in `app.js`, an anchor without script). The launcher
+  label in the app is untouched here.
+- **Screenshots from the Play set** (`docs/screenshots/play/`, 2026-10-31), the status bar cropped (it carried the
+  emulator's "3G"). No current dark shots exist except Início, so only Início follows the system's theme; the rest are
+  light on both sites. Retaking the dark ones is left for the next screenshot session.
+- **roqlab:** three phones (Início, a product, the IPCI), the barcode lookup and the shared caderneta in the copy,
+  status "Em desenvolvimento · teste fechado em breve", and "Conhecer o app ↗" to the site in place of "Publicação em
+  breve", with a line that it reads SC only and isn't SEFAZ's.
+- **caderneta.roqlab.com.br:** five screens, "Como funciona" in three steps, six features (all already in the app and
+  in the Play listing, nothing promised beyond it), a **Teste fechado** section, questions and the privacy points.
+  The tester section exists because recruiting 12+ testers is the milestone's critical item: it explains Google's
+  12-for-14-days rule and asks people to e-mail the contact address with their Google account. A form was rejected:
+  it needs a server or a third party, and the site keeps none. The questions answer what testers will ask (why only
+  SC, an account, a receipt waiting, photos, SEFAZ, cost: "nothing during the test", since nothing beyond that is
+  decided).
+- **Not deployed.** The site builds with `tools/build-web.py --contact` (the contact address is still open, item 6
+  of the milestone) and the portfolio deploys from its own repo; both wait for the user's go-ahead.

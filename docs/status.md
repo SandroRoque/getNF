@@ -126,7 +126,7 @@ The user:
 - System-1 / LLM: the LLM auditing System-1's sizes (D108, D110); then the LLM's new role (a capable model, run
   rarely, for rules, lexicon and disagreements).
 - Going public beyond the closed test (D105): positioning, the final name, the portfolio entry at roqlab.com.br
-  ([portfolio-brief.md](portfolio-brief.md)), a short manual. Running costs in [costs.md](costs.md). The site is live
+  ([portfolio-brief.md](portfolio-brief.md); the entry was renamed and refreshed in D151), a short manual. Running costs in [costs.md](costs.md). The site is live
   at https://caderneta.roqlab.com.br (landing page, `/privacidade/`, `/apagar-conta/`; `web/README.md` to redeploy).
 - Products: stores that print their own code instead of the GTIN can't be found by barcode
   ([camera-plan.md](camera-plan.md), parked: deterministic first); items without a barcode (scale labels) recognised
@@ -136,6 +136,10 @@ The user:
 
 How the capture behaves, as a state machine: [capture-fsm.md](capture-fsm.md); the idealised redesign that was
 discussed and set aside for four rules: [capture-fsm-ideal.md](capture-fsm-ideal.md) (D149).
+
+Both sites refreshed (D151, 2026-11-01): roqlab's entry is Caderneta with current screens and a link; the site has
+how it works, questions and a closed-test section asking testers to e-mail the contact address. Not deployed yet:
+waits on the contact address and the user's go-ahead.
 
 Done before the milestone: the camera plan (D129–D138: a product's barcode looked up in every caderneta; one camera
 for receipts and products), CI on GitHub and the crash log (D140), Play upload tags (D139), the workflow review of
