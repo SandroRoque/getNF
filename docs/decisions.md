@@ -3774,3 +3774,20 @@ through `tools/make-nfce-fixture.py` (which now takes RJ's page). The welcome st
 (RJ's portal uses Google Analytics) and the Play listing say SC and RJ. Other states' QR codes still open their
 portal and stop there; the photo reader (D106) remains the way to the rest.
 
+
+## D156. Bundles move through a rollout board with exit criteria per stage (2026-11-02)
+
+The user asked for a kanban for rolling out new bundles: the interface and the stages with the criteria to move
+between them. The stages follow what Play allows and what has bitten before: a code is spent on upload (code 2's
+rebuild), one active release per track, the first closed release needs Google's review, and production for a new
+personal account needs the 12-testers-for-14-days run first. So: Preparação → Verificação local → Teste interno →
+Revisão do Google → Teste fechado → Produção escalonada (10/50/100%) → Arquivo (concluded, superseded, discarded).
+Moving back stops at the first upload: after that a problem means discarding the card and a new code. The
+stability gates use Play's own bad-behaviour thresholds (1.09% crashes, 0.47% ANRs) rather than invented ones; dwell
+times (1 day internal, 7 days closed, 48 h per production step, 7 days at 100%) are the board's, small enough for a
+one-person project.
+
+The board is a claude.ai artifact with its own small database (cards, checks, history), private to the user, writable
+only by its editors; the stages live in its source ([rollout-board.html](rollout-board.html)) and in
+[rollout.md](rollout.md), changed together. Not in Supabase: it's the developer's tool, not the app's data. Seeded
+with codes 1 and 2 (archived, superseded) and code 3, 0.1.0, in internal testing.

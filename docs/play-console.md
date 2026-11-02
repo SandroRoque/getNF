@@ -32,6 +32,8 @@ changes) and push the tag (D139):
 git tag -a play/3 -m "Play closed testing: versionCode 3, versionName 0.1.0" && git push origin play/3
 ```
 
+Each bundle's way from here to production, and what it needs at each step, is [rollout.md](rollout.md) (D156).
+
 `git tag -n1 -l 'play/*'` lists what went out; `git diff play/2 play/3` is what changed between two releases.
 
 ## Opening the closed test (D153)

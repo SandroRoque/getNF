@@ -1,0 +1,484 @@
+<title>Rollout da Caderneta</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a header with the release in flight, the board (one column per stage, scrolls sideways inside its own box),
+   then the reference: every stage with its exit criteria. Palette from the Caderneta site (web/assets/site.css). */
+:root {
+  --bg: #F6F5F1; --surface: #FFFFFF; --sunk: #ECEBE5; --ink: #242D29; --muted: #58645D; --line: #D6DDD3;
+  --accent: #255D4C; --accent-soft: #DCEAE3; --danger: #B5523B; --danger-soft: #F6E1DA; --note: #FBF3E8; --ok: #2F7A4F;
+  --display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141716; --surface: #1D2120; --sunk: #181B1A; --ink: #E7ECE8; --muted: #A1ACA5; --line: #313835;
+  --accent: #7FBFA8; --accent-soft: #23342E; --danger: #E58A72; --danger-soft: #3A2620; --note: #2A2521; --ok: #79C595;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #141716; --surface: #1D2120; --sunk: #181B1A; --ink: #E7ECE8; --muted: #A1ACA5; --line: #313835;
+  --accent: #7FBFA8; --accent-soft: #23342E; --danger: #E58A72; --danger-soft: #3A2620; --note: #2A2521; --ok: #79C595;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+.wrap { max-width: 92rem; margin: 0 auto; padding-block: 1.5rem 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { text-wrap: balance; }
+h1 { font: 600 1.9rem/1.15 var(--display); margin: .15rem 0 .4rem; }
+h2 { font: 600 1.35rem/1.2 var(--display); margin: 0; }
+.eyebrow { margin: 0; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; font-size: .75rem; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+a { color: var(--accent); }
+button { font: inherit; cursor: pointer; border-radius: 999px; padding: .45rem 1rem; border: 1px solid var(--ink);
+  background: var(--ink); color: var(--bg); }
+button.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+button:disabled { opacity: .4; cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input, textarea, select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 8px; padding: .45rem .6rem; width: 100%; }
+label.field { display: grid; gap: .25rem; font-size: .85rem; color: var(--muted); }
+
+header.top { display: flex; flex-wrap: wrap; gap: 1rem 2rem; align-items: end; justify-content: space-between;
+  padding-bottom: 1.2rem; border-bottom: 1px solid var(--line); }
+.top .lead { margin: 0; color: var(--muted); max-width: 60ch; }
+.top .side { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+#state { font-size: .85rem; color: var(--muted); }
+#state.err { color: var(--danger); }
+
+.board-box { overflow-x: auto; margin: 1.2rem 0 0; padding-bottom: .6rem; scroll-snap-type: x proximity; }
+.board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(15.5rem, 1fr); gap: .75rem; min-height: 16rem; }
+@media (max-width: 640px) { .board { grid-auto-columns: 82%; } }
+.col { background: var(--sunk); border-radius: 12px; padding: .75rem; display: flex; flex-direction: column; gap: .6rem;
+  scroll-snap-align: start; min-width: 0; }
+.col-head { display: grid; gap: .15rem; }
+.col-head .row { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; }
+.col-head h3 { margin: 0; font: 600 1rem/1.25 var(--display); }
+.col-head .num { font-family: var(--mono); font-size: .75rem; color: var(--muted); }
+.col-head p { margin: 0; font-size: .8rem; color: var(--muted); }
+.wip { font-family: var(--mono); font-size: .72rem; color: var(--muted); border: 1px solid var(--line);
+  border-radius: 999px; padding: 0 .45rem; white-space: nowrap; }
+.wip.full { color: var(--accent); border-color: var(--accent); }
+.empty { font-size: .8rem; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; padding: .7rem;
+  text-align: center; }
+
+.card { text-align: left; width: 100%; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 10px; padding: .7rem .75rem; display: grid; gap: .45rem; }
+.card:hover { border-color: var(--accent); }
+.card.blocked { border-color: var(--danger); background: linear-gradient(var(--danger-soft), var(--danger-soft)) top / 100% 4px no-repeat, var(--surface); }
+.card .ver { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; }
+.card .name { font: 600 1.15rem/1.1 var(--display); }
+.card .code { font-family: var(--mono); font-size: .78rem; color: var(--muted); }
+.card .meta { display: flex; flex-wrap: wrap; gap: .3rem .7rem; font-size: .78rem; color: var(--muted); }
+.bar { height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+.pill { display: inline-block; font-size: .72rem; padding: .05rem .5rem; border-radius: 999px; }
+.pill.block { background: var(--danger-soft); color: var(--danger); }
+.pill.ready { background: var(--accent-soft); color: var(--accent); }
+.pill.pct { background: var(--accent-soft); color: var(--accent); font-family: var(--mono); }
+.arch { display: grid; gap: .3rem; }
+.arch button.card { padding: .45rem .6rem; gap: .1rem; }
+.arch .card .name { font-size: .95rem; }
+.outcome { font-size: .72rem; color: var(--muted); }
+
+/* Detail dialog */
+dialog { border: 0; padding: 0; background: var(--surface); color: var(--ink); border-radius: 14px;
+  width: min(40rem, calc(100vw - 24px)); max-height: calc(100dvh - 24px); box-shadow: 0 20px 60px rgb(0 0 0 / .25); }
+dialog::backdrop { background: rgb(20 23 22 / .45); }
+.dlg { display: grid; gap: 1.1rem; padding: 1.25rem 1.25rem 1.4rem; }
+.dlg-head { display: flex; justify-content: space-between; gap: 1rem; align-items: start; }
+.dlg-head h2 { font-size: 1.6rem; }
+.x { background: transparent; color: var(--muted); border: 0; font-size: 1.4rem; line-height: 1; padding: .2rem .4rem; }
+.steps { display: flex; gap: 3px; }
+.steps span { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.steps span.done { background: var(--accent); }
+.steps span.now { background: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+@media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+.checks li { display: grid; grid-template-columns: 1.3rem 1fr; gap: .5rem; align-items: start; }
+.checks input { width: 1.05rem; height: 1.05rem; margin: .15rem 0 0; accent-color: var(--accent); }
+.checks .auto { width: 1.05rem; height: 1.05rem; margin-top: .15rem; border-radius: 4px; border: 1.5px solid var(--line);
+  display: grid; place-items: center; font-size: .7rem; color: var(--bg); }
+.checks .auto.on { background: var(--ok); border-color: var(--ok); }
+.checks small { display: block; color: var(--muted); font-size: .8rem; }
+.box { background: var(--note); border-radius: 10px; padding: .7rem .85rem; font-size: .9rem; }
+.box.danger { background: var(--danger-soft); color: var(--ink); }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.hist { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; font-size: .85rem; }
+.hist time { font-family: var(--mono); font-size: .78rem; color: var(--muted); margin-right: .4rem; }
+details.sec > summary { cursor: pointer; font-weight: 600; }
+
+/* Reference */
+.ref { margin-top: 3rem; display: grid; gap: 1.5rem; }
+.ref-head { display: grid; gap: .3rem; max-width: 70ch; }
+.ref-head p { margin: 0; color: var(--muted); }
+.rules { margin: 0; padding-left: 1.1rem; display: grid; gap: .35rem; max-width: 75ch; }
+.stagedefs { display: grid; grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr)); gap: 1rem; }
+.def { border-top: 2px solid var(--ink); padding-top: .7rem; display: grid; gap: .5rem; align-content: start; min-width: 0; }
+.def h3 { margin: 0; font: 600 1.1rem/1.2 var(--display); display: flex; gap: .55rem; align-items: baseline; }
+.def h3 .num { font-family: var(--mono); font-size: .8rem; color: var(--muted); font-weight: 400; }
+.def p { margin: 0; font-size: .9rem; }
+.def .lbl { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: .2rem; }
+.def ul { margin: 0; padding-left: 1.05rem; display: grid; gap: .25rem; font-size: .88rem; }
+.def ul .auto-tag { font-family: var(--mono); font-size: .7rem; color: var(--accent); margin-left: .3rem; }
+@media (prefers-reduced-motion: no-preference) { .card { transition: border-color .15s; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Caderneta · br.com.roqlab.caderneta</p>
+      <h1>Rollout de bundles</h1>
+      <p class="lead">Cada cartão é um bundle (um versionCode). Ele só avança quando todos os critérios de saída da
+        etapa estão marcados. Os critérios estão em <a href="#etapas">Etapas e critérios</a>, mais abaixo.</p>
+    </div>
+    <div class="side">
+      <span id="state">Carregando o quadro…</span>
+      <button id="new-btn" type="button">Novo bundle</button>
+    </div>
+  </header>
+
+  <div class="board-box" aria-label="Quadro de rollout"><div class="board" id="board"></div></div>
+
+  <section class="ref" id="etapas">
+    <div class="ref-head">
+      <p class="eyebrow">Referência</p>
+      <h2>Etapas e critérios</h2>
+      <p>O mesmo texto está em <span class="mono">docs/rollout.md</span>, no repositório. Critérios marcados como
+        automático são calculados pelo quadro.</p>
+    </div>
+    <ol class="rules" id="rules"></ol>
+    <div class="stagedefs" id="defs"></div>
+  </section>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlg-title"><div class="dlg" id="dlg-body"></div></dialog>
+
+<script>
+(() => {
+  const DAY = 86400000;
+  // Stages and their exit criteria. Kept in sync with docs/rollout.md.
+  const STAGES = [
+    { id: 'preparo', name: 'Preparação', purpose: 'Escopo, versão e o que precisa estar online antes do build.',
+      enter: 'Um versionCode novo é reservado para uma versão.',
+      exit: [
+        { id: 'versao', t: 'versionCode e versionName novos em android/app/build.gradle.kts', h: 'Código nunca enviado antes, nem em rascunho descartado.' },
+        { id: 'escopo', t: 'Escopo fechado: tudo o que entra já está em main', h: 'Tickets resolvidos citados nos commits (T-n).' },
+        { id: 'notas', t: 'Notas da versão em pt-BR em docs/play-console.md', h: 'Até 500 caracteres, nada prometido que o app não faz.' },
+        { id: 'online', t: 'Migrações do Supabase que a versão usa já aplicadas no projeto online', h: 'npx supabase db push, antes do build.' },
+        { id: 'privacidade', t: 'Data safety, política de privacidade e ficha da loja conferidas', h: 'Só muda algo se a versão coleta, envia ou promete algo novo.' },
+      ], fail: 'Escopo crescendo: corte e deixe para o próximo código.' },
+    { id: 'verificacao', name: 'Verificação local', purpose: 'O build release, no emulador e no celular, antes de qualquer envio.',
+      enter: 'Escopo fechado e versão definida.',
+      exit: [
+        { id: 'check', t: 'tools/check.sh passa e o CI do commit em main está verde' },
+        { id: 'build', t: 'bundleRelease gerado de um commit, sem mudanças locais', h: 'Anote o commit no cartão.' },
+        { id: 'emulador', t: 'APK release no emulador: sem conta, exemplo, captura de vídeo, Enviar comentário', h: 'Os relatórios chegam em tools/tickets.py inbox.' },
+        { id: 'celular', t: 'APK release no celular, instalado por cima da versão anterior', h: 'A atualização preserva notas e conta. Nunca connectedAndroidTest com o celular ligado.' },
+        { id: 'bloqueantes', t: 'Nenhum ticket bloqueante aberto que esta versão deveria fechar' },
+      ], fail: 'Falhou um item: corrija em main, gere de novo. Se o bundle já foi enviado ao Play, o código está gasto: volte a Preparação com o próximo.' },
+    { id: 'interno', name: 'Teste interno', wip: 1, purpose: 'O bundle no Play, só para você. Pega o que só aparece instalado pela loja.',
+      enter: 'Verificação local completa.',
+      exit: [
+        { id: 'upload', t: 'Enviado ao teste interno e tag play/<código> enviada no commit do build' },
+        { id: 'play', t: 'Instalado pelo Google Play no celular; abre e lê uma nota real', h: 'Gasta uma consulta do limite da SEFAZ-SC.' },
+        { id: 'prelaunch', t: 'Relatório de pré-lançamento sem falhas novas', h: 'Testar e lançar › Relatório de pré-lançamento.' },
+        { id: 'dia', auto: b => daysIn(b) >= 1, t: 'Ao menos 1 dia nesta etapa', h: 'Automático.' },
+        { id: 'vitals', t: 'Android vitals sem falhas ou ANRs novos' },
+      ], fail: 'Falha ou crash: descarte, corrija e recomece com o próximo código.' },
+    { id: 'revisao', name: 'Revisão do Google', wip: 1, purpose: 'O mesmo bundle promovido ao teste fechado, esperando a revisão.',
+      enter: 'Teste interno sem problemas.',
+      exit: [
+        { id: 'release', t: 'Release no teste fechado com o mesmo bundle (Adicionar da biblioteca)', h: 'Nome da release = versionName, notas coladas.' },
+        { id: 'enviado', t: 'Enviada: Visão geral da publicação › Enviar alterações para revisão' },
+        { id: 'aprovado', t: 'Aprovada pelo Google' },
+        { id: 'optin', t: 'O link de participação abre e instala', h: 'play.google.com/apps/testing/br.com.roqlab.caderneta' },
+      ], fail: 'Reprovada: descarte com o motivo, corrija e recomece em Preparação com o próximo código.' },
+    { id: 'fechado', name: 'Teste fechado', wip: 1, purpose: 'Com os testadores do grupo. Mede estabilidade com uso real.',
+      enter: 'Aprovada e disponível para o grupo.',
+      exit: [
+        { id: 'sete', auto: b => daysIn(b) >= 7, t: 'Ao menos 7 dias nesta etapa', h: 'Automático.' },
+        { id: 'estab', t: 'Vitals: taxa de falhas abaixo de 1,09% e ANR abaixo de 0,47%', h: 'Os limites de mau comportamento do Play.' },
+        { id: 'tickets', t: 'Inbox triada (tools/tickets.py inbox) e nenhum bloqueante aberto' },
+        { id: 'acesso', t: 'Acesso à produção liberado', h: 'Só na primeira vez: 12 testadores por 14 dias seguidos.' },
+        { id: 'loja', t: 'Ficha da loja revisada para o público geral' },
+      ], fail: 'Problema grave: corrija com um novo código, que substitui este no teste fechado.' },
+    { id: 'producao', name: 'Produção escalonada', wip: 1, steps: [10, 50, 100], purpose: 'Liberação gradual na loja aberta: 10%, 50%, 100%.',
+      enter: 'Teste fechado estável e acesso à produção.',
+      exit: [
+        { id: 'etapa', t: '48 h na porcentagem atual com falhas abaixo de 1,09% e ANR abaixo de 0,47%', h: 'Marque a cada porcentagem; subir desmarca.' },
+        { id: 'cem', auto: b => (b.rollout || 0) >= 100, t: 'Rollout em 100%', h: 'Automático.' },
+        { id: 'semana', auto: b => (b.rollout || 0) >= 100 && daysSince(b.at100) >= 7, t: '7 dias em 100% sem regressão', h: 'Automático.' },
+        { id: 'status', t: 'docs/status.md atualizado com a versão em produção' },
+      ], fail: 'Pico de falhas ou perda de dados: interrompa o rollout no Play e bloqueie o cartão; a correção vem com outro código.' },
+  ];
+  const ARCHIVE = { id: 'arquivo', name: 'Arquivo', purpose: 'Concluídos, substituídos e descartados. Um código nunca volta.' };
+  const OUTCOMES = { concluido: 'Concluído', substituido: 'Substituído', descartado: 'Descartado' };
+  const RULES = [
+    'Um cartão por versionCode. O código fica gasto no primeiro envio ao Play, mesmo se o rascunho for descartado.',
+    'Teste interno, revisão, teste fechado e produção aceitam um bundle por vez: o Play tem uma release ativa por faixa. Um novo bundle que entra numa delas tira o anterior, que vai ao arquivo como substituído.',
+    'Avançar exige todos os critérios de saída da etapa e nenhum bloqueio. Voltar é sempre permitido, exceto depois de enviado ao Play, quando o caminho é descartar.',
+    'Bloqueio: qualquer etapa pode ser bloqueada com um motivo (crash, perda de dados, reprovação). O cartão fica vermelho até ser desbloqueado ou descartado.',
+    'Todo envio ao Play recebe a tag play/<código> no commit do build (D139).',
+  ];
+
+  const $ = s => document.querySelector(s);
+  const h = (tag, attrs, ...kids) => {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v == null || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k === 'value') el.value = v;
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else if (k in el && typeof v !== 'string') el[k] = v;
+      else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : String(c));
+    return el;
+  };
+  const now = () => Date.now();
+  const daysSince = iso => iso ? (now() - Date.parse(iso)) / DAY : 0;
+  const daysIn = b => daysSince(b.enteredAt);
+  const ago = iso => {
+    if (!iso) return '';
+    const d = daysSince(iso);
+    if (d < 1) { const hr = Math.max(0, Math.floor(d * 24)); return hr <= 1 ? 'há menos de 2 h' : `há ${hr} h`; }
+    const n = Math.floor(d); return n === 1 ? 'há 1 dia' : `há ${n} dias`;
+  };
+  const fmt = iso => { try { return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return iso; } };
+  const stageOf = id => STAGES.find(s => s.id === id);
+  const stageIdx = id => STAGES.findIndex(s => s.id === id);
+  const isChecked = (b, st, item) => item.auto ? !!item.auto(b) : !!(b.checks && b.checks[st.id] && b.checks[st.id][item.id]);
+  const progress = (b, st) => { const done = st.exit.filter(i => isChecked(b, st, i)).length; return { done, total: st.exit.length }; };
+  const canAdvance = (b, st) => !b.blocked && progress(b, st).done === progress(b, st).total;
+
+  let db = null, user = null, canWrite = true, bundles = [], openCode = null, pending = null;
+  const queues = {};
+  const setState = (msg, err) => { const s = $('#state'); s.textContent = msg; s.classList.toggle('err', !!err); };
+
+  // One write at a time per document.
+  function write(code, fn) {
+    const q = (queues[code] || Promise.resolve()).then(fn).catch(e => {
+      if (e && e.code === 'invalid_argument') { canWrite = false; render(); }
+      setState(e && e.code === 'quota_exceeded' ? 'O quadro está cheio: apague bundles antigos.' : 'Não foi possível salvar. Tente de novo.', true);
+    });
+    queues[code] = q; return q;
+  }
+  const ref = code => db.collection('bundles').doc(String(code));
+  const byCode = code => bundles.find(b => b.code === code);
+
+  function patch(b, fields, histNote) {
+    const upd = { ...fields, updatedAt: new Date().toISOString() };
+    if (histNote) upd.history = [...(b.history || []), { at: upd.updatedAt, note: histNote }];
+    return write(b.code, () => ref(b.code).update(upd));
+  }
+
+  function move(b, toId, note, extra) {
+    const at = new Date().toISOString();
+    const from = b.stage;
+    const name = toId === 'arquivo' ? `Arquivo (${OUTCOMES[extra.outcome]})` : stageOf(toId).name;
+    const fields = { stage: toId, enteredAt: at, ...extra };
+    const fromName = from === 'arquivo' ? 'Arquivo' : stageOf(from).name;
+    return patch(b, fields, `${fromName} → ${name}${note ? ': ' + note : ''}`);
+  }
+
+  // ---------- board ----------
+  function card(b) {
+    const st = stageOf(b.stage);
+    const p = st ? progress(b, st) : null;
+    const ready = st && canAdvance(b, st);
+    return h('button', { type: 'button', class: 'card' + (b.blocked ? ' blocked' : ''), onclick: () => openDetail(b.code),
+        'aria-label': `${b.name}, código ${b.code}` },
+      h('div', { class: 'ver' }, h('span', { class: 'name' }, b.name || '—'), h('span', { class: 'code' }, `código ${b.code}`)),
+      p && h('div', { class: 'bar', title: `${p.done} de ${p.total} critérios` }, h('i', { style: `width:${p.total ? p.done / p.total * 100 : 0}%` })),
+      h('div', { class: 'meta' },
+        p && h('span', { class: 'mono' }, `${p.done}/${p.total}`),
+        h('span', null, ago(b.enteredAt)),
+        b.commit && h('span', { class: 'mono' }, b.commit.slice(0, 7)),
+        st && st.steps && h('span', { class: 'pill pct' }, `${b.rollout || st.steps[0]}%`),
+        b.blocked && h('span', { class: 'pill block' }, 'Bloqueado'),
+        ready && h('span', { class: 'pill ready' }, 'Pronto para avançar')));
+  }
+
+  function render() {
+    const board = $('#board'); board.replaceChildren();
+    STAGES.forEach((st, i) => {
+      const here = bundles.filter(b => b.stage === st.id).sort((a, b) => b.code - a.code);
+      board.append(h('section', { class: 'col', 'aria-label': st.name },
+        h('div', { class: 'col-head' },
+          h('div', { class: 'row' }, h('h3', null, h('span', { class: 'num' }, `${i + 1} `), st.name),
+            st.wip && h('span', { class: 'wip' + (here.length >= st.wip ? ' full' : ''), title: 'Limite: uma release por faixa no Play' }, `${here.length}/${st.wip}`)),
+          h('p', null, st.purpose)),
+        here.length ? here.map(card) : h('div', { class: 'empty' }, 'Nenhum bundle aqui')));
+    });
+    const arch = bundles.filter(b => b.stage === 'arquivo').sort((a, b) => b.code - a.code);
+    board.append(h('section', { class: 'col', 'aria-label': ARCHIVE.name },
+      h('div', { class: 'col-head' }, h('div', { class: 'row' }, h('h3', null, ARCHIVE.name), h('span', { class: 'wip' }, String(arch.length))),
+        h('p', null, ARCHIVE.purpose)),
+      arch.length ? h('div', { class: 'arch' }, arch.map(b => h('button', { type: 'button', class: 'card', onclick: () => openDetail(b.code) },
+        h('div', { class: 'ver' }, h('span', { class: 'name' }, b.name || '—'), h('span', { class: 'code' }, `código ${b.code}`)),
+        h('span', { class: 'outcome' }, `${OUTCOMES[b.outcome] || 'Arquivado'} · ${fmt(b.enteredAt)}`))))
+        : h('div', { class: 'empty' }, 'Vazio')));
+    $('#new-btn').hidden = !db || !canWrite;
+    if (openCode != null && $('#dlg').open) drawDetail();
+  }
+
+  // ---------- reference ----------
+  function renderRef() {
+    $('#rules').replaceChildren(...RULES.map(r => h('li', null, r)));
+    $('#defs').replaceChildren(...STAGES.map((st, i) => h('article', { class: 'def' },
+      h('h3', null, h('span', { class: 'num' }, String(i + 1).padStart(2, '0')), st.name),
+      h('p', null, st.purpose + (st.wip ? ' Um bundle por vez.' : '')),
+      h('div', { class: 'lbl' }, 'Entra quando'), h('p', null, st.enter),
+      h('div', { class: 'lbl' }, 'Sai quando'),
+      h('ul', null, st.exit.map(it => h('li', null, it.t, it.auto && h('span', { class: 'auto-tag' }, 'automático')))),
+      h('div', { class: 'lbl' }, 'Se der errado'), h('p', null, st.fail))),
+      h('article', { class: 'def' }, h('h3', null, h('span', { class: 'num' }, '—'), ARCHIVE.name), h('p', null, ARCHIVE.purpose),
+        h('div', { class: 'lbl' }, 'Entra quando'),
+        h('ul', null, h('li', null, 'Concluído: saiu de Produção escalonada com tudo marcado.'),
+          h('li', null, 'Substituído: um código mais novo entrou na mesma faixa do Play.'),
+          h('li', null, 'Descartado: reprovado, com crash ou abandonado, sempre com o motivo.'))));
+  }
+
+  // ---------- detail ----------
+  function openDetail(code) { openCode = code; pending = null; drawDetail(); const d = $('#dlg'); if (!d.open) d.showModal(); }
+  function closeDetail() { $('#dlg').close(); }
+  $('#dlg').addEventListener('close', () => { openCode = null; pending = null; });
+  $('#dlg').addEventListener('click', e => { if (e.target === e.currentTarget) closeDetail(); });
+
+  function drawDetail() {
+    const body = $('#dlg-body');
+    if (openCode === 'new') return drawNew(body);
+    const b = byCode(openCode); if (!b) { closeDetail(); return; }
+    const st = stageOf(b.stage); const i = stageIdx(b.stage);
+    const ro = !canWrite || !db;
+    const kids = [];
+    kids.push(h('div', { class: 'dlg-head' },
+      h('div', null, h('p', { class: 'eyebrow' }, st ? `Etapa ${i + 1} de ${STAGES.length} · ${st.name}` : `Arquivo · ${OUTCOMES[b.outcome] || ''}`),
+        h('h2', { id: 'dlg-title' }, `${b.name || '—'} `, h('span', { class: 'mono muted', style: 'font-size:.9rem' }, `código ${b.code}`))),
+      h('button', { type: 'button', class: 'x', 'aria-label': 'Fechar', onclick: closeDetail }, '×')));
+    kids.push(h('div', { class: 'steps', 'aria-hidden': 'true' }, STAGES.map((s, k) => h('span', { class: st ? (k < i ? 'done' : k === i ? 'now' : '') : (b.outcome === 'concluido' ? 'done' : '') }))));
+
+    if (b.blocked) kids.push(h('div', { class: 'box danger' }, h('strong', null, 'Bloqueado: '), b.blocked));
+    if (b.stage === 'arquivo' && b.outcomeNote) kids.push(h('div', { class: 'box' }, b.outcomeNote));
+
+    const field = (label, key, opts = {}) => h('label', { class: 'field' }, label,
+      h(opts.area ? 'textarea' : 'input', { id: `f-${key}`, value: b[key] || '', rows: opts.area ? 3 : null, disabled: ro,
+        placeholder: opts.ph || null, class: opts.mono ? 'mono' : null,
+        onchange: e => { const v = e.target.value.trim(); if (v !== (b[key] || '')) patch(b, { [key]: v }); } }));
+    kids.push(h('div', { class: 'grid2' }, field('versionName', 'name', { mono: true }), field('Commit do build', 'commit', { mono: true, ph: 'ex.: cbf3798' })));
+    kids.push(field('Notas', 'notes', { area: true, ph: 'O que entra, tickets (T-n), links' }));
+
+    if (st) {
+      const p = progress(b, st);
+      kids.push(h('div', null, h('p', { class: 'eyebrow', style: 'margin-bottom:.5rem' }, `Critérios de saída · ${p.done} de ${p.total}`),
+        h('ul', { class: 'checks' }, st.exit.map(it => {
+          const on = isChecked(b, st, it);
+          const box = it.auto ? h('span', { class: 'auto' + (on ? ' on' : ''), role: 'img', 'aria-label': on ? 'cumprido' : 'pendente' }, on ? '✓' : '')
+            : h('input', { type: 'checkbox', id: `c-${st.id}-${it.id}`, checked: on, disabled: ro,
+                onchange: e => patch(b, { checks: { [st.id]: { [it.id]: e.target.checked } } }) });
+          return h('li', null, box, h('label', { for: it.auto ? null : `c-${st.id}-${it.id}` }, it.t, it.h && h('small', null, it.h)));
+        }))));
+      if (st.steps) {
+        const pct = b.rollout || st.steps[0]; const next = st.steps.find(s => s > pct);
+        kids.push(h('div', { class: 'box' }, `Rollout em ${pct}%.`, next ? ` Para subir a ${next}%, marque o critério de 48 h.` : ' Em 100% desde ' + fmt(b.at100) + '.',
+          next && !ro && h('div', { class: 'actions', style: 'margin-top:.5rem' }, h('button', { type: 'button', disabled: !(b.checks && b.checks.producao && b.checks.producao.etapa) || !!b.blocked,
+            onclick: () => patch(b, { rollout: next, checks: { producao: { etapa: false } }, ...(next >= 100 ? { at100: new Date().toISOString() } : {}) }, `Rollout ${pct}% → ${next}%`) }, `Subir para ${next}%`))));
+      }
+      kids.push(h('p', { class: 'muted', style: 'margin:0;font-size:.85rem' }, h('strong', null, 'Se der errado: '), st.fail));
+    }
+
+    if (!ro) kids.push(actions(b, st, i));
+    if (b.history && b.history.length) kids.push(h('details', { class: 'sec' }, h('summary', null, `Histórico (${b.history.length})`),
+      h('ul', { class: 'hist', style: 'margin-top:.6rem' }, [...b.history].reverse().map(e => h('li', null, h('time', null, fmt(e.at)), e.note)))));
+    body.replaceChildren(...kids);
+  }
+
+  function actions(b, st, i) {
+    const wrap = h('div', { style: 'display:grid;gap:.7rem' });
+    if (pending) {
+      const p = pending;
+      const ta = h('input', { id: 'reason', placeholder: p.ph || '', value: p.value || '' });
+      const go = () => { const v = ta.value.trim(); if (p.needs && !v) { ta.focus(); return; } pending = null; p.run(v); };
+      wrap.append(h('div', { class: 'box' + (p.danger ? ' danger' : '') }, h('div', null, p.msg),
+        p.needs !== undefined && h('label', { class: 'field', style: 'margin-top:.5rem' }, p.label || 'Motivo', ta),
+        h('div', { class: 'actions', style: 'margin-top:.6rem' }, h('button', { type: 'button', class: p.danger ? 'danger' : null, onclick: go }, p.ok),
+          h('button', { type: 'button', class: 'ghost', onclick: () => { pending = null; drawDetail(); } }, 'Cancelar'))));
+      return wrap;
+    }
+    if (b.stage === 'arquivo') return wrap;
+    const ask = p => { pending = p; drawDetail(); const r = $('#reason'); if (r) r.focus(); };
+    const row = h('div', { class: 'actions' });
+    const last = i === STAGES.length - 1;
+    const next = last ? null : STAGES[i + 1];
+    const ok = canAdvance(b, st);
+    const advance = () => {
+      if (last) return ask({ msg: 'Concluir esta versão e mandar o cartão para o arquivo?', ok: 'Concluir', run: () => move(b, 'arquivo', '', { outcome: 'concluido' }) });
+      const occ = next.wip ? bundles.filter(x => x.stage === next.id && x.code !== b.code) : [];
+      const extra = next.steps ? { rollout: next.steps[0] } : {};
+      if (occ.length) return ask({ msg: `${occ.map(x => `${x.name} (código ${x.code})`).join(', ')} está em ${next.name}. Ao avançar, ele vai para o arquivo como substituído.`,
+        ok: `Avançar e substituir`, run: async () => { for (const x of occ) await move(x, 'arquivo', `pelo código ${b.code}`, { outcome: 'substituido' }); await move(b, next.id, '', extra); } });
+      move(b, next.id, '', extra);
+    };
+    row.append(h('button', { type: 'button', disabled: !ok, title: ok ? null : (b.blocked ? 'Desbloqueie primeiro' : 'Marque todos os critérios de saída'), onclick: advance },
+      last ? 'Concluir' : `Avançar para ${next.name}`));
+    const sent = stageIdx(b.stage) >= stageIdx('interno');
+    if (i > 0 && !sent) row.append(h('button', { type: 'button', class: 'ghost', onclick: () => move(b, STAGES[i - 1].id, '', {}) }, `Voltar para ${STAGES[i - 1].name}`));
+    row.append(b.blocked
+      ? h('button', { type: 'button', class: 'ghost', onclick: () => patch(b, { blocked: null }, 'Desbloqueado') }, 'Desbloquear')
+      : h('button', { type: 'button', class: 'ghost', onclick: () => ask({ msg: 'O que impede este bundle de seguir?', needs: true, ph: 'ex.: crash ao abrir a câmera (T-14)', ok: 'Bloquear', danger: true,
+          run: v => patch(b, { blocked: v }, 'Bloqueado: ' + v) }) }, 'Bloquear'));
+    row.append(h('button', { type: 'button', class: 'danger', onclick: () => ask({ msg: `Descartar o código ${b.code}? Ele não pode ser reenviado; a correção vai num código novo.`, needs: true,
+      ph: 'ex.: reprovado na revisão por…', ok: 'Descartar', danger: true, run: v => move(b, 'arquivo', v, { outcome: 'descartado', outcomeNote: v, blocked: null }) }) }, 'Descartar'));
+    wrap.append(row);
+    return wrap;
+  }
+
+  function drawNew(body) {
+    const nextCode = bundles.reduce((m, b) => Math.max(m, b.code), 0) + 1;
+    const code = h('input', { id: 'n-code', type: 'number', min: '1', value: String(nextCode), class: 'mono' });
+    const name = h('input', { id: 'n-name', placeholder: 'ex.: 0.1.1', class: 'mono' });
+    const notes = h('textarea', { id: 'n-notes', rows: 3, placeholder: 'O que entra, tickets (T-n)' });
+    const msg = h('p', { class: 'muted', style: 'margin:0;font-size:.85rem' }, 'Entra em Preparação.');
+    const create = async e => {
+      e.preventDefault();
+      const c = parseInt(code.value, 10);
+      if (!(c > 0)) { msg.textContent = 'O versionCode é um número inteiro maior que zero.'; code.focus(); return; }
+      if (byCode(c)) { msg.textContent = `O código ${c} já tem um cartão. Códigos nunca se repetem.`; code.focus(); return; }
+      if (!name.value.trim()) { msg.textContent = 'Informe o versionName.'; name.focus(); return; }
+      const at = new Date().toISOString();
+      closeDetail();
+      write(c, () => ref(c).set({ code: c, name: name.value.trim(), commit: '', notes: notes.value.trim(), stage: 'preparo', enteredAt: at,
+        createdAt: at, updatedAt: at, checks: {}, blocked: null, history: [{ at, note: 'Criado em Preparação' }] }));
+    };
+    body.replaceChildren(h('form', { style: 'display:grid;gap:1rem', onsubmit: create },
+      h('div', { class: 'dlg-head' }, h('div', null, h('p', { class: 'eyebrow' }, 'Novo cartão'), h('h2', { id: 'dlg-title' }, 'Novo bundle')),
+        h('button', { type: 'button', class: 'x', 'aria-label': 'Fechar', onclick: closeDetail }, '×')),
+      h('div', { class: 'grid2' }, h('label', { class: 'field' }, 'versionCode', code), h('label', { class: 'field' }, 'versionName', name)),
+      h('label', { class: 'field' }, 'Notas', notes), msg,
+      h('div', { class: 'actions' }, h('button', { type: 'submit' }, 'Criar'), h('button', { type: 'button', class: 'ghost', onclick: closeDetail }, 'Cancelar'))));
+  }
+  $('#new-btn').addEventListener('click', () => openDetail('new'));
+
+  // ---------- data ----------
+  renderRef(); render();
+  (async () => {
+    const c = window.claude;
+    if (!c || !c.use) { setState('Abra esta página no claude.ai para ver o quadro.', true); return; }
+    try { user = await c.use('user'); } catch { user = null; }
+    if (user) { try { canWrite = user.can ? (await user.can('data.write')) !== false : true; } catch { canWrite = true; } }
+    db = await c.use('db');
+    if (!db) { setState('Entre na sua conta para ver o quadro.', true); render(); return; }
+    let timer = setTimeout(() => setState('O quadro ainda não respondeu. Os dados podem estar desatualizados.', true), 10000);
+    db.collection('bundles').onSnapshot(snap => {
+      bundles = snap.docs.map(d => ({ ...d.data() })).filter(b => typeof b.code === 'number');
+      if (!snap.metadata.fromCache) { clearTimeout(timer); setState(canWrite ? `${bundles.filter(b => b.stage !== 'arquivo').length} em andamento` : 'Somente leitura'); }
+      render();
+    }, () => { clearTimeout(timer); setState('O quadro parou de atualizar. Recarregue a página.', true); });
+    setInterval(render, 10 * 60000); // day counters
+  })();
+})();
+</script>
