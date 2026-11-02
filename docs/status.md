@@ -104,8 +104,8 @@ Do next, in order, with the user:
    Dashboard's setup tasks are all done (sign-in details with the review account `contato+revisao@roqlab.com.br`,
    content rating Livre, target audience 18+, Data safety, advertising ID, financial features, health, category Finance,
    contact, the store listing named Caderneta with icon, feature graphic and the 9:16 screenshots), and closed testing
-   is unlocked. The track "Closed testing - Alpha" exists, empty: next, its release (code 3), testers (the Google Group),
-   Brazil, then Publishing overview › Send for review.
+   is unlocked. **Submitted for review 2026-11-02** on "Closed testing - Alpha" (code 3, Brazil, the Google Group,
+   feedback contato@): see [releases/3.md](releases/3.md). Next: wait for Google, then check the opt-in link and recruit.
    Cloudflare Email Routing's subaddressing turned on 2026-11-02 (with the user's go-ahead): `contato+<x>@roqlab.com.br`
    reaches the Gmail too, for review and test accounts; the review account's first confirmation had bounced before it.
 2. **0.1.0 release checklist** (item 5 below): `tools/check.sh`; `./gradlew :app:bundleRelease` (signs with
