@@ -88,7 +88,9 @@ fun MainNavigation() {
   var scanInDemo by remember { mutableStateOf(false) }
   fun tab(key: NavKey) { if (backStack.size != 1 || root != key) { backStack.clear(); backStack.add(key) } }
   fun open(key: NavKey) { if (key == Scan && demo) scanInDemo = true else backStack.add(key) }
-  fun back() { backStack.removeLastOrNull() }
+  // Never the last screen: a screen on its way out still takes taps, so a quick double tap on "Voltar" (or a key that
+  // clicks it) would empty the stack, which NavDisplay refuses with a crash.
+  fun back() { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
   fun enterDemo() { scope.launch { Demo.enter(context) } }
 
   // The first start (D115): the welcome, unless there are receipts already (an update, or a restore).
