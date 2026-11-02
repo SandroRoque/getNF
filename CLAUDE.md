@@ -36,6 +36,8 @@ Explain Android-specific concepts briefly when they come up.
   its session ends, and tell the user about stale worktrees rather than leaving them to pile up.
 - Never commit build output (`build/`, APKs, bundles); check `git status` before committing new modules.
 - Every Play upload is tagged `play/<versionCode>` on the commit it was built from (D139, `docs/play-console.md`).
+- An app change pushed to main is a card on the rollout board (`docs/rollout.md`, D157): register or move it if you
+  have the Artifact tools, otherwise tell the user. Bundles are cut by the rules there, not per change.
 
 
 
