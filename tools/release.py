@@ -270,6 +270,8 @@ def cmd_check():
 
 
 def main(argv):
+    if git("rev-parse", "--is-shallow-repository") == "true":
+        raise SystemExit("this clone is shallow: commit ranges would be wrong (git fetch --unshallow --tags first)")
     if len(argv) >= 1 and argv[0] == "pending":
         return cmd_pending()
     if len(argv) == 2 and argv[0] == "contents":
