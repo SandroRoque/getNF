@@ -70,8 +70,9 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 
 ## Next: milestone 0.1, the closed test (set 2026-10-31)
 
-Google lets a new personal account publish only after a closed test: at least 12 testers opted in for the last 14
-days in a row (fewer than 12 on any day restarts the count; new versions during the test don't). The user wants it
+Google lets a new personal account apply for production only after a closed test: at least 12 testers, each opted
+in continuously for the 14 days before applying (per tester: one who leaves and rejoins starts over; new versions
+during the test don't restart it; Google then decides, see play-console.md). The user wants it
 under way within 7 days, so 0.1 is the build that opens the closed test, Santa Catarina only, with the name
 Caderneta. New ideas go to "After the open store", not into the code. Exception, asked by the user on 2026-11-02:
 **Rio de Janeiro's receipts are read too (D155)**, so testers there capture real receipts; 0.1.0 is built from a
@@ -87,10 +88,13 @@ Analytics beacon turned off by the user; `versionName` set to 0.1.0 (code 3, com
 uploaded or tagged, and the Play Console's closed track doesn't exist yet. The user chose to open the closed test
 with 0.1.0 rather than promote code 2 (whose "Enviar comentário" predates D152's inbox).
 
-Changes and bundles are on the rollout board (D156, D157, [rollout.md](rollout.md)): 0.1.0 (code 3) is in Teste
-interno. Move its card as these steps get done; the next bundle is cut by the rules there.
+**Releases are in the repo since D158** ([rollout.md](rollout.md), [releases/3.md](releases/3.md)): 0.1.0 (code 3) is
+`internal`; its manifest lists the checks still open (CI link, the phone over code 2, tickets, Data safety, the
+pre-launch report, the AAB's hash). `tools/release.py pending` shows what testers don't have yet. Steps 2 and 4 below
+are done (built from cbf3798, tagged `play/3`); what remains of 3 is the closed track, sent for review with the same
+bundle. The user's own account must leave internal testing to see the closed track (play-console.md, item 8).
 
-Do next, in order, with the user (they've done none of it yet):
+Do next, in order, with the user:
 1. ~~Online database first~~ done 2026-11-01: `db push` run by the user; a report sent with the publishable key
    reached `tools/tickets.py inbox` and was deleted, anonymous reads are refused. Still to do: Data safety in Play
    Console as [play-data-safety.md](play-data-safety.md) says. 0.1.0 built 2026-11-02 from cbf3798 (RJ, Voltar's
@@ -268,11 +272,11 @@ screenshots).
   them the Play app can't be updated.
 - The Play app (`br.com.roqlab.caderneta`, created again 2026-10-30, [play-console.md](play-console.md)) is in Internal
   testing: 0.0.1 (code 1, tag `play/1`) and code 2 (shows "1.1", D119–D128, tag `play/2`; D139), published 2026-10-30 22:xx and still reaching the
-  phone. The next upload is code 3, `0.0.3`, already set in `build.gradle.kts`. The user's father is to create an
+  phone. Code 3 (0.1.0, tag `play/3`) replaced it on 2026-11-02 ([releases/3.md](releases/3.md)). The user's father is to create an
   account from the Play app once code 2 reaches him; none existed at 22:25. Optional: a service account for
   publishing from the command line (play-console.md would need a `tools/play-publish.py`; not made). The old app (`getNF`, `io.github.sandroroque.getnf`) stays installed, since its photos
   exist only on that phone, until the user decides about them. Before going public: the app content tasks, a review
-  login, new screenshots, 12 testers for 14 days in closed testing.
+  login, new screenshots, 12 testers each opted in for 14 days in a row in closed testing.
 - From another device on the LAN (the phone on Wi-Fi works with any port-check app, or a laptop with `nc -zv -w3
   192.168.4.4 54321`), confirm 54321-54324 time out, on IPv4 and the PC's IPv6 address. The firewall rule that should
   make them time out is in place (D109); the PC can't test this on itself.

@@ -3808,3 +3808,35 @@ board's and can change. D156's entry stays as written; [rollout.md](rollout.md) 
 The changes already in 0.1.0 (code 3) were registered on its card from the commits between `play/2` and `play/3`
 (grouped by decision); this week's internal ones (sites, contact address, the board) as delivered without a bundle.
 Whoever pushes an app change to main registers it on the board (CLAUDE.md).
+
+## D158. Releases are recorded in the repo: one manifest per candidate, checked against git; D156/D157's board retired (2026-11-02)
+
+The user had another agent review D156/D157 and accepted its conclusions. The board's database had no transactions
+or appends, couldn't see git, and only sessions with the Artifact tools could write it (not the PC's), and several
+of its rules were wrong: a superseded bundle's changes stayed attached to it; a failed write didn't stop a cascade;
+the scope was a ticked box, not a commit, so a card could say a change was out while the AAB had it; server changes
+counted as "internal" though a migration can break every installed client; production entry assumed 10%, which the
+first production release doesn't offer; arriving in a column archived the previous bundle with no action in Play;
+the hotfix could wait behind an open candidate; a pile-up of 8 cards measured how work was split, not risk.
+
+Now ([rollout.md](rollout.md)): a candidate is a versionCode with `docs/releases/<code>.md`, holding its sha (the
+build comes from it and nothing else), its base, the AAB's hash, its state, a Contents section generated from git,
+server migrations it needs, checks with evidence, and dated Play events as confirmed. `tools/release.py` cuts
+candidates (`new`), lists what testers don't have yet (`pending`) and validates (`check`, a new CI job with the full
+history and tags): the code at the sha, the tag on the sha for every uploaded build, ancestry, Contents drift, and
+every new migration listed in `releases/server.md`, with a `-- compat:` note if it drops, renames, narrows or revokes.
+Changes have no cards: they're tickets, decisions and commits, and "testers have it" is derived. Cuts: a weekly
+opportunity if there's something worth testing; earlier only with a stated reason (an incident with no workaround,
+something blocking the test, a deadline); one candidate at a time; ordinary changes wait for a review in progress.
+No fixed waits between states; with a dozen testers Play's crash and ANR thresholds are alerts, not a pass mark, and
+missing data is recorded as missing. A rejection resubmits the same AAB unless the app must change. Server changes:
+expand then contract, supported clients are every code that reached someone and isn't retired (2 and 3 today).
+
+Two facts the review caught, checked against Play's help pages and fixed in play-console.md, status.md and the site:
+the 12 testers must each be opted in continuously for the 14 days before applying (per tester, not 12 a day, and
+meeting it only allows applying); and an account opted in to internal testing can't receive the closed test, so the
+user's own account leaves internal testing to check the closed track. Joining the Google Group isn't opting in.
+
+The artifact's page source is removed from the repo; the published board itself is the user's to delete. Manifests for
+codes 2 and 3 were written from D139 and status.md; code 3's AAB hash and several of its checks are still open there.
+D156 and D157 stay as written.

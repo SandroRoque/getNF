@@ -1,71 +1,100 @@
-# Rollout: changes, bundles, and when to cut one (D156, D157)
+# Releases: changes, candidates, the Play tracks (D158)
 
-Two flows on one board, <https://claude.ai/artifact/SBvMFZwuXkbg2oFdVi9jeN> (private to the user; its source is
-[rollout-board.html](rollout-board.html), republished from there). The board and this page say the same thing; change
-both together.
+The repo is the record. Changes are what they already are (tickets T-n in Supabase, decisions D-n, commits); a
+**candidate** is one versionCode with a manifest in [releases/](releases/) that says which commit it is, what it
+contains, what was checked and what Play confirmed. `tools/release.py` derives the mechanical parts from git, and CI
+(`tools/release.py check`) fails when a manifest and git disagree. This replaces D156 and D157's board.
 
-- A **change** comes from a ticket (T-n), a decision (D-n), a commit or an idea, and travels to main on its own.
-- A **bundle** (one versionCode) is cut when a cut rule says so. It takes every app change waiting in main and carries
-  them through the Play tracks. Changes follow their bundle: concluded → delivered; discarded → back to "Em main" for
-  the next one.
+## Changes
 
-Not every change needs a bundle: internal ones (docs, tools, the sites, the server without an app change) are
-delivered when they reach main.
+A change is done when it's on main: `tools/check.sh` and CI green, the ticket or decision cited in the commit, a
+decision in decisions.md if it isn't trivial, and an acceptance scenario run (a test, or steps on the emulator with
+the result). Whether testers have it is derived, not tracked: `tools/release.py pending` lists the app and server
+commits on main that the newest build testers have doesn't contain, grouped by decision and ticket.
 
-## How changes get on the board
+A change that only touches docs, tools or the sites needs nothing more. **Server changes are not internal**: see below.
 
-Whoever pushes an app change to main registers it (or moves its card): a Claude session that has the Artifact tools
-writes the card itself; otherwise it tells the user. The cross-check for what's waiting is
-`git log --oneline play/<last code>..origin/main -- android supabase`.
+## Cutting a candidate
 
-## Severity
+- **Weekly opportunity:** once a week, cut if `pending` shows something worth the testers' time. Nothing to show,
+  no cut.
+- **Early, with a stated reason only:** an incident in a build people have (data loss, a crash on a main path,
+  receipts that stop being read, a privacy problem, with no workaround), something blocking the closed test itself,
+  or an external deadline. The reason goes in the manifest's Notes.
+- **One candidate at a time** (state `preparing`). A change that arrives meanwhile joins only by abandoning that
+  candidate and cutting again at the new main, which invalidates its checks.
+- **During a Google review**, ordinary changes wait for it to finish. Replacing a submission under review is an
+  explicit decision, recorded in Play.
+- `tools/release.py new <code> <name>` cuts at HEAD = origin/main with a clean tree and the matching versionCode in
+  `build.gradle.kts`. The sha is the candidate: it's built from that sha and nothing else. To drop a change from a
+  candidate, revert it on main and cut a new one; editing the manifest doesn't change what's in the AAB.
 
-- **Crítica:** a crash, data loss or corruption, a privacy or security failure, receipts that stop being read, or
-  something Play or the server requires.
-- **Importante:** changes what testers use or what the test measures: a new state, a fix for something frequent, a
-  change in what the app collects.
-- **Normal:** everything else.
+## Candidate states
 
-## When a bundle is cut
+`preparing → internal → submitted → closed → production`, plus `replaced` (a newer code reached its track) and
+`abandoned` (never uploaded, or uploaded and withdrawn; say why). Each step is a dated line under `## Play`, as
+confirmed in the Play Console, not as intended.
 
-1. **Hotfix:** a critical change reached main. Cut the same day, marked hotfix (the stages' automatic waits don't
-   apply; every other criterion does).
-2. **Important:** an important change reached main. Cut without waiting for the train.
-3. **Train:** 7 days since the last bundle and at least one change waiting.
-4. **Pile-up:** 8 or more changes waiting, before the train.
-5. **No cut:** nothing waiting, or a bundle still in Preparação or Verificação local. Changes that arrive meanwhile join
-   it while its scope isn't frozen.
+| State | Leaves when (each with its evidence in the manifest) |
+|---|---|
+| preparing | CI run URL green for the sha · `tools/check.sh` full · `bundleRelease` from the sha, `aab: sha256:…` recorded · release APK on the emulator (signed out, demo, a capture from a video, Enviar comentário reaching the inbox) · release APK on the phone over the previous version, data still there · no open blocking ticket that applies to this build, including regressions outside its scope · notes written from Contents and checked by the user · Data safety, policy, listing still true |
+| internal | Uploaded, `play/<code>` pushed on the sha · installed from Play on the phone and a real receipt read · pre-launch report for this code: no unresolved blocker, the rest triaged · migrations the build needs applied online (`## Server`) |
+| submitted | The same AAB added from the library to the closed track · sent for review · approved, or rejected with the reason |
+| closed | An account in the closed test (not opted in to internal testing) installs this versionCode from Play |
 
-The board's "Próximo bundle" panel applies these rules and shows the verdict.
+**Rejected** is a fact about the submission, not the AAB: if the fix is outside the app (the review login, the
+listing, a declaration), fix it and resubmit the same bundle; a new code only when the app must change.
 
-## Change stages
+There are no fixed waits between states. The closed test's 14 days are a property of the testers (see
+play-console.md: each of at least 12 testers opted in continuously for 14 days), not of any build.
 
-| # | Stage | Exits when (all of them) | If it goes wrong |
-|---|---|---|---|
-| 1 | Entrada | Source cited (T-n, D-n, commit, link) · Kind and severity set · Fits the current phase (`docs/status.md`) | Out of phase or a duplicate: discard with the reason. |
-| 2 | Em desenvolvimento | On main, the ticket or decision cited in the commit · `tools/check.sh` and CI green · Checked on the emulator or covered by a test · A decision in `docs/decisions.md` if not trivial | Bigger than it looked: split it. |
-| 3 | Em main | Included in a bundle (automatic, on a cut) | Internal: delivered without a bundle. |
-| 4 | No bundle | The bundle concluded (automatic) | If it caused the bundle's discard, take it out and back to 2. |
-| — | Entregue | Delivered (its bundle concluded), delivered without a bundle (internal), or discarded with the reason. | |
+## Evidence with few testers
 
-## Bundle rules
+With a dozen testers, one person is 8% of the users: Play's thresholds (1.09% crashes, 0.47% ANRs, user-perceived)
+are alerts when Vitals shows data, not a pass mark. Decisions rest on the scenarios run, the reports in the inbox, and
+reproducible blockers. When Vitals has no data, write "no data" with the date; don't count it as green.
 
-1. One card per versionCode. A code is spent on its first upload to Play, even into a draft that's discarded.
-2. Internal testing, review, closed testing and production take one bundle at a time (Play has one active release per
-   track). A newer bundle entering one moves the older one to the archive as superseded.
-3. Moving forward needs every exit criterion and no block. Moving back is allowed until the upload; after that the way
-   out is to discard it.
-4. A discarded bundle's changes go back to "Em main" and ride the next one.
-5. Every Play upload is tagged `play/<versionCode>` on the commit it was built from (D139).
+## Watching a build testers have
 
-## Bundle stages
+The session that cut it looks, daily in its first week and weekly after: `tools/tickets.py inbox`, the sync failures
+and refused rows reports, receipts that didn't read, Vitals. Findings become tickets. A build stays supported (see
+Server changes) after its card is done.
 
-| # | Stage | Exits when (all of them) | If it goes wrong |
-|---|---|---|---|
-| 1 | Preparação | New `versionCode`/`versionName` (never uploaded, not even to a draft) · Scope frozen, its changes all on main · Release notes in pt-BR in [play-console.md](play-console.md), written from its changes · Supabase migrations it uses applied online · Data safety, privacy policy and listing checked | Scope growing: freeze it, the rest takes the next train. |
-| 2 | Verificação local | `tools/check.sh` and CI green · `bundleRelease` from a commit with no local changes (on the card) · Release APK on the emulator: signed out, the demo, a capture from a video, Enviar comentário reaching the inbox · Release APK on the phone over the previous version (data survives; never connectedAndroidTest with the phone attached) · No open blocking ticket it should close | Fix on main and build again; once uploaded, the code is spent. |
-| 3 | Teste interno | Uploaded and `play/<code>` pushed · Installed from Play, reads a real receipt (one SEFAZ-SC lookup) · Pre-launch report clean · 1 day in the stage, except hotfix (automatic) · Vitals: no new crashes or ANRs | Discard; the fix comes in as a critical change. |
-| 4 | Revisão do Google | Closed-testing release with the same bundle ("Add from library") · Sent for review · Approved · The opt-in link installs | Rejected: discard with the reason; what Google asked for comes in as a critical change (source: Play Console). |
-| 5 | Teste fechado | 7 days in the stage, except hotfix (automatic) · Crashes under 1.09%, ANRs under 0.47% (Play's bad-behaviour thresholds) · Inbox triaged, no blocker open · Production access granted (first time: 12 testers, 14 days in a row) · Listing reviewed for the public | The fix comes in as a critical change; its hotfix supersedes this bundle. |
-| 6 | Produção escalonada | 10% → 50% → 100%, each after 48 h with crashes under 1.09% and ANRs under 0.47% · At 100% (automatic) · 7 days at 100% with no regression (automatic) · `docs/status.md` updated | Halt the rollout in Play and block the card. |
-| — | Arquivo | Concluded, superseded or discarded (with the reason). A code never comes back. | |
+## Server changes
+
+Installed builds keep running for months, offline or not updated, so a migration must not break any supported
+client: every versionCode that reached someone through Play and isn't retired here (today 2 and 3).
+
+1. **Expand, then contract.** Add tables, columns, functions with defaults first; ship the client that uses them;
+   remove or narrow the old ones only after every client that needs them is retired.
+2. A migration that drops, renames, narrows or revokes anything carries a `-- compat:` line saying which clients still
+   work and how that was checked (`tools/release.py check` fails without it).
+3. Each migration is listed in [releases/server.md](releases/server.md) when written and when applied online
+   (`npx supabase migration list` shows it). "On main" isn't "deployed".
+4. Before applying: the supported clients against the new schema (the release APK of each, or their tests against a
+   local `npx supabase start` with the migration).
+5. Recovery: a daily backup exists (`tools/supabase-backup.py`); a migration that rewrites data says how to undo it.
+
+## Incidents
+
+1. Stop the spread when possible: halt the rollout in Play (production only; it doesn't uninstall anything) or pull
+   the release from the closed track.
+2. Mitigate on the server when safe (a policy, a function), within the compat rule.
+3. Fix with a higher versionCode, cut early with the incident as the reason, and test it on data the bad build
+   already wrote.
+4. Record it: a ticket, the manifest's Notes, and a decision if the process changes.
+
+## Production (after access is granted)
+
+- Its own preparation and review. The **first** production release goes to all of the selected countries at once:
+  there's no percentage.
+- Updates may use a staged rollout: the percentage changes only when someone raises it, after a look at reports and
+  Vitals; record each change with the time.
+- Halting a staged rollout stops new installs; devices already updated keep the build. A completed release can be
+  halted only by falling back to an earlier completed one, which doesn't downgrade anyone either. The fix is always a
+  new code.
+
+## Tags
+
+Every bundle uploaded to Play gets `play/<versionCode>` on its sha (D139). A refused upload gets none; a code once
+uploaded, even into a discarded draft, is never reused (play-console.md).

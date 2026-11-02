@@ -32,7 +32,8 @@ changes) and push the tag (D139):
 git tag -a play/3 -m "Play closed testing: versionCode 3, versionName 0.1.0" && git push origin play/3
 ```
 
-Each bundle's way from here to production, and what it needs at each step, is [rollout.md](rollout.md) (D156).
+Every bundle has a manifest in [releases/](releases/) (its sha, contents, checks and Play events); the way from
+cutting one to production is [rollout.md](rollout.md) (D158).
 
 `git tag -n1 -l 'play/*'` lists what went out; `git diff play/2 play/3` is what changed between two releases.
 
@@ -51,9 +52,17 @@ What makes the site's two steps work: a closed track whose testers are the Googl
    promoted as is) or a new bundle (the next versionCode, tagged `play/<code>`). Release name = versionName, notes in
    pt-BR (below). Next › Save › Publishing overview › **Send changes for review**.
 6. **Review:** Google reviews the first closed release; it can take from hours to several days. Until it's approved
-   the opt-in link says the app isn't available. After that, anyone in the group opts in and installs.
-7. **The count:** 12 testers opted in on each of 14 days in a row (Dashboard › the production access card shows it).
-   New releases during the test don't restart it; fewer than 12 on any day does.
+   the opt-in link says the app isn't available. After that, anyone in the group opts in and installs. Joining the
+   group only makes someone eligible: they count once they accept the opt-in link.
+7. **The count (corrected 2026-11-02, D158):** when applying for production, at least 12 testers must be opted in
+   and must each have been opted in **continuously for the preceding 14 days**. It's per tester: someone who leaves
+   and rejoins starts their own 14 days again, and swapping people while keeping 12 a day doesn't add up. New
+   releases during the test don't restart it. Meeting it lets the user apply; Google decides, and can ask for more
+   testing (too few testers, or too little use). Recruit more than 12, so a dropout doesn't cost two weeks
+   ([Play's page](https://support.google.com/googleplay/android-developer/answer/14151465)).
+8. **The user's own account:** an account opted in to internal testing can't receive a closed (or open) test. To
+   check the closed track as a tester sees it, opt out of internal testing first, then use the closed opt-in link
+   ([Play's page](https://support.google.com/googleplay/android-developer/answer/9845334)).
 
 ## App content
 

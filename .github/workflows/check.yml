@@ -1,7 +1,8 @@
 # The same checks as the pre-push hook (tools/check.sh --quick, D129), on GitHub, for every push to main and every pull
 # request: the app and the benchmark module build, and the JVM tests pass. The capture benchmark needs test-media/
 # (real receipts, never on GitHub), so it runs only on the PC. Debug builds get no Supabase URL here (.env.local is
-# local), which the build and the tests don't need. See D140.
+# local), which the build and the tests don't need. See D140. The release job checks docs/releases/ against git and the
+# migrations' compat notes (tools/release.py check, D158); it needs the whole history and the play/* tags.
 name: check
 
 on:
@@ -33,3 +34,14 @@ jobs:
         with:
           name: test-reports
           path: android/*/build/reports/tests/
+
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Release manifests and migrations
+        run: python3 tools/release.py check
