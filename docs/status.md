@@ -87,8 +87,8 @@ Analytics beacon turned off by the user; `versionName` set to 0.1.0 (code 3, com
 uploaded or tagged, and the Play Console's closed track doesn't exist yet. The user chose to open the closed test
 with 0.1.0 rather than promote code 2 (whose "Enviar comentário" predates D152's inbox).
 
-Each bundle's state is on the rollout board (D156, [rollout.md](rollout.md)): 0.1.0 (code 3) is in Teste interno.
-Move its card as these steps get done.
+Changes and bundles are on the rollout board (D156, D157, [rollout.md](rollout.md)): 0.1.0 (code 3) is in Teste
+interno. Move its card as these steps get done; the next bundle is cut by the rules there.
 
 Do next, in order, with the user (they've done none of it yet):
 1. ~~Online database first~~ done 2026-11-01: `db push` run by the user; a report sent with the publishable key

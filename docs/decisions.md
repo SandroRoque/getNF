@@ -3791,3 +3791,20 @@ The board is a claude.ai artifact with its own small database (cards, checks, hi
 only by its editors; the stages live in its source ([rollout-board.html](rollout-board.html)) and in
 [rollout.md](rollout.md), changed together. Not in Supabase: it's the developer's tool, not the app's data. Seeded
 with codes 1 and 2 (archived, superseded) and code 3, 0.1.0, in internal testing.
+
+## D157. The rollout board tracks changes; bundles are cut by rules, not per change (2026-11-02)
+
+D156's board had one card per bundle, so every change looked like its own bundle. The user's model, adopted: changes
+come from several sources (tickets, decisions, commits, ideas) and reach main on their own; they accumulate, and a
+bundle is cut periodically or when something important lands. So the board has two flows, changes (Entrada → Em
+desenvolvimento → Em main → No bundle → Entregue) and bundles (D156's stages, unchanged), joined by cut rules: a
+critical change in main cuts a hotfix the same day (the stages' automatic waits are waived, nothing else); an
+important one cuts without waiting; otherwise a weekly train, or earlier at 8 waiting changes; no cut while a bundle
+is still in preparation or local verification (new changes join it until its scope is frozen). Internal changes
+(docs, tools, sites, server-only) never need a bundle. A discarded bundle's changes go back to waiting. Weekly suits a
+closed test where testers should see fixes soon but each closed release goes through review; the numbers are the
+board's and can change. D156's entry stays as written; [rollout.md](rollout.md) now describes both flows.
+
+The changes already in 0.1.0 (code 3) were registered on its card from the commits between `play/2` and `play/3`
+(grouped by decision); this week's internal ones (sites, contact address, the board) as delivered without a bundle.
+Whoever pushes an app change to main registers it on the board (CLAUDE.md).

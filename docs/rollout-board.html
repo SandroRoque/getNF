@@ -125,33 +125,80 @@ details.sec > summary { cursor: pointer; font-weight: 600; }
 .def ul { margin: 0; padding-left: 1.05rem; display: grid; gap: .25rem; font-size: .88rem; }
 .def ul .auto-tag { font-family: var(--mono); font-size: .7rem; color: var(--accent); margin-left: .3rem; }
 @media (prefers-reduced-motion: no-preference) { .card { transition: border-color .15s; } }
+
+/* Tabs, the cut panel, change cards */
+nav.tabs { display: flex; gap: .3rem; margin: 1.1rem 0 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+nav.tabs a { padding: .55rem .9rem; color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap; }
+nav.tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+.cut { margin-top: 1.2rem; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 1rem 2rem; align-items: start;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1.2rem; }
+@media (max-width: 760px) { .cut { grid-template-columns: 1fr; } }
+.cut .verdict { font: 600 1.3rem/1.2 var(--display); margin: .15rem 0 .35rem; display: flex; gap: .55rem; align-items: center; }
+.cut .verdict .dot { width: .7rem; height: .7rem; border-radius: 50%; background: var(--muted); flex: none; }
+.cut .verdict.go .dot { background: var(--accent); }
+.cut .verdict.urgent .dot { background: var(--danger); }
+.cut p { margin: 0; font-size: .9rem; color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
+.stats div { display: grid; gap: .05rem; }
+.stats b { font: 500 1.35rem/1.1 var(--mono); font-variant-numeric: tabular-nums; }
+.stats span { font-size: .75rem; color: var(--muted); }
+.card .title { font-weight: 600; font-size: .95rem; line-height: 1.3; }
+.tag { display: inline-block; font-size: .7rem; padding: 0 .45rem; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.tag.critica { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
+.tag.importante { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.card.sev-critica { border-left: 4px solid var(--danger); }
+.card.sev-importante { border-left: 4px solid var(--accent); }
+.group-head { font-size: .75rem; color: var(--muted); font-family: var(--mono); margin-top: .2rem; }
+.inbundle { display: grid; gap: .3rem; }
+.inbundle li { font-size: .88rem; }
+.seg { display: flex; flex-wrap: wrap; gap: .35rem; }
+.seg label { display: inline-flex; gap: .3rem; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: .2rem .65rem; font-size: .85rem; cursor: pointer; }
+.seg input { width: auto; accent-color: var(--accent); margin: 0; }
+.view[hidden] { display: none; }
+.ref h2.sub { font-size: 1.15rem; margin-top: 1rem; }
 </style>
 
 <div class="wrap">
   <header class="top">
     <div>
       <p class="eyebrow">Caderneta · br.com.roqlab.caderneta</p>
-      <h1>Rollout de bundles</h1>
-      <p class="lead">Cada cartão é um bundle (um versionCode). Ele só avança quando todos os critérios de saída da
-        etapa estão marcados. Os critérios estão em <a href="#etapas">Etapas e critérios</a>, mais abaixo.</p>
+      <h1>Rollout da Caderneta</h1>
+      <p class="lead">Alterações chegam de tickets, decisões, commits e ideias, e esperam em main. Um bundle novo sai
+        quando um critério de corte manda; ele leva tudo o que está esperando e percorre as etapas até a produção.</p>
     </div>
     <div class="side">
       <span id="state">Carregando o quadro…</span>
-      <button id="new-btn" type="button">Novo bundle</button>
+      <button id="new-change" type="button">Nova alteração</button>
     </div>
   </header>
 
-  <div class="board-box" aria-label="Quadro de rollout"><div class="board" id="board"></div></div>
+  <section class="cut" id="cut" aria-label="Próximo bundle"></section>
 
-  <section class="ref" id="etapas">
+  <nav class="tabs" aria-label="Visões">
+    <a href="#alteracoes" data-view="alteracoes">Alterações</a>
+    <a href="#bundles" data-view="bundles">Bundles</a>
+    <a href="#criterios" data-view="criterios">Etapas e critérios</a>
+  </nav>
+
+  <div class="view" id="v-alteracoes"><div class="board-box" aria-label="Quadro de alterações"><div class="board" id="board-c"></div></div></div>
+  <div class="view" id="v-bundles" hidden><div class="board-box" aria-label="Quadro de bundles"><div class="board" id="board-b"></div></div></div>
+
+  <section class="view ref" id="v-criterios" hidden>
     <div class="ref-head">
       <p class="eyebrow">Referência</p>
       <h2>Etapas e critérios</h2>
       <p>O mesmo texto está em <span class="mono">docs/rollout.md</span>, no repositório. Critérios marcados como
         automático são calculados pelo quadro.</p>
     </div>
+    <h2 class="sub">Quando sai um bundle</h2>
+    <ol class="rules" id="cut-rules"></ol>
+    <h2 class="sub">Gravidade de uma alteração</h2>
+    <ol class="rules" id="sev-rules"></ol>
+    <h2 class="sub">Alterações</h2>
+    <div class="stagedefs" id="defs-c"></div>
+    <h2 class="sub">Bundles</h2>
     <ol class="rules" id="rules"></ol>
-    <div class="stagedefs" id="defs"></div>
+    <div class="stagedefs" id="defs-b"></div>
   </section>
 </div>
 
@@ -160,17 +207,63 @@ details.sec > summary { cursor: pointer; font-weight: 600; }
 <script>
 (() => {
   const DAY = 86400000;
-  // Stages and their exit criteria. Kept in sync with docs/rollout.md.
-  const STAGES = [
-    { id: 'preparo', name: 'Preparação', purpose: 'Escopo, versão e o que precisa estar online antes do build.',
-      enter: 'Um versionCode novo é reservado para uma versão.',
+  // ---- Policy. Kept in sync with docs/rollout.md. ----
+  const POLICY = { cadenceDays: 7, pileUp: 8 };
+  const SEVERITY = {
+    critica: { name: 'Crítica', d: 'Crash, perda ou corrupção de dados, falha de privacidade ou segurança, nota que deixa de ser lida, ou algo que o Play ou o servidor exigem.' },
+    importante: { name: 'Importante', d: 'Muda o que os testadores usam ou o que o teste mede: um estado novo, uma correção de algo frequente, uma mudança no que o app coleta.' },
+    normal: { name: 'Normal', d: 'O resto: ajustes, textos, melhorias pequenas.' },
+  };
+  const KINDS = { correcao: 'Correção', melhoria: 'Melhoria', novidade: 'Novidade', interna: 'Interna (sem bundle)' };
+  const SOURCES = { ticket: 'Ticket', decisao: 'Decisão', commit: 'Commit', ideia: 'Ideia', play: 'Play Console' };
+  const CUT_RULES = [
+    `Hotfix: uma alteração crítica chegou a main. O bundle sai no mesmo dia, marcado como hotfix (as esperas automáticas das etapas não se aplicam; os demais critérios, sim).`,
+    `Importante: uma alteração importante chegou a main. O bundle sai sem esperar o trem.`,
+    `Trem: ${POLICY.cadenceDays} dias desde o último bundle e ao menos uma alteração esperando.`,
+    `Acúmulo: ${POLICY.pileUp} ou mais alterações esperando, antes do trem.`,
+    'Não corta: nada esperando, ou um bundle ainda em Preparação ou Verificação local. Nesse caso as alterações novas entram nele enquanto o escopo não fechou.',
+    'Alterações internas (docs, tools, site, servidor sem mudança no app) não pedem bundle: são entregues quando chegam a main.',
+  ];
+
+  const C_STAGES = [
+    { id: 'entrada', name: 'Entrada', purpose: 'Chegou de um ticket, uma decisão, um commit ou uma ideia.',
+      enter: 'Alguém registra a alteração, com a fonte.',
+      exit: [
+        { id: 'fonte', t: 'Fonte citada (T-n, D-n, commit ou link)' },
+        { id: 'triada', t: 'Tipo e gravidade definidos', h: 'A gravidade decide se ela antecipa um bundle.' },
+        { id: 'fase', t: 'Cabe na fase atual (docs/status.md)', h: 'Ideia nova sem urgência vai para "After the open store" e é descartada daqui.' },
+      ], fail: 'Fora da fase ou repetida: descarte com o motivo.' },
+    { id: 'dev', name: 'Em desenvolvimento', purpose: 'Num branch, até estar verificada.',
+      enter: 'Triada e aceita.',
+      exit: [
+        { id: 'main', t: 'Em main (push), com o ticket ou a decisão citados no commit' },
+        { id: 'checks', t: 'tools/check.sh e o CI verdes' },
+        { id: 'verificada', t: 'Verificada no emulador ou coberta por teste' },
+        { id: 'decisao', t: 'Decisão registrada em docs/decisions.md, se não for trivial' },
+      ], fail: 'Maior do que parecia: divida em alterações menores.' },
+    { id: 'main', name: 'Em main', purpose: 'Pronta, esperando o próximo bundle.',
+      enter: 'Verificada e em main.',
+      exit: [
+        { id: 'corte', auto: c => !!c.bundle, t: 'Incluída num bundle', h: 'Automático, ao cortar ou incluir.' },
+      ], fail: 'Interna: entregue sem bundle.' },
+    { id: 'bundle', name: 'No bundle', purpose: 'Segue o bundle pelas etapas até a produção.',
+      enter: 'O bundle foi cortado com ela.',
+      exit: [
+        { id: 'concluido', auto: c => false, t: 'O bundle foi concluído', h: 'Automático. Se o bundle for descartado, ela volta para Em main.' },
+      ], fail: 'Se ela causou o descarte do bundle, volte-a para Em desenvolvimento.' },
+  ];
+  const C_ARCHIVE = { id: 'arquivo', name: 'Entregue', purpose: 'Na produção, entregue sem bundle (interna) ou descartada.' };
+
+  const B_STAGES = [
+    { id: 'preparo', name: 'Preparação', purpose: 'O escopo, a versão e o que precisa estar online antes do build.',
+      enter: 'Um critério de corte mandou; ele leva tudo o que está Em main.',
       exit: [
         { id: 'versao', t: 'versionCode e versionName novos em android/app/build.gradle.kts', h: 'Código nunca enviado antes, nem em rascunho descartado.' },
-        { id: 'escopo', t: 'Escopo fechado: tudo o que entra já está em main', h: 'Tickets resolvidos citados nos commits (T-n).' },
-        { id: 'notas', t: 'Notas da versão em pt-BR em docs/play-console.md', h: 'Até 500 caracteres, nada prometido que o app não faz.' },
+        { id: 'escopo', t: 'Escopo fechado: as alterações do bundle estão todas em main' },
+        { id: 'notas', t: 'Notas da versão em pt-BR em docs/play-console.md', h: 'Até 500 caracteres, a partir das alterações do bundle.' },
         { id: 'online', t: 'Migrações do Supabase que a versão usa já aplicadas no projeto online', h: 'npx supabase db push, antes do build.' },
         { id: 'privacidade', t: 'Data safety, política de privacidade e ficha da loja conferidas', h: 'Só muda algo se a versão coleta, envia ou promete algo novo.' },
-      ], fail: 'Escopo crescendo: corte e deixe para o próximo código.' },
+      ], fail: 'Escopo crescendo: feche e deixe o resto para o próximo trem.' },
     { id: 'verificacao', name: 'Verificação local', purpose: 'O build release, no emulador e no celular, antes de qualquer envio.',
       enter: 'Escopo fechado e versão definida.',
       exit: [
@@ -178,34 +271,34 @@ details.sec > summary { cursor: pointer; font-weight: 600; }
         { id: 'build', t: 'bundleRelease gerado de um commit, sem mudanças locais', h: 'Anote o commit no cartão.' },
         { id: 'emulador', t: 'APK release no emulador: sem conta, exemplo, captura de vídeo, Enviar comentário', h: 'Os relatórios chegam em tools/tickets.py inbox.' },
         { id: 'celular', t: 'APK release no celular, instalado por cima da versão anterior', h: 'A atualização preserva notas e conta. Nunca connectedAndroidTest com o celular ligado.' },
-        { id: 'bloqueantes', t: 'Nenhum ticket bloqueante aberto que esta versão deveria fechar' },
-      ], fail: 'Falhou um item: corrija em main, gere de novo. Se o bundle já foi enviado ao Play, o código está gasto: volte a Preparação com o próximo.' },
+        { id: 'bloqueantes', t: 'Nenhum ticket bloqueante aberto que este bundle deveria fechar' },
+      ], fail: 'Falhou um item: corrija em main e gere de novo. Depois de enviado ao Play o código está gasto.' },
     { id: 'interno', name: 'Teste interno', wip: 1, purpose: 'O bundle no Play, só para você. Pega o que só aparece instalado pela loja.',
       enter: 'Verificação local completa.',
       exit: [
         { id: 'upload', t: 'Enviado ao teste interno e tag play/<código> enviada no commit do build' },
         { id: 'play', t: 'Instalado pelo Google Play no celular; abre e lê uma nota real', h: 'Gasta uma consulta do limite da SEFAZ-SC.' },
-        { id: 'prelaunch', t: 'Relatório de pré-lançamento sem falhas novas', h: 'Testar e lançar › Relatório de pré-lançamento.' },
-        { id: 'dia', auto: b => daysIn(b) >= 1, t: 'Ao menos 1 dia nesta etapa', h: 'Automático.' },
+        { id: 'prelaunch', t: 'Relatório de pré-lançamento sem falhas novas' },
+        { id: 'dia', auto: b => b.hotfix || daysIn(b) >= 1, t: 'Ao menos 1 dia nesta etapa (exceto hotfix)', h: 'Automático.' },
         { id: 'vitals', t: 'Android vitals sem falhas ou ANRs novos' },
-      ], fail: 'Falha ou crash: descarte, corrija e recomece com o próximo código.' },
+      ], fail: 'Falha ou crash: descarte; as alterações voltam para Em main e a correção entra como alteração crítica.' },
     { id: 'revisao', name: 'Revisão do Google', wip: 1, purpose: 'O mesmo bundle promovido ao teste fechado, esperando a revisão.',
       enter: 'Teste interno sem problemas.',
       exit: [
         { id: 'release', t: 'Release no teste fechado com o mesmo bundle (Adicionar da biblioteca)', h: 'Nome da release = versionName, notas coladas.' },
         { id: 'enviado', t: 'Enviada: Visão geral da publicação › Enviar alterações para revisão' },
         { id: 'aprovado', t: 'Aprovada pelo Google' },
-        { id: 'optin', t: 'O link de participação abre e instala', h: 'play.google.com/apps/testing/br.com.roqlab.caderneta' },
-      ], fail: 'Reprovada: descarte com o motivo, corrija e recomece em Preparação com o próximo código.' },
+        { id: 'optin', t: 'O link de participação abre e instala' },
+      ], fail: 'Reprovada: descarte com o motivo; o que o Google pediu entra como alteração crítica (fonte: Play Console).' },
     { id: 'fechado', name: 'Teste fechado', wip: 1, purpose: 'Com os testadores do grupo. Mede estabilidade com uso real.',
       enter: 'Aprovada e disponível para o grupo.',
       exit: [
-        { id: 'sete', auto: b => daysIn(b) >= 7, t: 'Ao menos 7 dias nesta etapa', h: 'Automático.' },
+        { id: 'sete', auto: b => b.hotfix || daysIn(b) >= 7, t: 'Ao menos 7 dias nesta etapa (exceto hotfix)', h: 'Automático.' },
         { id: 'estab', t: 'Vitals: taxa de falhas abaixo de 1,09% e ANR abaixo de 0,47%', h: 'Os limites de mau comportamento do Play.' },
         { id: 'tickets', t: 'Inbox triada (tools/tickets.py inbox) e nenhum bloqueante aberto' },
         { id: 'acesso', t: 'Acesso à produção liberado', h: 'Só na primeira vez: 12 testadores por 14 dias seguidos.' },
         { id: 'loja', t: 'Ficha da loja revisada para o público geral' },
-      ], fail: 'Problema grave: corrija com um novo código, que substitui este no teste fechado.' },
+      ], fail: 'Problema grave: a correção entra como alteração crítica, e o hotfix substitui este bundle.' },
     { id: 'producao', name: 'Produção escalonada', wip: 1, steps: [10, 50, 100], purpose: 'Liberação gradual na loja aberta: 10%, 50%, 100%.',
       enter: 'Teste fechado estável e acesso à produção.',
       exit: [
@@ -213,18 +306,20 @@ details.sec > summary { cursor: pointer; font-weight: 600; }
         { id: 'cem', auto: b => (b.rollout || 0) >= 100, t: 'Rollout em 100%', h: 'Automático.' },
         { id: 'semana', auto: b => (b.rollout || 0) >= 100 && daysSince(b.at100) >= 7, t: '7 dias em 100% sem regressão', h: 'Automático.' },
         { id: 'status', t: 'docs/status.md atualizado com a versão em produção' },
-      ], fail: 'Pico de falhas ou perda de dados: interrompa o rollout no Play e bloqueie o cartão; a correção vem com outro código.' },
+      ], fail: 'Pico de falhas ou perda de dados: interrompa o rollout no Play e bloqueie o cartão.' },
   ];
-  const ARCHIVE = { id: 'arquivo', name: 'Arquivo', purpose: 'Concluídos, substituídos e descartados. Um código nunca volta.' };
+  const B_ARCHIVE = { id: 'arquivo', name: 'Arquivo', purpose: 'Concluídos, substituídos e descartados. Um código nunca volta.' };
   const OUTCOMES = { concluido: 'Concluído', substituido: 'Substituído', descartado: 'Descartado' };
+  const C_OUTCOMES = { entregue: 'Entregue', interna: 'Entregue sem bundle', descartada: 'Descartada' };
   const RULES = [
     'Um cartão por versionCode. O código fica gasto no primeiro envio ao Play, mesmo se o rascunho for descartado.',
-    'Teste interno, revisão, teste fechado e produção aceitam um bundle por vez: o Play tem uma release ativa por faixa. Um novo bundle que entra numa delas tira o anterior, que vai ao arquivo como substituído.',
-    'Avançar exige todos os critérios de saída da etapa e nenhum bloqueio. Voltar é sempre permitido, exceto depois de enviado ao Play, quando o caminho é descartar.',
-    'Bloqueio: qualquer etapa pode ser bloqueada com um motivo (crash, perda de dados, reprovação). O cartão fica vermelho até ser desbloqueado ou descartado.',
+    'Teste interno, revisão, teste fechado e produção aceitam um bundle por vez: o Play tem uma release ativa por faixa. Um bundle novo que entra numa delas tira o anterior, que vai ao arquivo como substituído; as alterações dele seguem no novo, que as contém.',
+    'Avançar exige todos os critérios de saída e nenhum bloqueio. Voltar é permitido até o envio ao Play; depois disso o caminho é descartar.',
+    'Bundle descartado: as alterações dele voltam para Em main e seguem no próximo.',
     'Todo envio ao Play recebe a tag play/<código> no commit do build (D139).',
   ];
 
+  // ---- helpers ----
   const $ = s => document.querySelector(s);
   const h = (tag, attrs, ...kids) => {
     const el = document.createElement(tag);
@@ -239,246 +334,434 @@ details.sec > summary { cursor: pointer; font-weight: 600; }
     for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : String(c));
     return el;
   };
-  const now = () => Date.now();
-  const daysSince = iso => iso ? (now() - Date.parse(iso)) / DAY : 0;
-  const daysIn = b => daysSince(b.enteredAt);
-  const ago = iso => {
-    if (!iso) return '';
-    const d = daysSince(iso);
-    if (d < 1) { const hr = Math.max(0, Math.floor(d * 24)); return hr <= 1 ? 'há menos de 2 h' : `há ${hr} h`; }
+  const iso = () => new Date().toISOString();
+  const daysSince = t => t ? (Date.now() - Date.parse(t)) / DAY : 0;
+  const daysIn = x => daysSince(x.enteredAt);
+  const ago = t => {
+    if (!t) return '';
+    const d = daysSince(t);
+    if (d < 1) { const hr = Math.floor(d * 24); return hr <= 1 ? 'há menos de 2 h' : `há ${hr} h`; }
     const n = Math.floor(d); return n === 1 ? 'há 1 dia' : `há ${n} dias`;
   };
-  const fmt = iso => { try { return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return iso; } };
-  const stageOf = id => STAGES.find(s => s.id === id);
-  const stageIdx = id => STAGES.findIndex(s => s.id === id);
-  const isChecked = (b, st, item) => item.auto ? !!item.auto(b) : !!(b.checks && b.checks[st.id] && b.checks[st.id][item.id]);
-  const progress = (b, st) => { const done = st.exit.filter(i => isChecked(b, st, i)).length; return { done, total: st.exit.length }; };
-  const canAdvance = (b, st) => !b.blocked && progress(b, st).done === progress(b, st).total;
+  const fmt = t => { try { return new Date(t).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return t; } };
+  const isChecked = (x, st, it) => it.auto ? !!it.auto(x) : !!(x.checks && x.checks[st.id] && x.checks[st.id][it.id]);
+  const progress = (x, st) => ({ done: st.exit.filter(i => isChecked(x, st, i)).length, total: st.exit.length });
+  const canAdvance = (x, st) => !x.blocked && progress(x, st).done === progress(x, st).total;
 
-  let db = null, user = null, canWrite = true, bundles = [], openCode = null, pending = null;
+  let db = null, canWrite = true, bundles = [], changes = [], open = null, pending = null;
   const queues = {};
   const setState = (msg, err) => { const s = $('#state'); s.textContent = msg; s.classList.toggle('err', !!err); };
-
-  // One write at a time per document.
-  function write(code, fn) {
-    const q = (queues[code] || Promise.resolve()).then(fn).catch(e => {
+  function write(key, fn) {
+    const q = (queues[key] || Promise.resolve()).then(fn).catch(e => {
       if (e && e.code === 'invalid_argument') { canWrite = false; render(); }
-      setState(e && e.code === 'quota_exceeded' ? 'O quadro está cheio: apague bundles antigos.' : 'Não foi possível salvar. Tente de novo.', true);
+      setState(e && e.code === 'quota_exceeded' ? 'O quadro está cheio: apague cartões antigos.' : 'Não foi possível salvar. Tente de novo.', true);
     });
-    queues[code] = q; return q;
+    queues[key] = q; return q;
   }
-  const ref = code => db.collection('bundles').doc(String(code));
-  const byCode = code => bundles.find(b => b.code === code);
+  const bref = code => db.collection('bundles').doc(String(code));
+  const cref = id => db.collection('changes').doc(id);
+  const bundleBy = code => bundles.find(b => b.code === code);
+  const changeBy = id => changes.find(c => c.id === id);
+  const stamp = (x, fields, note) => {
+    const at = iso(); const u = { ...fields, updatedAt: at };
+    if (note) u.history = [...(x.history || []), { at, note }];
+    return u;
+  };
+  const patchB = (b, f, note) => write('b' + b.code, () => bref(b.code).update(stamp(b, f, note)));
+  const patchC = (c, f, note) => write('c' + c.id, () => cref(c.id).update(stamp(c, f, note)));
+  const bStage = id => B_STAGES.find(s => s.id === id);
+  const cStage = id => C_STAGES.find(s => s.id === id);
+  const nameOfB = (id, o) => id === 'arquivo' ? `Arquivo (${OUTCOMES[o] || ''})` : bStage(id).name;
+  const nameOfC = (id, o) => id === 'arquivo' ? (C_OUTCOMES[o] || 'Arquivo') : cStage(id).name;
+  const changesOf = code => changes.filter(c => c.bundle === code);
+  const needsBundle = c => c.kind !== 'interna';
 
-  function patch(b, fields, histNote) {
-    const upd = { ...fields, updatedAt: new Date().toISOString() };
-    if (histNote) upd.history = [...(b.history || []), { at: upd.updatedAt, note: histNote }];
-    return write(b.code, () => ref(b.code).update(upd));
+  async function moveB(b, to, note, extra = {}) {
+    const fields = { stage: to, enteredAt: iso(), ...extra };
+    await patchB(b, fields, `${nameOfB(b.stage, b.outcome)} → ${nameOfB(to, extra.outcome)}${note ? ': ' + note : ''}`);
+    // The changes follow their bundle.
+    const mine = changesOf(b.code).filter(c => c.stage === 'bundle');
+    if (to === 'arquivo' && extra.outcome === 'concluido')
+      for (const c of mine) await moveC(c, 'arquivo', `código ${b.code} concluído`, { outcome: 'entregue' });
+    if (to === 'arquivo' && extra.outcome === 'descartado')
+      for (const c of mine) await moveC(c, 'main', `código ${b.code} descartado`, { bundle: null });
+  }
+  function moveC(c, to, note, extra = {}) {
+    return patchC(c, { stage: to, enteredAt: iso(), ...extra }, `${nameOfC(c.stage, c.outcome)} → ${nameOfC(to, extra.outcome)}${note ? ': ' + note : ''}`);
   }
 
-  function move(b, toId, note, extra) {
-    const at = new Date().toISOString();
-    const from = b.stage;
-    const name = toId === 'arquivo' ? `Arquivo (${OUTCOMES[extra.outcome]})` : stageOf(toId).name;
-    const fields = { stage: toId, enteredAt: at, ...extra };
-    const fromName = from === 'arquivo' ? 'Arquivo' : stageOf(from).name;
-    return patch(b, fields, `${fromName} → ${name}${note ? ': ' + note : ''}`);
+  // ---- the cut decision ----
+  function cutState() {
+    const waiting = changes.filter(c => c.stage === 'main' && needsBundle(c));
+    const open = bundles.filter(b => b.stage === 'preparo' || b.stage === 'verificacao').sort((a, b) => b.code - a.code)[0];
+    const sent = bundles.filter(b => b.outcome !== 'descartado').map(b => b.createdAt).filter(Boolean).sort().pop();
+    const since = sent ? daysSince(sent) : Infinity;
+    const crit = waiting.filter(c => c.severity === 'critica'), imp = waiting.filter(c => c.severity === 'importante');
+    const s = { waiting, open, since, crit, imp };
+    if (open) {
+      const joinable = open.stage === 'preparo' && !(open.checks && open.checks.preparo && open.checks.preparo.escopo);
+      return { ...s, level: 'wait', verdict: `Código ${open.code} em ${bStage(open.stage).name}`,
+        why: waiting.length ? (joinable ? `${waiting.length} esperando podem entrar nele enquanto o escopo não fecha.` : `O escopo fechou: ${waiting.length} esperando vão no próximo.`)
+          : 'Nada esperando fora dele.', join: joinable && waiting.length ? open : null };
+    }
+    if (!waiting.length) return { ...s, level: 'idle', verdict: 'Nada a enviar', why: 'Nenhuma alteração do app esperando em main.' };
+    if (crit.length) return { ...s, level: 'urgent', hotfix: true, verdict: 'Cortar agora: hotfix', why: `Crítica em main: ${crit.map(c => c.title).join('; ')}.` };
+    if (imp.length) return { ...s, level: 'go', verdict: 'Cortar agora', why: `Importante em main: ${imp.map(c => c.title).join('; ')}.` };
+    if (waiting.length >= POLICY.pileUp) return { ...s, level: 'go', verdict: 'Cortar agora: acúmulo', why: `${waiting.length} alterações esperando (limite ${POLICY.pileUp}).` };
+    if (since >= POLICY.cadenceDays) return { ...s, level: 'go', verdict: 'Cortar agora: trem', why: `${Math.floor(since)} dias desde o último bundle, ${waiting.length} esperando.` };
+    const left = Math.ceil(POLICY.cadenceDays - since);
+    return { ...s, level: 'wait', verdict: `Próximo trem em ${left} ${left === 1 ? 'dia' : 'dias'}`,
+      why: `${waiting.length} ${waiting.length === 1 ? 'alteração normal esperando' : 'alterações normais esperando'}. Uma crítica ou importante antecipa o corte.` };
   }
 
-  // ---------- board ----------
-  function card(b) {
-    const st = stageOf(b.stage);
-    const p = st ? progress(b, st) : null;
-    const ready = st && canAdvance(b, st);
-    return h('button', { type: 'button', class: 'card' + (b.blocked ? ' blocked' : ''), onclick: () => openDetail(b.code),
-        'aria-label': `${b.name}, código ${b.code}` },
+  function renderCut() {
+    const s = cutState();
+    const ro = !db || !canWrite;
+    const box = $('#cut'); box.replaceChildren();
+    const btns = h('div', { class: 'actions', style: 'margin-top:.7rem' });
+    if (!ro && s.join) btns.append(h('button', { type: 'button', onclick: () => joinBundle(s.join, s.waiting) }, `Incluir ${s.waiting.length} no código ${s.join.code}`));
+    if (!ro && !s.open && s.waiting.length) btns.append(h('button', { type: 'button', class: s.level === 'go' || s.level === 'urgent' ? null : 'ghost',
+      onclick: () => openDlg({ kind: 'cut', hotfix: !!s.hotfix }) }, s.level === 'wait' ? 'Cortar mesmo assim' : 'Cortar bundle'));
+    box.append(
+      h('div', null, h('p', { class: 'eyebrow' }, 'Próximo bundle'),
+        h('div', { class: 'verdict ' + s.level }, h('span', { class: 'dot', 'aria-hidden': 'true' }), s.verdict),
+        h('p', null, s.why), btns.childNodes.length ? btns : null),
+      h('div', { class: 'stats' },
+        h('div', null, h('b', null, String(s.waiting.length)), h('span', null, 'esperando')),
+        h('div', null, h('b', null, String(s.crit.length)), h('span', null, 'críticas')),
+        h('div', null, h('b', null, String(s.imp.length)), h('span', null, 'importantes')),
+        h('div', null, h('b', null, s.since === Infinity ? '—' : String(Math.floor(s.since))), h('span', null, 'dias desde o último'))));
+  }
+
+  async function joinBundle(b, list) {
+    for (const c of list) await moveC(c, 'bundle', `incluída no código ${b.code}`, { bundle: b.code });
+    await patchB(b, {}, `Incluídas: ${list.map(c => c.title).join('; ')}`);
+  }
+
+  // ---- boards ----
+  function cardB(b) {
+    const st = bStage(b.stage); const p = st ? progress(b, st) : null; const n = changesOf(b.code).length;
+    return h('button', { type: 'button', class: 'card' + (b.blocked ? ' blocked' : ''), onclick: () => openDlg({ kind: 'b', code: b.code }) },
       h('div', { class: 'ver' }, h('span', { class: 'name' }, b.name || '—'), h('span', { class: 'code' }, `código ${b.code}`)),
-      p && h('div', { class: 'bar', title: `${p.done} de ${p.total} critérios` }, h('i', { style: `width:${p.total ? p.done / p.total * 100 : 0}%` })),
+      p && h('div', { class: 'bar' }, h('i', { style: `width:${p.total ? p.done / p.total * 100 : 0}%` })),
       h('div', { class: 'meta' },
         p && h('span', { class: 'mono' }, `${p.done}/${p.total}`),
         h('span', null, ago(b.enteredAt)),
-        b.commit && h('span', { class: 'mono' }, b.commit.slice(0, 7)),
+        h('span', null, n === 1 ? '1 alteração' : `${n} alterações`),
+        b.hotfix && h('span', { class: 'pill block' }, 'Hotfix'),
         st && st.steps && h('span', { class: 'pill pct' }, `${b.rollout || st.steps[0]}%`),
         b.blocked && h('span', { class: 'pill block' }, 'Bloqueado'),
-        ready && h('span', { class: 'pill ready' }, 'Pronto para avançar')));
+        st && canAdvance(b, st) && h('span', { class: 'pill ready' }, 'Pronto para avançar')));
   }
+  function cardC(c) {
+    const st = cStage(c.stage); const p = st && c.stage !== 'main' && c.stage !== 'bundle' ? progress(c, st) : null;
+    const b = c.bundle != null ? bundleBy(c.bundle) : null;
+    return h('button', { type: 'button', class: `card sev-${c.severity || 'normal'}` + (c.blocked ? ' blocked' : ''), onclick: () => openDlg({ kind: 'c', id: c.id }) },
+      h('span', { class: 'title' }, c.title || '—'),
+      p && h('div', { class: 'bar' }, h('i', { style: `width:${p.total ? p.done / p.total * 100 : 0}%` })),
+      h('div', { class: 'meta' },
+        c.severity && c.severity !== 'normal' && h('span', { class: 'tag ' + c.severity }, SEVERITY[c.severity].name),
+        c.kind && h('span', { class: 'tag' }, KINDS[c.kind].replace(' (sem bundle)', '')),
+        c.ref && h('span', { class: 'mono' }, c.ref),
+        p && h('span', { class: 'mono' }, `${p.done}/${p.total}`),
+        c.stage === 'bundle' && b && h('span', null, bStage(b.stage) ? bStage(b.stage).name : ''),
+        c.stage !== 'arquivo' && h('span', null, ago(c.enteredAt))));
+  }
+  const col = (title, num, purpose, kids, wip) => h('section', { class: 'col', 'aria-label': title },
+    h('div', { class: 'col-head' }, h('div', { class: 'row' }, h('h3', null, num ? h('span', { class: 'num' }, num + ' ') : null, title), wip),
+      h('p', null, purpose)),
+    kids && kids.length ? kids : h('div', { class: 'empty' }, 'Vazio'));
+  const archCard = (x, onclick, title, sub) => h('button', { type: 'button', class: 'card', onclick },
+    h('div', { class: 'ver' }, h('span', { class: 'name' }, title), x.code != null ? h('span', { class: 'code' }, `código ${x.code}`) : null),
+    h('span', { class: 'outcome' }, sub));
 
   function render() {
-    const board = $('#board'); board.replaceChildren();
-    STAGES.forEach((st, i) => {
-      const here = bundles.filter(b => b.stage === st.id).sort((a, b) => b.code - a.code);
-      board.append(h('section', { class: 'col', 'aria-label': st.name },
-        h('div', { class: 'col-head' },
-          h('div', { class: 'row' }, h('h3', null, h('span', { class: 'num' }, `${i + 1} `), st.name),
-            st.wip && h('span', { class: 'wip' + (here.length >= st.wip ? ' full' : ''), title: 'Limite: uma release por faixa no Play' }, `${here.length}/${st.wip}`)),
-          h('p', null, st.purpose)),
-        here.length ? here.map(card) : h('div', { class: 'empty' }, 'Nenhum bundle aqui')));
+    // changes
+    const bc = $('#board-c'); bc.replaceChildren();
+    const sevRank = { critica: 0, importante: 1, normal: 2 };
+    const sortC = (a, b) => (sevRank[a.severity] ?? 2) - (sevRank[b.severity] ?? 2) || String(b.enteredAt).localeCompare(String(a.enteredAt));
+    C_STAGES.forEach((st, i) => {
+      const here = changes.filter(c => c.stage === st.id).sort(sortC);
+      let kids;
+      if (st.id === 'bundle') {
+        const codes = [...new Set(here.map(c => c.bundle))].sort((a, b) => b - a);
+        kids = codes.flatMap(code => { const b = bundleBy(code);
+          return [h('div', { class: 'group-head' }, `código ${code}${b ? ' · ' + b.name + ' · ' + (bStage(b.stage) ? bStage(b.stage).name : '') : ''}`), ...here.filter(c => c.bundle === code).map(cardC)]; });
+      } else kids = here.map(cardC);
+      bc.append(col(st.name, i + 1, st.purpose, kids, st.id === 'main' ? h('span', { class: 'wip' }, String(here.length)) : null));
     });
-    const arch = bundles.filter(b => b.stage === 'arquivo').sort((a, b) => b.code - a.code);
-    board.append(h('section', { class: 'col', 'aria-label': ARCHIVE.name },
-      h('div', { class: 'col-head' }, h('div', { class: 'row' }, h('h3', null, ARCHIVE.name), h('span', { class: 'wip' }, String(arch.length))),
-        h('p', null, ARCHIVE.purpose)),
-      arch.length ? h('div', { class: 'arch' }, arch.map(b => h('button', { type: 'button', class: 'card', onclick: () => openDetail(b.code) },
-        h('div', { class: 'ver' }, h('span', { class: 'name' }, b.name || '—'), h('span', { class: 'code' }, `código ${b.code}`)),
-        h('span', { class: 'outcome' }, `${OUTCOMES[b.outcome] || 'Arquivado'} · ${fmt(b.enteredAt)}`))))
-        : h('div', { class: 'empty' }, 'Vazio')));
-    $('#new-btn').hidden = !db || !canWrite;
-    if (openCode != null && $('#dlg').open) drawDetail();
+    const ca = changes.filter(c => c.stage === 'arquivo').sort((a, b) => String(b.enteredAt).localeCompare(String(a.enteredAt)));
+    bc.append(col(C_ARCHIVE.name, null, C_ARCHIVE.purpose, ca.length ? [h('div', { class: 'arch' }, ca.slice(0, 40).map(c =>
+      archCard(c, () => openDlg({ kind: 'c', id: c.id }), c.title, `${C_OUTCOMES[c.outcome] || ''}${c.bundle != null ? ' · código ' + c.bundle : ''} · ${fmt(c.enteredAt)}`)))] : null));
+    // bundles
+    const bb = $('#board-b'); bb.replaceChildren();
+    B_STAGES.forEach((st, i) => {
+      const here = bundles.filter(b => b.stage === st.id).sort((a, b) => b.code - a.code);
+      bb.append(col(st.name, i + 1, st.purpose, here.map(cardB),
+        st.wip ? h('span', { class: 'wip' + (here.length >= st.wip ? ' full' : ''), title: 'Uma release por faixa no Play' }, `${here.length}/${st.wip}`) : null));
+    });
+    const ba = bundles.filter(b => b.stage === 'arquivo').sort((a, b) => b.code - a.code);
+    bb.append(col(B_ARCHIVE.name, null, B_ARCHIVE.purpose, ba.length ? [h('div', { class: 'arch' }, ba.map(b =>
+      archCard(b, () => openDlg({ kind: 'b', code: b.code }), b.name || '—', `${OUTCOMES[b.outcome] || ''} · ${fmt(b.enteredAt)}`)))] : null));
+    $('#new-change').hidden = !db || !canWrite;
+    renderCut();
+    const typing = document.activeElement && $('#dlg').contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName) && document.activeElement.type !== 'checkbox';
+    if (open && $('#dlg').open && (open.kind === 'b' || open.kind === 'c') && !typing) drawDlg();
   }
 
-  // ---------- reference ----------
-  function renderRef() {
-    $('#rules').replaceChildren(...RULES.map(r => h('li', null, r)));
-    $('#defs').replaceChildren(...STAGES.map((st, i) => h('article', { class: 'def' },
+  // ---- reference ----
+  function defs(stages, archive, archiveItems) {
+    return [...stages.map((st, i) => h('article', { class: 'def' },
       h('h3', null, h('span', { class: 'num' }, String(i + 1).padStart(2, '0')), st.name),
       h('p', null, st.purpose + (st.wip ? ' Um bundle por vez.' : '')),
       h('div', { class: 'lbl' }, 'Entra quando'), h('p', null, st.enter),
       h('div', { class: 'lbl' }, 'Sai quando'),
       h('ul', null, st.exit.map(it => h('li', null, it.t, it.auto && h('span', { class: 'auto-tag' }, 'automático')))),
       h('div', { class: 'lbl' }, 'Se der errado'), h('p', null, st.fail))),
-      h('article', { class: 'def' }, h('h3', null, h('span', { class: 'num' }, '—'), ARCHIVE.name), h('p', null, ARCHIVE.purpose),
-        h('div', { class: 'lbl' }, 'Entra quando'),
-        h('ul', null, h('li', null, 'Concluído: saiu de Produção escalonada com tudo marcado.'),
-          h('li', null, 'Substituído: um código mais novo entrou na mesma faixa do Play.'),
-          h('li', null, 'Descartado: reprovado, com crash ou abandonado, sempre com o motivo.'))));
+      h('article', { class: 'def' }, h('h3', null, h('span', { class: 'num' }, '—'), archive.name), h('p', null, archive.purpose),
+        h('div', { class: 'lbl' }, 'Entra quando'), h('ul', null, archiveItems.map(t => h('li', null, t))))];
+  }
+  function renderRef() {
+    $('#cut-rules').replaceChildren(...CUT_RULES.map(r => h('li', null, r)));
+    $('#sev-rules').replaceChildren(...Object.values(SEVERITY).map(s => h('li', null, h('strong', null, s.name + ': '), s.d)));
+    $('#rules').replaceChildren(...RULES.map(r => h('li', null, r)));
+    $('#defs-c').replaceChildren(...defs(C_STAGES, C_ARCHIVE, ['Entregue: o bundle dela foi concluído.', 'Entregue sem bundle: interna, ao chegar a main.', 'Descartada: fora da fase, repetida ou abandonada, com o motivo.']));
+    $('#defs-b').replaceChildren(...defs(B_STAGES, B_ARCHIVE, ['Concluído: saiu de Produção escalonada com tudo marcado.', 'Substituído: um código mais novo entrou na mesma faixa do Play.', 'Descartado: reprovado, com crash ou abandonado, sempre com o motivo.']));
   }
 
-  // ---------- detail ----------
-  function openDetail(code) { openCode = code; pending = null; drawDetail(); const d = $('#dlg'); if (!d.open) d.showModal(); }
-  function closeDetail() { $('#dlg').close(); }
-  $('#dlg').addEventListener('close', () => { openCode = null; pending = null; });
-  $('#dlg').addEventListener('click', e => { if (e.target === e.currentTarget) closeDetail(); });
+  // ---- tabs ----
+  function route() {
+    const v = ['alteracoes', 'bundles', 'criterios'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'alteracoes';
+    for (const id of ['alteracoes', 'bundles', 'criterios']) $('#v-' + id).hidden = id !== v;
+    document.querySelectorAll('nav.tabs a').forEach(a => { if (a.dataset.view === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  }
+  addEventListener('hashchange', route);
 
-  function drawDetail() {
+  // ---- dialog ----
+  const dlg = $('#dlg');
+  function openDlg(o) { open = o; pending = null; drawDlg(); if (!dlg.open) dlg.showModal(); }
+  const closeDlg = () => dlg.close();
+  dlg.addEventListener('close', () => { open = null; pending = null; });
+  dlg.addEventListener('click', e => { if (e.target === dlg) closeDlg(); });
+  const head = (eyebrow, title, extra) => h('div', { class: 'dlg-head' },
+    h('div', null, h('p', { class: 'eyebrow' }, eyebrow), h('h2', { id: 'dlg-title' }, title, extra ? ' ' : null, extra)),
+    h('button', { type: 'button', class: 'x', 'aria-label': 'Fechar', onclick: closeDlg }, '×'));
+
+  function drawDlg() {
     const body = $('#dlg-body');
-    if (openCode === 'new') return drawNew(body);
-    const b = byCode(openCode); if (!b) { closeDetail(); return; }
-    const st = stageOf(b.stage); const i = stageIdx(b.stage);
-    const ro = !canWrite || !db;
-    const kids = [];
-    kids.push(h('div', { class: 'dlg-head' },
-      h('div', null, h('p', { class: 'eyebrow' }, st ? `Etapa ${i + 1} de ${STAGES.length} · ${st.name}` : `Arquivo · ${OUTCOMES[b.outcome] || ''}`),
-        h('h2', { id: 'dlg-title' }, `${b.name || '—'} `, h('span', { class: 'mono muted', style: 'font-size:.9rem' }, `código ${b.code}`))),
-      h('button', { type: 'button', class: 'x', 'aria-label': 'Fechar', onclick: closeDetail }, '×')));
-    kids.push(h('div', { class: 'steps', 'aria-hidden': 'true' }, STAGES.map((s, k) => h('span', { class: st ? (k < i ? 'done' : k === i ? 'now' : '') : (b.outcome === 'concluido' ? 'done' : '') }))));
+    if (!open) return;
+    if (open.kind === 'cut') return drawCut(body);
+    if (open.kind === 'newc') return drawNewC(body);
+    if (open.kind === 'b') return drawB(body);
+    if (open.kind === 'c') return drawC(body);
+  }
 
+  function checklist(x, st, ro, patch) {
+    const p = progress(x, st);
+    return h('div', null, h('p', { class: 'eyebrow', style: 'margin-bottom:.5rem' }, `Critérios de saída · ${p.done} de ${p.total}`),
+      h('ul', { class: 'checks' }, st.exit.map(it => {
+        const on = isChecked(x, st, it); const id = `c-${st.id}-${it.id}`;
+        const box = it.auto ? h('span', { class: 'auto' + (on ? ' on' : ''), role: 'img', 'aria-label': on ? 'cumprido' : 'pendente' }, on ? '✓' : '')
+          : h('input', { type: 'checkbox', id, checked: on, disabled: ro, onchange: e => patch({ checks: { [st.id]: { [it.id]: e.target.checked } } }) });
+        return h('li', null, box, h('label', { for: it.auto ? null : id }, it.t, it.h && h('small', null, it.h)));
+      })));
+  }
+  const textField = (label, x, key, patch, opts = {}) => h('label', { class: 'field' }, label,
+    h(opts.area ? 'textarea' : 'input', { id: `f-${key}`, value: x[key] || '', rows: opts.area ? 3 : null, disabled: opts.ro,
+      placeholder: opts.ph || null, class: opts.mono ? 'mono' : null,
+      onchange: e => { const v = e.target.value.trim(); if (v !== (x[key] || '')) patch({ [key]: v }); } }));
+  const selectField = (label, x, key, map, patch, ro) => h('label', { class: 'field' }, label,
+    h('select', { id: `f-${key}`, disabled: ro, onchange: e => patch({ [key]: e.target.value }) },
+      Object.entries(map).map(([k, v]) => h('option', { value: k, selected: x[key] === k }, typeof v === 'string' ? v : v.name))));
+  const history = x => x.history && x.history.length ? h('details', { class: 'sec' }, h('summary', null, `Histórico (${x.history.length})`),
+    h('ul', { class: 'hist', style: 'margin-top:.6rem' }, [...x.history].reverse().map(e => h('li', null, h('time', null, fmt(e.at)), e.note)))) : null;
+
+  function confirmPanel() {
+    const p = pending;
+    const inp = h('input', { id: 'reason', placeholder: p.ph || '' });
+    const go = () => { const v = inp.value.trim(); if (p.needs && !v) { inp.focus(); return; } pending = null; p.run(v); };
+    return h('div', { class: 'box' + (p.danger ? ' danger' : '') }, h('div', null, p.msg),
+      p.needs !== undefined && h('label', { class: 'field', style: 'margin-top:.5rem' }, p.label || 'Motivo', inp),
+      h('div', { class: 'actions', style: 'margin-top:.6rem' }, h('button', { type: 'button', class: p.danger ? 'danger' : null, onclick: go }, p.ok),
+        h('button', { type: 'button', class: 'ghost', onclick: () => { pending = null; drawDlg(); } }, 'Cancelar')));
+  }
+  const ask = p => { pending = p; drawDlg(); const r = $('#reason'); if (r) r.focus(); };
+
+  // Bundle detail
+  function drawB(body) {
+    const b = bundleBy(open.code); if (!b) return closeDlg();
+    const st = bStage(b.stage); const i = B_STAGES.indexOf(st); const ro = !db || !canWrite;
+    const patch = (f, n) => patchB(b, f, n);
+    const kids = [head(st ? `Bundle · etapa ${i + 1} de ${B_STAGES.length} · ${st.name}` : `Bundle · Arquivo · ${OUTCOMES[b.outcome] || ''}`,
+      b.name || '—', h('span', { class: 'mono muted', style: 'font-size:.9rem' }, `código ${b.code}`)),
+      h('div', { class: 'steps', 'aria-hidden': 'true' }, B_STAGES.map((s, k) => h('span', { class: st ? (k < i ? 'done' : k === i ? 'now' : '') : (b.outcome === 'concluido' ? 'done' : '') })))];
+    if (b.hotfix) kids.push(h('div', { class: 'box' }, 'Hotfix: as esperas automáticas não se aplicam.'));
     if (b.blocked) kids.push(h('div', { class: 'box danger' }, h('strong', null, 'Bloqueado: '), b.blocked));
-    if (b.stage === 'arquivo' && b.outcomeNote) kids.push(h('div', { class: 'box' }, b.outcomeNote));
-
-    const field = (label, key, opts = {}) => h('label', { class: 'field' }, label,
-      h(opts.area ? 'textarea' : 'input', { id: `f-${key}`, value: b[key] || '', rows: opts.area ? 3 : null, disabled: ro,
-        placeholder: opts.ph || null, class: opts.mono ? 'mono' : null,
-        onchange: e => { const v = e.target.value.trim(); if (v !== (b[key] || '')) patch(b, { [key]: v }); } }));
-    kids.push(h('div', { class: 'grid2' }, field('versionName', 'name', { mono: true }), field('Commit do build', 'commit', { mono: true, ph: 'ex.: cbf3798' })));
-    kids.push(field('Notas', 'notes', { area: true, ph: 'O que entra, tickets (T-n), links' }));
-
+    if (b.outcomeNote) kids.push(h('div', { class: 'box' }, b.outcomeNote));
+    kids.push(h('div', { class: 'grid2' }, textField('versionName', b, 'name', patch, { mono: true, ro }), textField('Commit do build', b, 'commit', patch, { mono: true, ro, ph: 'ex.: cbf3798' })));
+    const inc = changesOf(b.code);
+    kids.push(h('div', null, h('p', { class: 'eyebrow', style: 'margin-bottom:.4rem' }, `Alterações (${inc.length})`),
+      inc.length ? h('ul', { class: 'inbundle', style: 'margin:0;padding-left:1.1rem' }, inc.map(c => h('li', null,
+        h('a', { href: '#', onclick: e => { e.preventDefault(); openDlg({ kind: 'c', id: c.id }); } }, c.title), c.ref ? h('span', { class: 'mono muted' }, ' ' + c.ref) : null)))
+        : h('p', { class: 'muted', style: 'margin:0' }, 'Nenhuma registrada.')));
+    kids.push(textField('Notas', b, 'notes', patch, { area: true, ro }));
     if (st) {
-      const p = progress(b, st);
-      kids.push(h('div', null, h('p', { class: 'eyebrow', style: 'margin-bottom:.5rem' }, `Critérios de saída · ${p.done} de ${p.total}`),
-        h('ul', { class: 'checks' }, st.exit.map(it => {
-          const on = isChecked(b, st, it);
-          const box = it.auto ? h('span', { class: 'auto' + (on ? ' on' : ''), role: 'img', 'aria-label': on ? 'cumprido' : 'pendente' }, on ? '✓' : '')
-            : h('input', { type: 'checkbox', id: `c-${st.id}-${it.id}`, checked: on, disabled: ro,
-                onchange: e => patch(b, { checks: { [st.id]: { [it.id]: e.target.checked } } }) });
-          return h('li', null, box, h('label', { for: it.auto ? null : `c-${st.id}-${it.id}` }, it.t, it.h && h('small', null, it.h)));
-        }))));
+      kids.push(checklist(b, st, ro, f => patch(f)));
       if (st.steps) {
         const pct = b.rollout || st.steps[0]; const next = st.steps.find(s => s > pct);
-        kids.push(h('div', { class: 'box' }, `Rollout em ${pct}%.`, next ? ` Para subir a ${next}%, marque o critério de 48 h.` : ' Em 100% desde ' + fmt(b.at100) + '.',
+        kids.push(h('div', { class: 'box' }, `Rollout em ${pct}%.`, next ? ` Para subir a ${next}%, marque o critério de 48 h.` : ` Em 100% desde ${fmt(b.at100)}.`,
           next && !ro && h('div', { class: 'actions', style: 'margin-top:.5rem' }, h('button', { type: 'button', disabled: !(b.checks && b.checks.producao && b.checks.producao.etapa) || !!b.blocked,
-            onclick: () => patch(b, { rollout: next, checks: { producao: { etapa: false } }, ...(next >= 100 ? { at100: new Date().toISOString() } : {}) }, `Rollout ${pct}% → ${next}%`) }, `Subir para ${next}%`))));
+            onclick: () => patch({ rollout: next, checks: { producao: { etapa: false } }, ...(next >= 100 ? { at100: iso() } : {}) }, `Rollout ${pct}% → ${next}%`) }, `Subir para ${next}%`))));
       }
       kids.push(h('p', { class: 'muted', style: 'margin:0;font-size:.85rem' }, h('strong', null, 'Se der errado: '), st.fail));
+      if (!ro) kids.push(pending ? confirmPanel() : actionsB(b, st, i));
     }
-
-    if (!ro) kids.push(actions(b, st, i));
-    if (b.history && b.history.length) kids.push(h('details', { class: 'sec' }, h('summary', null, `Histórico (${b.history.length})`),
-      h('ul', { class: 'hist', style: 'margin-top:.6rem' }, [...b.history].reverse().map(e => h('li', null, h('time', null, fmt(e.at)), e.note)))));
-    body.replaceChildren(...kids);
+    kids.push(history(b));
+    body.replaceChildren(...kids.filter(Boolean));
   }
-
-  function actions(b, st, i) {
-    const wrap = h('div', { style: 'display:grid;gap:.7rem' });
-    if (pending) {
-      const p = pending;
-      const ta = h('input', { id: 'reason', placeholder: p.ph || '', value: p.value || '' });
-      const go = () => { const v = ta.value.trim(); if (p.needs && !v) { ta.focus(); return; } pending = null; p.run(v); };
-      wrap.append(h('div', { class: 'box' + (p.danger ? ' danger' : '') }, h('div', null, p.msg),
-        p.needs !== undefined && h('label', { class: 'field', style: 'margin-top:.5rem' }, p.label || 'Motivo', ta),
-        h('div', { class: 'actions', style: 'margin-top:.6rem' }, h('button', { type: 'button', class: p.danger ? 'danger' : null, onclick: go }, p.ok),
-          h('button', { type: 'button', class: 'ghost', onclick: () => { pending = null; drawDetail(); } }, 'Cancelar'))));
-      return wrap;
-    }
-    if (b.stage === 'arquivo') return wrap;
-    const ask = p => { pending = p; drawDetail(); const r = $('#reason'); if (r) r.focus(); };
+  function actionsB(b, st, i) {
     const row = h('div', { class: 'actions' });
-    const last = i === STAGES.length - 1;
-    const next = last ? null : STAGES[i + 1];
-    const ok = canAdvance(b, st);
+    const last = i === B_STAGES.length - 1; const next = last ? null : B_STAGES[i + 1]; const ok = canAdvance(b, st);
     const advance = () => {
-      if (last) return ask({ msg: 'Concluir esta versão e mandar o cartão para o arquivo?', ok: 'Concluir', run: () => move(b, 'arquivo', '', { outcome: 'concluido' }) });
+      if (last) return ask({ msg: 'Concluir este bundle? As alterações dele passam a Entregue.', ok: 'Concluir', run: () => moveB(b, 'arquivo', '', { outcome: 'concluido' }) });
       const occ = next.wip ? bundles.filter(x => x.stage === next.id && x.code !== b.code) : [];
       const extra = next.steps ? { rollout: next.steps[0] } : {};
       if (occ.length) return ask({ msg: `${occ.map(x => `${x.name} (código ${x.code})`).join(', ')} está em ${next.name}. Ao avançar, ele vai para o arquivo como substituído.`,
-        ok: `Avançar e substituir`, run: async () => { for (const x of occ) await move(x, 'arquivo', `pelo código ${b.code}`, { outcome: 'substituido' }); await move(b, next.id, '', extra); } });
-      move(b, next.id, '', extra);
+        ok: 'Avançar e substituir', run: async () => { for (const x of occ) await moveB(x, 'arquivo', `pelo código ${b.code}`, { outcome: 'substituido' }); await moveB(b, next.id, '', extra); } });
+      moveB(b, next.id, '', extra);
     };
     row.append(h('button', { type: 'button', disabled: !ok, title: ok ? null : (b.blocked ? 'Desbloqueie primeiro' : 'Marque todos os critérios de saída'), onclick: advance },
       last ? 'Concluir' : `Avançar para ${next.name}`));
-    const sent = stageIdx(b.stage) >= stageIdx('interno');
-    if (i > 0 && !sent) row.append(h('button', { type: 'button', class: 'ghost', onclick: () => move(b, STAGES[i - 1].id, '', {}) }, `Voltar para ${STAGES[i - 1].name}`));
+    if (i > 0 && i < 2) row.append(h('button', { type: 'button', class: 'ghost', onclick: () => moveB(b, B_STAGES[i - 1].id) }, `Voltar para ${B_STAGES[i - 1].name}`));
     row.append(b.blocked
-      ? h('button', { type: 'button', class: 'ghost', onclick: () => patch(b, { blocked: null }, 'Desbloqueado') }, 'Desbloquear')
+      ? h('button', { type: 'button', class: 'ghost', onclick: () => patchB(b, { blocked: null }, 'Desbloqueado') }, 'Desbloquear')
       : h('button', { type: 'button', class: 'ghost', onclick: () => ask({ msg: 'O que impede este bundle de seguir?', needs: true, ph: 'ex.: crash ao abrir a câmera (T-14)', ok: 'Bloquear', danger: true,
-          run: v => patch(b, { blocked: v }, 'Bloqueado: ' + v) }) }, 'Bloquear'));
-    row.append(h('button', { type: 'button', class: 'danger', onclick: () => ask({ msg: `Descartar o código ${b.code}? Ele não pode ser reenviado; a correção vai num código novo.`, needs: true,
-      ph: 'ex.: reprovado na revisão por…', ok: 'Descartar', danger: true, run: v => move(b, 'arquivo', v, { outcome: 'descartado', outcomeNote: v, blocked: null }) }) }, 'Descartar'));
-    wrap.append(row);
-    return wrap;
+          run: v => patchB(b, { blocked: v }, 'Bloqueado: ' + v) }) }, 'Bloquear'));
+    row.append(h('button', { type: 'button', class: 'danger', onclick: () => ask({ msg: `Descartar o código ${b.code}? As alterações voltam para Em main e seguem no próximo bundle.`, needs: true,
+      ph: 'ex.: reprovado na revisão por…', ok: 'Descartar', danger: true, run: v => moveB(b, 'arquivo', v, { outcome: 'descartado', outcomeNote: v, blocked: null }) }) }, 'Descartar'));
+    return row;
   }
 
-  function drawNew(body) {
+  // Change detail
+  function drawC(body) {
+    const c = changeBy(open.id); if (!c) return closeDlg();
+    const st = cStage(c.stage); const i = C_STAGES.indexOf(st); const ro = !db || !canWrite;
+    const patch = (f, n) => patchC(c, f, n);
+    const b = c.bundle != null ? bundleBy(c.bundle) : null;
+    const kids = [head(st ? `Alteração · ${st.name}` : `Alteração · ${C_OUTCOMES[c.outcome] || ''}`, c.title || '—')];
+    if (c.outcomeNote) kids.push(h('div', { class: 'box' }, c.outcomeNote));
+    if (b) kids.push(h('div', { class: 'box' }, 'No bundle ', h('a', { href: '#', onclick: e => { e.preventDefault(); openDlg({ kind: 'b', code: b.code }); } }, `${b.name} (código ${b.code})`),
+      `, ${b.stage === 'arquivo' ? (OUTCOMES[b.outcome] || '').toLowerCase() : 'em ' + bStage(b.stage).name}.`));
+    kids.push(textField('Título', c, 'title', patch, { ro }));
+    kids.push(h('div', { class: 'grid2' }, selectField('Fonte', c, 'source', SOURCES, patch, ro), textField('Referência', c, 'ref', patch, { mono: true, ro, ph: 'T-12, D155, 78f5a7c' })));
+    kids.push(h('div', { class: 'grid2' }, selectField('Tipo', c, 'kind', KINDS, patch, ro), selectField('Gravidade', c, 'severity', SEVERITY, patch, ro)));
+    kids.push(textField('Notas', c, 'notes', patch, { area: true, ro }));
+    if (st && st.id !== 'main' && st.id !== 'bundle') kids.push(checklist(c, st, ro, f => patch(f)));
+    if (st && !ro) kids.push(pending ? confirmPanel() : actionsC(c, st, i));
+    kids.push(history(c));
+    body.replaceChildren(...kids.filter(Boolean));
+  }
+  function actionsC(c, st, i) {
+    const row = h('div', { class: 'actions' });
+    if (st.id === 'entrada' || st.id === 'dev') {
+      const ok = canAdvance(c, st);
+      const to = st.id === 'entrada' ? 'dev' : 'main';
+      const go = () => (to === 'main' && c.kind === 'interna') ? moveC(c, 'arquivo', 'interna, em main', { outcome: 'interna' }) : moveC(c, to);
+      row.append(h('button', { type: 'button', disabled: !ok, title: ok ? null : 'Marque todos os critérios de saída', onclick: go },
+        to === 'main' && c.kind === 'interna' ? 'Entregar (interna, sem bundle)' : `Avançar para ${cStage(to).name}`));
+    }
+    if (st.id === 'dev') row.append(h('button', { type: 'button', class: 'ghost', onclick: () => moveC(c, 'entrada') }, 'Voltar para Entrada'));
+    if (st.id === 'main') {
+      row.append(h('button', { type: 'button', class: 'ghost', onclick: () => moveC(c, 'dev', 'reaberta') }, 'Reabrir'));
+      if (c.kind === 'interna') row.append(h('button', { type: 'button', onclick: () => moveC(c, 'arquivo', 'interna', { outcome: 'interna' }) }, 'Entregar sem bundle'));
+    }
+    if (st.id === 'bundle') row.append(h('button', { type: 'button', class: 'ghost', onclick: () => ask({ msg: 'Tirar do bundle e voltar para Em desenvolvimento? Use quando ela causou um problema.', needs: true, ok: 'Tirar do bundle', danger: true,
+      run: v => moveC(c, 'dev', v, { bundle: null }) }) }, 'Tirar do bundle'));
+    if (st.id !== 'bundle') row.append(h('button', { type: 'button', class: 'danger', onclick: () => ask({ msg: 'Descartar esta alteração?', needs: true, ph: 'ex.: fica para depois da loja aberta', ok: 'Descartar', danger: true,
+      run: v => moveC(c, 'arquivo', v, { outcome: 'descartada', outcomeNote: v }) }) }, 'Descartar'));
+    return row;
+  }
+
+  function drawNewC(body) {
+    const title = h('input', { id: 'nc-title', placeholder: 'ex.: Leitura das notas de SP' });
+    const ref = h('input', { id: 'nc-ref', class: 'mono', placeholder: 'T-12, D155, 78f5a7c' });
+    const seg = (name, map, def) => h('div', { class: 'seg', role: 'radiogroup' }, Object.entries(map).map(([k, v]) =>
+      h('label', null, h('input', { type: 'radio', name, value: k, checked: k === def }), typeof v === 'string' ? v : v.name)));
+    const src = seg('nc-src', SOURCES, 'ticket'), kind = seg('nc-kind', KINDS, 'correcao'), sev = seg('nc-sev', SEVERITY, 'normal');
+    const where = seg('nc-stage', { entrada: 'Entrada', dev: 'Em desenvolvimento', main: 'Já em main' }, 'entrada');
+    const msg = h('p', { class: 'muted', style: 'margin:0;font-size:.85rem' }, '');
+    const val = n => (body.querySelector(`input[name="${n}"]:checked`) || {}).value;
+    const create = e => {
+      e.preventDefault();
+      if (!title.value.trim()) { msg.textContent = 'Dê um título.'; title.focus(); return; }
+      const at = iso(); const ref0 = db.collection('changes').doc(); const stage = val('nc-stage');
+      const checks = stage === 'entrada' ? {} : { entrada: { fonte: true, triada: true, fase: true }, ...(stage === 'main' ? { dev: { main: true, checks: true, verificada: true, decisao: true } } : {}) };
+      const doc = { id: ref0.id, title: title.value.trim(), source: val('nc-src'), ref: ref.value.trim(), kind: val('nc-kind'), severity: val('nc-sev'),
+        stage, bundle: null, notes: '', checks, createdAt: at, enteredAt: at, updatedAt: at, history: [{ at, note: `Registrada em ${cStage(stage).name}` }] };
+      closeDlg(); location.hash = '#alteracoes';
+      write('c' + doc.id, () => ref0.set(doc));
+    };
+    body.replaceChildren(h('form', { style: 'display:grid;gap:1rem', onsubmit: create },
+      head('Nova alteração', 'Registrar alteração'),
+      h('label', { class: 'field' }, 'Título', title),
+      h('div', { class: 'field' }, 'Fonte', src), h('label', { class: 'field' }, 'Referência', ref),
+      h('div', { class: 'field' }, 'Tipo', kind), h('div', { class: 'field' }, 'Gravidade', sev),
+      h('div', { class: 'field' }, 'Onde está', where), msg,
+      h('div', { class: 'actions' }, h('button', { type: 'submit' }, 'Registrar'), h('button', { type: 'button', class: 'ghost', onclick: closeDlg }, 'Cancelar'))));
+  }
+
+  function drawCut(body) {
+    const s = cutState();
     const nextCode = bundles.reduce((m, b) => Math.max(m, b.code), 0) + 1;
-    const code = h('input', { id: 'n-code', type: 'number', min: '1', value: String(nextCode), class: 'mono' });
-    const name = h('input', { id: 'n-name', placeholder: 'ex.: 0.1.1', class: 'mono' });
-    const notes = h('textarea', { id: 'n-notes', rows: 3, placeholder: 'O que entra, tickets (T-n)' });
-    const msg = h('p', { class: 'muted', style: 'margin:0;font-size:.85rem' }, 'Entra em Preparação.');
+    const code = h('input', { id: 'cut-code', type: 'number', min: '1', value: String(nextCode), class: 'mono' });
+    const name = h('input', { id: 'cut-name', class: 'mono', placeholder: 'ex.: 0.1.1' });
+    const hot = h('input', { id: 'cut-hot', type: 'checkbox', checked: !!open.hotfix });
+    const msg = h('p', { class: 'muted', style: 'margin:0;font-size:.85rem' }, 'O bundle entra em Preparação com estas alterações.');
     const create = async e => {
       e.preventDefault();
       const c = parseInt(code.value, 10);
       if (!(c > 0)) { msg.textContent = 'O versionCode é um número inteiro maior que zero.'; code.focus(); return; }
-      if (byCode(c)) { msg.textContent = `O código ${c} já tem um cartão. Códigos nunca se repetem.`; code.focus(); return; }
+      if (bundleBy(c)) { msg.textContent = `O código ${c} já tem um cartão. Códigos nunca se repetem.`; code.focus(); return; }
       if (!name.value.trim()) { msg.textContent = 'Informe o versionName.'; name.focus(); return; }
-      const at = new Date().toISOString();
-      closeDetail();
-      write(c, () => ref(c).set({ code: c, name: name.value.trim(), commit: '', notes: notes.value.trim(), stage: 'preparo', enteredAt: at,
-        createdAt: at, updatedAt: at, checks: {}, blocked: null, history: [{ at, note: 'Criado em Preparação' }] }));
+      const at = iso(); const list = s.waiting;
+      closeDlg(); location.hash = '#bundles';
+      await write('b' + c, () => bref(c).set({ code: c, name: name.value.trim(), commit: '', notes: '', stage: 'preparo', hotfix: hot.checked, enteredAt: at, createdAt: at, updatedAt: at,
+        checks: {}, blocked: null, history: [{ at, note: `Cortado com ${list.length} ${list.length === 1 ? 'alteração' : 'alterações'} (${s.verdict})` }] }));
+      for (const x of list) await moveC(x, 'bundle', `cortada no código ${c}`, { bundle: c });
     };
     body.replaceChildren(h('form', { style: 'display:grid;gap:1rem', onsubmit: create },
-      h('div', { class: 'dlg-head' }, h('div', null, h('p', { class: 'eyebrow' }, 'Novo cartão'), h('h2', { id: 'dlg-title' }, 'Novo bundle')),
-        h('button', { type: 'button', class: 'x', 'aria-label': 'Fechar', onclick: closeDetail }, '×')),
+      head('Cortar bundle', s.verdict),
+      h('p', { class: 'muted', style: 'margin:0' }, s.why),
+      h('ul', { class: 'inbundle', style: 'margin:0;padding-left:1.1rem' }, s.waiting.map(c => h('li', null, c.title,
+        c.severity !== 'normal' ? h('span', { class: 'tag ' + c.severity, style: 'margin-left:.4rem' }, SEVERITY[c.severity].name) : null))),
       h('div', { class: 'grid2' }, h('label', { class: 'field' }, 'versionCode', code), h('label', { class: 'field' }, 'versionName', name)),
-      h('label', { class: 'field' }, 'Notas', notes), msg,
-      h('div', { class: 'actions' }, h('button', { type: 'submit' }, 'Criar'), h('button', { type: 'button', class: 'ghost', onclick: closeDetail }, 'Cancelar'))));
+      h('label', { class: 'checks', style: 'display:flex;gap:.5rem;align-items:center' }, hot, 'Hotfix (as esperas automáticas das etapas não se aplicam)'),
+      msg,
+      h('div', { class: 'actions' }, h('button', { type: 'submit' }, 'Cortar'), h('button', { type: 'button', class: 'ghost', onclick: closeDlg }, 'Cancelar'))));
   }
-  $('#new-btn').addEventListener('click', () => openDetail('new'));
+  $('#new-change').addEventListener('click', () => openDlg({ kind: 'newc' }));
 
-  // ---------- data ----------
-  renderRef(); render();
+  // ---- data ----
+  renderRef(); route(); render();
   (async () => {
     const c = window.claude;
     if (!c || !c.use) { setState('Abra esta página no claude.ai para ver o quadro.', true); return; }
+    let user = null;
     try { user = await c.use('user'); } catch { user = null; }
-    if (user) { try { canWrite = user.can ? (await user.can('data.write')) !== false : true; } catch { canWrite = true; } }
+    if (user) { try { canWrite = (await user.can('data.write')) !== false; } catch { canWrite = true; } }
     db = await c.use('db');
     if (!db) { setState('Entre na sua conta para ver o quadro.', true); render(); return; }
-    let timer = setTimeout(() => setState('O quadro ainda não respondeu. Os dados podem estar desatualizados.', true), 10000);
-    db.collection('bundles').onSnapshot(snap => {
-      bundles = snap.docs.map(d => ({ ...d.data() })).filter(b => typeof b.code === 'number');
-      if (!snap.metadata.fromCache) { clearTimeout(timer); setState(canWrite ? `${bundles.filter(b => b.stage !== 'arquivo').length} em andamento` : 'Somente leitura'); }
+    const loaded = { b: false, c: false };
+    const timer = setTimeout(() => setState('O quadro ainda não respondeu. Os dados podem estar desatualizados.', true), 10000);
+    const done = (k, snap) => {
+      if (!snap.metadata.fromCache) loaded[k] = true;
+      if (loaded.b && loaded.c) { clearTimeout(timer); setState(canWrite ? 'Atualizado' : 'Somente leitura'); }
       render();
-    }, () => { clearTimeout(timer); setState('O quadro parou de atualizar. Recarregue a página.', true); });
-    setInterval(render, 10 * 60000); // day counters
+    };
+    const fail = () => { clearTimeout(timer); setState('O quadro parou de atualizar. Recarregue a página.', true); };
+    db.collection('bundles').onSnapshot(snap => { bundles = snap.docs.map(d => ({ ...d.data() })).filter(b => typeof b.code === 'number'); done('b', snap); }, fail);
+    db.collection('changes').onSnapshot(snap => { changes = snap.docs.map(d => ({ ...d.data(), id: d.id })); done('c', snap); }, fail);
+    setInterval(render, 10 * 60000);
   })();
 })();
 </script>
