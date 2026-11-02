@@ -87,6 +87,9 @@ What makes the site's two steps work: a closed track whose testers are the Googl
   `docs/brand/feature-graphic.png` (both from `tools/make-icons.py`, D114), and 2–8 phone screenshots. Screenshots:
   [screenshots/play/](screenshots/play/), from the demo caderneta, retaken 2026-10-31 after D141–D146, in upload
   order (Início, Gastos, a product, the IPCI, Para você, a receipt, Catálogo, Início in dark mode).
+  Play's form asks for 16:9 or 9:16 and these are 1:2 (1080×2160): the uploads are
+  [screenshots/play-9x16/](screenshots/play-9x16/), the same shots padded at the sides to 1215×2160 in the screen's
+  own background (2026-11-02, ffmpeg `pad`).
 
 ### Listing text (pt-BR, for the closed test, 2026-10-31)
 
