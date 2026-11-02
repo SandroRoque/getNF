@@ -65,10 +65,10 @@ What makes the site's two steps work: a closed track whose testers are the Googl
 | Content rating | Contact contato@roqlab.com.br; category "All other app types"; downloaded rating-relevant content: no; users interact or share content: **yes** (a caderneta's members see each other's receipts), user content the primary source: no, public nudity or violence: no, can block users: **yes** (an owner removes a member), can report: no, chat moderation: no, limited to invited people: **yes**; content from outside the download: no (the SEFAZ page is the person's own receipt); age-restricted products: no; shares location: no; digital purchases: no; cash rewards: no; browser or search: no; news or education: no | **Submitted 2026-11-02:** ClassInd Livre, ESRB Everyone, PEGI 3, IARC 3+, all with "Users interact". |
 | Target audience | 18 and over only; "restrict minors" left off | It's about purchases and money; 13–15 already brings a Families-policy warning (some countries count them as children), and teens' data would need its own paragraph in the privacy policy (LGPD). Teens can still install it. **Saved 2026-11-02.** |
 | Data safety | See [play-data-safety.md](play-data-safety.md) | |
-| Advertising ID | No | The release APK asks for no `AD_ID` permission (checked with aapt2 on 0.1.0) and the app shows no ads. |
+| Advertising ID | No (**saved 2026-11-02**) | The release APK asks for no `AD_ID` permission (checked with aapt2 on 0.1.0) and the app shows no ads. |
 | Government apps | No | The app reads SEFAZ's public consultation page but isn't made by or for a government. The listing says so (below). |
-| Financial features | None of the listed features (no banking, loans, payments, investments, crypto) | If the form offers personal finance or budgeting, that one fits; it tracks spending from receipts and moves no money. |
-| Health | No | |
+| Financial features | "My app doesn't provide any financial features" | The form has no budgeting or personal-finance option; the app tracks spending from receipts and moves no money. **Saved 2026-11-02.** |
+| Health | "My app does not have any health features" | **Saved 2026-11-02.** |
 
 ## Organised and presented
 
