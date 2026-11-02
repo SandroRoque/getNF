@@ -121,7 +121,12 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
   own "Enviar comentário" goes to the server's inbox (D152), which is the channel to point testers to.
 - **Review login instructions** (App content › App access), in English for the reviewer:
 
-> The app works without an account. To see cadernetas and sync, sign in: tap the account icon at the top of Início ›
-> Entrar ou criar conta, and sign in with the account below. Without a receipt from Santa Catarina or Rio de Janeiro (Brazil), tap
-> "Ver um exemplo" on the first screen (or on Início while there are no receipts) to explore the app with made-up receipts. Barcode
-> lookup: Catálogo › "Pelo código de barras" (it finds products already bought in the receipts on the phone).
+> The app works without an account; the account above unlocks cadernetas and sync. Sign in: account icon at the top
+> of Início › Entrar ou criar conta › Entrar. Without a receipt from Santa Catarina or Rio de Janeiro (Brazil), tap
+> "Ver um exemplo" on the first screen (or on Início while there are no receipts) to explore the app with made-up
+> receipts. Barcode lookup: Catálogo › "Pelo código de barras" (finds products already bought in the receipts on the
+> phone).
+
+  The field takes 500 characters (this is 462). The account: `contato+revisao@roqlab.com.br` (subaddressing on, its
+  mail reaches the user's Gmail), name "Review account"; the password only in the console and the user's password
+  manager.
