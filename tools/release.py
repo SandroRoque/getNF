@@ -73,8 +73,8 @@ def version_code_at(sha):
 
 def log(base, sha, paths):
     rng = f"{base}..{sha}" if base else sha
-    out = git("log", "--no-merges", "--format=%h%x09%s", rng, "--", *paths) or ""
-    return [l.split("\t", 1) for l in out.splitlines() if l]
+    out = git("log", "--no-merges", "--format=%H%x09%s", rng, "--", *paths) or ""
+    return [(h[:7], s) for h, s in (l.split("\t", 1) for l in out.splitlines() if l)]
 
 
 def grouped(commits):
