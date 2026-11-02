@@ -162,6 +162,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D149 | capture | current | Four rules instead of a new state machine; R1–R2: an attempt is provisional until its QR code, and a provisional one drops after 2.5 s without the paper |
 | D150 | capture | current | R4: "Recomeçar" on the capture screen once there's something to drop; asked first when it would lose photos or the code |
 | D155 | sefaz | current | Rio de Janeiro's NFC-e: same page markup as SC, its own check runs without the person; no lookup budget for RJ |
+| D159 | release | current | The Play Developer API through a service account: `tools/play.py` reads tracks and testers and sends recorded bundles |
 
 ---
 
@@ -3840,3 +3841,23 @@ user's own account leaves internal testing to check the closed track. Joining th
 The artifact's page source is removed from the repo; the published board itself is the user's to delete. Manifests for
 codes 2 and 3 were written from D139 and status.md; code 3's AAB hash and several of its checks are still open there.
 D156 and D157 stay as written.
+
+## D159. The Play Developer API, for reading the console and sending the next builds (2026-11-02)
+
+The first closed release was set up by Claude reading and filling the Play Console in the desktop app's browser, the
+user signed in. It worked, but every check went through screens, and uploads were by hand. The user asked for the API.
+
+- **Credentials:** a service account `play-publisher` in its own Google Cloud project, its JSON key at
+  `~/.config/getnf/play-api.json` (0600, beside the upload key, backed up with it), invited in Play Console with
+  testing-track permissions only. `tools/setup-play-api.sh` makes it; the user runs it (it creates a credential) and
+  sends the invite. Rejected: the user's own gcloud login with the androidpublisher scope, which would change the
+  application-default credentials other projects on the PC use.
+- **`tools/play.py`:** `status` (tracks, releases, the closed tracks' Google Groups), `bundles`, `listing`, `upload`,
+  `promote`. Standard library plus `openssl` to sign the token, like the other tools. Changes go through an edit that
+  Google validates; without `--commit` it's discarded. **`upload` without `--commit` sends nothing**, because an
+  uploaded bundle takes its versionCode even from a discarded edit. And it uploads only a bundle whose sha256 a
+  manifest's `aab:` line records (D158), which also gives the versionCode: what goes up is what was checked.
+- **Not covered by the API:** App content declarations (Data safety, content rating, target audience…) and the
+  Dashboard's tasks; those stay in the console, through the browser when needed. A commit to a closed track sends the
+  release for review (managed publishing is off), so `--commit` there is the user's go-ahead, as "Send for review" is.
+

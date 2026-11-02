@@ -5,6 +5,11 @@ legal advice. Data safety has its own page: [play-data-safety.md](play-data-safe
 
 ## Sending a build
 
+**Since D159, through the API:** `tools/play.py status` shows the tracks; `tools/play.py upload <aab> --track internal
+--name <versionName> --notes-file <file> --commit` sends a bundle recorded in `docs/releases/<code>.md`; `promote
+<code> --track alpha … --commit` puts it on the closed track (that sends it for review). Credentials:
+`tools/setup-play-api.sh`, then the invite in Users and permissions. The steps below are the console's way.
+
 Test and release › Testing › **Internal testing** › Testers: create an e-mail list (the user's own address to begin
 with), save, and copy the opt-in link. Then Releases › Create new release › upload
 `android/app/build/outputs/bundle/release/app-release.aab` (`cd android && ./gradlew :app:bundleRelease`), a
