@@ -67,7 +67,7 @@ fun ScanScreen(onCaptured: () -> Unit, onCancel: () -> Unit, onOpenPage: (String
   else if (granted) ContinuousCapture(onCaptured, onCancel, onOpenPage, productOnly, onOpenProduct, onOpenReceipt)
   else Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
     io.github.sandroroque.getnf.ui.calmo.ScreenTitle("A câmera lê a nota")
-    io.github.sandroroque.getnf.ui.calmo.Sub("O getNF usa a câmera para ler o QR Code e fotografar a nota. As fotos ficam no celular e, se você entrar numa conta, numa cópia pequena no servidor.")
+    io.github.sandroroque.getnf.ui.calmo.Sub("O app usa a câmera para ler o QR Code e fotografar a nota. As fotos ficam no celular e, se você entrar numa conta, numa cópia pequena no servidor.")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
       io.github.sandroroque.getnf.ui.calmo.Pill("Permitir a câmera", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Solid) { permission.launch(Manifest.permission.CAMERA) }
       io.github.sandroroque.getnf.ui.calmo.Pill("Agora não", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Ghost, onClick = onCancel)
