@@ -91,8 +91,12 @@ Do next, in order, with the user (they've done none of it yet):
 1. ~~Online database first~~ done 2026-11-01: `db push` run by the user; a report sent with the publishable key
    reached `tools/tickets.py inbox` and was deleted, anonymous reads are refused. Still to do: Data safety in Play
    Console as [play-data-safety.md](play-data-safety.md) says. 0.1.0 built 2026-11-02 from cbf3798 (RJ, Voltar's
-   double-tap crash fixed, the app named Caderneta on the phone) and checked on the emulator; tag `play/3` on cbf3798 once
-   it's uploaded.
+   double-tap crash fixed, the app named Caderneta on the phone) and checked on the emulator; uploaded 2026-11-02 to **internal
+   testing** (tagged `play/3`), since closed testing stays locked until the Dashboard's setup tasks are done. Seen in the
+   console that day (Claude reads it through the desktop app's browser, the user signed in): 3 of 11 done (privacy
+   policy, ads, government apps); to do: sign-in details, content rating, target audience, Data safety (a draft, not
+   submitted), advertising ID, financial features, health, category and contact, the store listing (none yet). The
+   track "Closed testing - Alpha" exists, empty. The console's app name is still CadernetaNF.
 2. **0.1.0 release checklist** (item 5 below): `tools/check.sh`; `./gradlew :app:bundleRelease` (signs with
    `~/.config/getnf/upload-key.jks`); the release APK on the emulator (signed out, demo, a capture from a recorded
    video, Ajustes › Enviar comentário reaching the inbox) and on the user's phone (never connectedAndroidTest

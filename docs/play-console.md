@@ -63,6 +63,7 @@ What makes the site's two steps work: a closed track whose testers are the Googl
 | Content rating | Category "All other app types"; no to violence, sexual content, language, drugs, gambling; users interact or share content: **yes** (a caderneta's members see each other's receipts); shares location: no; digital purchases: no | Expected result: Livre/Everyone, with "Users interact". |
 | Target audience | 18 and over; doesn't appeal to children | It's about purchases and money; any age under 13 brings the Families policy. |
 | Data safety | See [play-data-safety.md](play-data-safety.md) | |
+| Advertising ID | No | The release APK asks for no `AD_ID` permission (checked with aapt2 on 0.1.0) and the app shows no ads. |
 | Government apps | No | The app reads SEFAZ's public consultation page but isn't made by or for a government. The listing says so (below). |
 | Financial features | None of the listed features (no banking, loans, payments, investments, crypto) | If the form offers personal finance or budgeting, that one fits; it tracks spending from receipts and moves no money. |
 | Health | No | |
