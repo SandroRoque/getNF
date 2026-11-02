@@ -89,7 +89,7 @@ uploaded or tagged, and the Play Console's closed track doesn't exist yet. The u
 with 0.1.0 rather than promote code 2 (whose "Enviar comentário" predates D152's inbox).
 
 **Releases are in the repo since D158** ([rollout.md](rollout.md), [releases/3.md](releases/3.md)): 0.1.0 (code 3) is
-`internal`; its manifest lists the checks still open (CI link, the phone over code 2, tickets, Data safety, the
+`internal`; its manifest lists the checks still open (the phone over code 2, tickets, Data safety, the
 pre-launch report, the AAB's hash). `tools/release.py pending` shows what testers don't have yet. Steps 2 and 4 below
 are done (built from cbf3798, tagged `play/3`); what remains of 3 is the closed track, sent for review with the same
 bundle. The user's own account must leave internal testing to see the closed track (play-console.md, item 8).
