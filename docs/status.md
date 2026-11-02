@@ -90,8 +90,9 @@ with 0.1.0 rather than promote code 2 (whose "Enviar comentário" predates D152'
 Do next, in order, with the user (they've done none of it yet):
 1. ~~Online database first~~ done 2026-11-01: `db push` run by the user; a report sent with the publishable key
    reached `tools/tickets.py inbox` and was deleted, anonymous reads are refused. Still to do: Data safety in Play
-   Console as [play-data-safety.md](play-data-safety.md) says. Build 0.1.0 from D155's commit or later (RJ, and the
-   contact e-mail in "Enviar comentário").
+   Console as [play-data-safety.md](play-data-safety.md) says. 0.1.0 built 2026-11-02 from cbf3798 (RJ, Voltar's
+   double-tap crash fixed, the app named Caderneta on the phone) and checked on the emulator; tag `play/3` on cbf3798 once
+   it's uploaded.
 2. **0.1.0 release checklist** (item 5 below): `tools/check.sh`; `./gradlew :app:bundleRelease` (signs with
    `~/.config/getnf/upload-key.jks`); the release APK on the emulator (signed out, demo, a capture from a recorded
    video, Ajustes › Enviar comentário reaching the inbox) and on the user's phone (never connectedAndroidTest
