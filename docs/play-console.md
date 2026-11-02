@@ -58,7 +58,7 @@ What makes the site's two steps work: a closed track whose testers are the Googl
 | Task | Answer | Why |
 |---|---|---|
 | Privacy policy | https://caderneta.roqlab.com.br/privacidade/ | |
-| Sign-in details | Some functionality is restricted; give a review login | The app works without an account, but cadernetas and sync need one. Google asks for credentials whenever any part needs a login. A dedicated account (made by the user in the app, not a personal one), with instructions: "Toque no ícone da conta no alto de Início › Entrar ou criar conta, e entre". Add: "Sem uma nota fiscal de Santa Catarina, toque em Ver um exemplo na primeira tela (ou em Início) para ver o app com notas inventadas" (D115). |
+| Sign-in details | Some functionality is restricted; give a review login | The app works without an account, but cadernetas and sync need one. Google asks for credentials whenever any part needs a login. A dedicated account (made by the user in the app, not a personal one), with instructions: "Toque no ícone da conta no alto de Início › Entrar ou criar conta, e entre". Add: "Sem uma nota fiscal de Santa Catarina ou do Rio de Janeiro, toque em Ver um exemplo na primeira tela (ou em Início) para ver o app com notas inventadas" (D115). |
 | Ads | No | |
 | Content rating | Category "All other app types"; no to violence, sexual content, language, drugs, gambling; users interact or share content: **yes** (a caderneta's members see each other's receipts); shares location: no; digital purchases: no | Expected result: Livre/Everyone, with "Users interact". |
 | Target audience | 18 and over; doesn't appeal to children | It's about purchases and money; any age under 13 brings the Families policy. |
@@ -94,8 +94,8 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
 > • Funciona sem conta. Com uma conta, os itens novos ganham categoria sozinhos (você confirma ou corrige), as notas
 >   ficam guardadas online e dá para dividir uma caderneta com quem mora com você.
 >
-> Por enquanto, lê as notas fiscais de consumidor de Santa Catarina. Sem uma nota de SC, toque em "Ver um exemplo"
-> para conhecer o app com notas inventadas.
+> Por enquanto, lê as notas fiscais de consumidor de Santa Catarina e do Rio de Janeiro. Sem uma nota de SC ou do
+> RJ, toque em "Ver um exemplo" para conhecer o app com notas inventadas.
 >
 > Privacidade: as fotos das notas ficam no seu celular. O CPF e o nome do comprador são removidos antes de salvar.
 > Você pode apagar sua conta e seus dados quando quiser, no app ou em caderneta.roqlab.com.br/apagar-conta.
@@ -119,6 +119,6 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
 - **Review login instructions** (App content › App access), in English for the reviewer:
 
 > The app works without an account. To see cadernetas and sync, sign in: tap the account icon at the top of Início ›
-> Entrar ou criar conta, and sign in with the account below. Without a receipt from Santa Catarina (Brazil), tap
+> Entrar ou criar conta, and sign in with the account below. Without a receipt from Santa Catarina or Rio de Janeiro (Brazil), tap
 > "Ver um exemplo" on the first screen (or on Início while there are no receipts) to explore the app with made-up receipts. Barcode
 > lookup: Catálogo › "Pelo código de barras" (it finds products already bought in the receipts on the phone).

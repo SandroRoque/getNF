@@ -254,8 +254,8 @@ private fun WaitingForPage(chave: String, photos: List<String>, onBack: () -> Un
       Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Falta a página da SEFAZ", style = MaterialTheme.typography.titleMedium)
         Sub("É ela que traz os itens, os valores, a forma de pagamento e os impostos. As fotos já estão salvas; às vezes a SEFAZ pede uma verificação antes de mostrar a página.")
-        Sub(budget)
-        Pill("Buscar a página", ButtonKind.Solid) { budgetCheck.request(onFetch = { onOpenPage(chave) }, onLater = {}) }
+        if (io.github.sandroroque.getnf.ui.page.hasLookupLimit(chave)) Sub(budget)
+        Pill("Buscar a página", ButtonKind.Solid) { budgetCheck.request(chave, onFetch = { onOpenPage(chave) }, onLater = {}) }
       }
     }
     if (photos.isNotEmpty()) item {
@@ -270,7 +270,7 @@ private fun WaitingForPage(chave: String, photos: List<String>, onBack: () -> Un
   }
   if (more) CalmoSheet("Esta nota", onDismiss = { more = false }) {
     Column {
-      FactRow("Página", "buscar na SEFAZ", onClick = { more = false; budgetCheck.request(onFetch = { onOpenPage(chave) }, onLater = {}) })
+      FactRow("Página", "buscar na SEFAZ", onClick = { more = false; budgetCheck.request(chave, onFetch = { onOpenPage(chave) }, onLater = {}) })
       FactRow("Chave", io.github.sandroroque.getnf.data.Chave.pretty(chave))
     }
   }

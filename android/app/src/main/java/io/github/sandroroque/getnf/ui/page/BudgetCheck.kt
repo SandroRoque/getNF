@@ -26,6 +26,12 @@ fun budgetText(network: CurrentNetwork, status: LookupBudget.Status): String {
 }
 
 /**
+ * Whether a receipt's page counts against the lookup budget: SC's portal blocks a network after a few lookups an hour
+ * (docs/sefaz-sc.md); RJ's isn't known to (D155), so its receipts neither show nor spend the budget.
+ */
+fun hasLookupLimit(chave: String): Boolean = chave.startsWith("42")
+
+/**
  * Asks before a page fetch that would probably get this network blocked (docs/sefaz-sc.md, D17). Only advises:
  * "Fetch anyway" is always there, e.g. after switching to another SIM. Place [Dialog] somewhere in the screen.
  */
@@ -34,7 +40,8 @@ class BudgetCheck internal constructor(private val context: Context) {
 
   private var prompt by mutableStateOf<Prompt?>(null)
 
-  fun request(onFetch: () -> Unit, onLater: () -> Unit) {
+  fun request(chave: String, onFetch: () -> Unit, onLater: () -> Unit) {
+    if (!hasLookupLimit(chave)) return onFetch()
     val network = CurrentNetwork.of(context)
     val status = (context.applicationContext as GetNFApp).lookupBudget.status(network.key)
     if (status.remaining > 0) onFetch() else prompt = Prompt(budgetText(network, status), onFetch, onLater)

@@ -9,6 +9,7 @@ number, protocol, COO/PDV, store name/CNPJ/address (which would also reveal wher
 and the IBPT tax amounts. Item descriptions and prices are kept (they're generic). Review the output before committing.
 """
 import argparse
+import html
 import re
 
 
@@ -23,7 +24,8 @@ def chave_dv(first43: str) -> int:
 
 FAKE_CNPJ = "11222333000181"  # the standard example CNPJ (valid check digits)
 FAKE_STORE = "SUPERMERCADO EXEMPLO LTDA"
-FAKE_ADDRESS = "RUA EXEMPLO, 100 , , CENTRO , CIDADE EXEMPLO , SC"
+FAKE_ADDRESS = "RUA EXEMPLO, 100 , , CENTRO , CIDADE EXEMPLO , {uf}"
+UF = {"42": "SC", "33": "RJ"}
 FAKE_DATE = "15/01/2026"
 FAKE_TIME = "10:00:00"
 
@@ -45,8 +47,11 @@ def main():
     s = open(args.src, encoding="utf-8").read()
 
     start = s.index('<div id="conteudo"')
-    end = s.index('class="notprint"', start)
-    body = s[start : s.rindex("<div", start, end)]
+    end = s.find('class="notprint"', start)
+    # SC's page ends the receipt at a "notprint" block; RJ's (D155) runs to the end of the body.
+    body = s[start : s.rindex("<div", start, end)] if end >= 0 else s[start : s.index("</body>", start)]
+    # RJ writes accents as entities ("N&uacute;mero"): plain text, so the patterns below see one spelling.
+    body = re.sub(r"&(?!lt;|gt;|amp;)[a-zA-Z]+;", lambda m: html.unescape(m.group(0)), body)
 
     # Keep the first N items.
     rows = list(re.finditer(r'<tr[^>]*id="Item \+ (\d+)"[^>]*>[\s\S]*?</tr>\s*', body))
@@ -67,7 +72,8 @@ def main():
     total_line(r"Valor total", money(gross))
     total_line(r"Descontos", money(discount))
     total_line(r"Valor a pagar", money(gross - discount))
-    body = re.sub(r'(<label class="tx">[^<]*</label>\s*<span[^>]*>)[^<]*(</span>)', lambda m: m.group(1) + money(gross - discount) + m.group(2), body)
+    body = re.sub(r'(<label class="tx">(?!\s*Troco)[^<]*</label>\s*<span[^>]*>)[^<]*(</span>)', lambda m: m.group(1) + money(gross - discount) + m.group(2), body)
+    body = re.sub(r'(<label class="tx">\s*Troco[^<]*</label>\s*<span[^>]*>)[^<]*(</span>)', lambda m: m.group(1) + "0,00" + m.group(2), body)
 
     # Synthetic identifiers: UF and model/série are kept (they matter to parsing), the rest is made up.
     chave = re.search(r'class="chave"[^>]*>([\d\s]+)<', body).group(1)
@@ -80,7 +86,7 @@ def main():
     body = re.sub(r'(<div[^>]*class="txtTopo"[^>]*>)[^<]*(</div>)', lambda m: m.group(1) + FAKE_STORE + m.group(2), body)
     body = re.sub(r"CNPJ:\s*[\d./-]+", "CNPJ: 11.222.333/0001-81", body)
     body = re.sub(r'(class="txtTopo"[^>]*>[^<]*</div>\s*<div[^>]*class="text"[^>]*>[^<]*</div>\s*<div[^>]*class="text"[^>]*>)[^<]*(</div>)',
-                  lambda m: m.group(1) + FAKE_ADDRESS + m.group(2), body)
+                  lambda m: m.group(1) + FAKE_ADDRESS.format(uf=UF.get(real[:2], "SC")) + m.group(2), body)
     # When it happened.
     body = re.sub(r"\b\d{2}/\d{2}/\d{4}\b", FAKE_DATE, body)
     body = re.sub(r"\b\d{2}:\d{2}:\d{2}\b", FAKE_TIME, body)

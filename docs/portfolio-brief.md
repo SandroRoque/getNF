@@ -89,7 +89,7 @@ Café Montanha 500 g, price per package: 02/05 25,06 · 16/05 25,30 · 23/05 25,
 ## Don't claim
 
 - That it's on the Play Store, open source, or free forever (it's free for now; nothing else is decided).
-- Support beyond Santa Catarina: only the SC portal is read.
+- Support beyond Santa Catarina and Rio de Janeiro: only those two portals are read (D155).
 - That photos go to a server: they stay on the phone unless the user opts in to send failed ones.
 - Any number from real use (the user's own receipts are private).
 

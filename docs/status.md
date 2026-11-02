@@ -73,7 +73,10 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 Google lets a new personal account publish only after a closed test: at least 12 testers opted in for the last 14
 days in a row (fewer than 12 on any day restarts the count; new versions during the test don't). The user wants it
 under way within 7 days, so 0.1 is the build that opens the closed test, Santa Catarina only, with the name
-Caderneta. New ideas go to "After the open store", not into the code.
+Caderneta. New ideas go to "After the open store", not into the code. Exception, asked by the user on 2026-11-02:
+**Rio de Janeiro's receipts are read too (D155)**, so testers there capture real receipts; 0.1.0 is built from a
+commit that has it. The site's copy changed with it: **the user redeploys the site** (`web/README.md`), and the Play
+listing's description (play-console.md) says SC and RJ.
 
 **Handoff, 2026-11-01 (a cloud session, no emulator or signing key; for the next session on the PC)**
 
@@ -87,7 +90,7 @@ with 0.1.0 rather than promote code 2 (whose "Enviar comentário" predates D152'
 Do next, in order, with the user (they've done none of it yet):
 1. ~~Online database first~~ done 2026-11-01: `db push` run by the user; a report sent with the publishable key
    reached `tools/tickets.py inbox` and was deleted, anonymous reads are refused. Still to do: Data safety in Play
-   Console as [play-data-safety.md](play-data-safety.md) says. Build 0.1.0 from eb13406 or later (it has the
+   Console as [play-data-safety.md](play-data-safety.md) says. Build 0.1.0 from D155's commit or later (RJ, and the
    contact e-mail in "Enviar comentário").
 2. **0.1.0 release checklist** (item 5 below): `tools/check.sh`; `./gradlew :app:bundleRelease` (signs with
    `~/.config/getnf/upload-key.jks`); the release APK on the emulator (signed out, demo, a capture from a recorded
@@ -147,7 +150,8 @@ The user:
 6b. ~~`npx supabase db push` for D152's tables~~ done 2026-11-01; next, Play Console › Data safety updated as [play-data-safety.md](play-data-safety.md) says, before the 0.1.0 upload.
 7. Decide on the legal read: suggested, the closed test with the published privacy policy, the legal read before the
    open store.
-8. If possible, RJ receipts photographed with the app, for the photo reader.
+8. ~~RJ receipts~~ read since D155 (videos received 2026-11-02, in `test-media/video-rj/`, WhatsApp-compressed); RJ
+   captures made with the app, phone connected, would still help the photo reader.
 9. Two or three captures of a worn (faded) receipt, phone connected: R3 (the offer when the capture is stuck after
    the QR code) can't be measured without them.
 

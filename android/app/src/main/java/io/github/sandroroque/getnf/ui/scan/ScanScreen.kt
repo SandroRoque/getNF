@@ -409,10 +409,10 @@ private fun Saved(chave: String, knownSince: Long?, onFetch: () -> Unit, onLater
     io.github.sandroroque.getnf.ui.calmo.ScreenTitle(if (knownSince != null) "Esta nota já estava na caderneta" else "Nota salva")
     knownSince?.let { io.github.sandroroque.getnf.ui.calmo.Sub("Escaneada antes em ${io.github.sandroroque.getnf.ui.Format.date(it)}. As fotos novas ficam junto das anteriores.") }
     io.github.sandroroque.getnf.ui.calmo.Sub("As fotos estão no celular. Falta a página da SEFAZ, com os itens e os valores: buscar agora leva um instante, e às vezes a SEFAZ pede uma verificação.")
-    io.github.sandroroque.getnf.ui.calmo.Sub(budget)
+    if (io.github.sandroroque.getnf.ui.page.hasLookupLimit(chave)) io.github.sandroroque.getnf.ui.calmo.Sub(budget)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
       io.github.sandroroque.getnf.ui.calmo.Pill("Buscar a página agora", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Solid) {
-        budgetCheck.request(onFetch = onFetch, onLater = ::later)
+        budgetCheck.request(chave, onFetch = onFetch, onLater = ::later)
       }
       io.github.sandroroque.getnf.ui.calmo.Pill("Depois", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Ghost, onClick = ::later)
     }

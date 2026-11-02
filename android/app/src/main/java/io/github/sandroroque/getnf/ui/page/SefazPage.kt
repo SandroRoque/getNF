@@ -3,10 +3,13 @@ package io.github.sandroroque.getnf.ui.page
 import java.net.URI
 import kotlinx.serialization.json.Json
 
-/** Recognises the pages the SEFAZ-SC portal goes through (docs/sefaz-sc.md). */
+/**
+ * Recognises the pages the SEFAZ portals go through: SC's (docs/sefaz-sc.md) and RJ's (D155), which shows the same
+ * receipt markup after a check of its own that runs without the person.
+ */
 object SefazPage {
   enum class Kind {
-    /** `NFCe_Detalhes.aspx`: the page we want to save. */
+    /** SC's `NFCe_Detalhes.aspx`, RJ's `resultadoQRCode2.faces`: the page we want to save. */
     Details,
     /** `SecurityVerify.aspx`: Cloudflare Turnstile, the user has to solve it. */
     Challenge,
@@ -19,7 +22,7 @@ object SefazPage {
   fun classify(url: String?): Kind {
     val u = url?.lowercase() ?: return Kind.Other
     return when {
-      "nfce_detalhes.aspx" in u -> Kind.Details
+      "nfce_detalhes.aspx" in u || "/consultanfce/paginas/resultadoqrcode" in u -> Kind.Details
       "securityverify.aspx" in u -> Kind.Challenge
       "maximorequisicoesexcedidas" in u -> Kind.RateLimited
       else -> Kind.Other
@@ -29,8 +32,15 @@ object SefazPage {
   private val NOT_NEEDED_ANYWHERE = listOf(".png", ".gif", ".jpg", ".jpeg", ".svg", ".ico", ".woff", ".woff2", ".ttf", ".eot", ".otf")
 
   /**
+   * Whether a details page holds a receipt. RJ answers on the same address with "Não foi possível realizar a consulta"
+   * when it has no such receipt (one issued offline and not yet sent, D155).
+   */
+  fun hasReceipt(html: String): Boolean = "id=\"tabResult\"" in html
+
+  /**
    * Whether to answer a subresource request with an empty response instead of fetching it, to stay under SEFAZ's
-   * per-IP request limit (docs/sefaz-sc.md: one visit was ~59 requests to SEFAZ hosts).
+   * per-IP request limit (docs/sefaz-sc.md: one visit was ~59 requests to SEFAZ hosts). SC's portal only: RJ's isn't
+   * known to limit, and its check needs its scripts.
    * - Details page: we only need its HTML, so none of its scripts/styles/images are fetched.
    * - Other SEFAZ pages (the challenge in particular): scripts and styles stay, since Turnstile and the Validar button
    *   need them; images and fonts go.

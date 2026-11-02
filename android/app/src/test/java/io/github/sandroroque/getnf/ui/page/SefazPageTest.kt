@@ -17,6 +17,22 @@ class SefazPageTest {
     assertEquals(Kind.Challenge, SefazPage.classify("https://sat.sef.sc.gov.br/tax.NET/SecurityVerify.aspx?rq=abc"))
     assertEquals(Kind.RateLimited, SefazPage.classify("https://sat.sef.sc.gov.br/static/appMaximoRequisicoesExcedidas.htm"))
     assertEquals(Kind.Other, SefazPage.classify(null))
+    // RJ (D155): the QR address, then the result page once its check has run.
+    assertEquals(Kind.Other, SefazPage.classify("https://consultadfe.fazenda.rj.gov.br/consultaNFCe/QRCode?p=1|2|1|3|AB"))
+    assertEquals(Kind.Details, SefazPage.classify("https://consultadfe.fazenda.rj.gov.br/consultaNFCe/paginas/resultadoQRCode2.faces?cid=1"))
+  }
+
+  @Test
+  fun rjsNotFoundIsNoReceipt() {
+    assertFalse(SefazPage.hasReceipt("<body><div>Não foi possível realizar a consulta. Por favor, entre em contato.</div></body>"))
+    assertTrue(SefazPage.hasReceipt(javaClass.classLoader!!.getResource("rj-qrcode-server-html.html")!!.readText()))
+    assertTrue(SefazPage.hasReceipt(javaClass.classLoader!!.getResource("sc-detalhes-webview-dom.html")!!.readText()))
+  }
+
+  @Test
+  fun rjsScriptsAreNeverBlocked() {
+    assertFalse(SefazPage.shouldBlock(Kind.Details, "https://consultadfe.fazenda.rj.gov.br/TSPD/?type=18", null))
+    assertFalse(SefazPage.isSefaz("https://consultadfe.fazenda.rj.gov.br/consultaNFCe/QRCode?p=1"))
   }
 
   @Test

@@ -55,6 +55,7 @@ private enum class Status(val text: String) {
   RateLimited("A SEFAZ está bloqueando esta rede por alguns minutos (consultas demais). As fotos estão salvas: feche e busque a página mais tarde, em Para você."),
   Saved("Página salva ✓ Ela sobe para o servidor em segundo plano."),
   Failed("Não deu para ler a página. Tente de novo em Para você."),
+  NotFound("A SEFAZ ainda não tem esta nota. Uma nota emitida com o caixa sem internet chega a ela depois: as fotos estão salvas, tente de novo mais tarde em Para você."),
 }
 
 /**
@@ -146,8 +147,8 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
             }
           },
           onDetailsHtml = { finalUrl, html ->
-            if (html == null) {
-              status = Status.Failed
+            if (html == null || !SefazPage.hasReceipt(html)) {
+              status = if (html == null) Status.Failed else Status.NotFound
               release()
             } else {
               scope.launch {

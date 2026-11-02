@@ -40,6 +40,28 @@ class NfcePageTest {
     assertEquals(emptyList<String>(), p.warnings)
   }
 
+  @Test fun rioDeJaneirosPageReadsTheSame() {
+    // SEFAZ-RJ's QR page (D155) has SC's markup, accents written as entities: the fixture with them put back.
+    val html = fixture("rj-qrcode-server-html.html")
+      .replace("Número", "N&uacute;mero").replace("Série", "S&eacute;rie").replace("Emissão", "Emiss&atilde;o")
+      .replace("Autorização", "Autoriza&ccedil;&atilde;o").replace(" às", " &agrave;s")
+    val p = NfcePage.parse(html)
+    assertEquals("33260111222333000181651680000000011123456781", p.chave)
+    assertEquals(ParsedStore("SUPERMERCADO EXEMPLO LTDA", "11222333000181", "RUA EXEMPLO, 100 , , CENTRO , CIDADE EXEMPLO , RJ"), p.store)
+    assertEquals(1768482000000, p.issuedAt)
+    assertEquals(1768482000000, p.authorizedAt)
+    assertEquals("168", p.series)
+    assertEquals(listOf(
+      ParsedItem(1, "PAO FRANCES KG", "8251", 2640, "KG", 219000, 578),
+      ParsedItem(2, "BATATA PALHA YOKI EXTRA FINA 100G", "64115", 10000, "UN", 79900, 799),
+    ), p.items)
+    assertEquals(1377L, p.totals.payableCents)
+    assertEquals(listOf(ParsedPayment("Dinheiro", 1377)), p.payments)
+    assertEquals(0L, p.totals.changeCents)
+    assertEquals(40L, p.taxesEstimate!!.totalCents)
+    assertEquals(emptyList<String>(), p.warnings)
+  }
+
   @Test fun twoPaymentMethodsAndChange() {
     // No real receipt paid two ways yet: the committed page with cash and a card, and change from the cash.
     val card = "<div id=\"linhaTotal\"><label class=\"tx\">\n\t\t\t\t\t\t\t\t\t\t\tCartão de Crédito\n\t\t\t\t\t\t\t\t\t\t</label><span class=\"totalNumb\">30,64</span></div>"
@@ -90,5 +112,7 @@ class NfcePageTest {
 
   @Test fun entitiesAndWhitespace() {
     assertEquals("A & B ç", NfcePage.text("<b>A</b>&nbsp;&amp;\n B &#231;"))
+    assertEquals("Número Emissão Autorização às Ê", NfcePage.text("N&uacute;mero Emiss&atilde;o Autoriza&ccedil;&atilde;o &agrave;s &Ecirc;"))
+    assertEquals("&eacutex; &bogus;", NfcePage.text("&eacutex; &bogus;"))
   }
 }

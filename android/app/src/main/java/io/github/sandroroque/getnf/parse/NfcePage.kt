@@ -2,6 +2,7 @@ package io.github.sandroroque.getnf.parse
 
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.text.Normalizer
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -108,8 +109,16 @@ object NfcePage {
     when {
       e.startsWith("#x", ignoreCase = true) -> String(Character.toChars(e.substring(2).toInt(16)))
       e.startsWith("#") -> String(Character.toChars(e.substring(1).toInt()))
-      else -> ENTITIES[e.lowercase()] ?: m.value
+      else -> ENTITIES[e.lowercase()] ?: accented(e) ?: m.value
     }
+  }
+
+  // SEFAZ-RJ writes accents as named entities ("N&uacute;mero", "Autoriza&ccedil;&atilde;o", D155): a letter and its mark.
+  private val MARKS = mapOf("acute" to '\u0301', "grave" to '\u0300', "circ" to '\u0302', "tilde" to '\u0303', "uml" to '\u0308',
+    "cedil" to '\u0327', "ring" to '\u030A')
+  private fun accented(e: String): String? {
+    val mark = MARKS[e.drop(1)] ?: return null
+    return Normalizer.normalize("${e[0]}$mark", Normalizer.Form.NFC).takeIf { it.length == 1 }
   }
 
   /** Visible text of an HTML fragment, whitespace collapsed. */
@@ -156,7 +165,8 @@ object NfcePage {
     for (m in PAIR.findAll(block)) {
       val label = text(m.groupValues[2])
       val value = text(m.groupValues[3])
-      if (m.groupValues[1].contains("class=\"tx\"")) { payments += ParsedPayment(label, cents(value)); continue }
+      // A payment method's line; RJ marks "Troco" the same way (D155), which is change, not a payment.
+      if (m.groupValues[1].contains("class=\"tx\"") && !label.startsWith("troco", ignoreCase = true)) { payments += ParsedPayment(label, cents(value)); continue }
       if (label.contains("forma de pagamento", ignoreCase = true)) continue
       raw[label] = value
       TOTAL_LABELS.firstOrNull { it.first.containsMatchIn(label) }?.let { values[it.second] = value }

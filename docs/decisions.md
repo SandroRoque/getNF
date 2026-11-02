@@ -161,6 +161,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D148 | capture | current | Photo reader: rows by their own slope, a GTIN's one unread digit, weighed items' right parts, the pharmacy's two-row layout; 455 of 499, 11 trusted, none wrong |
 | D149 | capture | current | Four rules instead of a new state machine; R1–R2: an attempt is provisional until its QR code, and a provisional one drops after 2.5 s without the paper |
 | D150 | capture | current | R4: "Recomeçar" on the capture screen once there's something to drop; asked first when it would lose photos or the code |
+| D155 | sefaz | current | Rio de Janeiro's NFC-e: same page markup as SC, its own check runs without the person; no lookup budget for RJ |
 
 ---
 
@@ -3746,3 +3747,30 @@ the MX records `route1–3.mx.cloudflare.net`, the SPF `v=spf1 include:_spf.mx.c
 `resend._domainkey`) were already on subdomains and didn't conflict. The site was rebuilt with the new address (only
 the contact changes, on `/`, `/privacidade/` and `/apagar-conta/`), but publishing it through the API failed at the
 assets upload (401 for the upload token from the connector's sandbox), so it's deployed from the PC as before.
+
+## D155. Rio de Janeiro's NFC-e is read like Santa Catarina's (2026-11-02)
+
+The user received videos of three RJ receipts (WhatsApp, 1024×576) and asked to add RJ now, so testers there can
+make good captures. Looked at with the user's go-ahead (three lookups at SEFAZ-RJ):
+
+- **The QR code** points to `consultadfe.fazenda.rj.gov.br/consultaNFCe/QRCode?p=<chave>|2|1|…`; `Chave.fromQr`
+  already read it. One receipt was issued offline (contingency: a longer payload, version 2 with the digest).
+- **The portal** answers a plain HTTP client with a page blaming the IP's reputation; a browser on the same IP passes.
+  It's an automatic check (F5's `/TSPD/` scripts) with nothing for the person to solve, so the app's WebView passes it
+  as a browser does. Not worked around in any other way: the app opens the page as before.
+- **The result page** (`/consultaNFCe/paginas/resultadoQRCode2.faces`) has SC's markup (`tabResult`, `txtTit`,
+  `RCod`, `totalNota`, `chave`): `NfcePage` reads it, with two fixes that RJ brought out: accents written as named
+  entities (`N&uacute;mero`, `Autoriza&ccedil;&atilde;o`), which hid the number, the dates and the protocol; and
+  "Troco" marked like a payment method (`class="tx"`), which made change a payment.
+- **No receipt:** for the offline-issued one, RJ shows "Não foi possível realizar a consulta" on the same address. A
+  details page without `tabResult` is no receipt: the page screen says SEFAZ doesn't have it yet and keeps the photos.
+- **No lookup budget for RJ** (D17 is SC's per-IP limit): RJ's receipts neither show "N de 5 consultas" nor ask
+  before fetching, and its requests aren't blocked or counted (`SefazPage.isSefaz` stays SC's). If RJ turns out to
+  limit, it gets its own budget.
+
+Checked on the emulator with one video as the camera: the capture finished on its own, the page came from RJ through
+the WebView, 2 items, date, total and payment right. The fixture `rj-qrcode-server-html.html` comes from that page
+through `tools/make-nfce-fixture.py` (which now takes RJ's page). The welcome step, the site, the privacy policy
+(RJ's portal uses Google Analytics) and the Play listing say SC and RJ. Other states' QR codes still open their
+portal and stop there; the photo reader (D106) remains the way to the rest.
+

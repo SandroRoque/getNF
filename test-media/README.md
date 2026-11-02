@@ -16,3 +16,5 @@ Current contents (2026-10-08):
 - `photos/blurry_whole_paper.jpg`: the same receipt, blurry. The QR code does **not** decode.
 - `pages/sc-detalhes-4226...8180.html`: the NFCe_Detalhes page for that receipt, fetched with plain curl (no challenge that time).
 - `pages/sc-securityverify-turnstile.html`: the SEFAZ-SC `SecurityVerify.aspx` page with a Cloudflare Turnstile, returned on the next request.
+- `video-rj/rj-1..4.mp4` (2026-11-02, D155): RJ receipts filmed by someone else, sent through WhatsApp (1024×576, rotated
+  180°); 1 and 4 are the same receipt, 2 was issued offline. `pages-rj/`: the RJ result page of 1/4, as the server sent it.

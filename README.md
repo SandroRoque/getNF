@@ -1,7 +1,7 @@
 # getNF
 
 An Android app that keeps a household's grocery receipts (NFC-e, *notas fiscais de consumidor*) and turns them into
-spending reports and a personal inflation index. Portuguese throughout; Santa Catarina for now. "getNF" is a working
+spending reports and a personal inflation index. Portuguese throughout; Santa Catarina and Rio de Janeiro for now (D155). "getNF" is a working
 name; the project's site is https://caderneta.roqlab.com.br.
 
 1. **Scan.** Point the camera at the receipt and move along it. The app reads the QR code and the print as it goes,

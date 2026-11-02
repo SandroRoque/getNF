@@ -134,7 +134,7 @@ private fun ReceiptList(onOpenReceipt: (String) -> Unit, onOpenPage: (String) ->
           else listOfNotNull(r.storeName, "toque para buscar a página").joinToString(" · "),
         amount = r.paidCents?.let(Format::brl),
         trailingMark = r.scannedBy?.let { "por $it" },
-        onClick = { if (r.hasPage) onOpenReceipt(r.chave) else budgetCheck.request(onFetch = { onOpenPage(r.chave) }, onLater = {}) },
+        onClick = { if (r.hasPage) onOpenReceipt(r.chave) else budgetCheck.request(r.chave, onFetch = { onOpenPage(r.chave) }, onLater = {}) },
       )
     }
   }

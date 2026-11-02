@@ -37,6 +37,7 @@ import io.github.sandroroque.getnf.ui.calmo.TabHeader
 import io.github.sandroroque.getnf.ui.catalog.CategoryPickerDialog
 import io.github.sandroroque.getnf.ui.catalog.rememberEdit
 import io.github.sandroroque.getnf.ui.page.budgetText
+import io.github.sandroroque.getnf.ui.page.hasLookupLimit
 import io.github.sandroroque.getnf.ui.page.rememberBudgetCheck
 import kotlinx.coroutines.delay
 
@@ -87,9 +88,9 @@ fun ParaVoceScreen(onOpenPage: (String) -> Unit, onOpenProduct: (String) -> Unit
       when (d) {
         is Decision.FetchPage -> DecisionCard(
           title = "${d.receipt.title} sem página da SEFAZ", amount = null,
-          why = listOfNotNull(d.receipt.storeName, budget.ifEmpty { null }).joinToString(" · "),
+          why = listOfNotNull(d.receipt.storeName, budget.ifEmpty { null }?.takeIf { hasLookupLimit(d.receipt.chave) }).joinToString(" · "),
         ) {
-          Pill("Buscar agora", ButtonKind.Solid) { budgetCheck.request(onFetch = { onOpenPage(d.receipt.chave) }, onLater = {}) }
+          Pill("Buscar agora", ButtonKind.Solid) { budgetCheck.request(d.receipt.chave, onFetch = { onOpenPage(d.receipt.chave) }, onLater = {}) }
         }
         is Decision.PickCategory -> {
           val p = d.product
