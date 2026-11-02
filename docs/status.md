@@ -100,10 +100,12 @@ Do next, in order, with the user:
    Console as [play-data-safety.md](play-data-safety.md) says. 0.1.0 built 2026-11-02 from cbf3798 (RJ, Voltar's
    double-tap crash fixed, the app named Caderneta on the phone) and checked on the emulator; uploaded 2026-11-02 to **internal
    testing** (tagged `play/3`), since closed testing stays locked until the Dashboard's setup tasks are done. Seen in the
-   console that day (Claude reads it through the desktop app's browser, the user signed in): 3 of 11 done (privacy
-   policy, ads, government apps); to do: sign-in details, content rating, target audience, Data safety (a draft, not
-   submitted), advertising ID, financial features, health, category and contact, the store listing (none yet). The
-   track "Closed testing - Alpha" exists, empty. The console's app name is still CadernetaNF.
+   console (Claude reads it through the desktop app's browser, the user signed in): by the end of 2026-11-02 the
+   Dashboard's setup tasks are all done (sign-in details with the review account `contato+revisao@roqlab.com.br`,
+   content rating Livre, target audience 18+, Data safety, advertising ID, financial features, health, category Finance,
+   contact, the store listing named Caderneta with icon, feature graphic and the 9:16 screenshots), and closed testing
+   is unlocked. The track "Closed testing - Alpha" exists, empty: next, its release (code 3), testers (the Google Group),
+   Brazil, then Publishing overview › Send for review.
    Cloudflare Email Routing's subaddressing turned on 2026-11-02 (with the user's go-ahead): `contato+<x>@roqlab.com.br`
    reaches the Gmail too, for review and test accounts; the review account's first confirmation had bounced before it.
 2. **0.1.0 release checklist** (item 5 below): `tools/check.sh`; `./gradlew :app:bundleRelease` (signs with
