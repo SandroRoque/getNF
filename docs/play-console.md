@@ -105,10 +105,10 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
 
 - **Release notes, 0.1.0** (code 3; Play shows up to 500):
 
-> Primeira versão do teste fechado. Novidades: procure um produto pelo código de barras; uma compra por nota, mesmo
-> quando a loja registra o item duas vezes; o preço por unidade em cada compra; deslize o dedo no gráfico para ver
-> cada preço; abas e botões mais fáceis de tocar; o app avisa quando fechou sozinho e o que não sincronizou; envie
-> comentários em Ajustes › Enviar comentário.
+> Primeira versão do teste fechado. Novidades: lê também as notas do Rio de Janeiro; procure um produto pelo código
+> de barras; uma compra por nota, mesmo quando a loja registra o item duas vezes; o preço por unidade em cada compra;
+> deslize o dedo no gráfico para ver cada preço; abas e botões mais fáceis de tocar; o app avisa quando fechou sozinho
+> e o que não sincronizou; envie comentários em Ajustes › Enviar comentário.
 
 - **Closed testing › testers** (D153): Google Groups, `testadores-da-caderneta@googlegroups.com`
   (https://groups.google.com/g/testadores-da-caderneta: anyone can join, members and conversations visible to
