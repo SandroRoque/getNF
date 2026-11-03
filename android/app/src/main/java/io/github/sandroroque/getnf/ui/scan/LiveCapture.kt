@@ -21,6 +21,7 @@ import io.github.sandroroque.getnf.BuildConfig
 import io.github.sandroroque.getnf.data.CaptureSegment
 import io.github.sandroroque.getnf.data.CaptureSessionManifest
 import io.github.sandroroque.getnf.data.CaptureSessionStore
+import io.github.sandroroque.getnf.data.TestContribution
 import io.github.sandroroque.getnf.data.Chave
 import io.github.sandroroque.getnf.data.ReceiptStore
 import java.io.File
@@ -286,6 +287,8 @@ internal class CaptureController(
   private val dump: File? = null,
   /** Opened to look a product up (the Catálogo's shortcut): never a receipt (camera plan, step 3). */
   productOnly: Boolean = false,
+  /** An attempt's photos, before they go (saved, started over or left): the closed test's copies (D161). */
+  private val contribute: (TestContribution.Kind, CaptureSessionManifest, File) -> Unit = { _, _, _ -> },
 ) {
   private var ingest = IngestSession()
   /** Drops a provisional attempt that lost the paper (D149). */
@@ -417,7 +420,10 @@ internal class CaptureController(
 
   /** Drops the receipt capture's attempt (its photos too) and starts a new one. */
   private fun restartReceipt() {
-    if (manifest.segments.isNotEmpty() || manifest.chave != null) { sessions.remove(manifest); manifest = sessions.create() }
+    if (manifest.segments.isNotEmpty() || manifest.chave != null) {
+      offerPhotos(TestContribution.Kind.Restarted)
+      sessions.remove(manifest); manifest = sessions.create()
+    }
     ingest = IngestSession(); held = null; savedAs.clear(); attempt.reset()
     state = state.copy(rows = emptyList(), view = null, topClosed = false, bottomClosed = false, saved = 0, qr = false, chave = null)
   }
@@ -520,6 +526,7 @@ internal class CaptureController(
     manifest = manifest.copy(committing = true)
     sessions.write(manifest)
     val before = runBlocking { receipts.get(manifest.chave!!) }
+    offerPhotos(TestContribution.Kind.Saved)
     runBlocking { receipts.importCapture(manifest, sessions.dir(manifest.id)) }
     sessions.remove(manifest)
     done = true
@@ -544,10 +551,17 @@ internal class CaptureController(
       enqueueUpload()
     }
     held = null
+    offerPhotos(TestContribution.Kind.Left)
     sessions.remove(manifest)
     done = true
     state = state.copy(exited = true)
     publish(state)
+  }
+
+  /** A copy can't stop the capture: a failure is only logged. */
+  private fun offerPhotos(kind: TestContribution.Kind) {
+    if (manifest.segments.isNotEmpty()) runCatching { contribute(kind, manifest, sessions.dir(manifest.id)) }
+      .onFailure { Log.w(TAG, "could not keep the photos for the test", it) }
   }
 
   fun close() {

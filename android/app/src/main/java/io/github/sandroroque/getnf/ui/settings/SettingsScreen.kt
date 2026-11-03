@@ -105,7 +105,9 @@ fun SettingsScreen(go: SettingsRoutes) {
     Group("Este celular")
     Column {
       AmountRow("Cópia de segurança", null, subtitle = "Guardar tudo num arquivo, ou restaurar de um", onClick = go.backup)
-      ContributionRow(app, signedIn = account != null)
+      if (app.testContribution.testBuild) TestPhotosRow(app)
+      // D103's switch: during the closed test, only for whoever had turned it on.
+      if (!app.testContribution.testBuild || app.photoContribution.enabled) ContributionRow(app, signedIn = account != null)
     }
 
     Group("Sobre")
@@ -222,6 +224,20 @@ private fun LedgerRows(app: GetNFApp, open: String?, go: SettingsRoutes) {
     }
     AmountRow("Cadernetas", null, subtitle = "Todas as suas: criar, entrar com um código, trocar", onClick = go.cadernetas)
   }
+}
+
+/** The closed test's photos and pages (D161): turning it off takes back what was sent. */
+@Composable
+private fun TestPhotosRow(app: GetNFApp) {
+  var enabled by remember { mutableStateOf(app.testContribution.enabled == true) }
+  var withdrawing by remember { mutableStateOf(app.testContribution.withdrawPending) }
+  SwitchRow("Enviar fotos durante o teste", "As fotos de cada captura e a página de cada nota, pelo Wi-Fi, com o cartão, o CPF e quem comprou cobertos.", enabled) {
+    enabled = it
+    app.testContribution.enabled = it
+    withdrawing = app.testContribution.withdrawPending
+    app.sendContributions()
+  }
+  if (withdrawing) Sub("O que já foi enviado será apagado do servidor assim que houver internet.", Modifier.padding(top = 8.dp))
 }
 
 /** Photos for improving the app (D103): off until the user turns it on; turning it off takes them back (D105). */

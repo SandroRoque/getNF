@@ -113,6 +113,15 @@ class SupabaseClient(val url: String, private val key: String, private val http:
       .post(row.toString().toRequestBody(JSON)).build())
   }
 
+  /**
+   * Calls the `contribute` Edge Function (D161) as nobody in particular, with [query] and [body]. A 429 (a limit) or a
+   * 5xx comes back as [IOException], to try again later; any other refusal as [SupabaseException], final.
+   */
+  fun contribute(query: Map<String, String>, body: RequestBody) {
+    val target = base.newBuilder().addPathSegments("functions/v1/contribute").apply { query.forEach { (k, v) -> addQueryParameter(k, v) } }.build()
+    call(Request.Builder().url(target).header("apikey", key).post(body).build())
+  }
+
   /** Rows matching PostgREST [filters] (`column` to `op.value`), ordered and paged by the caller's filters. */
   fun select(session: SupabaseSession, table: String, filters: List<Pair<String, String>>): List<JsonObject> {
     val target = rest(table).addQueryParameter("select", "*").apply { filters.forEach { (k, v) -> addQueryParameter(k, v) } }.build()

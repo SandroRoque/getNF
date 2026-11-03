@@ -428,3 +428,6 @@ enabled = true
 # Called by pg_cron (kick_categorize) with a shared secret, not a user's JWT (D70, 4b).
 [functions.categorize]
 verify_jwt = false
+
+[functions.contribute]
+verify_jwt = false

@@ -53,12 +53,28 @@ class GetNFApp : Application() {
     )
   }
   /** Reports for the developer, waiting to be sent (D152). */
-  val feedback by lazy {
+  val feedback by lazy { io.github.sandroroque.getnf.data.FeedbackOutbox(File(filesDir, "feedback"), crashLog.about, ::installId) }
+  /** A random id of this install: tells one phone's reports and photos apart, says nothing of who (D152, D161). */
+  fun installId(): String {
     val prefs = getSharedPreferences("feedback", MODE_PRIVATE)
-    io.github.sandroroque.getnf.data.FeedbackOutbox(File(filesDir, "feedback"), crashLog.about) {
-      prefs.getString("install", null) ?: java.util.UUID.randomUUID().toString().also { prefs.edit().putString("install", it).commit() }
-    }
+    return prefs.getString("install", null) ?: java.util.UUID.randomUUID().toString().also { prefs.edit().putString("install", it).commit() }
   }
+  /** The closed test's photos and pages, if the person agreed (D161). */
+  val testContribution by lazy {
+    val prefs = getSharedPreferences("test-contribution", MODE_PRIVATE)
+    val store = object : io.github.sandroroque.getnf.data.TestContribution.Prefs {
+      override var enabled: Boolean?
+        get() = if (prefs.contains("enabled")) prefs.getBoolean("enabled", false) else null
+        set(v) { prefs.edit().apply { if (v == null) remove("enabled") else putBoolean("enabled", v) }.commit() }
+      override var withdraw: Boolean
+        get() = prefs.getBoolean("withdraw", false)
+        set(v) { prefs.edit().putBoolean("withdraw", v).commit() }
+    }
+    io.github.sandroroque.getnf.data.TestContribution(store, File(filesDir, "contributions"), BuildConfig.TEST_PERIOD && !underInstrumentation(),
+      crashLog.about, ::installId)
+  }
+  /** Sends the closed test's photos and pages when there's Wi-Fi (D161). */
+  fun sendContributions() = io.github.sandroroque.getnf.sync.ContributionWorker.enqueue(this)
   /** Keeps [text] for the developer and sends it as soon as there's a network. */
   fun sendFeedback(kind: io.github.sandroroque.getnf.data.FeedbackOutbox.Kind, text: String) {
     feedback.add(kind, text)
@@ -99,6 +115,8 @@ class GetNFApp : Application() {
       if (!underInstrumentation() && !accountSettings.demo) SyncWorker.enqueue(this@GetNFApp)
       // Reports written while offline (D152).
       if (!underInstrumentation() && feedback.pending().isNotEmpty()) io.github.sandroroque.getnf.sync.FeedbackWorker.enqueue(this@GetNFApp)
+      // The closed test's photos still waiting, or to be taken back (D161).
+      if (testContribution.withdrawPending || testContribution.active && testContribution.pending().isNotEmpty()) sendContributions()
     }
   }
 

@@ -45,6 +45,16 @@ class SensitiveTextTest {
       "213072000000000 DOC. 123456789 (SiTef)", "Oper. 900000001", "CPF do consumidor: 123.456.789-09")) assertTrue("$t should be blanked", t in gone)
   }
 
+  /** RJ's print (D161) names the operator; OCR misreads the word, and it may not start the line. */
+  @Test fun theOperatorsNameIsBlankedHoweverOcrReadsIt() {
+    val p = receipt("Tributos Incid. Lei Federal 12.741/12 - R$ 1,18", "Operadoi : 001234-Fulana de Tal", "0perador: 001234-Fulana de Tal",
+      "N:01002 Operador:001234-Fulana", "Atendente: Beltrano",
+      "Gpersdor : 001234-Fulana de Tal", "UpeCadar: 001234-Fulana", "perador : 001234-Fulana", "Uperadar : 001234-Fulana de Tal", "Trib Federais: R$ 0,78 (5,66%)")
+    val gone = blanked(p)
+    for (t in p.lines.map { it.text }.filter { "Fulana" in it || "Beltrano" in it }) assertTrue("$t should be blanked", t in gone)
+    assertTrue("taxes stay", "Trib Federais: R$ 0,78 (5,66%)" !in gone)
+  }
+
   @Test fun itemsTotalsTaxesAndSefazsAuthorizationStay() {
     val gone = blanked(sample)
     for (t in listOf("01 7891000100103 MACA NAC KG 0,875 KG 6,49 5,68", "02 7896000000017 REDE DE PROTECAO 1 UN 19,90 19,90",
@@ -79,5 +89,29 @@ class SensitiveTextTest {
       g.dispose()
       javax.imageio.ImageIO.write(image, "jpg", File(out.apply { mkdirs() }, "${f.parentFile.name}-${jpg.nameWithoutExtension}.jpg"))
     }
+  }
+
+  /**
+   * Local only (D161): over every `*.ocr.json` under GETNF_SENSITIVE_DIR, the lines that look private (a CPF, a masked
+   * card number, a "CPF" line with digits, the operator) and aren't wholly blanked. Prints each and the totals.
+   */
+  @Test fun realFramesLeaks() {
+    val dir = System.getenv("GETNF_SENSITIVE_DIR")?.let(::File)
+    assumeTrue(dir != null)
+    val json = Json { ignoreUnknownKeys = true }
+    val private = listOf(Regex("\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}"), Regex("\\d{4,6}\\S{0,3}[*+xX#•]{2,}\\S{0,4}\\d{3,4}"),
+      Regex("^CPF\\b.*\\d{3}", RegexOption.IGNORE_CASE), Regex("\\b[O0]PER[A-Z0-9]{0,5}\\b", RegexOption.IGNORE_CASE),
+      Regex(":\\s*\\d{4,}\\s*-\\s*\\p{L}{3,}"))
+    var frames = 0; var seen = 0; var leaked = 0
+    for (f in dir!!.walk().filter { it.name.endsWith(".ocr.json") }.sortedBy { it.path }) {
+      val p = json.decodeFromString<PhotoText>(f.readText())
+      frames++
+      val covered = blanked(p)
+      for (l in p.lines.filter { l -> private.any { it.containsMatchIn(l.text.trim()) } }) {
+        seen++
+        if (l.text !in covered) { leaked++; println("LEAK ${f.parentFile.name}/${f.name}: ${l.text}") }
+      }
+    }
+    println("frames $frames, private lines $seen, not blanked $leaked")
   }
 }

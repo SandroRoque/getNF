@@ -84,7 +84,8 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
   val failed = io.github.sandroroque.getnf.data.PhotoContribution.isFailure(h?.discountCents ?: 0, photos, lines.map { it.discountSource })
   androidx.compose.runtime.LaunchedEffect(failed) {
     val c = app.photoContribution
-    if (failed && !c.enabled && !c.asked) { c.asked = true; offerPhotos = true }
+    // During the closed test the app asks once for every photo instead (D161).
+    if (failed && !c.enabled && !c.asked && !app.testContribution.testBuild) { c.asked = true; offerPhotos = true }
   }
   if (offerPhotos) androidx.compose.material3.AlertDialog(
     onDismissRequest = { offerPhotos = false },

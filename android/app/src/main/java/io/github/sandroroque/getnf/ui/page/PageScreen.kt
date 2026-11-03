@@ -1,5 +1,6 @@
 package io.github.sandroroque.getnf.ui.page
 
+import io.github.sandroroque.getnf.data.TestContribution
 import io.github.sandroroque.getnf.ui.calmo.ButtonKind
 import io.github.sandroroque.getnf.ui.calmo.Pill
 import android.annotation.SuppressLint
@@ -131,6 +132,11 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
           if (receipt != null) Text("Esta nota não tem o endereço do QR Code.")
         }
       } else Box(Modifier.fillMaxSize()) {
+        // Another state's portal (D161): its last page goes to the closed test's copies when the screen closes.
+        var otherPage by remember { mutableStateOf<Pair<String, String>?>(null) }
+        DisposableEffect(Unit) {
+          onDispose { otherPage?.let { (u, h) -> runCatching { app.testContribution.addPage(TestContribution.Kind.OtherState, chave, u, h); app.sendContributions() } } }
+        }
         SefazWebView(
           url = url,
           onLookup = { app.lookupBudget.record(network.key) },
@@ -146,6 +152,8 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
               SefazPage.Kind.Details -> {}
             }
           },
+          keepOther = app.testContribution.active,
+          onOtherHtml = { pageUrl, html -> otherPage = pageUrl to html },
           onDetailsHtml = { finalUrl, html ->
             if (html == null || !SefazPage.hasReceipt(html)) {
               status = if (html == null) Status.Failed else Status.NotFound
@@ -153,6 +161,7 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
             } else {
               scope.launch {
                 store.savePage(chave, finalUrl, html)
+                runCatching { app.testContribution.addPage(TestContribution.Kind.Page, chave, finalUrl, html); app.sendContributions() }
                 // Items on the phone right away, server or not (D49), and the discounts its photos show (D101).
                 store.get(chave)?.let { app.receiptParser.parse(it) }
                 store.get(chave)?.let { r -> runCatching { app.photoDiscounts.readIfPending(r) } }
@@ -184,7 +193,8 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
 
 @SuppressLint("SetJavaScriptEnabled") // Turnstile and the portal need JS.
 @Composable
-private fun SefazWebView(url: String, onLookup: () -> Unit, onKind: (SefazPage.Kind) -> Unit, onDetailsHtml: (String, String?) -> Unit) {
+private fun SefazWebView(url: String, onLookup: () -> Unit, onKind: (SefazPage.Kind) -> Unit, onDetailsHtml: (String, String?) -> Unit,
+                         keepOther: Boolean = false, onOtherHtml: (String, String) -> Unit = { _, _ -> }) {
   // Requests per host for this visit (fetched vs answered empty by us), logged after each page, so we can see what one
   // visit costs against SEFAZ's per-IP rate limit (docs/sefaz-sc.md).
   val fetched = remember { ConcurrentHashMap<String, AtomicInteger>() }
@@ -249,6 +259,9 @@ private fun SefazWebView(url: String, onLookup: () -> Unit, onKind: (SefazPage.K
                 savedUrl = pageUrl
                 view.evaluateJavascript(SefazPage.GET_HTML) { result -> onDetailsHtml(pageUrl, SefazPage.decodeJsResult(result)) }
               }
+              // A portal the app doesn't read (another state): kept for the closed test, only if the person agreed.
+              if (keepOther && !SefazPage.isRead(pageUrl))
+                view.evaluateJavascript(SefazPage.GET_HTML) { result -> SefazPage.decodeJsResult(result)?.let { onOtherHtml(pageUrl, it) } }
             }
           }
         loadUrl(url)

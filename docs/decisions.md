@@ -3879,3 +3879,39 @@ regenerated, never edited, so it can't drift from the manifests the way D156's b
 only where `.env.local` exists (the PC); a cloud session's copy says so instead. The published copy is a private
 artifact, republished after release events by a session with the Artifact tools (rollout.md › Dashboard); `--open`
 shows the local file where there's none.
+
+
+## D161. During the closed test, testers' photos and pages come to the developer, once they say yes (2026-11-03)
+
+The user wants nearly every photo during the test: the photo reader (D106) and the capture need real receipts from
+other phones and states, and D103's opt-in brought almost nothing (off by default, only discount failures, only after
+the page was read, only with an account through the caderneta's sync; abandoned captures were discarded). Decided
+with the user: asked only in builds for the test track, kept at least while the test lasts, in the next build.
+
+- **Which installs:** Android can't tell which Play track installed an app, so the build says it: `TEST_PERIOD`
+  (`-Pgetnf.testPeriod`, true by default). Every Play build is a test build until production exists; the production
+  release is built with `-Pgetnf.testPeriod=false`.
+- **The ask:** a dialog on Início, once, "Sim, enviar" / "Agora não", saying what goes and how (LGPD consent, not a
+  pre-checked box). Ajustes has "Enviar fotos durante o teste" to change it; turning it off drops what waits and takes
+  back what went. D103's own dialog isn't shown in a test build, and its switch only to whoever had it on.
+- **What goes:** each capture's photos, saved, started over (R4 or D149's drop) or left; the SEFAZ page once read; and
+  for another state's QR code, the last page its portal showed (the exemplars a new state needs). With a `meta.json`
+  per item: the kind, the chave, the QR URL, the capture's outline and rows for each photo, the app and phone. Photos
+  as D61/D98's archive copy (cropped, grey, WebP, card slip, CPF and operator blanked; one that can't be read isn't
+  sent); pages through `BuyerRedaction`.
+- **How, without an account:** like D152's reports, under the install's random id, never the account: an outbox on
+  the phone (`data/TestContribution.kt`) sent by `ContributionWorker` on Wi-Fi only, to an Edge Function
+  (`contribute`) that writes to a private bucket (`contributions/<install>/<item>/<file>`, no policy: only the service
+  role) and counts files in `contribution_file`. Limits per install (300 files, 150 MB a day) and for all (3,000
+  files an hour), since the publishable key is in every app; `?withdraw=1` deletes an install's files.
+- **Kept** while the test lasts and at most 12 months after it ends (the privacy policy says so; the user asked for
+  "at least while the test lasts").
+- **The blanking, checked again:** a run over the 3,102 real frames' OCR found no private line left showing. On the
+  emulator an RJ receipt went up with its **operator's full name showing**: RJ prints "Operador: <code>-<name>" and
+  OCR reads the word as "Gpersdor", "Uperadar", "UpeCadar". The rule now also takes a short label, a colon, a code and
+  a name after a dash, and a first word within three letters of OPERADOR; the RJ capture then went up blanked, and the
+  3,102 frames still have nothing showing (the run, `SensitiveTextTest.realFramesLeaks`, is local only).
+- **Checked:** JVM tests for the outbox, pgTAP for the bucket and table, Deno tests for the function's rules, and on
+  the emulator against the local Supabase, signed out: the dialog, a capture from an RJ video sent as three blanked
+  photos and its meta, and the switch turned off emptying the server. Not exercised on a device: a page saved from a
+  live lookup (the page path is the same call, unit-tested) and another state's portal (no such QR code at hand).

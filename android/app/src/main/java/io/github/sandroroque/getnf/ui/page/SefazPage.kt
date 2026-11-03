@@ -51,6 +51,12 @@ object SefazPage {
     return host == "sef.sc.gov.br" || host.endsWith(".sef.sc.gov.br")
   }
 
+  /** A portal whose receipt page the app reads: SC's and RJ's (D155). Any other is another state's (D161). */
+  fun isRead(url: String): Boolean {
+    val host = runCatching { URI(url).host }.getOrNull()?.lowercase() ?: return false
+    return isSefaz(url) || host == "fazenda.rj.gov.br" || host.endsWith(".fazenda.rj.gov.br")
+  }
+
   fun shouldBlock(pageKind: Kind, url: String, accept: String?): Boolean {
     if (!isSefaz(url)) return false
     val uri = URI(url)

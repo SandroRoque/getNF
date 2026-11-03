@@ -34,7 +34,29 @@ object SensitiveText {
   private val SLIP = Regex("\\b(CARTAO|CREDITO|DEBITO|DOC|NSU|AUT|AUTORIZ\\w*|SITEF|TEF|CV|REDE|CIELO|STONE|GETNET|PAGSEGURO|SAFRAPAY|MASTERCARD|VISA|ELO|HIPERCARD|AMEX|MAESTRO)\\b")
   // OCR misspells the totals' payment line ("Forna de paganento"): its "DE PAG…" is enough.
   private val NOT_SLIP = Regex("PROTOCOLO|DATA DE AUTORIZ|\\bDE PAG|VALOR PAGO")
-  private val OPERATOR = Regex("^OPER(ADOR)?\\b")
+  // The operator, anywhere on the line and as OCR misreads it ("0perador", "Operadoi :", D161: RJ prints the name).
+  private val OPERATOR = Regex("\\b[O0]PER[A-Z0-9]{0,5}\\b|\\b(ATENDENTE|VENDEDORA?)\\b")
+  // RJ's operator line as OCR mangles its label ("GPERSDOR : 002346-K&RCIE …", D161): a short label, a colon, a code
+  // and a name after a dash. Or a first word within three letters of OPERADOR.
+  private val CODE_AND_NAME = Regex("^\\W*[A-Z0-9&]{3,12}\\s*[:.;]\\s*\\d{3,}\\s*-\\s*[A-Z&]{3,}")
+  private val FIRST_WORD = Regex("^\\W*([A-Z0-9&]{5,10})")
+
+  private fun looksLikeOperator(t: String): Boolean {
+    if (OPERATOR.containsMatchIn(t) || CODE_AND_NAME.containsMatchIn(t)) return true
+    val word = FIRST_WORD.find(t)?.groupValues?.get(1) ?: return false
+    return distance(word, "OPERADOR") <= 3
+  }
+
+  /** Levenshtein distance. */
+  private fun distance(a: String, b: String): Int {
+    var prev = IntArray(b.length + 1) { it }
+    for (i in 1..a.length) {
+      val cur = IntArray(b.length + 1); cur[0] = i
+      for (j in 1..b.length) cur[j] = minOf(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1)
+      prev = cur
+    }
+    return prev[b.length]
+  }
   // An item's line (its number, then its code): a product named "REDE …" is not the acquirer.
   private val ITEM = Regex("^\\d{1,3}\\s+\\d{4,}")
   private const val MAX_SLIP_LINES = 14
@@ -86,7 +108,8 @@ object SensitiveText {
     }
     for (p in lines) {
       val t = plain(p.line)
-      if (CPF.containsMatchIn(t) || (t.contains("CPF") && t.count(Char::isDigit) >= 9) || OPERATOR.containsMatchIn(t)) result += block(listOf(p))
+      if (CPF.containsMatchIn(t) || (t.contains("CPF") && t.count(Char::isDigit) >= 9) || looksLikeOperator(t) && !ITEM.containsMatchIn(t))
+        result += block(listOf(p))
     }
     return result
   }

@@ -1,6 +1,6 @@
 # Status and next steps
 
-Last updated 2026-11-01. A handoff for picking the project up again. For *why* things are the way they are, read
+Last updated 2026-11-03. A handoff for picking the project up again. For *why* things are the way they are, read
 `docs/decisions.md` (D1–D150). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
@@ -84,10 +84,16 @@ listing's description (play-console.md) says SC and RJ.
 Where things are: 0.1.0 (code 3, cbf3798, `play/3`) is **in Google's review on "Closed testing - Alpha"** since
 2026-11-02, after the Dashboard's setup tasks were all done (the details are in [releases/3.md](releases/3.md) and
 [play-console.md](play-console.md)). Releases are recorded in the repo (D158, [rollout.md](rollout.md)); the D156/D157
-kanban and its artifact are gone. The Play Developer API tooling exists (D159, `tools/play.py`); whether the user has
-run `tools/setup-play-api.sh` and invited the service account isn't recorded: check for `~/.config/getnf/play-api.json`.
+kanban and its artifact are gone. The Play Developer API tooling exists and answers (D159, `tools/play.py`).
 Corrected 2026-11-02 (D158): each of the 12 testers must be opted in continuously for 14 days, and an account in
 internal testing can't receive the closed test.
+
+**2026-11-03: testers' photos (D161), going out as code 4 (0.1.1).** A test build asks once whether every capture's
+photos and pages may go to the developer (Wi-Fi only, blanked, no account needed). Before code 4 reaches testers:
+the server pieces applied online (`docs/releases/server.md`), Play Console › Data safety updated as
+[play-data-safety.md](play-data-safety.md) says, and the site's `/privacidade/` redeployed with the new section, both
+by the user; then the release checklist ([releases/4.md](releases/4.md)). What arrives is listed with the secret key
+(the `contribution_file` table; the files in the `contributions` bucket).
 
 Do next, in order:
 1. ~~Watch the review~~ **approved 2026-11-02** (seen 23:50): "Closed testing - Alpha" is Active with 0.1.0, and its

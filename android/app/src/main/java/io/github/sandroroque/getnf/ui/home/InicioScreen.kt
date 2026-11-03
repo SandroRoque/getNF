@@ -99,6 +99,13 @@ fun InicioScreen(
   var crash by remember { mutableStateOf<io.github.sandroroque.getnf.data.CrashLog.Report?>(null) }
   LaunchedEffect(Unit) { crash = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { app.crashLog.pending() } }
 
+  // The closed test (D161): asked once, in a build made for it.
+  var askPhotos by remember { mutableStateOf(app.testContribution.shouldAsk && !app.accountSettings.demo) }
+  if (askPhotos) TestPhotosDialog { answer ->
+    app.testContribution.enabled = answer
+    askPhotos = false
+  }
+
   val month = spending?.periods?.lastOrNull()
   LazyColumn(
     Modifier.fillMaxSize().statusBarsPadding(),
@@ -234,3 +241,18 @@ private fun CrashCard(report: io.github.sandroroque.getnf.data.CrashLog.Report, 
     Wide("Agora não", ButtonKind.Ghost, onClick = onDone)
   }
 }
+
+/** The closed test's question (D161): every capture's photos and pages for the developer, until the test ends. */
+@Composable
+private fun TestPhotosDialog(onAnswer: (Boolean) -> Unit) = androidx.compose.material3.AlertDialog(
+  onDismissRequest = {},
+  title = { Text("Ajude a melhorar a leitura das notas") },
+  text = {
+    Text("Durante o teste, a Caderneta pode enviar ao desenvolvedor as fotos de cada captura e a página da SEFAZ de " +
+      "cada nota. As fotos vão em preto e branco, com os dados do cartão, o CPF e o operador cobertos; a página, sem " +
+      "quem comprou. Vão só pelo Wi-Fi, com um código aleatório deste celular, sem a sua conta.\n\n" +
+      "Dá para desligar em Ajustes quando quiser, e o que já foi enviado é apagado.")
+  },
+  confirmButton = { androidx.compose.material3.TextButton(onClick = { onAnswer(true) }) { Text("Sim, enviar") } },
+  dismissButton = { androidx.compose.material3.TextButton(onClick = { onAnswer(false) }) { Text("Agora não") } },
+)

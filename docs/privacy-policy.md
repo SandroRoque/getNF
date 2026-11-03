@@ -18,6 +18,8 @@ Geral de Proteção de Dados, Lei 13.709/2018). Contato: **[e-mail de contato]**
 - As fotos das notas ficam no celular. Só saem dele se você ativar o envio, e só as de notas que o app não leu bem,
   com os dados do cartão e o CPF cobertos.
 - Comentários e relatórios de erro só saem do celular quando você toca em enviar, sem o seu nome nem o seu e-mail.
+- Durante o teste fechado, se você aceitar, as fotos de cada captura e a página de cada nota vão para o mantenedor,
+  pelo Wi-Fi, cobertas e sem a sua conta, para melhorar a leitura das notas.
 - O CPF e o nome do comprador são removidos das páginas da SEFAZ antes de serem guardados.
 - Não há publicidade, não vendemos dados e não os usamos para traçar seu perfil.
 
@@ -64,6 +66,25 @@ Não vão o seu nome, o seu e-mail nem a sua conta. Os relatos ficam no servidor
 mantenedor os lê, para corrigir erros e melhorar o app. Se preferir, o mesmo comentário pode ir por outro app (e-mail,
 WhatsApp), à sua escolha.
 
+### Fotos e páginas durante o teste fechado (só se você aceitar)
+
+Na versão de teste fechado, o app pergunta uma vez se pode enviar ao mantenedor o material das suas capturas, para
+melhorar a leitura das notas. Com ou sem conta, se você aceitar, vão:
+
+- **as fotos de cada captura,** salva, recomeçada ou abandonada, recortadas e em tons de cinza, com o comprovante do
+  cartão, qualquer CPF e o nome do operador cobertos;
+- **a página da SEFAZ de cada nota,** sem o CPF e o nome do comprador, e a última página aberta no portal de um
+  estado que o app ainda não lê;
+- **a chave de acesso da nota, o endereço do QR Code,** como a captura recortou cada foto, **a versão do app, a do
+  Android e o modelo do celular;**
+- **o mesmo identificador aleatório desta instalação** dos relatórios de erro.
+
+Não vão o seu nome, o seu e-mail nem a sua conta. O envio é feito só pelo Wi-Fi. O material fica no servidor
+(Supabase, em São Paulo), numa área que só o mantenedor acessa, e é usado só para melhorar a captura e a leitura das
+notas. A cobertura dos dados privados é automática, feita no celular a partir do texto que ele lê na foto; ela foi
+verificada em fotos reais, mas uma foto mal lida pode deixar algo à mostra. Desligue em Ajustes › Enviar fotos durante
+o teste quando quiser.
+
 ### Caderneta compartilhada
 
 Quem está na mesma caderneta vê tudo o que há nela: notas, itens, preços, categorias e quem escaneou cada nota, além
@@ -97,8 +118,8 @@ você.
 
 - **Execução do serviço que você pede** (art. 7º, V): guardar e sincronizar suas notas e sua caderneta.
 - **Legítimo interesse** (art. 7º, IX): segurança, cópias de segurança e diagnóstico de falhas.
-- **Consentimento** (art. 7º, I): envio de fotos para melhorar o app, que você ativa e desativa em Ajustes, e cada
-  comentário ou relatório de erro que você decide enviar.
+- **Consentimento** (art. 7º, I): envio de fotos para melhorar o app, o envio de fotos e páginas durante o teste
+  fechado, que você ativa e desativa em Ajustes, e cada comentário ou relatório de erro que você decide enviar.
 
 ## Por quanto tempo
 
@@ -108,6 +129,8 @@ você.
 - Comentários e relatórios de erro: enquanto servirem para corrigir o que relatam, e no máximo 12 meses. Como não
   vão ligados à sua conta, para apagar um antes disso escreva para **[e-mail de contato]** dizendo o que enviou e
   quando.
+- Fotos e páginas do teste fechado: enquanto durar o teste e no máximo 12 meses depois do fim dele, ou até você
+  desligar o envio.
 - Em uma caderneta compartilhada que continua com outros membros, as notas e os itens que vieram de você ficam na
   caderneta, porque fazem parte do registro comum dela; suas fotos enviadas e as marcas de "escaneada por você" são
   apagadas. Antes de sair, você pode copiar suas notas para outra caderneta.
@@ -126,6 +149,9 @@ consentimento e pedir a exclusão.
   preciso passá-la a outro membro antes.
 - **Envio de fotos:** desligue em Ajustes a qualquer momento. Ao desligar, as fotos que você já enviou são apagadas
   do servidor na sincronização seguinte (ou quando você entrar na conta de novo, se estiver desconectado).
+- **Fotos e páginas do teste fechado:** desligue em Ajustes › Enviar fotos durante o teste. Ao desligar, o que esta
+  instalação enviou é apagado do servidor assim que o celular tiver internet. Se você desinstalar o app antes, escreva
+  para **[e-mail de contato]**.
 
 Respondemos pedidos em até 15 dias. Você também pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD).
 

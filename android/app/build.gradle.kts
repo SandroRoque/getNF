@@ -46,8 +46,11 @@ android {
         applicationId = "br.com.roqlab.caderneta"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.1.0"
+        versionCode = 4
+        versionName = "0.1.1"
+        // The closed test (D161): a build that asks testers for their photos. Every Play build is one until the
+        // production release, which is built with -Pgetnf.testPeriod=false.
+        buildConfigField("boolean", "TEST_PERIOD", providers.gradleProperty("getnf.testPeriod").orNull?.toBoolean()?.toString() ?: "true")
     }
 
     // The Supabase project baked into the APK (D70): its URL and publishable key, which are public by design (Row

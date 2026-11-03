@@ -41,8 +41,8 @@ Google's definitions.
 | Personal info › Email address | Yes | No | No | Optional (only with an account) | App functionality, Account management |
 | Personal info › Name | Yes (display name in a caderneta) | No | No | Optional | App functionality |
 | Personal info › User IDs | Yes (account id) | No | No | Optional | App functionality, Account management |
-| Financial info › Purchase history | Yes (receipts, items, prices, stores, payment method) | No | No | Optional (only with an account) | App functionality |
-| Photos and videos › Photos | Yes (only with the opt-in, failed receipts, redacted) | No | No | Optional | Analytics (improving the reading of receipts) |
+| Financial info › Purchase history | Yes (receipts, items, prices, stores, payment method; during the closed test, with the opt-in and without an account, each receipt's SEFAZ page, D161) | No | No | Optional | App functionality, Analytics |
+| Photos and videos › Photos | Yes (only with an opt-in, redacted: D103's failed receipts; during the closed test, every capture's photos, D161) | No | No | Optional | Analytics (improving the reading of receipts) |
 | App activity › Other user-generated content | Yes (product names, categories, edits; comments the person sends, D152) | No | No | Optional | App functionality, Analytics |
 | App info and performance › Diagnostics | Yes (ML Kit: error codes, events, performance; the refused-rows report when the person sends it, D152) | No | No | Required (happens whenever the camera reads a receipt) | Analytics |
 | App info and performance › Other app performance data | Yes (ML Kit: latency, input/output sizes) | No | No | Required | Analytics |
@@ -55,6 +55,11 @@ account numbers. The CPF and the buyer's name are removed from pages before they
 CPFs are covered in uploaded photos (D98).
 
 ## Things worth knowing
+
+- **Changed 2026-11-03 (D161): update the form in Play Console before code 4 goes to the closed test.** Photos now go
+  with or without an account during the closed test (every capture's, once the person agrees), and the receipt's page
+  goes with them, under the random install id: Photos stays "Optional", its description widens; Purchase history is no
+  longer "only with an account".
 
 - **Changed 2026-10-31 (D152): the form must be updated in Play Console before the closed test's build.** Comments,
   crash reports and refused-rows reports now go to the project's own server when the person taps send (they used to

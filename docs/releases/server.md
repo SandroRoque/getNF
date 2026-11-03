@@ -7,4 +7,4 @@ Format: `- <file>: <what> · compat: <which versionCodes still work, how checked
 
 Supported clients: every versionCode that reached someone through Play and hasn't been retired in docs/rollout.md
 (today: 2 on the user's and the father's phones, 3 on internal testing).
-
+- 20261103000000_test_contributions.sql + Edge Function `contribute` (D161): a private bucket and a table the function writes; nothing for anon or authenticated · compat: additive, codes 2 and 3 don't call it (pgTAP with the migration, local function exercised) · applied: pending
