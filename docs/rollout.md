@@ -56,7 +56,8 @@ reproducible blockers. When Vitals has no data, write "no data" with the date; d
 
 ## Watching a build testers have
 
-The session that cut it looks, daily in its first week and weekly after: `tools/tickets.py inbox`, the sync failures
+The session that cut it looks, daily in its first week and weekly after: `tools/tickets.py inbox`,
+`tools/contributions.py list` while the closed test collects photos (D161), the sync failures
 and refused rows reports, receipts that didn't read, Vitals. Findings become tickets. A build stays supported (see
 Server changes) after its card is done.
 

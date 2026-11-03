@@ -3933,3 +3933,16 @@ receives (the closed one, since the user is a closed tester and an internal test
 updates from Play, and the data is compared with what it showed before. It comes after the upload, not before;
 the emulator's release APK stays the check before it. rollout.md, the manifest template and play-console.md say so.
 
+
+## D163. What testers sent is listed and downloaded by a tool, into test-media (2026-11-03)
+
+D161's files could only be seen in the dashboard's table editor or with a curl and the secret key, while watching a
+build (rollout.md) now includes them. `tools/contributions.py` reads them the way `tools/tickets.py` reads reports
+(the secret key from `.env.local`, `--local` for the local stack): `list [--days N]` groups the `contribution_file`
+rows by install and item (photos, page, whether meta.json, sent last, has arrived), and `fetch <prefix>… | --all`
+downloads what isn't on disk yet to `test-media/contributions/<install>/<item>/`.
+- **Into test-media, never the repo:** the files are real receipts, and meta.json carries the chave. `list` prints
+  only ids, counts, sizes and times, so its output can be pasted into a session; the files' contents can't.
+- **Paged:** PostgREST returns at most 1,000 rows a request, and one install may send 300 files a day.
+- **Checked** against a fake server (pagination, prefixes, skipping files already downloaded); not yet against the
+  online project, which needs the PC's `.env.local`: the first `list` there is the check.

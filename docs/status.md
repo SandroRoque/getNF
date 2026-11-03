@@ -88,8 +88,9 @@ Where things are:
   internal testing. It's D161: a test build asks once whether every capture's photos and pages may go to the
   developer (Wi-Fi, blanked, no account needed), temporary, for the closed test only. The server pieces are online
   (`docs/releases/server.md`); the policy, the site's FAQ, the listing and Data safety say so and are published.
-- What testers send lands in the `contributions` bucket and the `contribution_file` table (secret key only); nothing
-  lists it yet besides the dashboard's table editor or a curl with the secret key.
+- What testers send lands in the `contributions` bucket and the `contribution_file` table (secret key only):
+  `tools/contributions.py list` shows it per install and item, `fetch` downloads into `test-media/contributions/`
+  (D163).
 - The Play Developer API answers (D159, `tools/play.py`); uploads and track changes go through it. Data safety and the
   listing are edited in the console (the built-in browser is signed in to it).
 
@@ -98,7 +99,7 @@ Do next, in order:
    from code 3 to 4 through Play (a sideload can't replace a Play install, D162); with it on the cable, check that
    October still shows R$ 821,85 in 5 receipts, 7 decisions, the account, and that the photos question appears.
    Record it in releases/4.md and set `state: closed`.
-2. **Watching** (rollout.md › Watching): each session, `tools/tickets.py inbox`, what reached `contribution_file`, the
+2. **Watching** (rollout.md › Watching): each session, `tools/tickets.py inbox`, `tools/contributions.py list --days 1`, the
    sync and refused-rows reports, Vitals; findings become tickets.
 3. **Recruiting, by the user:** the site's "Teste fechado" section; aim for more than 12.
 4. **Code 3's pre-launch report** doesn't exist (releases/3.md); check whether code 4 gets one.
