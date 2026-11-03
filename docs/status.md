@@ -91,8 +91,10 @@ internal testing can't receive the closed test.
 
 Do next, in order:
 1. ~~Watch the review~~ **approved 2026-11-02** (seen 23:50): "Closed testing - Alpha" is Active with 0.1.0, and its
-   opt-in link equals the site's; releases/3.md says `closed`. The testing tools: `tools/play.py` once the user runs
-   `tools/setup-play-api.sh` and invites the service account (not done as of 2026-11-02 23:50: no key on the PC).
+   opt-in link equals the site's; releases/3.md says `closed`. The API works since 2026-11-03: the user ran
+   `tools/setup-play-api.sh` (project caderneta-play), Claude invited the service account with the user's go-ahead
+   (Caderneta only: view app information, quality information, manage testing tracks, release to testing tracks);
+   `tools/play.py status` / `bundles` / `listing` answer.
 2. ~~The user redeploys the site~~ done 2026-11-03: the live page has the corrected text about the 14 days and the
    opt-in, the group and opt-in links, and contato@.
 3. **Code 3's open checks** (releases/3.md): the user leaves internal testing, opts in through the closed link and

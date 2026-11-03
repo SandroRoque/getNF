@@ -3861,3 +3861,9 @@ user signed in. It worked, but every check went through screens, and uploads wer
   Dashboard's tasks; those stay in the console, through the browser when needed. A commit to a closed track sends the
   release for review (managed publishing is off), so `--commit` there is the user's go-ahead, as "Send for review" is.
 
+**Set up 2026-11-03.** The user ran `tools/setup-play-api.sh` (project `caderneta-play`, service account
+`play-publisher@caderneta-play.iam.gserviceaccount.com`); Claude sent the invite in the console with the user's
+go-ahead, Caderneta only, with View app information, View app quality information (it comes with the first), Manage
+testing tracks and edit tester lists, Release apps to testing tracks; nothing account-wide, no production. `status`,
+`bundles` and `listing` answered at once; Play's code 3 has the sha256 releases/3.md records.
+
