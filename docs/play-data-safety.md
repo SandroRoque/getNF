@@ -56,7 +56,9 @@ CPFs are covered in uploaded photos (D98).
 
 ## Things worth knowing
 
-- **Changed 2026-11-03 (D161): update the form in Play Console before code 4 goes to the closed test.** Photos now go
+- **Changed 2026-11-03 (D161), saved in Play Console and sent for review the same day** (Claude, with the user's
+  go-ahead): Purchase history gained Analytics; Photos was set to "processed ephemerally: Yes" in the console, against
+  this table, and is now "No" (the photos are stored), so it shows on the listing. The rest matched. Photos now go
   with or without an account during the closed test (every capture's, once the person agrees), and the receipt's page
   goes with them, under the random install id: Photos stays "Optional", its description widens; Purchase history is no
   longer "only with an account".
