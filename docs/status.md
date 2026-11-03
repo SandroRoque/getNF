@@ -90,11 +90,9 @@ Corrected 2026-11-02 (D158): each of the 12 testers must be opted in continuousl
 internal testing can't receive the closed test.
 
 Do next, in order:
-1. **Watch the review** (`tools/play.py status` if the API is set up, otherwise the console through the browser).
-   When approved: compare the track's opt-in link with the site's
-   (`https://play.google.com/apps/testing/br.com.roqlab.caderneta`; if different, fix `web/index.html`), add the dated
-   event under `## Play` and set `state: closed` in releases/3.md (`tools/release.py check` must pass). If rejected:
-   record the reason; resubmit the same bundle unless the app itself must change (rollout.md).
+1. ~~Watch the review~~ **approved 2026-11-02** (seen 23:50): "Closed testing - Alpha" is Active with 0.1.0, and its
+   opt-in link equals the site's; releases/3.md says `closed`. The testing tools: `tools/play.py` once the user runs
+   `tools/setup-play-api.sh` and invites the service account (not done as of 2026-11-02 23:50: no key on the PC).
 2. **The user redeploys the site** (`web/README.md`): the live page still has the old text about the 14 days; main has
    the corrected one ("sem sair no meio", joining the group isn't the opt-in).
 3. **Code 3's open checks** (releases/3.md): the user leaves internal testing, opts in through the closed link and
