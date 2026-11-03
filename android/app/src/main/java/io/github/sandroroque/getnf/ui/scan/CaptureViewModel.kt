@@ -41,8 +41,8 @@ internal class CaptureViewModel(application: Application, private val productOnl
     // Debug builds dump the frames analysed when files/capture-dump/enabled exists (to replay a session on the PC).
     val dump = java.io.File(app.filesDir, "capture-dump").takeIf { BuildConfig.DEBUG && java.io.File(it, "enabled").exists() }
       ?.let { java.io.File(it, java.time.LocalDateTime.now().toString().replace(':', '-').take(19)) }
-    CaptureController(app.captureSessions, app.receiptStore, { _state.value = it }, { SyncWorker.enqueue(app); app.sendContributions() }, dump, productOnly,
-      contribute = { kind, session, dir -> app.testContribution.addCapture(kind, session, dir) })
+    CaptureController(app.captureSessions, app.receiptStore, { _state.value = it }, { SyncWorker.enqueue(app) }, dump, productOnly,
+      contribute = { kind, session, dir -> app.testContribution.addCapture(kind, session, dir); app.sendContributions() })
   }
   val analyzer = IngestAnalyzer(text, qr, executor, { attached.get() && !closing.get() }, { controller.wantsText }, { frame, lines, codes ->
     // A frame already waiting is dropped for this newer one; only when none was waiting is a run scheduled.
