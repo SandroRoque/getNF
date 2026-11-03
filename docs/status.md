@@ -79,47 +79,34 @@ Caderneta. New ideas go to "After the open store", not into the code. Exception,
 commit that has it. The site's copy changed with it: **the user redeploys the site** (`web/README.md`), and the Play
 listing's description (play-console.md) says SC and RJ.
 
-**Handoff, 2026-11-01 (a cloud session, no emulator or signing key; for the next session on the PC)**
+**Handoff, 2026-11-03 (from a cloud session, for the next session on the PC)**
 
-Done in that session: both sites refreshed (D151) and deployed; testers join the Google Group
-testadores-da-caderneta, then Play's opt-in (D153); contato@roqlab.com.br receives (Cloudflare Email Routing → Gmail)
-and sends (Gmail through Resend's SMTP), and is on the site, the policy and Play (D154); Cloudflare's injected Web
-Analytics beacon turned off by the user; `versionName` set to 0.1.0 (code 3, commit 57b9ae5). Nothing was built,
-uploaded or tagged, and the Play Console's closed track doesn't exist yet. The user chose to open the closed test
-with 0.1.0 rather than promote code 2 (whose "Enviar comentário" predates D152's inbox).
+Where things are: 0.1.0 (code 3, cbf3798, `play/3`) is **in Google's review on "Closed testing - Alpha"** since
+2026-11-02, after the Dashboard's setup tasks were all done (the details are in [releases/3.md](releases/3.md) and
+[play-console.md](play-console.md)). Releases are recorded in the repo (D158, [rollout.md](rollout.md)); the D156/D157
+kanban and its artifact are gone. The Play Developer API tooling exists (D159, `tools/play.py`); whether the user has
+run `tools/setup-play-api.sh` and invited the service account isn't recorded: check for `~/.config/getnf/play-api.json`.
+Corrected 2026-11-02 (D158): each of the 12 testers must be opted in continuously for 14 days, and an account in
+internal testing can't receive the closed test.
 
-**Releases are in the repo since D158** ([rollout.md](rollout.md), [releases/3.md](releases/3.md)): 0.1.0 (code 3) is
-`internal`; its manifest lists the checks still open (the phone over code 2, tickets, Data safety, the
-pre-launch report, the AAB's hash). `tools/release.py pending` shows what testers don't have yet. Steps 2 and 4 below
-are done (built from cbf3798, tagged `play/3`); what remains of 3 is the closed track, sent for review with the same
-bundle. The user's own account must leave internal testing to see the closed track (play-console.md, item 8).
-
-Do next, in order, with the user:
-1. ~~Online database first~~ done 2026-11-01: `db push` run by the user; a report sent with the publishable key
-   reached `tools/tickets.py inbox` and was deleted, anonymous reads are refused. Still to do: Data safety in Play
-   Console as [play-data-safety.md](play-data-safety.md) says. 0.1.0 built 2026-11-02 from cbf3798 (RJ, Voltar's
-   double-tap crash fixed, the app named Caderneta on the phone) and checked on the emulator; uploaded 2026-11-02 to **internal
-   testing** (tagged `play/3`), since closed testing stays locked until the Dashboard's setup tasks are done. Seen in the
-   console (Claude reads it through the desktop app's browser, the user signed in): by the end of 2026-11-02 the
-   Dashboard's setup tasks are all done (sign-in details with the review account `contato+revisao@roqlab.com.br`,
-   content rating Livre, target audience 18+, Data safety, advertising ID, financial features, health, category Finance,
-   contact, the store listing named Caderneta with icon, feature graphic and the 9:16 screenshots), and closed testing
-   is unlocked. **Submitted for review 2026-11-02** on "Closed testing - Alpha" (code 3, Brazil, the Google Group,
-   feedback contato@): see [releases/3.md](releases/3.md). Next: wait for Google, then check the opt-in link and recruit.
-   Cloudflare Email Routing's subaddressing turned on 2026-11-02 (with the user's go-ahead): `contato+<x>@roqlab.com.br`
-   reaches the Gmail too, for review and test accounts; the review account's first confirmation had bounced before it.
-2. **0.1.0 release checklist** (item 5 below): `tools/check.sh`; `./gradlew :app:bundleRelease` (signs with
-   `~/.config/getnf/upload-key.jks`); the release APK on the emulator (signed out, demo, a capture from a recorded
-   video, Ajustes › Enviar comentário reaching the inbox) and on the user's phone (never connectedAndroidTest
-   there). Commit nothing uncommitted before building.
-3. **Play Console, closed testing** ([play-console.md](play-console.md) › "Opening the closed test"): Dashboard
-   tasks complete; track with Brazil, testers = Google Group `testadores-da-caderneta@googlegroups.com`, feedback
-   `contato@roqlab.com.br`; check the opt-in link equals the site's
-   `https://play.google.com/apps/testing/br.com.roqlab.caderneta` (if not, fix `web/index.html` and redeploy);
-   upload `app-release.aab`, release name `0.1.0`, notes from play-console.md; Send changes for review.
-4. Tag and push `play/3` on 57b9ae5 (or whatever commit the bundle was built from).
-5. While Google reviews: the user starts recruiting (the site's "Teste fechado" section is the link to send).
-   Android vitals three days after the first installs.
+Do next, in order:
+1. **Watch the review** (`tools/play.py status` if the API is set up, otherwise the console through the browser).
+   When approved: compare the track's opt-in link with the site's
+   (`https://play.google.com/apps/testing/br.com.roqlab.caderneta`; if different, fix `web/index.html`), add the dated
+   event under `## Play` and set `state: closed` in releases/3.md (`tools/release.py check` must pass). If rejected:
+   record the reason; resubmit the same bundle unless the app itself must change (rollout.md).
+2. **The user redeploys the site** (`web/README.md`): the live page still has the old text about the 14 days; main has
+   the corrected one ("sem sair no meio", joining the group isn't the opt-in).
+3. **Code 3's open checks** (releases/3.md): the user leaves internal testing, opts in through the closed link and
+   installs from Play over code 2, receipts and account still there (that also proves the closed track works as a
+   tester sees it); the pre-launch report for code 3 read and triaged.
+4. **Recruiting, by the user,** once the opt-in link works: the site's "Teste fechado" section is what to send; aim for
+   more than 12, since one dropout restarts that person's 14 days.
+5. **Watching code 3** (rollout.md › Watching): daily in the first week, `tools/tickets.py inbox`, the sync and
+   refused-rows reports, Vitals ("no data" recorded as such); findings become tickets.
+6. **The next candidate:** a weekly opportunity, not before the review ends unless there's an incident.
+   `tools/release.py pending` shows what testers don't have (needs a full clone: `git fetch --unshallow --tags` in a
+   shallow one); `tools/release.py new <code> <name>` cuts it; build only from its sha and record the AAB's sha256.
 
 Not done, waiting: dark screenshots for the sites (only Início has a current dark shot; the rest show light on both
 sites, D151), and the steps under "The user" below.
