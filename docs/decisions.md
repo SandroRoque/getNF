@@ -3867,3 +3867,15 @@ go-ahead, Caderneta only, with View app information, View app quality informatio
 testing tracks and edit tester lists, Release apps to testing tracks; nothing account-wide, no production. `status`,
 `bundles` and `listing` answered at once; Play's code 3 has the sha256 releases/3.md records.
 
+
+## D160. A read-only dashboard of the release machine, generated from the repo (2026-11-03)
+
+The user wanted D156's kanban view back, only to look at. `tools/release.py dashboard` writes a self-contained page
+(`tools/dashboard.html` with the data embedded, into the gitignored `build/`): a strip with main and its CI, the build
+testers have, the next cut by rollout.md's rules and the tickets, then columns left to right (tickets, what's in main
+that testers don't have, and the candidates by state: preparing, internal, submitted, closed, production, archive),
+each candidate with its checks, the open ones listed, its contents and Play events. Nothing on it moves: it's
+regenerated, never edited, so it can't drift from the manifests the way D156's board did. Tickets come from Supabase
+only where `.env.local` exists (the PC); a cloud session's copy says so instead. The published copy is a private
+artifact, republished after release events by a session with the Artifact tools (rollout.md › Dashboard); `--open`
+shows the local file where there's none.

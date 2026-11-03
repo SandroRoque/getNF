@@ -6,6 +6,10 @@ docs/releases/<code>.md, the policy in docs/rollout.md.
   tools/release.py new <code> <name>    start a candidate at HEAD (clean, equal to origin/main, versionCode = code)
   tools/release.py contents <code>      the generated Contents section of a candidate (its base..sha)
   tools/release.py check                validate every manifest and the migrations' compat notes (CI runs this)
+  tools/release.py dashboard [--out F] [--open]
+                                        a read-only board of the whole machine (tickets, main, candidates by state),
+                                        built from the repo (and the tickets when .env.local is there); default
+                                        build/dashboard.html
 
 A manifest starts with a ```release block of `key: value` lines (code, name, sha, base, aab, state). The rest is
 Markdown written by people and agents: Contents (generated, checked for drift), Server, Checks, Play (dated events),
@@ -75,6 +79,22 @@ def log(base, sha, paths):
     rng = f"{base}..{sha}" if base else sha
     out = git("log", "--no-merges", "--format=%H%x09%s", rng, "--", *paths) or ""
     return [(h[:7], s) for h, s in (l.split("\t", 1) for l in out.splitlines() if l)]
+
+
+def grouped_struct(commits):
+    """[{ref, title, hashes}] by the decisions and tickets the commits cite, then the uncited ones (ref None)."""
+    groups, other = {}, []
+    for h, s in commits:
+        refs = REF.findall(s)
+        if refs:
+            for r in dict.fromkeys(refs):
+                groups.setdefault(r, []).append((h, s))
+        else:
+            other.append((h, s))
+    def key(r):
+        return (0, int(r[1:])) if r.startswith("D") else (1, int(r[2:]))
+    out = [{"ref": r, "title": groups[r][0][1], "hashes": [h for h, _ in groups[r]]} for r in sorted(groups, key=key)]
+    return out + [{"ref": None, "title": s, "hashes": [h]} for h, s in other]
 
 
 def grouped(commits):
@@ -269,6 +289,100 @@ def cmd_check():
     return 1 if errors else 0
 
 
+def entries(body, prefix_re):
+    """Bulleted entries of a section, continuation lines joined."""
+    out, cur = [], None
+    for line in (body or "").splitlines():
+        if line.startswith("- "):
+            cur = line[2:].strip(); out.append(cur)
+        elif cur is not None and line.startswith("  "):
+            out[-1] = out[-1] + " " + line.strip()
+    return [e for e in out if re.match(prefix_re, e)]
+
+
+def strip_md(t):
+    return re.sub(r"`([^`]*)`", r"\1", t).replace("**", "")
+
+
+def tickets_data():
+    """Open tickets and the untriaged count from Supabase, or None where .env.local isn't (a cloud session)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("tickets", ROOT / "tools" / "tickets.py")
+    try:
+        t = importlib.util.module_from_spec(spec); spec.loader.exec_module(t)
+        e = t.env()
+        db = t.Supabase(e["SUPABASE_URL"], e["SUPABASE_SECRET_KEY"])
+        rows = db.get("ticket", state="in.(aberto,andamento)", order="id")
+        untriaged = len(db.call("GET", "feedback", select="id", triaged_at="is.null"))
+    except (SystemExit, Exception):
+        return None
+    return {"untriaged": untriaged, "open": [{"id": r["id"], "title": r["title"], "state": r["state"],
+            "priority": r["priority"], "area": r["area"], "kind": r["kind"]} for r in rows]}
+
+
+def ci_data(sha):
+    """The latest CI run on main from GitHub's public API, or None offline."""
+    import json, urllib.request
+    try:
+        url = f"https://api.github.com/repos/SandroRoque/getNF/actions/runs?head_sha={sha}&per_page=5"
+        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "getnf-release"}), timeout=10) as r:
+            runs = json.load(r)["workflow_runs"]
+        runs = [x for x in runs if x["event"] == "push"] or runs
+        return {"status": runs[0]["status"], "conclusion": runs[0]["conclusion"], "url": runs[0]["html_url"]} if runs else None
+    except Exception:
+        return None
+
+
+def dashboard_data():
+    import datetime
+    git("fetch", "-q", "origin", "main", check=False)
+    head = resolve("origin/main") or resolve("HEAD")
+    subj, date = (git("show", "-s", "--format=%s%x09%cI", head) or "\t").split("\t")
+    ms = manifests()
+    cands = []
+    for code in sorted(ms, reverse=True):
+        _, f, text = ms[code]
+        if not f:
+            continue
+        checks = entries(section(text, "Checks"), r"\[[ x]\]")
+        play = []
+        for e in entries(section(text, "Play"), r"\d{4}-\d{2}-\d{2}"):
+            m = re.match(r"(\d{4}-\d{2}-\d{2})(?:\s+(\d{2}:\d{2}))?\s+(.*)", e)
+            play.append({"date": m.group(1), "time": m.group(2), "text": strip_md(m.group(3))})
+        app = log(resolve(f["base"]) if f.get("base") else None, f["sha"], APP_PATHS)
+        cut = play[0]["date"] if play else (git("show", "-s", "--format=%cs", f["sha"]) or "")
+        cands.append({"code": code, "name": f.get("name"), "sha": f.get("sha", "")[:7], "state": f.get("state"),
+                      "base": f.get("base"), "aab": f.get("aab", "unknown") != "unknown", "cut": cut,
+                      "checksDone": sum(c.startswith("[x]") for c in checks), "checksTotal": len(checks),
+                      "openChecks": [strip_md(c[3:].strip()) for c in checks if c.startswith("[ ]")],
+                      "play": play, "contents": grouped_struct(app), "notes": strip_md(section(text, "Notes") or "")})
+    tcode, tf = tester_base()
+    base = tf["sha"] if tf else None
+    pending = {"app": grouped_struct(log(base, head, APP_PATHS)), "server": grouped_struct(log(base, head, SERVER_PATHS)),
+               "appCommits": len(log(base, head, APP_PATHS)), "serverCommits": len(log(base, head, SERVER_PATHS)),
+               "since": tcode}
+    server_pending = [strip_md(l[2:]) for l in (SERVER_LOG.read_text() if SERVER_LOG.exists() else "").splitlines()
+                      if l.startswith("- ") and re.search(r"applied:\s*pending", l)]
+    return {"generated": datetime.datetime.now().astimezone().isoformat(timespec="minutes"),
+            "head": {"sha": head[:7], "subject": subj, "date": date}, "ci": ci_data(head),
+            "candidates": cands, "pending": pending, "serverPending": server_pending,
+            "tickets": tickets_data(), "cadenceDays": 7}
+
+
+def cmd_dashboard(argv):
+    import json, webbrowser
+    out = ROOT / "build" / "dashboard.html"
+    if "--out" in argv:
+        out = Path(argv[argv.index("--out") + 1]).resolve()
+    data = json.dumps(dashboard_data(), ensure_ascii=False).replace("</", "<\\/")
+    html = (ROOT / "tools" / "dashboard.html").read_text().replace("__DATA__", data)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(html)
+    print(f"wrote {out}")
+    if "--open" in argv:
+        webbrowser.open(out.as_uri())
+
+
 def main(argv):
     if git("rev-parse", "--is-shallow-repository") == "true":
         raise SystemExit("this clone is shallow: commit ranges would be wrong (git fetch --unshallow --tags first)")
@@ -280,6 +394,8 @@ def main(argv):
         return cmd_new(int(argv[1]), argv[2])
     if argv == ["check"]:
         return cmd_check()
+    if argv and argv[0] == "dashboard":
+        return cmd_dashboard(argv[1:])
     print(__doc__.strip(), file=sys.stderr)
     return 2
 

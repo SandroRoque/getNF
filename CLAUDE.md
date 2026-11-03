@@ -39,7 +39,8 @@ Explain Android-specific concepts briefly when they come up.
 - Releases are recorded in `docs/releases/<code>.md` (D158, `docs/rollout.md`): cut with `tools/release.py new`, build
   only from the manifest's sha, add each check's evidence and each Play event as confirmed. `tools/release.py pending`
   shows what testers don't have yet. A migration goes in `docs/releases/server.md` and must not break any supported
-  client (expand, then contract).
+  client (expand, then contract). After a release event, regenerate `tools/release.py dashboard` and republish it to
+  its artifact (`docs/rollout.md` › Dashboard) if you have the Artifact tools.
 
 
 

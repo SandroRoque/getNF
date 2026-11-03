@@ -94,6 +94,16 @@ client: every versionCode that reached someone through Play and isn't retired he
   halted only by falling back to an earlier completed one, which doesn't downgrade anyone either. The fix is always a
   new code.
 
+## Dashboard (D160)
+
+A read-only board of the whole machine: main and its CI, the build testers have, the next cut by the rules above,
+the open tickets, and each candidate in its state column with its open checks, contents and Play events.
+`tools/release.py dashboard` builds it (`build/dashboard.html`, `--open` to view it locally) from the manifests, git,
+CI and, on a machine with `.env.local`, the tickets. Its published copy,
+<https://claude.ai/artifact/YCFyuPc7CFCvJXuJWLjynE> (private to the user), is republished by a session with the
+Artifact tools after each release event (cut, upload, submission, approval, a state change) or when the user asks;
+from the PC it includes the tickets. Nothing on it can be changed: the repo stays the record.
+
 ## Tags
 
 Every bundle uploaded to Play gets `play/<versionCode>` on its sha (D139). A refused upload gets none; a code once
