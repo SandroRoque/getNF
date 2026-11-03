@@ -93,8 +93,8 @@ Do next, in order:
 1. ~~Watch the review~~ **approved 2026-11-02** (seen 23:50): "Closed testing - Alpha" is Active with 0.1.0, and its
    opt-in link equals the site's; releases/3.md says `closed`. The testing tools: `tools/play.py` once the user runs
    `tools/setup-play-api.sh` and invites the service account (not done as of 2026-11-02 23:50: no key on the PC).
-2. **The user redeploys the site** (`web/README.md`): the live page still has the old text about the 14 days; main has
-   the corrected one ("sem sair no meio", joining the group isn't the opt-in).
+2. ~~The user redeploys the site~~ done 2026-11-03: the live page has the corrected text about the 14 days and the
+   opt-in, the group and opt-in links, and contato@.
 3. **Code 3's open checks** (releases/3.md): the user leaves internal testing, opts in through the closed link and
    installs from Play over code 2, receipts and account still there (that also proves the closed track works as a
    tester sees it); the pre-launch report for code 3 read and triaged.
