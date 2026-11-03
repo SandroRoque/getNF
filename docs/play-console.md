@@ -130,6 +130,13 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
 > deslize o dedo no gráfico para ver cada preço; abas e botões mais fáceis de tocar; o app avisa quando fechou sozinho
 > e o que não sincronizou; envie comentários em Ajustes › Enviar comentário.
 
+- **Release notes, 0.1.1** (code 4; Play shows up to 500):
+
+> Durante o teste, o app pergunta uma vez se pode enviar as fotos de cada captura e a página da SEFAZ de cada nota,
+> para melhorar a leitura. Vão só pelo Wi-Fi, em preto e branco, com o cartão, o CPF e o operador cobertos, e sem a
+> sua conta. Dá para desligar em Ajustes › Enviar fotos durante o teste, e o que já foi enviado é apagado. O nome do
+> operador nas notas do Rio de Janeiro agora também é coberto.
+
 - **Closed testing › testers** (D153): Google Groups, `testadores-da-caderneta@googlegroups.com`
   (https://groups.google.com/g/testadores-da-caderneta: anyone can join, members and conversations visible to
   managers only, posts by managers only). The opt-in link the site sends people to is
