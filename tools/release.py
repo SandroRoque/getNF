@@ -217,7 +217,7 @@ Each with the evidence (a CI run URL, a command and its result, or the steps don
 - [ ] `tools/check.sh` (full, with the capture benchmark):
 - [ ] `bundleRelease` from this sha, clean tree; `aab` above set to `sha256:<hash>`:
 - [ ] Release APK on the emulator: signed out, the demo, a capture from a video, Enviar comentário reaching the inbox:
-- [ ] Release APK on the phone over the previous version; receipts and account still there:
+- [ ] The phone updated from Play over the previous version (D162); receipts and account still there:
 - [ ] Open blocking tickets for this build (`tools/tickets.py inbox`): none, or listed:
 - [ ] Release notes (pt-BR, ≤ 500 characters) in docs/play-console.md, written from Contents; checked by the user:
 - [ ] Data safety, privacy policy and listing still true for this build:

@@ -3920,3 +3920,16 @@ with the user: asked only in builds for the test track, kept at least while the 
 the photo collection is temporary, for the test only, and that the commitment on data stays the same in the long run.
 The question, the Ajustes row, the privacy policy (its own paragraph: not part of the public app), the release notes
 and the listing say so. The production build has no such collection (`TEST_PERIOD` false), not merely an unasked one.
+
+
+## D162. A release is checked on the phone through Play, not by sideloading (2026-11-03)
+
+The checklist asked for "the release APK on the phone over the previous version". It can't be done: the phone's
+Caderneta comes from Play, which signs with Google's key (Play App Signing), while our release APK is signed with the
+upload key; Android refuses an update signed by another key, and getting past it means uninstalling, which wipes the
+receipts. Code 4's check hit this, and also that the phone's Play was on another of its accounts, so it had never seen
+code 3 ("Item not found"). So the phone check moves to the track: the build goes to a track the phone's account
+receives (the closed one, since the user is a closed tester and an internal tester can't receive it), the phone
+updates from Play, and the data is compared with what it showed before. It comes after the upload, not before;
+the emulator's release APK stays the check before it. rollout.md, the manifest template and play-console.md say so.
+

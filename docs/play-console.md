@@ -65,7 +65,12 @@ What makes the site's two steps work: a closed track whose testers are the Googl
    releases during the test don't restart it. Meeting it lets the user apply; Google decides, and can ask for more
    testing (too few testers, or too little use). Recruit more than 12, so a dropout doesn't cost two weeks
    ([Play's page](https://support.google.com/googleplay/android-developer/answer/14151465)).
-8. **The user's own account:** an account opted in to internal testing can't receive a closed (or open) test. To
+8. **The phone's Play account (2026-11-03, D162):** the phone has several Google accounts and Play shows the app only
+   to the one opted in to a test ("Item not found" otherwise); switch Play's account (the avatar) before checking a
+   build there. A sideload can't replace the Play install: Play re-signs with its own key (certificate 5228…), the
+   upload key is ab75…, and Android refuses an update signed by another key (only an uninstall, which wipes the
+   receipts, would get past it).
+9. **The user's own account:** an account opted in to internal testing can't receive a closed (or open) test. To
    check the closed track as a tester sees it, opt out of internal testing first, then use the closed opt-in link
    ([Play's page](https://support.google.com/googleplay/android-developer/answer/9845334)).
 

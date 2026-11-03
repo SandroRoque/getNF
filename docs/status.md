@@ -79,40 +79,32 @@ Caderneta. New ideas go to "After the open store", not into the code. Exception,
 commit that has it. The site's copy changed with it: **the user redeploys the site** (`web/README.md`), and the Play
 listing's description (play-console.md) says SC and RJ.
 
-**Handoff, 2026-11-03 (from a cloud session, for the next session on the PC)**
+**Handoff, end of 2026-11-03 (PC session)**
 
-Where things are: 0.1.0 (code 3, cbf3798, `play/3`) is **in Google's review on "Closed testing - Alpha"** since
-2026-11-02, after the Dashboard's setup tasks were all done (the details are in [releases/3.md](releases/3.md) and
-[play-console.md](play-console.md)). Releases are recorded in the repo (D158, [rollout.md](rollout.md)); the D156/D157
-kanban and its artifact are gone. The Play Developer API tooling exists and answers (D159, `tools/play.py`).
-Corrected 2026-11-02 (D158): each of the 12 testers must be opted in continuously for 14 days, and an account in
-internal testing can't receive the closed test.
-
-**2026-11-03: testers' photos (D161), going out as code 4 (0.1.1).** A test build asks once whether every capture's
-photos and pages may go to the developer (Wi-Fi only, blanked, no account needed). Before code 4 reaches testers:
-the server pieces applied online (`docs/releases/server.md`), Play Console › Data safety updated as
-[play-data-safety.md](play-data-safety.md) says, and the site's `/privacidade/` redeployed with the new section, both
-by the user; then the release checklist ([releases/4.md](releases/4.md)). What arrives is listed with the secret key
-(the `contribution_file` table; the files in the `contributions` bucket).
+Where things are:
+- **Testers have 0.1.0 (code 3, `play/3`)** on "Closed testing - Alpha" since 2026-11-02. The user's phone got it
+  from the closed track on 2026-11-03 (releases/3.md), so the track works as a tester sees it.
+- **0.1.1 (code 4, `play/4`, 2c09f55) is in Google's review on the closed track** since 2026-11-03, and live on
+  internal testing. It's D161: a test build asks once whether every capture's photos and pages may go to the
+  developer (Wi-Fi, blanked, no account needed), temporary, for the closed test only. The server pieces are online
+  (`docs/releases/server.md`); the policy, the site's FAQ, the listing and Data safety say so and are published.
+- What testers send lands in the `contributions` bucket and the `contribution_file` table (secret key only); nothing
+  lists it yet besides the dashboard's table editor or a curl with the secret key.
+- The Play Developer API answers (D159, `tools/play.py`); uploads and track changes go through it. Data safety and the
+  listing are edited in the console (the built-in browser is signed in to it).
 
 Do next, in order:
-1. ~~Watch the review~~ **approved 2026-11-02** (seen 23:50): "Closed testing - Alpha" is Active with 0.1.0, and its
-   opt-in link equals the site's; releases/3.md says `closed`. The API works since 2026-11-03: the user ran
-   `tools/setup-play-api.sh` (project caderneta-play), Claude invited the service account with the user's go-ahead
-   (Caderneta only: view app information, quality information, manage testing tracks, release to testing tracks);
-   `tools/play.py status` / `bundles` / `listing` answer.
-2. ~~The user redeploys the site~~ done 2026-11-03: the live page has the corrected text about the 14 days and the
-   opt-in, the group and opt-in links, and contato@.
-3. **Code 3's open checks** (releases/3.md): the user leaves internal testing, opts in through the closed link and
-   installs from Play over code 2, receipts and account still there (that also proves the closed track works as a
-   tester sees it); the pre-launch report for code 3 read and triaged.
-4. **Recruiting, by the user,** once the opt-in link works: the site's "Teste fechado" section is what to send; aim for
-   more than 12, since one dropout restarts that person's 14 days.
-5. **Watching code 3** (rollout.md › Watching): daily in the first week, `tools/tickets.py inbox`, the sync and
-   refused-rows reports, Vitals ("no data" recorded as such); findings become tickets.
-6. **The next candidate:** a weekly opportunity, not before the review ends unless there's an incident.
-   `tools/release.py pending` shows what testers don't have (needs a full clone: `git fetch --unshallow --tags` in a
-   shallow one); `tools/release.py new <code> <name>` cuts it; build only from its sha and record the AAB's sha256.
+1. **Watch code 4's review** (`tools/play.py status`, Publishing overview). Once approved: the user's phone updates
+   from code 3 to 4 through Play (a sideload can't replace a Play install, D162); with it on the cable, check that
+   October still shows R$ 821,85 in 5 receipts, 7 decisions, the account, and that the photos question appears.
+   Record it in releases/4.md and set `state: closed`.
+2. **Watching** (rollout.md › Watching): each session, `tools/tickets.py inbox`, what reached `contribution_file`, the
+   sync and refused-rows reports, Vitals; findings become tickets.
+3. **Recruiting, by the user:** the site's "Teste fechado" section; aim for more than 12.
+4. **Code 3's pre-launch report** doesn't exist (releases/3.md); check whether code 4 gets one.
+5. **The photo reader:** a run on held-out sessions. The user keeps every paper receipt and re-scans on request:
+   ask for a few captures by date and store, with the debug build dumping and the phone on the cable.
+6. **The next candidate:** a weekly opportunity; `tools/release.py pending` shows what testers don't have.
 
 Not done, waiting: dark screenshots for the sites (only Início has a current dark shot; the rest show light on both
 sites, D151), and the steps under "The user" below.
@@ -265,12 +257,13 @@ screenshots).
   kvm groups).
 - Back up `~/.config/getnf/` (the upload key, made 2026-10-30) and its password somewhere off this PC: without
   them the Play app can't be updated.
-- The Play app (`br.com.roqlab.caderneta`, created again 2026-10-30, [play-console.md](play-console.md)) is in Internal
+- The Play app (`br.com.roqlab.caderneta`, created again 2026-10-30, [play-console.md](play-console.md)) was in Internal
   testing: 0.0.1 (code 1, tag `play/1`) and code 2 (shows "1.1", D119–D128, tag `play/2`; D139), published 2026-10-30 22:xx and still reaching the
   phone. Code 3 (0.1.0, tag `play/3`) replaced it on 2026-11-02 ([releases/3.md](releases/3.md)). The user's father is to create an
   account from the Play app once code 2 reaches him; none existed at 22:25. Optional: a service account for
-  publishing from the command line (play-console.md would need a `tools/play-publish.py`; not made). The old app (`getNF`, `io.github.sandroroque.getnf`) stays installed, since its photos
-  exist only on that phone, until the user decides about them. Before going public: the app content tasks, a review
+  publishing from the command line (play-console.md would need a `tools/play-publish.py`; not made). The old app (`getNF`, `io.github.sandroroque.getnf`) is to be
+  uninstalled (decided 2026-11-03): its receipts are in the account, most photos online, and the user can re-scan any
+  paper receipt. Before going public: the app content tasks, a review
   login, new screenshots, 12 testers each opted in for 14 days in a row in closed testing.
 - From another device on the LAN (the phone on Wi-Fi works with any port-check app, or a laptop with `nc -zv -w3
   192.168.4.4 54321`), confirm 54321-54324 time out, on IPv4 and the PC's IPv6 address. The firewall rule that should
