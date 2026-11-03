@@ -117,7 +117,9 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
 > Por enquanto, lê as notas fiscais de consumidor de Santa Catarina e do Rio de Janeiro. Sem uma nota de SC ou do
 > RJ, toque em "Ver um exemplo" para conhecer o app com notas inventadas.
 >
-> Privacidade: as fotos das notas ficam no seu celular. O CPF e o nome do comprador são removidos antes de salvar.
+> Privacidade: as fotos das notas ficam no seu celular. Só durante o teste fechado, e só se você aceitar, elas são
+> enviadas para melhorar a leitura, com o cartão e o CPF cobertos; na versão pública, não. O CPF e o nome do
+> comprador são removidos antes de salvar.
 > Você pode apagar sua conta e seus dados quando quiser, no app ou em caderneta.roqlab.com.br/apagar-conta.
 >
 > Este app não é da SEFAZ nem de nenhum órgão do governo. Ele abre a página pública de consulta da nota, a mesma que
@@ -132,10 +134,10 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
 
 - **Release notes, 0.1.1** (code 4; Play shows up to 500):
 
-> Durante o teste, o app pergunta uma vez se pode enviar as fotos de cada captura e a página da SEFAZ de cada nota,
-> para melhorar a leitura. Vão só pelo Wi-Fi, em preto e branco, com o cartão, o CPF e o operador cobertos, e sem a
-> sua conta. Dá para desligar em Ajustes › Enviar fotos durante o teste, e o que já foi enviado é apagado. O nome do
-> operador nas notas do Rio de Janeiro agora também é coberto.
+> Só durante o teste fechado, o app pergunta uma vez se pode enviar as fotos de cada captura e a página da SEFAZ de
+> cada nota, para melhorar a leitura. Vão pelo Wi-Fi, em preto e branco, com o cartão, o CPF e o operador cobertos, e
+> sem a sua conta. É temporário: na versão pública, as fotos ficam só no celular. Dá para desligar em Ajustes, e o
+> que já foi enviado é apagado. O nome do operador nas notas do RJ agora também é coberto.
 
 - **Closed testing › testers** (D153): Google Groups, `testadores-da-caderneta@googlegroups.com`
   (https://groups.google.com/g/testadores-da-caderneta: anyone can join, members and conversations visible to

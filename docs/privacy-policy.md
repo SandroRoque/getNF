@@ -18,8 +18,9 @@ Geral de Proteção de Dados, Lei 13.709/2018). Contato: **[e-mail de contato]**
 - As fotos das notas ficam no celular. Só saem dele se você ativar o envio, e só as de notas que o app não leu bem,
   com os dados do cartão e o CPF cobertos.
 - Comentários e relatórios de erro só saem do celular quando você toca em enviar, sem o seu nome nem o seu e-mail.
-- Durante o teste fechado, se você aceitar, as fotos de cada captura e a página de cada nota vão para o mantenedor,
-  pelo Wi-Fi, cobertas e sem a sua conta, para melhorar a leitura das notas.
+- Só durante o teste fechado, e só se você aceitar, as fotos de cada captura e a página de cada nota vão para o
+  mantenedor, pelo Wi-Fi, cobertas e sem a sua conta, para melhorar a leitura das notas. É uma exceção temporária:
+  na versão pública, as fotos voltam a ficar só no celular, como descrito acima.
 - O CPF e o nome do comprador são removidos das páginas da SEFAZ antes de serem guardados.
 - Não há publicidade, não vendemos dados e não os usamos para traçar seu perfil.
 
@@ -66,7 +67,12 @@ Não vão o seu nome, o seu e-mail nem a sua conta. Os relatos ficam no servidor
 mantenedor os lê, para corrigir erros e melhorar o app. Se preferir, o mesmo comentário pode ir por outro app (e-mail,
 WhatsApp), à sua escolha.
 
-### Fotos e páginas durante o teste fechado (só se você aceitar)
+### Fotos e páginas durante o teste fechado (temporário, só se você aceitar)
+
+Este envio existe só durante o teste fechado, enquanto o app ainda aprende a ler notas de outros celulares e de
+outros estados. Ele não faz parte do app público: a versão publicada na loja não tem esse envio, e lá as fotos voltam
+a ficar só no celular (ou a sair só com o envio do item anterior, que você ativa). O compromisso desta política com
+os seus dados continua o mesmo depois do teste.
 
 Na versão de teste fechado, o app pergunta uma vez se pode enviar ao mantenedor o material das suas capturas, para
 melhorar a leitura das notas. Com ou sem conta, se você aceitar, vão:

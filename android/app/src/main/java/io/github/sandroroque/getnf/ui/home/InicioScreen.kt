@@ -248,10 +248,11 @@ private fun TestPhotosDialog(onAnswer: (Boolean) -> Unit) = androidx.compose.mat
   onDismissRequest = {},
   title = { Text("Ajude a melhorar a leitura das notas") },
   text = {
-    Text("Durante o teste, a Caderneta pode enviar ao desenvolvedor as fotos de cada captura e a página da SEFAZ de " +
-      "cada nota. As fotos vão em preto e branco, com os dados do cartão, o CPF e o operador cobertos; a página, sem " +
-      "quem comprou. Vão só pelo Wi-Fi, com um código aleatório deste celular, sem a sua conta.\n\n" +
-      "Dá para desligar em Ajustes quando quiser, e o que já foi enviado é apagado.")
+    Text("Só durante o teste fechado, a Caderneta pode enviar ao desenvolvedor as fotos de cada captura e a página da " +
+      "SEFAZ de cada nota. As fotos vão em preto e branco, com os dados do cartão, o CPF e o operador cobertos; a " +
+      "página, sem quem comprou. Vão só pelo Wi-Fi, com um código aleatório deste celular, sem a sua conta.\n\n" +
+      "É temporário: na versão pública, as fotos voltam a ficar só no seu celular. Dá para desligar em Ajustes quando " +
+      "quiser, e o que já foi enviado é apagado.")
   },
   confirmButton = { androidx.compose.material3.TextButton(onClick = { onAnswer(true) }) { Text("Sim, enviar") } },
   dismissButton = { androidx.compose.material3.TextButton(onClick = { onAnswer(false) }) { Text("Agora não") } },

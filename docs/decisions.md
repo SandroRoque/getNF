@@ -3915,3 +3915,8 @@ with the user: asked only in builds for the test track, kept at least while the 
   the emulator against the local Supabase, signed out: the dialog, a capture from an RJ video sent as three blanked
   photos and its meta, and the switch turned off emptying the server. Not exercised on a device: a page saved from a
   live lookup (the page path is the same call, unit-tested) and another state's portal (no such QR code at hand).
+
+**Temporary, said so everywhere (the user, 2026-11-03).** The user authorized the changes and asked that it be clear
+the photo collection is temporary, for the test only, and that the commitment on data stays the same in the long run.
+The question, the Ajustes row, the privacy policy (its own paragraph: not part of the public app), the release notes
+and the listing say so. The production build has no such collection (`TEST_PERIOD` false), not merely an unasked one.

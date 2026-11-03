@@ -231,7 +231,7 @@ private fun LedgerRows(app: GetNFApp, open: String?, go: SettingsRoutes) {
 private fun TestPhotosRow(app: GetNFApp) {
   var enabled by remember { mutableStateOf(app.testContribution.enabled == true) }
   var withdrawing by remember { mutableStateOf(app.testContribution.withdrawPending) }
-  SwitchRow("Enviar fotos durante o teste", "As fotos de cada captura e a página de cada nota, pelo Wi-Fi, com o cartão, o CPF e quem comprou cobertos.", enabled) {
+  SwitchRow("Enviar fotos durante o teste", "Só durante o teste fechado: as fotos de cada captura e a página de cada nota, pelo Wi-Fi, com o cartão, o CPF e quem comprou cobertos.", enabled) {
     enabled = it
     app.testContribution.enabled = it
     withdrawing = app.testContribution.withdrawPending
