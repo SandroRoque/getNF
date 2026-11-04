@@ -98,12 +98,11 @@ Do next, in order:
 1. **The phone on code 4:** the user's phone updates from code 3 to 4 through Play (a sideload can't replace a Play
    install, D162); with it on the cable, check that October still shows R$ 821,85 in 5 receipts, 7 decisions, the
    account, and that the photos question appears. Record it in releases/4.md and set `state: closed`.
-2. **Code 5, with D164:** cut with `tools/release.py new`, early with a reason (data loss in shared cadernetas,
-   rollout.md › Cutting). Upload it straight to the closed track as well as internal if a pre-launch report is
-   wanted: codes 3 and 4 got none (both went to internal, then promoted).
-3. **T-4** (normal): a reprocessed line's corrections are matched by line number only. Waiting on a decision (see
-   the ticket): data-model.md says a changed code or a vanished line keeps its correction as an orphan, but SEFAZ's
-   line number is the document's `nItem`, so a code change there only comes from the parser reading differently.
+2. **Code 5 (0.1.2, 3cf6610), with D164:** cut and checked 2026-11-04 (CI, check.sh, the AAB, the emulator;
+   releases/5.md). Waiting on the user: the release notes (play-console.md), then the upload to internal and the
+   closed track (`tools/play.py upload … --commit`, `promote 5 --track alpha … --commit`). The phone check comes
+   after, through Play (D162).
+3. ~~T-4~~ discarded by D165: corrections follow a SEFAZ line's number; orphans wait for the photo reader.
 4. **Watching** (rollout.md › Watching): each session, `tools/tickets.py inbox`, `tools/contributions.py list --days 1`, the
    sync and refused-rows reports, Vitals; findings become tickets.
 5. **Recruiting, by the user:** the site's "Teste fechado" section; aim for more than 12.
