@@ -144,6 +144,10 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
 > sem a sua conta. É temporário: na versão pública, as fotos ficam só no celular. Dá para desligar em Ajustes, e o
 > que já foi enviado é apagado. O nome do operador nas notas do RJ agora também é coberto.
 
+- **Release notes, 0.1.2** (code 5; Play shows up to 500):
+
+> Correções na sincronização de cadernetas divididas: quando duas pessoas editam o mesmo produto, cada uma mantém o que mudou (o nome de uma e o tamanho da outra, por exemplo); um item que sai de uma nota sai também nos outros celulares; e cadernetas com muitas notas agora são baixadas por inteiro.
+
 - **Closed testing › testers** (D153): Google Groups, `testadores-da-caderneta@googlegroups.com`
   (https://groups.google.com/g/testadores-da-caderneta: anyone can join, members and conversations visible to
   managers only, posts by managers only). The opt-in link the site sends people to is
