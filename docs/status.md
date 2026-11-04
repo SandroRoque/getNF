@@ -98,10 +98,10 @@ Do next, in order:
 1. **The phone on code 4:** the user's phone updates from code 3 to 4 through Play (a sideload can't replace a Play
    install, D162); with it on the cable, check that October still shows R$ 821,85 in 5 receipts, 7 decisions, the
    account, and that the photos question appears. Record it in releases/4.md and set `state: closed`.
-2. **Code 5 (0.1.2, 3cf6610), with D164:** cut and checked 2026-11-04 (CI, check.sh, the AAB, the emulator;
-   releases/5.md). Waiting on the user: the release notes (play-console.md), then the upload to internal and the
-   closed track (`tools/play.py upload … --commit`, `promote 5 --track alpha … --commit`). The phone check comes
-   after, through Play (D162).
+2. **Code 5 (0.1.2, 3cf6610, `play/5`), with D164:** in Google's review on the closed track since 2026-11-04 (uploaded
+   straight there), live on internal. Watch the review (Publishing overview) and whether this upload got a pre-launch
+   report. Then the user's phone updates through Play (D162; the user will plug it in later) and releases/5.md gets
+   its phone check. Code 4's phone check is folded into it.
 3. ~~T-4~~ discarded by D165: corrections follow a SEFAZ line's number; orphans wait for the photo reader.
 4. **Watching** (rollout.md › Watching): each session, `tools/tickets.py inbox`, `tools/contributions.py list --days 1`, the
    sync and refused-rows reports, Vitals; findings become tickets.
