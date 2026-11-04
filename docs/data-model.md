@@ -150,10 +150,15 @@ reconhecida pelo seu número na nota, não pelo código.
 Uma nota é reprocessada quando a página muda ou quando `parser_version` sobe. As linhas novas são casadas com as
 existentes por (`chave`, `line_no`).
 
-- **Mesmo `line_no` e mesmo `code`:** regrava os campos extraídos. Correção de produto da linha, desconto manual ou confirmado e
-  qualquer dado do catálogo ficam intactos. O item da loja é recalculado pelo código.
-- **Mesmo `line_no` e outro `code`, ou linha que sumiu:** se a linha tinha algo manual, ela não é apagada. Fica
-  `orphaned = true` e aparece como pendência de revisão. Sem nada manual, é substituída ou removida.
+- **Mesmo `line_no`:** regrava os campos extraídos. Correção de produto da linha, desconto manual ou confirmado e
+  qualquer dado do catálogo ficam intactos, mesmo que o `code` lido mude. O item da loja é recalculado pelo código.
+  Na página da SEFAZ (SC e RJ) o `line_no` é o `nItem` do documento, e o documento de uma chave não muda: um código
+  diferente no mesmo item só vem do parser lendo diferente, e a correção da pessoa continua valendo para o item (D165).
+- **Linha que sumiu:** é removida, também no servidor e nos outros celulares (D164). Pela mesma razão, só acontece se o
+  parser mudar; um celular que corrigiu a linha antes de a remoção chegar a mantém e a envia de volta.
+- **Leitores sem `nItem`** (a leitura por fotos, quando for para o app): aí a linha não tem identidade própria, e vale a
+  regra de órfãos: mesmo número com outro código, ou linha que sumiu, com algo manual, fica `orphaned = true` e vira
+  pendência de revisão, em vez de herdar a correção ou sumir. Isso será construído junto com esse leitor (D165).
 - **Linha nova:** associada ao item da loja pelo código, como numa nota nova.
 
 Os dados reais indicam que o caso órfão não deve ocorrer com a página da SEFAZ, porque o número da linha é o `nItem` do

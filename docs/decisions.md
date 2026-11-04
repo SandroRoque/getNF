@@ -3985,3 +3985,19 @@ a caderneta shared by several phones, which the closed test is the first to have
   name lost; line 8 left on the second phone) and pass on the new one, alongside the existing sync tests. Against the
   local Supabase (`SupabaseLocalTest`): 2,346 rows paged, the two-field merge, a re-read's removal reaching the second
   phone. Room 13 → 14 adds the two tables.
+
+
+## D165. A SEFAZ line is its nItem: corrections follow the line number (2026-11-04)
+
+T-4 (from the 2026-11-03 review) showed that a re-read page with another code on line 1 kept that line's manual
+discount and product correction, and that a vanished line takes its correction with it. Both contradict
+data-model.md's orphan rule, which the ticket asked for. That rule was written for OCR and future formats. On the
+SEFAZ page (SC, RJ) `line_no` is the document's `nItem`, and the document behind a chave never changes. So a
+different code on the same line can only come from the parser reading the code differently (a parser fix), and then
+the person's correction belongs to the same item. Orphaning it there would drop work in the only case that can
+happen. The user accepted this recommendation on 2026-11-04.
+- **Kept as it is:** corrections are matched by line number. A vanished line is removed (D164 carries the removal to
+  every phone).
+- **The orphan rule** waits for a reader without `nItem` (the photo reader, D106) and is built with it, including how
+  an orphan is stored without colliding with the new line's key, its review card, and totals that leave it out.
+- data-model.md says so. T-4 was discarded with this note.
