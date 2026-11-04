@@ -46,8 +46,11 @@ Kotlin and Jetpack Compose, one module, package `io.github.sandroroque.getnf`:
 
 - **Schema** in [migrations](../supabase/migrations/), São Paulo region. Every row belongs to a caderneta (`ledger`);
   Row Level Security lets members only. Ids are unique per caderneta: upserts use `ledger_id,id`.
-- **Sync** (D70, D104): pull the taxonomy, push dirty rows parents first, pull what changed since the last cursor,
-  never overwriting a local change. A row the server refuses is parked (`sync_parked`) instead of failing the run.
+- **Sync** (D70, D104, D164): pull the taxonomy, push dirty rows parents first, pull what changed since the last
+  cursor, paged by (updated_at, key). Catalog rows merge field by field against what the server last held
+  (`sync_base`): a push sends only the fields the phone changed, a pull keeps them and takes the rest. Lines a re-read
+  page dropped are removed one by one (`line_removed`), and a phone pulling a receipt's changed lines drops those the
+  server no longer has. A row the server refuses is parked (`sync_parked`) instead of failing the run.
 - **Storage:** a private bucket, a folder per caderneta. Photos go up only if the user opts in, and only for receipts
   the app failed with, with sensitive parts blanked (D98, D103).
 - **Categorization** ([functions/categorize](../supabase/functions/categorize/)): Jev runs on new store items every

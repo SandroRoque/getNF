@@ -3946,3 +3946,42 @@ downloads what isn't on disk yet to `test-media/contributions/<install>/<item>/`
 - **Paged:** PostgREST returns at most 1,000 rows a request, and one install may send 300 files a day.
 - **Checked** against a fake server (pagination, prefixes, skipping files already downloaded); not yet against the
   online project, which needs the PC's `.env.local`: the first `list` there is the check.
+
+
+## D164. Sync: pages by key, catalog rows merge by field, removed lines reach every phone (2026-11-04)
+
+A technical review on 2026-11-03 opened three urgent sync tickets, each reproduced in a JVM test. All three are about
+a caderneta shared by several phones, which the closed test is the first to have in numbers.
+- **T-1, a pull stuck at 1,000 rows.** Each page started a minute before the last row of the page before, so a minute
+  with more than a page of rows (a first sync of a big caderneta, a bulk write) returned the same page and the loop
+  stopped, losing the rest. Now each run still starts a minute before the last row seen (rows commit out of order),
+  but within a run each page starts after the previous page's last row in (updated_at, primary key) order:
+  `or=(updated_at.gt.T,and(updated_at.eq.T,key.gt.K),...)`, values quoted. Rows sharing a timestamp are neither
+  skipped nor repeated, and nothing can loop.
+- **T-2, an edit undoing another phone's.** A dirty product went up whole, so a phone that changed only the size sent
+  its stale name over the name another phone had just set. Considered: tracking dirty fields at every edit (every edit
+  site changes, and a missed one loses data silently), and version numbers with conflicts the user resolves (a screen
+  for a rare case). Chosen: the phone keeps what the server last held of each catalog row (`sync_base`, the JSON it
+  would send). A push sends only the fields that differ from that, plus the id (grouped by field set, since PostgREST
+  wants the same keys in every row of a request), and a row changed back needs no request. A pull into a row the phone
+  changed takes the server's other fields and keeps the phone's changed ones, still dirty. The same field changed on
+  two phones ends with the one that pushes last, everywhere. The server's protection of the user's choices
+  (`keep_user_choices`) is untouched: it sees an update of fewer columns. Rows from before this get their base from
+  the phone's unchanged copy at the next sync. A row changed before that keeps the old whole-row behaviour once.
+  Covers categories, tags, products and store items. Issuers, tags on products and link answers have one field that
+  can change, and lines are T-3's.
+- **T-3, a removed line staying on other phones.** A removal was a hard DELETE that a pull by updated_at can't see.
+  Also, the phone that pushed lines deleted on the server every line it didn't have, which could take lines another
+  phone's newer read had added. Considered: tombstones on the server (a migration, and the clients testers have would
+  show tombstoned lines as live). Chosen, with no server change: the parser records each line a re-read dropped
+  (`line_removed`), and the push deletes exactly those (`line_no=in.(...)`) before upserting the receipt's lines, or
+  sends the receipt row again when none is left to send. A phone that pulls a receipt's lines or row asks for the line
+  numbers the server has for it and drops the clean ones it no longer has. One that changed such a line meanwhile
+  keeps it and sends it back, so a correction made before the removal arrived is kept on every phone (the
+  conservative choice, as data-model.md's orphans).
+- **Clients testers have** (codes 3 and 4) are unaffected: no migration, and the server sees the same requests with
+  fewer columns. Their own removals still go by the old "not in" delete, which a new phone then reconciles.
+- **Checked:** the tickets' repro tests fail on the old engine with the tickets' symptoms (1,000 of 4,001 rows; the
+  name lost; line 8 left on the second phone) and pass on the new one, alongside the existing sync tests. Against the
+  local Supabase (`SupabaseLocalTest`): 2,346 rows paged, the two-field merge, a re-read's removal reaching the second
+  phone. Room 13 → 14 adds the two tables.

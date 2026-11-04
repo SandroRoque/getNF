@@ -155,17 +155,132 @@ class SyncEngineTest {
     assertEquals(writes, server.writes)
   }
 
+  /** The fixture's page without its last item, as a re-read that lost a line. */
+  private val htmlWithoutLastLine = Regex("""<tr id="Item \+ 8".*?</tr>""", RegexOption.DOT_MATCHES_ALL).replace(html, "")
+
   @Test fun aLineThePageNoLongerHasIsRemovedFromTheServer() = runTest {
     receiptWithPage()
     engine.sync(server)
-    val last = dao.lines(chave).last()
-    // As if a re-read page lost the last line.
-    db.catalog().deleteLines(chave)
-    db.catalog().insertLines(server.rows("receipt_line").map { it.str("line_no")!!.toInt() }.filter { it != last.lineNo }
-      .map { n -> last.copy(lineNo = n, dirty = true) })
+    store.savePage(chave, "https://x", htmlWithoutLastLine)
+    parser.parse(store.get(chave)!!)
     engine.sync(server)
-    assertTrue(server.rows("receipt_line").none { it.str("line_no")!!.toInt() == last.lineNo })
+    assertEquals((1..7).toSet(), server.rows("receipt_line").map { it.str("line_no")!!.toInt() }.toSet())
+    assertTrue(db.sync().removedLines().isEmpty())
   }
+
+  // ---- T-1, T-2, T-3 (D164) ----
+
+  private fun issuer(i: Int) = buildJsonObject { put("cnpj", "%014d".format(i)); put("name", "Loja $i") }
+
+  @Test fun aPullGetsEveryRowHoweverManyShareAMinuteOrATimestamp() = runTest {
+    // 2,501 rows written within a second, then 1,500 more stamped with one instant: pages split both runs.
+    repeat(2501) { server.put("issuer", "ledger_id,cnpj", issuer(it)) }
+    server.tick = 0
+    repeat(1500) { server.put("issuer", "ledger_id,cnpj", issuer(10_000 + it)) }
+    engine.sync(server)
+    assertEquals(4001, dao.issuers().size)
+    // A second run repeats the last minute (harmless) and neither loops nor loses anything.
+    engine.sync(server)
+    assertEquals(4001, dao.issuers().size)
+    // One more row in the same instant still arrives.
+    server.put("issuer", "ledger_id,cnpj", issuer(20_000))
+    engine.sync(server)
+    assertEquals(4002, dao.issuers().size)
+  }
+
+  /** Both phones synced with the receipt; returns the id of a product both hold. */
+  private suspend fun twoPhonesWithTheReceipt(a: Phone, b: Phone): String {
+    a.store.open(chave, "qr"); a.store.savePage(chave, "https://x", html); a.parser.parse(a.store.get(chave)!!)
+    a.engine.sync(server)
+    b.engine.sync(server)
+    return b.db.catalog().products().first().id.also { id -> assertTrue(a.db.catalog().products().any { it.id == id }) }
+  }
+
+  @Test fun editsOfDifferentFieldsOnTwoPhonesBothStay() = runTest {
+    for (aFirst in listOf(true, false)) {
+      server.tables.clear()
+      val a = Phone("a$aFirst"); val b = Phone("b$aFirst")
+      val id = twoPhonesWithTheReceipt(a, b)
+      // Offline, A names the product and B gives it a size.
+      val ca = a.db.catalog(); val cb = b.db.catalog()
+      ca.updateProduct(ca.products().single { it.id == id }.copy(name = "Nome de A", dirty = true))
+      cb.updateProduct(cb.products().single { it.id == id }.copy(sizeE6 = 500_000, sizeUnit = "kg", sizeSource = "manual", dirty = true))
+      val order = if (aFirst) listOf(a, b, a) else listOf(b, a, b)
+      for (p in order) p.engine.sync(server)
+      for (p in listOf(a, b)) {
+        val product = p.db.catalog().products().single { it.id == id }
+        assertEquals("aFirst=$aFirst", "Nome de A", product.name)
+        assertEquals("aFirst=$aFirst", 500_000L, product.sizeE6)
+        assertFalse(product.dirty)
+      }
+      val online = server.rows("product").single { it.str("id") == id }
+      assertEquals("Nome de A", online.str("name"))
+      assertEquals("500000", online.str("size_e6"))
+    }
+  }
+
+  @Test fun theSameFieldEditedOnTwoPhonesEndsWithTheLastToSync() = runTest {
+    val a = Phone("a"); val b = Phone("b")
+    val id = twoPhonesWithTheReceipt(a, b)
+    a.db.catalog().updateProduct(a.db.catalog().products().single { it.id == id }.copy(name = "de A", dirty = true))
+    b.db.catalog().updateProduct(b.db.catalog().products().single { it.id == id }.copy(name = "de B", dirty = true))
+    a.engine.sync(server); b.engine.sync(server); a.engine.sync(server)
+    for (p in listOf(a, b)) assertEquals("de B", p.db.catalog().products().single { it.id == id }.name)
+    assertEquals("de B", server.rows("product").single { it.str("id") == id }.str("name"))
+  }
+
+  @Test fun aPushSendsOnlyTheFieldsThePhoneChanged() = runTest {
+    receiptWithPage()
+    engine.sync(server)
+    val product = dao.products().first()
+    server.pushed.clear()
+    dao.updateProduct(product.copy(name = "novo", dirty = true))
+    engine.sync(server)
+    assertEquals(setOf("id", "name", "ledger_id"), server.pushed.single { it.str("id") == product.id }.keys)
+    // Changed back to what the server has, it needs no request at all.
+    server.pushed.clear()
+    dao.updateProduct(dao.products().single { it.id == product.id }.copy(name = "novo", dirty = true))
+    engine.sync(server)
+    assertTrue(server.pushed.none { it.str("id") == product.id })
+    assertFalse(dao.products().single { it.id == product.id }.dirty)
+  }
+
+  @Test fun aLineRemovedOnOnePhoneGoesFromTheOther() = runTest {
+    val a = Phone("a"); val b = Phone("b")
+    twoPhonesWithTheReceipt(a, b)
+    assertEquals(8, b.db.catalog().lines(chave).size)
+    // B is offline for a while: more than the pull's minute of overlap passes on the server.
+    repeat(70_000) { server.put("issuer", "ledger_id,cnpj", issuer(1)) }
+    a.store.savePage(chave, "https://x", htmlWithoutLastLine); a.parser.parse(a.store.get(chave)!!)
+    a.engine.sync(server)
+    b.engine.sync(server)
+    assertEquals((1..7).toList(), b.db.catalog().lines(chave).map { it.lineNo })
+    // Sending again changes nothing.
+    val writes = server.writes
+    a.engine.sync(server); b.engine.sync(server)
+    assertEquals(writes, server.writes)
+    assertEquals(7, server.rows("receipt_line").size)
+  }
+
+  @Test fun aLineCorrectedBeforeItsRemovalArrivedComesBackEverywhere() = runTest {
+    val a = Phone("a"); val b = Phone("b")
+    twoPhonesWithTheReceipt(a, b)
+    // B corrects the last line's discount by hand while A's re-read drops that line.
+    val last = b.db.catalog().lines(chave).last()
+    b.db.catalog().deleteLines(chave)
+    b.db.catalog().insertLines(a.db.catalog().lines(chave).map { l ->
+      if (l.lineNo == last.lineNo) l.copy(discountCents = 20, discountSource = "manual", discountReview = "confirmed", dirty = true) else l
+    })
+    a.store.savePage(chave, "https://x", htmlWithoutLastLine); a.parser.parse(a.store.get(chave)!!)
+    a.engine.sync(server)
+    b.engine.sync(server)
+    a.engine.sync(server)
+    // The person's correction is kept, and both phones and the server agree.
+    for (p in listOf(a, b)) assertEquals(8, p.db.catalog().lines(chave).size)
+    assertEquals(20L, a.db.catalog().lines(chave).single { it.lineNo == last.lineNo }.discountCents)
+    assertEquals(8, server.rows("receipt_line").size)
+  }
+
 
   @Test fun aReceiptOnlyTheServerHasIsAdoptedWithItsPage() = runTest {
     server.objects["ledger-1/$chave/page.html"] = html.toByteArray()
@@ -305,6 +420,8 @@ class SyncEngineTest {
     val pushed = mutableListOf<JsonObject>()
     var failUpserts = false
     private var clock = Instant.parse("2026-10-25T12:00:00Z")
+    /** How far the clock moves per write; 0 stamps rows with one timestamp, as a bulk write in one instant could. */
+    var tick = 1L
     private val seed = listOf("food" to null, "food.produce" to "food", "food.produce.fruit" to "food.produce", "food.produce.vegetables" to "food.produce")
     /** Requests the server refuses (a 4xx), by table: a row whose JSON contains this text. */
     val refuse = mutableMapOf<String, String>()
@@ -328,7 +445,7 @@ class SyncEngineTest {
         (if (table == "receipt_scan" && "user_id" !in row) mapOf("user_id" to JsonPrimitive(userId)) else emptyMap()))
       val k = key.split(",").joinToString("|") { owned.str(it)!! }
       val old = tables.getOrPut(table) { mutableMapOf() }[k]
-      clock = clock.plusMillis(1)
+      clock = clock.plusMillis(tick)
       tables.getValue(table)[k] = JsonObject((old ?: emptyMap()) + owned + ("updated_at" to JsonPrimitive(clock.toString().replace("Z", "+00:00"))))
       writes++
     }
@@ -346,17 +463,67 @@ class SyncEngineTest {
     }
 
     override fun delete(table: String, filters: List<Pair<String, String>>) {
-      val chave = filters.single { it.first == "chave" }.second.removePrefix("eq.")
-      val keep = filters.single { it.first == "line_no" }.second.removePrefix("not.in.(").removeSuffix(")").split(",").filter { it.isNotEmpty() }
-      tables[table]?.entries?.removeIf { (_, r) -> r.str("chave") == chave && r.str("line_no") !in keep }
+      tables[table]?.values?.removeIf { r -> filters.all { (k, v) -> k == "ledger_id" || matches(r, "$k.$v") } }
     }
 
+    /** The PostgREST filters the phone uses: eq, gt, in, not.in, and and/or trees of them; ordered by typed values. */
     override fun select(table: String, filters: List<Pair<String, String>>): List<JsonObject> {
-      val since = filters.firstOrNull { it.first == "updated_at" }?.second?.removePrefix("gt.")?.let(Instant::parse)
+      val order = filters.firstOrNull { it.first == "order" }?.second?.split(",")?.map { it.removeSuffix(".asc") } ?: listOf("updated_at")
       val limit = filters.firstOrNull { it.first == "limit" }?.second?.toInt() ?: Int.MAX_VALUE
-      return rows(table).filter { since == null || java.time.OffsetDateTime.parse(it.str("updated_at")).toInstant() > since }
-        .sortedBy { it.str("updated_at") }.take(limit)
+      val columns = filters.firstOrNull { it.first == "select" }?.second?.split(",")
+      return rows(table)
+        .filter { r -> filters.all { (k, v) -> k in setOf("select", "order", "limit", "ledger_id") || matches(r, if (k == "or") "or$v" else "$k.$v") } }
+        .sortedWith { a, b -> order.firstNotNullOfOrNull { c -> compare(a.str(c), b.str(c)).takeIf { it != 0 } } ?: 0 }
+        .take(limit)
+        .map { r -> if (columns == null) r else JsonObject(r.filterKeys { it in columns }) }
     }
+
+    private fun compare(a: String?, b: String?): Int {
+      if (a == null || b == null) return compareValues(a, b)
+      a.toLongOrNull()?.let { x -> b.toLongOrNull()?.let { y -> return x.compareTo(y) } }
+      val instants = runCatching { java.time.OffsetDateTime.parse(a).toInstant().compareTo(java.time.OffsetDateTime.parse(b).toInstant()) }
+      return instants.getOrElse { a.compareTo(b) }
+    }
+
+    private fun matches(r: JsonObject, expr: String): Boolean {
+      for (logic in listOf("or", "and")) if (expr.startsWith("$logic(")) {
+        val parts = split(expr.removePrefix(logic).removePrefix("(").removeSuffix(")"))
+        return if (logic == "or") parts.any { matches(r, it) } else parts.all { matches(r, it) }
+      }
+      val column = expr.substringBefore('.')
+      var rest = expr.substringAfter('.')
+      val negated = rest.startsWith("not.").also { if (it) rest = rest.removePrefix("not.") }
+      val op = rest.substringBefore('.')
+      val value = rest.substringAfter('.')
+      val have = r.str(column)
+      val result = when (op) {
+        "eq" -> compare(have, unquote(value)) == 0
+        "gt" -> have != null && compare(have, unquote(value)) > 0
+        "in" -> have in split(value.removePrefix("(").removeSuffix(")")).map(::unquote)
+        else -> error("filter $op")
+      }
+      return result != negated
+    }
+
+    /** Splits on the commas outside parentheses and quotes. */
+    private fun split(s: String): List<String> {
+      val out = mutableListOf<String>(); val cur = StringBuilder(); var depth = 0; var quoted = false; var escaped = false
+      for (c in s) {
+        when {
+          escaped -> escaped = false
+          c == '\\' -> escaped = true
+          c == '"' -> quoted = !quoted
+          !quoted && c == '(' -> depth++
+          !quoted && c == ')' -> depth--
+          !quoted && depth == 0 && c == ',' -> { out += cur.toString(); cur.clear(); continue }
+        }
+        cur.append(c)
+      }
+      if (cur.isNotEmpty()) out += cur.toString()
+      return out
+    }
+
+    private fun unquote(v: String) = if (v.startsWith('"')) v.substring(1, v.length - 1).replace("\\\"", "\"").replace("\\\\", "\\") else v
 
     override fun upload(path: String, bytes: ByteArray, type: String) { objects[path] = bytes }
     override fun download(path: String, target: File) = target.writeBytes(objects.getValue(path))

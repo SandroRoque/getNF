@@ -16,6 +16,7 @@ import io.github.sandroroque.getnf.data.ReceiptLineRow
 import io.github.sandroroque.getnf.data.ReceiptParsedRow
 import io.github.sandroroque.getnf.data.ReceiptStore
 import io.github.sandroroque.getnf.data.StoreItemRow
+import io.github.sandroroque.getnf.data.SyncBaseRow
 import io.github.sandroroque.getnf.data.SyncParkedRow
 import io.github.sandroroque.getnf.data.MemberRow
 import io.github.sandroroque.getnf.data.ReceiptScanRow
@@ -70,7 +71,14 @@ fun interface PhotoArchiver {
  *
  * A pushed row stops being dirty only if it's still exactly what was pushed: a parse that ran in between keeps it
  * dirty for the next run. Pulls overlap the previous cursor by a minute (rows can commit out of timestamp order);
- * applying a row twice is harmless.
+ * applying a row twice is harmless. Within a run, pages follow (updated_at, key), so no row is skipped however many
+ * share a minute or a timestamp (D164).
+ *
+ * Catalog rows (categories, tags, products, store items) merge field by field (D164): the phone keeps what the server
+ * last held of each ([SyncBaseRow]), pushes only the fields it changed since, and a pull into a row it changed takes
+ * the server's other fields. The same field changed on two phones ends with the one that pushes last. Lines a re-read
+ * page dropped are removed on the server one by one ([LineRemovedRow]); a phone that pulls changed lines of a receipt
+ * drops the ones the server no longer has.
  */
 class SyncEngine(
   private val database: ReceiptDatabase,
@@ -90,9 +98,12 @@ class SyncEngine(
   suspend fun sync(remote: SyncRemote): Report = mutex.withLock {
     val errors = mutableListOf<String>()
     io { remote.rpc("sync_taxonomy", buildJsonObject { put("lid", remote.ledgerId) }) }
+    touched.clear()
     var pulled = pull(remote, listOf(CATEGORY, TAG_TABLE))
+    seedBases()
     val (pushed, photos) = push(remote, errors)
     pulled += pull(remote, TABLES)
+    reconcileLines(remote, touched)
     pullMembers(remote)
     Report(pushed, pulled, photos, errors, storeItemsPushed).also { log("sync: $it") }
   }
@@ -106,10 +117,10 @@ class SyncEngine(
     var n = 0
     n += pushRows(remote, errors, "issuer", "ledger_id,cnpj", dao.dirtyIssuers(), { it.cnpj }, ::issuerJson, { dao.issuer(it.cnpj) }) { dao.upsertIssuer(it.copy(dirty = false)) }
     n += pushReceipts(remote, errors)
-    n += pushRows(remote, errors, "category", BY_ID, dao.dirtyCategories(), { it.id }, ::categoryJson, { dao.category(it.id) }) { dao.upsertCategory(it.copy(dirty = false)) }
-    n += pushRows(remote, errors, "tag", BY_ID, dao.dirtyTags(), { it.id }, ::tagJson, { dao.tag(it.id) }) { dao.upsertTag(it.copy(dirty = false)) }
-    n += pushRows(remote, errors, "product", BY_ID, dao.dirtyProducts(), { it.id }, ::productJson, { dao.product(it.id) }) { dao.upsertProduct(it.copy(dirty = false)) }
-    storeItemsPushed = pushRows(remote, errors, "store_item", BY_ID, dao.dirtyStoreItems(), { it.id }, ::storeItemJson, { dao.storeItem(it.id) }) { dao.upsertStoreItem(it.copy(dirty = false)) }
+    n += pushRows(remote, errors, "category", BY_ID, dao.dirtyCategories(), { it.id }, ::categoryJson, { dao.category(it.id) }, merges = true) { dao.upsertCategory(it.copy(dirty = false)) }
+    n += pushRows(remote, errors, "tag", BY_ID, dao.dirtyTags(), { it.id }, ::tagJson, { dao.tag(it.id) }, merges = true) { dao.upsertTag(it.copy(dirty = false)) }
+    n += pushRows(remote, errors, "product", BY_ID, dao.dirtyProducts(), { it.id }, ::productJson, { dao.product(it.id) }, merges = true) { dao.upsertProduct(it.copy(dirty = false)) }
+    storeItemsPushed = pushRows(remote, errors, "store_item", BY_ID, dao.dirtyStoreItems(), { it.id }, ::storeItemJson, { dao.storeItem(it.id) }, merges = true) { dao.upsertStoreItem(it.copy(dirty = false)) }
     n += storeItemsPushed
     n += pushRows(remote, errors, "product_tag", "ledger_id,product_id,tag_id", dao.dirtyProductTags(), { "${it.productId}/${it.tagId}" },
       ::productTagJson, { dao.productTag(it.productId, it.tagId) }) { dao.upsertProductTag(it.copy(dirty = false)) }
@@ -124,23 +135,36 @@ class SyncEngine(
   /**
    * Upserts [rows] in one request. If the server refuses it (a 4xx), they go one by one, and each it refuses is parked
    * (D104): not sent again until it changes, so one bad row neither holds back the rest nor fails every sync.
+   * A table that [merges] (D164) sends only the fields that differ from the row's base, plus its id; one request per
+   * set of fields, since PostgREST takes the same keys in every row of a request.
    */
   private suspend fun <T> pushRows(
     remote: SyncRemote, errors: MutableList<String>, table: String, key: String, rows: List<T>, keyOf: (T) -> String,
-    toJson: (T) -> JsonObject, current: suspend (T) -> T?, clean: suspend (T) -> Unit,
+    toJson: (T) -> JsonObject, current: suspend (T) -> T?, merges: Boolean = false, clean: suspend (T) -> Unit,
   ): Int {
     if (rows.isEmpty()) return 0
     val parked = dao.parked(table).associate { it.rowKey to it.payload }
     val ready = rows.map { it to toJson(it) }.filter { (row, json) -> parked[keyOf(row)] != json.toString() }
     if (ready.isEmpty()) return 0
+    val bases = if (!merges) emptyMap() else ready.map { keyOf(it.first) }.chunked(500)
+      .flatMap { dao.bases(table, it) }.associate { it.rowKey to json.parseToJsonElement(it.payload) as JsonObject }
+    // What goes up for each row; a row changed back to what the server has needs no request.
+    val payloads = ready.associate { (row, json) ->
+      val base = bases[keyOf(row)]
+      row to if (base == null) json else JsonObject(json.filter { (field, value) -> field == "id" || base[field] != value })
+    }
+    val requests = ready.filter { (row, _) -> payloads.getValue(row).size > 1 || bases[keyOf(row)] == null }
+    val requested = requests.mapTo(HashSet()) { it.first }
     val sent = try {
-      io { remote.upsert(table, ready.map { owned(remote, it.second) }, key) }
+      for (group in requests.groupBy { payloads.getValue(it.first).keys }.values)
+        io { remote.upsert(table, group.map { owned(remote, payloads.getValue(it.first)) }, key) }
       ready
     } catch (e: SupabaseException) {
       if (e.status == 401) throw e
       ready.filter { (row, json) ->
         try {
-          io { remote.upsert(table, listOf(owned(remote, json)), key) }; true
+          if (row in requested) io { remote.upsert(table, listOf(owned(remote, payloads.getValue(row))), key) }
+          true
         } catch (e: SupabaseException) {
           if (e.status == 401) throw e
           park(table, keyOf(row), json.toString(), e, errors); false
@@ -148,10 +172,22 @@ class SyncEngine(
       }
     }
     transaction {
-      for ((row, _) in sent) if (current(row) == row) clean(row)
+      for ((row, json) in sent) {
+        if (current(row) == row) clean(row)
+        // The server now has the fields sent, and the base already had the others.
+        if (merges) dao.putBase(SyncBaseRow(table, keyOf(row), json.toString()))
+      }
       if (parked.isNotEmpty()) dao.unpark(table, sent.map { keyOf(it.first) })
     }
-    return sent.size
+    return sent.count { it.first in requested }
+  }
+
+  /** Rows from before D164 have no base: an unchanged one is what the server held. */
+  private suspend fun seedBases() = transaction {
+    for (c in dao.categoriesWithoutBase()) dao.putBase(SyncBaseRow(CATEGORY, c.id, categoryJson(c).toString()))
+    for (t in dao.tagsWithoutBase()) dao.putBase(SyncBaseRow(TAG_TABLE, t.id, tagJson(t).toString()))
+    for (p in dao.productsWithoutBase()) dao.putBase(SyncBaseRow("product", p.id, productJson(p).toString()))
+    for (s in dao.storeItemsWithoutBase()) dao.putBase(SyncBaseRow("store_item", s.id, storeItemJson(s).toString()))
   }
 
   private suspend fun park(table: String, key: String, payload: String, e: SupabaseException, errors: MutableList<String>) {
@@ -170,7 +206,7 @@ class SyncEngine(
       val changed = r.uploadedVersion != r.version
       val header = dirtyHeaders[r.chave] ?: if (changed) dao.parsed(r.chave) else null
       if (!changed && header == null) continue
-      val pagePath = r.pageFile?.let { "${remote.ledgerId}/${r.chave}/page.html" }
+      val pagePath = pagePath(remote, r)
       val row = receiptJson(r, header, pagePath)
       val attempt = "${r.version} $row"
       if (parked[r.chave] == attempt) continue
@@ -200,25 +236,36 @@ class SyncEngine(
   }
 
   /**
-   * A receipt's dirty lines, then the server's lines that the phone no longer has for that receipt (a re-read page
-   * can drop a line). Per receipt, so one that can't go up (its receipt failed) doesn't hold back the others.
+   * Per receipt: the lines this phone removed (a re-read page can drop a line, D164), then its dirty lines. Only the
+   * removed ones go, never "whatever this phone lacks", which would take lines another phone's newer read added. The
+   * removals go first, so a phone that pulls the lines this upsert touches also sees them gone; with no line to
+   * upsert, the receipt row is sent again to the same end. Per receipt, so one that can't go up (its receipt failed)
+   * doesn't hold back the others.
    */
   private suspend fun pushLines(remote: SyncRemote, errors: MutableList<String>): Int {
     var n = 0
     val parked = dao.parked(LINES).associate { it.rowKey to it.payload }
-    for ((chave, rows) in dao.dirtyLines().groupBy { it.receipt }) {
-      val payload = rows.map(::lineJson).toString()
+    val dirty = dao.dirtyLines().groupBy { it.receipt }
+    val removed = dao.removedLines().groupBy({ it.receipt }, { it.lineNo })
+    for (chave in dirty.keys + removed.keys) {
+      val rows = dirty[chave].orEmpty()
+      val gone = removed[chave].orEmpty()
+      val payload = rows.map(::lineJson).toString() + gone
       if (parked[chave] == payload) continue
       try {
-        io { remote.upsert("receipt_line", rows.map { owned(remote, lineJson(it)) }, "ledger_id,chave,line_no") }
-        val kept = dao.lineNumbers(chave)
-        io {
-          remote.delete("receipt_line", listOf("ledger_id" to "eq.${remote.ledgerId}", "chave" to "eq.$chave",
-            "line_no" to "not.in.(${kept.joinToString(",")})"))
+        if (gone.isNotEmpty()) io {
+          remote.delete(LINES, listOf("ledger_id" to "eq.${remote.ledgerId}", "chave" to "eq.$chave", "line_no" to "in.(${gone.joinToString(",")})"))
         }
-        transaction { for (row in rows) if (dao.line(row.receipt, row.lineNo) == row) dao.upsertLine(row.copy(dirty = false)) }
+        if (rows.isNotEmpty()) io { remote.upsert(LINES, rows.map { owned(remote, lineJson(it)) }, "ledger_id,chave,line_no") }
+        else store.get(chave)?.takeIf { it.uploadedVersion != null }?.let { r ->
+          io { remote.upsert(RECEIPT, listOf(owned(remote, receiptJson(r, dao.parsed(chave), pagePath(remote, r)))), "ledger_id,chave") }
+        }
+        transaction {
+          for (row in rows) if (dao.line(row.receipt, row.lineNo) == row) dao.upsertLine(row.copy(dirty = false))
+          dao.clearRemovedLines(chave, gone)
+        }
         if (chave in parked) dao.unpark(LINES, listOf(chave))
-        n += rows.size
+        n += rows.size + gone.size
       } catch (e: SupabaseException) {
         if (e.status == 401) throw e
         park(LINES, chave, payload, e, errors)
@@ -226,6 +273,8 @@ class SyncEngine(
     }
     return n
   }
+
+  private fun pagePath(remote: SyncRemote, r: Receipt) = r.pageFile?.let { "${remote.ledgerId}/${r.chave}/page.html" }
 
   /** Tree edits (D75), after the categories they name. Append-only on the server: a resend changes nothing. */
   private suspend fun pushEvents(remote: SyncRemote): Int {
@@ -275,31 +324,82 @@ class SyncEngine(
 
   // ---- pull ----
 
+  /**
+   * Each table from a minute before the last row seen, then page after page in (updated_at, key) order, each page
+   * starting after the last row of the one before (D164): a page boundary inside a run of equal timestamps neither
+   * skips nor repeats a row.
+   */
   private suspend fun pull(remote: SyncRemote, tables: List<String>): Int {
     var n = 0
     for (table in tables) {
       val cursorName = "cursor:$table"
-      var cursor = dao.state(cursorName)
+      val since = dao.state(cursorName)?.let { instant(it).minusSeconds(OVERLAP_SECONDS).toString() }
+      val order = listOf("updated_at") + KEYS.getValue(table)
+      var last: JsonObject? = null
       while (true) {
-        val since = cursor?.let { instant(it).minusSeconds(OVERLAP_SECONDS).toString() }
         val filters = buildList {
           add("ledger_id" to "eq.${remote.ledgerId}")
-          if (since != null) add("updated_at" to "gt.$since")
-          add("order" to "updated_at.asc"); add("limit" to PAGE.toString())
+          if (last != null) add("or" to after(last!!, order)) else if (since != null) add("updated_at" to "gt.$since")
+          add("order" to order.joinToString(",") { "$it.asc" }); add("limit" to PAGE.toString())
         }
         val rows = io { remote.select(table, filters) }
         if (rows.isEmpty()) break
         apply(remote, table, rows)
+        if (table == LINES || table == RECEIPT) rows.mapTo(touched) { it.string("chave")!! }
         n += rows.size
-        val last = rows.last().string("updated_at")!!
-        dao.putState(SyncStateRow(cursorName, last))
-        // A full page whose last row is the cursor we started from would loop: only possible with > PAGE rows in the
-        // overlap minute, which a phone never produces.
-        if (rows.size < PAGE || last == cursor) break
-        cursor = last
+        last = rows.last()
+        dao.putState(SyncStateRow(cursorName, last.string("updated_at")!!))
+        if (rows.size < PAGE) break
       }
     }
     return n
+  }
+
+  /** Receipts whose row or lines this run pulled: the ones whose lines may have been removed elsewhere. */
+  private val touched = mutableSetOf<String>()
+
+  /**
+   * PostgREST's filter for rows after [row] in the order of [columns]: (a > x) or (a = x and b > y) or ... Values are
+   * quoted, since a key may hold a comma or a parenthesis.
+   */
+  private fun after(row: JsonObject, columns: List<String>): String {
+    fun quoted(column: String) = "\"" + row.string(column)!!.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+    val terms = columns.indices.map { i ->
+      val parts = columns.take(i).map { "$it.eq.${quoted(it)}" } + "${columns[i]}.gt.${quoted(columns[i])}"
+      parts.singleOrNull() ?: "and(${parts.joinToString(",")})"
+    }
+    return "(${terms.joinToString(",")})"
+  }
+
+  /**
+   * Lines another phone removed (D164). For each receipt in [chaves] that has lines here, the line numbers the server
+   * holds; a line the phone has and the server doesn't goes, unless the phone changed it meanwhile: then it goes up
+   * again next run, so a correction made before the removal arrived isn't lost.
+   */
+  private suspend fun reconcileLines(remote: SyncRemote, chaves: Set<String>) {
+    val local = chaves.filter { dao.lineNumbers(it).isNotEmpty() }
+    for (chunk in local.chunked(50)) {
+      val onServer = mutableSetOf<Pair<String, Int>>()
+      var last: JsonObject? = null
+      while (true) {
+        val rows = io {
+          remote.select(LINES, buildList {
+            add("select" to "chave,line_no"); add("ledger_id" to "eq.${remote.ledgerId}")
+            add("chave" to "in.(${chunk.joinToString(",") { "\"$it\"" }})")
+            last?.let { add("or" to after(it, LINE_KEY)) }
+            add("order" to "chave.asc,line_no.asc"); add("limit" to PAGE.toString())
+          })
+        }
+        rows.mapTo(onServer) { it.string("chave")!! to it.long("line_no")!!.toInt() }
+        if (rows.size < PAGE) break
+        last = rows.last()
+      }
+      transaction {
+        for (chave in chunk) for (no in dao.lineNumbers(chave)) {
+          if ((chave to no) !in onServer && dao.line(chave, no)?.dirty == false) dao.deleteLine(chave, no)
+        }
+      }
+    }
   }
 
   /** The whole member list each run (it's small, and a member who left must disappear, D104). */
@@ -314,8 +414,12 @@ class SyncEngine(
     TAG_TABLE -> applyTags(rows)
     "issuer" -> transaction { for (o in rows) { val cnpj = o.string("cnpj")!!; if (dao.issuer(cnpj)?.dirty != true) dao.upsertIssuer(IssuerRow(cnpj, o.string("name")!!)) } }
     "receipt" -> applyReceipts(remote, rows)
-    "product" -> transaction { for (o in rows) { val p = product(o); if (dao.product(p.id)?.dirty != true) dao.upsertProduct(p) } }
-    "store_item" -> transaction { for (o in rows) { val s = storeItem(o); if (dao.storeItem(s.id)?.dirty != true) dao.upsertStoreItem(s) } }
+    "product" -> transaction {
+      for (o in rows) merged("product", o, ::product, { dao.product(it.id) }, { it.dirty }, ::productJson) { it.copy(dirty = true) }?.let { dao.upsertProduct(it) }
+    }
+    "store_item" -> transaction {
+      for (o in rows) merged("store_item", o, ::storeItem, { dao.storeItem(it.id) }, { it.dirty }, ::storeItemJson) { it.copy(dirty = true) }?.let { dao.upsertStoreItem(it) }
+    }
     "product_tag" -> transaction {
       for (o in rows) { val t = productTag(o); if (dao.productTag(t.productId, t.tagId)?.dirty != true) dao.upsertProductTag(t) }
     }
@@ -346,27 +450,52 @@ class SyncEngine(
    * category the phone holds under another id hands its products and children to the server's id and goes.
    */
   private suspend fun applyCategories(rows: List<JsonObject>) = transaction {
-    val pulled = rows.map(::category)
-    for (c in pulled) {
-      if (dao.category(c.id)?.dirty == true) continue
-      val seeded = c.seedPath?.let { dao.categoryBySeed(it) }?.takeIf { it.id != c.id }
+    val parents = mutableMapOf<String, String?>()
+    for (o in rows) {
+      val c = merged(CATEGORY, o, ::category, { dao.category(it.id) }, { it.dirty }, ::categoryJson) { it.copy(dirty = true) } ?: continue
+      parents[c.id] = c.parentId
+      // A row the phone changed is its own already; only a clean one can be a seed known under another id.
+      val seeded = if (c.dirty) null else c.seedPath?.let { dao.categoryBySeed(it) }?.takeIf { it.id != c.id }
       if (seeded != null) dao.releaseSeedPath(seeded.id)
       dao.upsertCategory(c.copy(parentId = c.parentId?.takeIf { dao.category(it) != null }))
       if (seeded != null) {
         dao.moveProductsToCategory(seeded.id, c.id); dao.moveChildren(seeded.id, c.id); dao.deleteCategory(seeded.id)
       }
     }
-    for (c in pulled) if (dao.category(c.id)?.dirty == false) dao.upsertCategory(dao.category(c.id)!!.copy(parentId = c.parentId))
+    for ((id, parent) in parents) dao.category(id)?.takeIf { it.parentId != parent }?.let { dao.upsertCategory(it.copy(parentId = parent)) }
   }
 
   private suspend fun applyTags(rows: List<JsonObject>) = transaction {
-    for (t in rows.map(::tag)) {
-      if (dao.tag(t.id)?.dirty == true) continue
+    for (o in rows) {
+      val t = merged(TAG_TABLE, o, ::tag, { dao.tag(it.id) }, { it.dirty }, ::tagJson) { it.copy(dirty = true) } ?: continue
+      if (t.dirty) { dao.upsertTag(t); continue }
       val known = dao.tagBySlug(t.slug)?.takeIf { it.id != t.id }
       if (known != null) dao.releaseSlug(known.id)
       dao.upsertTag(t)
       if (known != null) { dao.moveProductTags(known.id, t.id); dao.deleteTag(known.id) }
     }
+  }
+
+  /**
+   * A pulled catalog row (D164), to write; null to leave the phone's copy as it is. A row the phone hasn't changed is
+   * the server's. One it changed keeps the fields it changed since the base and takes the server's for the rest,
+   * staying dirty if that differs from the server; without a base (changed before D164), the phone's copy stands.
+   * Either way the server's row becomes the base.
+   */
+  private suspend fun <T> merged(
+    table: String, o: JsonObject, fromJson: (JsonObject) -> T, local: suspend (T) -> T?, dirty: (T) -> Boolean,
+    toJson: (T) -> JsonObject, markDirty: (T) -> T,
+  ): T? {
+    val pulled = fromJson(o)
+    val server = toJson(pulled)
+    val key = o.string("id")!!
+    val base = dao.base(table, key)?.let { json.parseToJsonElement(it.payload) as JsonObject }
+    dao.putBase(SyncBaseRow(table, key, server.toString()))
+    val mine = local(pulled)?.takeIf(dirty) ?: return pulled
+    if (base == null) return null
+    val changed = toJson(mine).filter { (field, value) -> base[field] != value }
+    val row = fromJson(JsonObject(o + changed))
+    return if (toJson(row) == server) row else markDirty(row)
   }
 
   /**
@@ -547,7 +676,11 @@ class SyncEngine(
     // Parents before children, so a pulled row's references already exist locally.
     val TABLES = listOf("issuer", "receipt", "receipt_scan", "category", "tag", "product", "store_item", "product_tag", "receipt_line",
       "link_suggestion", "worker_report")
-    private const val PAGE = 1000
+    // Each pulled table's primary key after ledger_id, for paging (D164).
+    private val LINE_KEY = listOf("chave", "line_no")
+    private val KEYS = mapOf("issuer" to listOf("cnpj"), RECEIPT to listOf("chave"), "receipt_scan" to listOf("chave", "user_id"),
+      "product_tag" to listOf("product_id", "tag_id"), LINES to LINE_KEY).withDefault { listOf("id") }
+    internal const val PAGE = 1000
     private const val OVERLAP_SECONDS = 60L
   }
 }

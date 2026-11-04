@@ -72,22 +72,53 @@ class SupabaseLocalTest {
     assertEquals(client.select(session, "category", listOf("ledger_id" to "eq.$ledger")).map { it["id"]!!.jsonPrimitive.content }.toSet(),
       a.db.catalog().categories().map { it.id }.toSet())
 
-    // A re-read page that lost a line removes it on the server too.
-    val last = lines.last()
-    a.db.catalog().deleteLines(chave); a.db.catalog().insertLines(lines.dropLast(1).map { it.copy(dirty = true) })
-    a.engine.sync(SupabaseRemote(client, session, ledger))
-    assertEquals(lines.size - 1, client.select(session, "receipt_line", listOf("chave" to "eq.$chave")).size)
-
     // A second phone signed in to the same account gets the receipt, its page, and the same catalog.
     val b = Phone(tmp.newFolder("b"))
     b.store.load()
-    b.engine.sync(SupabaseRemote(client, client.refresh(session.refreshToken), ledger))
+    val bRemote = SupabaseRemote(client, client.refresh(session.refreshToken), ledger)
+    b.engine.sync(bRemote)
     val adopted = b.store.get(chave)!!
     assertEquals(html, File(b.store.dir(chave), ReceiptStore.PAGE_FILE).readText())
     assertFalse(adopted.needsUpload)
-    assertEquals(lines.size - 1, b.db.catalog().lines(chave).size)
+    assertEquals(lines.size, b.db.catalog().lines(chave).size)
     assertEquals(a.db.catalog().products().map { it.id }.toSet(), b.db.catalog().products().map { it.id }.toSet())
-    assertEquals(last.lineNo !in b.db.catalog().lines(chave).map { it.lineNo }, true)
+
+    // A re-read page that lost a line removes it on the server, and from the other phone (D164).
+    val withoutLast = Regex("""<tr id="Item \+ 8".*?</tr>""", RegexOption.DOT_MATCHES_ALL).replace(html, "")
+    a.store.savePage(chave, "https://x", withoutLast); a.parser.parse(a.store.get(chave)!!)
+    assertEquals(emptyList<String>(), a.engine.sync(SupabaseRemote(client, session, ledger)).errors)
+    assertEquals(lines.size - 1, client.select(session, "receipt_line", listOf("chave" to "eq.$chave")).size)
+    b.engine.sync(bRemote)
+    assertEquals(lines.dropLast(1).map { it.lineNo }, b.db.catalog().lines(chave).map { it.lineNo })
+  }
+
+  @Test fun pagesPastAThousandRowsAndEditsOfDifferentFieldsMerge() = runTest {
+    assumeTrue("set GETNF_SUPABASE_LOCAL to run against a local Supabase", keys != null)
+    val (email, password) = newUser()
+    val client = SupabaseClient(url, keys!![0])
+    val session = client.signIn(email, password)
+    val ledger = Ledgers.pick(Ledgers.mine(client, session), null, session.userId)!!
+    // 2,345 stores written in a few requests, so many rows share a timestamp's neighbourhood (T-1).
+    client.upsert(session, "issuer", (0 until 2345).map { i ->
+      buildJsonObject { put("ledger_id", ledger); put("cnpj", "%014d".format(i)); put("name", "Loja $i") }
+    }, "ledger_id,cnpj")
+    val a = Phone(tmp.newFolder("a")); val b = Phone(tmp.newFolder("b"))
+    a.store.open(chave, "qr"); a.store.savePage(chave, "https://x", html); a.parser.parse(a.store.get(chave)!!)
+    val remote = SupabaseRemote(client, session, ledger)
+    assertEquals(emptyList<String>(), a.engine.sync(remote).errors)
+    b.store.load(); b.engine.sync(remote)
+    assertEquals(2346, b.db.catalog().issuers().size)
+
+    // A names a product, B gives it a size, offline; both end with both (T-2).
+    val id = b.db.catalog().products().first().id
+    a.db.catalog().updateProduct(a.db.catalog().products().single { it.id == id }.copy(name = "Nome de A", dirty = true))
+    b.db.catalog().updateProduct(b.db.catalog().products().single { it.id == id }.copy(sizeE6 = 500_000, sizeUnit = "kg", sizeSource = "manual", dirty = true))
+    for (p in listOf(a, b, a)) assertEquals(emptyList<String>(), p.engine.sync(remote).errors)
+    for (p in listOf(a, b)) {
+      val product = p.db.catalog().products().single { it.id == id }
+      assertEquals("Nome de A", product.name)
+      assertEquals(500_000L, product.sizeE6)
+    }
   }
 
   @Test fun twoPeopleInOneCadernetaReadTheSameReceiptOfflineWithoutDuplicates() = runTest {

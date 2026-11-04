@@ -122,9 +122,12 @@ class SupabaseClient(val url: String, private val key: String, private val http:
     call(Request.Builder().url(target).header("apikey", key).post(body).build())
   }
 
-  /** Rows matching PostgREST [filters] (`column` to `op.value`), ordered and paged by the caller's filters. */
+  /** Rows matching PostgREST [filters] (`column` to `op.value`), ordered and paged by the caller's filters; every column unless they say `select`. */
   fun select(session: SupabaseSession, table: String, filters: List<Pair<String, String>>): List<JsonObject> {
-    val target = rest(table).addQueryParameter("select", "*").apply { filters.forEach { (k, v) -> addQueryParameter(k, v) } }.build()
+    val target = rest(table).apply {
+      if (filters.none { it.first == "select" }) addQueryParameter("select", "*")
+      filters.forEach { (k, v) -> addQueryParameter(k, v) }
+    }.build()
     return call(authorized(session, target).get().build()).jsonArray.map { it.jsonObject }
   }
 

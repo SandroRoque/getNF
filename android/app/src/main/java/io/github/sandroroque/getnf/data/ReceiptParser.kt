@@ -142,6 +142,10 @@ class ReceiptParser(
       )
     }
     dao.insertLines(rows)
+    // Lines the page no longer has go from the server too (D164); a number that's back isn't removed.
+    val sync = database.sync()
+    sync.putRemovedLines((old.keys - rows.map { it.lineNo }.toSet()).map { LineRemovedRow(chave, it) })
+    sync.clearRemovedLines(chave, rows.map { it.lineNo })
 
     val t = p.totals
     dao.putParsed(ReceiptParsedRow(

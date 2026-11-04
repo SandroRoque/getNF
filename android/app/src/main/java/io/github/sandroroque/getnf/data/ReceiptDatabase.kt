@@ -111,14 +111,14 @@ abstract class ReceiptDao {
     ReceiptRow::class, PhotoRow::class, CaptureSessionRow::class, PhotoReadRow::class,
     ReceiptParsedRow::class, IssuerRow::class, CategoryRow::class, TagRow::class, ProductRow::class, StoreItemRow::class,
     ProductTagRow::class, ReceiptLineRow::class, SyncStateRow::class, CategoryEventRow::class, LinkSuggestionRow::class, WorkerReportRow::class,
-    SyncParkedRow::class, ReceiptScanRow::class, MemberRow::class,
+    SyncParkedRow::class, ReceiptScanRow::class, MemberRow::class, SyncBaseRow::class, LineRemovedRow::class,
   ],
   version = ReceiptDatabase.VERSION,
   // Every version ships a migration from the one before; schemas are exported to android/app/schemas.
   autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7),
     AutoMigration(from = 7, to = 8, spec = ReceiptDatabase.ReuploadBlanked::class), AutoMigration(from = 8, to = 9, spec = ReceiptDatabase.ReuploadBlanked::class),
     AutoMigration(from = 9, to = 10), AutoMigration(from = 10, to = 11), AutoMigration(from = 11, to = 12),
-    AutoMigration(from = 12, to = 13)],
+    AutoMigration(from = 12, to = 13), AutoMigration(from = 13, to = 14)],
 )
 abstract class ReceiptDatabase : RoomDatabase() {
   abstract fun receipts(): ReceiptDao
@@ -142,7 +142,7 @@ abstract class ReceiptDatabase : RoomDatabase() {
   companion object {
     private const val REUPLOAD = "UPDATE `receipt_photo` SET `uploaded` = 0"
     const val NAME = "getnf.db"
-    const val VERSION = 13
+    const val VERSION = 14
     /** [name]: each caderneta has its own database on the phone (D104, [LocalFiles]). */
     fun open(context: Context, name: String = NAME): ReceiptDatabase =
       Room.databaseBuilder(context, ReceiptDatabase::class.java, name).addMigrations(MIGRATION_3_4).build()

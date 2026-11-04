@@ -21,6 +21,17 @@ import androidx.room.Update
 @Entity(tableName = "sync_parked", primaryKeys = ["tableName", "rowKey"])
 data class SyncParkedRow(val tableName: String, val rowKey: String, val payload: String, val error: String, val at: Long)
 
+/**
+ * What the server last held of a row, as the phone sends it (D164). A push sends only the fields that differ from it,
+ * and a pull merges into a row the phone changed meanwhile, so two phones editing different fields both keep theirs.
+ */
+@Entity(tableName = "sync_base", primaryKeys = ["tableName", "rowKey"])
+data class SyncBaseRow(val tableName: String, val rowKey: String, val payload: String)
+
+/** A receipt line the phone dropped (a re-read page no longer has it), to drop on the server too (D164). */
+@Entity(tableName = "line_removed", primaryKeys = ["receipt", "lineNo"])
+data class LineRemovedRow(val receipt: String, val lineNo: Int)
+
 /** Who scanned a receipt (D104), pulled from the caderneta; a receipt can have several scanners. */
 @Entity(tableName = "receipt_scan", primaryKeys = ["chave", "userId"])
 data class ReceiptScanRow(val chave: String, val userId: String)
@@ -106,6 +117,24 @@ abstract class SyncDao {
   @Query("SELECT * FROM link_suggestion WHERE dirty = 1") abstract suspend fun dirtyLinkSuggestions(): List<LinkSuggestionRow>
   @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putLinkSuggestion(row: LinkSuggestionRow)
   @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putWorkerReport(row: WorkerReportRow)
+
+  @Query("SELECT * FROM sync_base WHERE tableName = :table AND rowKey = :key") abstract suspend fun base(table: String, key: String): SyncBaseRow?
+  @Query("SELECT * FROM sync_base WHERE tableName = :table AND rowKey IN (:keys)") abstract suspend fun bases(table: String, keys: List<String>): List<SyncBaseRow>
+  @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putBase(row: SyncBaseRow)
+  // Unchanged rows without a base yet (rows from before D164): what the phone holds is what the server held.
+  @Query("SELECT * FROM category WHERE dirty = 0 AND id NOT IN (SELECT rowKey FROM sync_base WHERE tableName = 'category')")
+  abstract suspend fun categoriesWithoutBase(): List<CategoryRow>
+  @Query("SELECT * FROM tag WHERE dirty = 0 AND id NOT IN (SELECT rowKey FROM sync_base WHERE tableName = 'tag')")
+  abstract suspend fun tagsWithoutBase(): List<TagRow>
+  @Query("SELECT * FROM product WHERE dirty = 0 AND id NOT IN (SELECT rowKey FROM sync_base WHERE tableName = 'product')")
+  abstract suspend fun productsWithoutBase(): List<ProductRow>
+  @Query("SELECT * FROM store_item WHERE dirty = 0 AND id NOT IN (SELECT rowKey FROM sync_base WHERE tableName = 'store_item')")
+  abstract suspend fun storeItemsWithoutBase(): List<StoreItemRow>
+
+  @Insert(onConflict = OnConflictStrategy.IGNORE) abstract suspend fun putRemovedLines(rows: List<LineRemovedRow>)
+  @Query("SELECT * FROM line_removed ORDER BY receipt, lineNo") abstract suspend fun removedLines(): List<LineRemovedRow>
+  @Query("DELETE FROM line_removed WHERE receipt = :chave AND lineNo IN (:lineNos)") abstract suspend fun clearRemovedLines(chave: String, lineNos: List<Int>)
+  @Query("DELETE FROM receipt_line WHERE receipt = :chave AND lineNo = :lineNo") abstract suspend fun deleteLine(chave: String, lineNo: Int)
 
   @Query("SELECT value FROM sync_state WHERE name = :name") abstract suspend fun state(name: String): String?
   @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putState(row: SyncStateRow)
