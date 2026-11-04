@@ -1,6 +1,6 @@
 # Status and next steps
 
-Last updated 2026-11-03. A handoff for picking the project up again. For *why* things are the way they are, read
+Last updated 2026-11-04. A handoff for picking the project up again. For *why* things are the way they are, read
 `docs/decisions.md` (D1–D150). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
@@ -79,33 +79,37 @@ Caderneta. New ideas go to "After the open store", not into the code. Exception,
 commit that has it. The site's copy changed with it: **the user redeploys the site** (`web/README.md`), and the Play
 listing's description (play-console.md) says SC and RJ.
 
-**Handoff, end of 2026-11-03 (PC session)**
+**Handoff, 2026-11-04 (PC session)**
 
 Where things are:
-- **Testers have 0.1.0 (code 3, `play/3`)** on "Closed testing - Alpha" since 2026-11-02. The user's phone got it
-  from the closed track on 2026-11-03 (releases/3.md), so the track works as a tester sees it.
-- **0.1.1 (code 4, `play/4`, 2c09f55) is in Google's review on the closed track** since 2026-11-03, and live on
-  internal testing. It's D161: a test build asks once whether every capture's photos and pages may go to the
-  developer (Wi-Fi, blanked, no account needed), temporary, for the closed test only. The server pieces are online
-  (`docs/releases/server.md`); the policy, the site's FAQ, the listing and Data safety say so and are published.
+- **Testers have 0.1.0 (code 3, `play/3`)**; **0.1.1 (code 4, `play/4`, 2c09f55) was approved on the closed track on
+  2026-11-03** (Publishing overview, checked 2026-11-04) and is what a tester installs now. Its manifest stays
+  `submitted` until an account in the closed test installs it from Play (releases/4.md).
+- **D164 is on main (e82f30e), not on any track:** sync pages by key (T-1), catalog rows merge by field (T-2), removed
+  lines reach every phone (T-3); the three tickets are resolved. Room 13 → 14, no server change. It's the reason for
+  the next candidate (code 5): shared cadernetas lose or keep wrong data without it.
 - What testers send lands in the `contributions` bucket and the `contribution_file` table (secret key only):
   `tools/contributions.py list` shows it per install and item, `fetch` downloads into `test-media/contributions/`
-  (D163).
+  (D163). Nothing had arrived by 2026-11-04.
 - The Play Developer API answers (D159, `tools/play.py`); uploads and track changes go through it. Data safety and the
   listing are edited in the console (the built-in browser is signed in to it).
 
 Do next, in order:
-1. **Watch code 4's review** (`tools/play.py status`, Publishing overview). Once approved: the user's phone updates
-   from code 3 to 4 through Play (a sideload can't replace a Play install, D162); with it on the cable, check that
-   October still shows R$ 821,85 in 5 receipts, 7 decisions, the account, and that the photos question appears.
-   Record it in releases/4.md and set `state: closed`.
-2. **Watching** (rollout.md › Watching): each session, `tools/tickets.py inbox`, `tools/contributions.py list --days 1`, the
+1. **The phone on code 4:** the user's phone updates from code 3 to 4 through Play (a sideload can't replace a Play
+   install, D162); with it on the cable, check that October still shows R$ 821,85 in 5 receipts, 7 decisions, the
+   account, and that the photos question appears. Record it in releases/4.md and set `state: closed`.
+2. **Code 5, with D164:** cut with `tools/release.py new`, early with a reason (data loss in shared cadernetas,
+   rollout.md › Cutting). Upload it straight to the closed track as well as internal if a pre-launch report is
+   wanted: codes 3 and 4 got none (both went to internal, then promoted).
+3. **T-4** (normal): a reprocessed line's corrections are matched by line number only. Waiting on a decision (see
+   the ticket): data-model.md says a changed code or a vanished line keeps its correction as an orphan, but SEFAZ's
+   line number is the document's `nItem`, so a code change there only comes from the parser reading differently.
+4. **Watching** (rollout.md › Watching): each session, `tools/tickets.py inbox`, `tools/contributions.py list --days 1`, the
    sync and refused-rows reports, Vitals; findings become tickets.
-3. **Recruiting, by the user:** the site's "Teste fechado" section; aim for more than 12.
-4. **Code 3's pre-launch report** doesn't exist (releases/3.md); check whether code 4 gets one.
-5. **The photo reader:** a run on held-out sessions. The user keeps every paper receipt and re-scans on request:
+5. **Recruiting, by the user:** the site's "Teste fechado" section; aim for more than 12.
+6. **The photo reader:** a run on held-out sessions. The user keeps every paper receipt and re-scans on request:
    ask for a few captures by date and store, with the debug build dumping and the phone on the cable.
-6. **The next candidate:** a weekly opportunity; `tools/release.py pending` shows what testers don't have.
+7. **The next candidate after that:** a weekly opportunity; `tools/release.py pending` shows what testers don't have.
 
 Not done, waiting: dark screenshots for the sites (only Início has a current dark shot; the rest show light on both
 sites, D151), and the steps under "The user" below.
