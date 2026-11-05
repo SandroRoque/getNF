@@ -163,6 +163,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D150 | capture | current | R4: "Recomeçar" on the capture screen once there's something to drop; asked first when it would lose photos or the code |
 | D155 | sefaz | current | Rio de Janeiro's NFC-e: same page markup as SC, its own check runs without the person; no lookup budget for RJ |
 | D159 | release | current | The Play Developer API through a service account: `tools/play.py` reads tracks and testers and sends recorded bundles |
+| D166 | release | current | Play only in Brazil, never the EEA or UK; the account is declared a non-trader |
 
 ---
 
@@ -4001,3 +4002,21 @@ happen. The user accepted this recommendation on 2026-11-04.
 - **The orphan rule** waits for a reader without `nItem` (the photo reader, D106) and is built with it, including how
   an orphan is stored without colliding with the new line's key, its review card, and totals that leave it out.
 - data-model.md says so. T-4 was discarded with this note.
+
+## D166. Play only in Brazil, and the account declares itself a non-trader (2026-11-05)
+
+Google Play e-mailed on 2026-11-04 that every developer must declare trader or non-trader status in Play Console by
+2027-02-01, wherever they live. Without it, updates are blocked and the developer profile and all its apps are
+removed from Play **globally**. "Trader" comes from EEA and UK consumer law (the EU's DSA): it covers commercial
+activity, revenue from an app included. The e-mail also says a developer who doesn't distribute in the EEA or UK can
+declare as a non-trader. A trader who is an individual gets their phone number and address shown publicly on Play.
+The app is free today, but donations may come later (see the business repo), and they could count as commercial.
+The user chose not to distribute in the affected region over becoming a trader, on 2026-11-05.
+- **Countries:** every track (closed, open, production) is Brazil only, which the closed track already was. The app
+  reads Brazilian NFC-e (SC, RJ) and has no use elsewhere. The EEA countries and the UK are never added. Adding one
+  means revisiting this decision first.
+- **Declaration:** non-trader, in Play Console › Manage account › Account details › About you › Trader status. It's
+  the user's to do (it's their account, a legal statement). It doesn't depend on donations while the EEA and UK stay
+  out.
+- play-console.md says so where countries are chosen.
+

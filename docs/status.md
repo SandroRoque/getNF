@@ -257,6 +257,8 @@ screenshots).
 
 ## Pending, by the user
 
+- **By 2027-02-01:** declare the account a **non-trader** in Play Console › Manage account › Account details ›
+  About you › Trader status (D166). Missing it removes the app from Play everywhere.
 - Run `sudo bash tools/setup-system.sh` once (udev rules for the phone, Docker at boot for the local Supabase, adb and
   kvm groups).
 - Back up `~/.config/getnf/` (the upload key, made 2026-10-30) and its password somewhere off this PC: without

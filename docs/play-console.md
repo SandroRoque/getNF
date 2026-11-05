@@ -49,7 +49,8 @@ What makes the site's two steps work: a closed track whose testers are the Googl
 1. **Before:** every "Set up your app" task on the Dashboard done (App content below, the store listing with its
    icon, feature graphic and screenshots). A closed release can't be sent for review without them.
 2. Test and release › Testing › **Closed testing** › the default track (or Create track) › Manage track.
-3. **Countries / regions:** Brazil.
+3. **Countries / regions:** Brazil, and only Brazil on every track. Never the EEA or the UK: the account is a
+   non-trader because of that (D166).
 4. **Testers:** Google Groups, `testadores-da-caderneta@googlegroups.com`; feedback URL or e-mail:
    `contato@roqlab.com.br`. Save. The page then shows the opt-in link ("Join on the web"): it must match the site's
    `https://play.google.com/apps/testing/br.com.roqlab.caderneta`.
