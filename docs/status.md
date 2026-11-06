@@ -1,6 +1,6 @@
 # Status and next steps
 
-Last updated 2026-11-04. A handoff for picking the project up again. For *why* things are the way they are, read
+Last updated 2026-11-05. A handoff for picking the project up again. For *why* things are the way they are, read
 `docs/decisions.md` (D1–D150). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
@@ -82,12 +82,10 @@ listing's description (play-console.md) says SC and RJ.
 **Handoff, 2026-11-04 (PC session)**
 
 Where things are:
-- **Testers have 0.1.0 (code 3, `play/3`)**; **0.1.1 (code 4, `play/4`, 2c09f55) was approved on the closed track on
-  2026-11-03** (Publishing overview, checked 2026-11-04) and is what a tester installs now. Its manifest stays
-  `submitted` until an account in the closed test installs it from Play (releases/4.md).
-- **D164 is on main (e82f30e), not on any track:** sync pages by key (T-1), catalog rows merge by field (T-2), removed
-  lines reach every phone (T-3); the three tickets are resolved. Room 13 → 14, no server change. It's the reason for
-  the next candidate (code 5): shared cadernetas lose or keep wrong data without it.
+- **0.1.2 (code 5, `play/5`, 3cf6610, with D164) was approved on the closed track on 2026-11-04** (Submission
+  activity, checked 2026-11-05) and is what a tester installs or updates to now; code 4 is `replaced`. Code 5's
+  manifest stays `submitted` until an account in the closed test installs it from Play (releases/5.md). Testers
+  already opted in get it as an ordinary Play update: nobody needs inviting again.
 - What testers send lands in the `contributions` bucket and the `contribution_file` table (secret key only):
   `tools/contributions.py list` shows it per install and item, `fetch` downloads into `test-media/contributions/`
   (D163). Nothing had arrived by 2026-11-04.
@@ -95,13 +93,11 @@ Where things are:
   listing are edited in the console (the built-in browser is signed in to it).
 
 Do next, in order:
-1. **The phone on code 4:** the user's phone updates from code 3 to 4 through Play (a sideload can't replace a Play
-   install, D162); with it on the cable, check that October still shows R$ 821,85 in 5 receipts, 7 decisions, the
-   account, and that the photos question appears. Record it in releases/4.md and set `state: closed`.
-2. **Code 5 (0.1.2, 3cf6610, `play/5`), with D164:** in Google's review on the closed track since 2026-11-04 (uploaded
-   straight there), live on internal. Watch the review (Publishing overview) and whether this upload got a pre-launch
-   report. Then the user's phone updates through Play (D162; the user will plug it in later) and releases/5.md gets
-   its phone check. Code 4's phone check is folded into it.
+1. ~~The phone on code 4~~: code 4 is replaced; its check is folded into code 5's (next item).
+2. **Code 5 (0.1.2, 3cf6610, `play/5`), with D164:** approved on the closed track (2026-11-04), live on internal.
+   Check whether this upload got a pre-launch report. Then the user's phone updates through Play (D162; the user will
+   plug it in later) and releases/5.md gets its phone check: October still shows R$ 821,85 in 5 receipts, 7
+   decisions, the account, and the photos question appears.
 3. ~~T-4~~ discarded by D165: corrections follow a SEFAZ line's number; orphans wait for the photo reader.
 4. **Watching** (rollout.md › Watching): each session, `tools/tickets.py inbox`, `tools/contributions.py list --days 1`, the
    sync and refused-rows reports, Vitals; findings become tickets.
