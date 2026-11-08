@@ -1,6 +1,6 @@
 # Status and next steps
 
-Last updated 2026-11-05. A handoff for picking the project up again. For *why* things are the way they are, read
+Last updated 2026-11-07. A handoff for picking the project up again. For *why* things are the way they are, read
 `docs/decisions.md` (D1–D150). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
@@ -140,7 +140,8 @@ The user:
 1. Review the screens on the phone (the redesign, D81) and pass on what bothers.
 2. A shared caderneta with the father: invite, join, both scan, check "por" (code 2 already has it). The first real
    test of cadernetas with a second person.
-3. Recruit 15–20 testers, from SC if possible: the critical item. They join themselves (D153): the site's
+3. Recruit 15–20 testers, from SC if possible: the critical item. As of 2026-11-07 the user is weighing a group
+   of trusted people, maybe a paid testing service later. They join themselves (D153): the site's
    "Teste fechado" section, the group testadores-da-caderneta, then Play's opt-in link.
 4. Play Console: the listing, the app content tasks, a closed testing track (Brazil, testers: the Google Group
    `testadores-da-caderneta@googlegroups.com`, D153), the upload.
@@ -153,8 +154,8 @@ The user:
    open store.
 8. ~~RJ receipts~~ read since D155 (videos received 2026-11-02, in `test-media/video-rj/`, WhatsApp-compressed); RJ
    captures made with the app, phone connected, would still help the photo reader.
-9. Two or three captures of a worn (faded) receipt, phone connected: R3 (the offer when the capture is stuck after
-   the QR code) can't be measured without them.
+9. ~~Two or three captures of a worn (faded) receipt~~: the user has none; R3 waits for a worn receipt to turn up
+   in the testers' contributions (2026-11-07).
 
 **During the 14 days (0.1.x updates)**
 - Reports and tickets (D152): `python3 tools/tickets.py inbox` at the start of each session, triage, then
@@ -253,8 +254,7 @@ screenshots).
 
 ## Pending, by the user
 
-- **By 2027-02-01:** declare the account a **non-trader** in Play Console › Manage account › Account details ›
-  About you › Trader status (D166). Missing it removes the app from Play everywhere.
+- ~~Declare the account a non-trader in Play Console (D166, due 2027-02-01)~~: done, the user confirmed 2026-11-07.
 - Run `sudo bash tools/setup-system.sh` once (udev rules for the phone, Docker at boot for the local Supabase, adb and
   kvm groups).
 - Back up `~/.config/getnf/` (the upload key, made 2026-10-30) and its password somewhere off this PC: without
