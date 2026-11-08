@@ -93,8 +93,10 @@ Where things are:
   listing are edited in the console (the built-in browser is signed in to it).
 
 The first contributions arrived 2026-11-07 (one install in RJ, 10 items): RJ pages parse; three tickets came out of
-them. T-5 is fixed on main (D167); T-7 (card slips photographed alone go out only partly blanked) is urgent, privacy;
-T-6 (a short receipt kept as 2-3 identical photos) is for the capture.
+them. T-5 is fixed on main (D167), for the next build. T-7 (a voucher slip photographed alone went out with its
+balance showing) was settled with the user: the blanking stays as it is, the privacy policy now calls it best effort
+and restates that nothing is sold or used otherwise (site redeployed 2026-11-07). T-6 (a short receipt kept as 2-3
+identical photos) is open, for the capture.
 
 Do next, in order:
 1. ~~The phone on code 4~~: code 4 is replaced; its check is folded into code 5's (next item).
@@ -156,6 +158,9 @@ The user:
 6b. ~~`npx supabase db push` for D152's tables~~ done 2026-11-01; next, Play Console › Data safety updated as [play-data-safety.md](play-data-safety.md) says, before the 0.1.0 upload.
 7. Decide on the legal read: suggested, the closed test with the published privacy policy, the legal read before the
    open store.
+   A brief for the lawyer exists (2026-11-07): the user's private doc "Caderneta: resumo LGPD para análise jurídica",
+   https://claude.ai/artifact/5JMWJpGck81mUPo5VbhamG (data, operators, measures, nine questions). Shared only when
+   the user hires the read.
 8. ~~RJ receipts~~ read since D155 (videos received 2026-11-02, in `test-media/video-rj/`, WhatsApp-compressed); RJ
    captures made with the app, phone connected, would still help the photo reader.
 9. ~~Two or three captures of a worn (faded) receipt~~: the user has none; R3 waits for a worn receipt to turn up
