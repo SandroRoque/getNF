@@ -90,7 +90,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D77 | reports | partly replaced → D81 | Stage 5: spending reports on the phone, offline, under bottom tabs |
 | D78 | catalog | current | Medicine moves to Saúde as "Remédios"; Saúde gets "Consultas, exames e planos" |
 | D79 | IPCI | current | Stage 6 dropped for now; stage 7's IPCI follows the price paid, chained monthly |
-| D80 | categorizer | partly replaced → D108 | Stage 8: an LLM worker on the PC suggests; the user decides on the phone |
+| D80 | categorizer | partly replaced → D108, D168 | Stage 8: an LLM worker on the PC suggests; the user decides on the phone |
 | D81 | UI | current | UI/UX redesign: four tabs around one decision queue, in the "Calmo" direction |
 | D82 | capture | partly replaced → D85 | Capture is planned live from a model of the receipt's print lines |
 | D83 | capture | current | Coverage is accepted by stretch, not line by line |
@@ -165,6 +165,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D159 | release | current | The Play Developer API through a service account: `tools/play.py` reads tracks and testers and sends recorded bundles |
 | D166 | release | current | Play only in Brazil, never the EEA or UK; the account is declared a non-trader |
 | D167 | sefaz | current | QR addresses with a raw `|` are recognised: SC lookups count, RJ is no longer "another state" (T-5) |
+| D168 | categorizer | current | The nightly LLM worker is suspended; the backup retries and notifies when it fails |
 
 ---
 
@@ -1971,7 +1972,7 @@ its next sync.
 
 ## D80. Stage 8: an LLM worker on the PC suggests; the user decides on the phone (2026-10-25)
 
-> **Partly replaced by D108** (index, D107).
+> **Partly replaced by D108, D168** (index, D107).
 
 Chosen by the user: all four parts of [stage-8-plan.md](stage-8-plan.md), with the local LLM (LM Studio, Swift).
 
@@ -4035,3 +4036,34 @@ and `SefazPage` read hosts with `java.net.URI`, which refuses `|`; the failure w
 - **Fix:** `SefazPage.hostOf` gives only the scheme and authority to `URI`; `shouldBlock` takes the path by string.
   `SefazPageTest` holds both portals' QR addresses with raw pipes.
 - Not checked live (it would spend lookups): the next real visit's log line shows the count.
+
+## D168. The nightly LLM worker is suspended; the backup retries and says when it fails (2026-11-08)
+
+Reviewing the privacy policy's "Computador do mantenedor" line, the user asked whether the nightly review was still
+needed. What it did from 2026-10-25 to 11-07 (D80), from `audit_log` and the suggestion tables:
+
+- **Audit:** 696 checks of only 130 products (it re-audits the same items each night), 12 disagreements on 6 products.
+  The revisor's category never won: in 4 the user kept Jev's, 2 were still undecided.
+- **Learning, links, descriptions:** no rule, no link, no description drafted. **Sizes:** 16 proposals, all "not a
+  size", which the phone doesn't show.
+
+So it cost a GPU, a PC on at night and every caderneta read on that PC, and changed no decision. It is the cheap
+model run liberally that D108 had already turned away from, and its confidence was useless for triage (D56).
+
+- **Suspended, not deleted:** the timer is off; `tools/llm-worker.py`, its tables and the phone's revisor cards stay,
+  for a capable model run rarely if one comes back (D108, "after the open store" in `docs/status.md`).
+- **What is lost:** the random sample was the only independent measure of the automatic categories (Jev ≥ 0.9),
+  which never become cards and the user may never open. The user's corrections count only what they see. Its
+  measure (2 disagreements in 144, about 130 products re-sampled) was too thin to say much anyway.
+- **What still guards the data:** Jev's threshold with low confidence as a card (D74), the user's choice final
+  (D51), the receipt's own arithmetic for the numbers (D108), the daily backup.
+- **The policy** drops the nightly review; the computer keeps only the 14-day backup. The lawyer sees it next round.
+- **The developer screen** loses "Saúde dos dados": it showed only the worker's report, frozen from now on.
+- **Pending suggestions:** the 6 products still carry the revisor's category suggestion (a card shows only while the
+  category is automatic, `CatalogEditor.disputed`, so 2 cards are open). Clearing them online is left to the user.
+
+**The backup, found on the way.** The report's backup age (56.6 h) came from 4 failed nights in 7: after a boot or
+wake the timer's catch-up run started before the network and failed on DNS. `network-online.target` is a system
+target a user unit can't wait for. The unit now retries every 5 minutes (at most 6 starts in 2 h) and, if it gives up,
+`getnf-backup-failed.service` sends a desktop notification: the worker's report was the only place the age showed,
+in a screen nobody opens. A failed run's partial dump is removed on the next run.

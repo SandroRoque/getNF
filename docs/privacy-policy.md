@@ -109,8 +109,7 @@ Usamos estes serviços para operar o app. Eles agem em nosso nome e não recebem
 - **Google ML Kit:** lê o QR Code e o texto da nota no próprio celular. As imagens não saem do aparelho, mas a
   biblioteca envia ao Google dados de diagnóstico e de uso (modelo do aparelho, versão do app, desempenho, códigos de
   erro e um identificador da instalação), segundo a documentação do Google.
-- **Computador do mantenedor:** uma cópia de segurança diária do servidor é guardada por 14 dias, e uma revisão
-  noturna das categorias dos produtos roda nesse computador.
+- **Computador do mantenedor:** uma cópia de segurança diária do servidor é guardada por 14 dias.
 
 Ao abrir a página de uma nota, o celular acessa diretamente o portal da SEFAZ do estado da nota: o de **Santa
 Catarina**, que pode exibir uma verificação da Cloudflare, ou o do **Rio de Janeiro**, que faz uma verificação

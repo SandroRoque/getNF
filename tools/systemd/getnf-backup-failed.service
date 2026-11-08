@@ -1,0 +1,7 @@
+# Run by getnf-backup.service when it gives up after its retries: a desktop notification, since nothing else watches.
+[Unit]
+Description=getNF: tell the desktop the backup failed
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/notify-send --urgency=critical --app-name=getNF "Backup do getNF falhou" "Veja: journalctl --user -u getnf-backup"

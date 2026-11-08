@@ -1,18 +1,18 @@
 # Status and next steps
 
-Last updated 2026-11-07. A handoff for picking the project up again. For *why* things are the way they are, read
+Last updated 2026-11-08. A handoff for picking the project up again. For *why* things are the way they are, read
 `docs/decisions.md` (D1–D150). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
 ## Where it stands
 
-A self-contained Android app, synced to Supabase, with an LLM worker on the PC:
+A self-contained Android app, synced to Supabase, backed up nightly to the PC:
 
 scan QR → the capture assembles the receipt from its printed rows and keeps the fewest photos that read it → SEFAZ page
 in a WebView (the user taps Validar if a challenge shows) → parsed on the phone into lines, products and store items,
 discounts read from the photos → synced to Supabase, inside a caderneta → Jev categorizes new items online → reports
-and the IPCI on the phone → the nightly LLM worker audits and suggests; the user decides on the phone.
+and the IPCI on the phone; the user decides on the phone what Jev wasn't sure of.
 
 | Stage | What | State |
 |---|---|---|
@@ -23,7 +23,7 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 | 5 | Spending reports on the phone | Done (D77) |
 | 6 | PC dashboard | Dropped for now (D79) |
 | 7 | IPCI, the personal inflation index | Done (D79) |
-| 8 | LLM worker on the PC ([stage-8-plan.md](stage-8-plan.md)) | Done (D80) |
+| 8 | LLM worker on the PC ([stage-8-plan.md](stage-8-plan.md)) | Done (D80), suspended (D168) |
 | — | Cadernetas: catalogs shared by several people (D104) | Done, online and on the phone |
 | 9 | Optional sharing and shared curation ([local-and-shared-modes.md](local-and-shared-modes.md)) | Not started |
 | 10 | Analyses across users | Not started |
@@ -42,8 +42,8 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 - **Ajustes (D123):** an index. The account in a card at the top (what an account gives, or who and when it last
   synced), then rows that open their own screens: the open caderneta and Cadernetas, Cópia de segurança, the photo
   switch, privacy. Entrar / Criar conta is its own screen ("Confira seu e-mail" after a sign-up, "Esqueci a senha" by
-  e-mail to `/nova-senha/` on the site); the account screen signs out and deletes. Servidor, Saúde dos dados and
-  Testando a captura are under Desenvolvimento, in debug builds only.
+  e-mail to `/nova-senha/` on the site); the account screen signs out and deletes. Servidor and Testando a captura
+  are under Desenvolvimento, in debug builds only.
 - **After a scan (D99–D101):** "Nota salva" offers the page at once or reminds 3 h later; a receipt waiting for its
   page has its own screen; once fetched, the receipt opens and its photos' discounts are read by themselves.
 - **Photos (D98, D103):** stay on the phone. Copies go online only if the user opts in, and then only for receipts the
@@ -61,8 +61,9 @@ and the IPCI on the phone → the nightly LLM worker audits and suggests; the us
 - **Supabase** (`supabase/`, project in São Paulo): every row belongs to a caderneta, with RLS by membership; a private
   bucket with a folder per caderneta (D71, D104). The real data moved and was verified (D72). The `categorize` Edge
   Function runs Jev on new items every minute: ≥ 0.9 sets the category, below it a suggestion (D74).
-- **PC jobs** (systemd user timers, `tools/systemd/`): backup at 03:30 (`tools/supabase-backup.py`, D73) and the LLM
-  worker at 04:00 (`tools/llm-worker.py` with LM Studio, D80). Check with `systemctl --user list-timers`.
+- **PC jobs** (systemd user timers, `tools/systemd/`): backup at 03:30 (`tools/supabase-backup.py`, D73), retried
+  when it fails and a desktop notification if it gives up (D168). The LLM worker (`tools/llm-worker.py`, D80) is
+  suspended, its timer off (D168). Check with `systemctl --user list-timers`.
 - **Retired:** PocketBase, its dashboard and the server-side JS parser (D73); `server/` was removed 2026-10-29
   (D107). Old plans and comparisons are in [archive/](archive/).
 - **Repo:** public at github.com/SandroRoque/getNF, branch `main`. History was squashed before publishing to remove
@@ -179,8 +180,8 @@ The user:
 - Remove the 93 MB benchmark APK from git history (b821915), which needs a force-push: only with the user's go-ahead.
 
 **After the open store (frozen until then)**
-- System-1 / LLM: the LLM auditing System-1's sizes (D108, D110); then the LLM's new role (a capable model, run
-  rarely, for rules, lexicon and disagreements).
+- System-1 / LLM: whether an LLM comes back, and as what (a capable model, run rarely, for rules, lexicon and
+  disagreements; D108, D168).
 - Going public beyond the closed test (D105): positioning, the final name, the portfolio entry at roqlab.com.br
   ([portfolio-brief.md](portfolio-brief.md); the entry was renamed and refreshed in D151), a short manual. Running costs in [costs.md](costs.md). The site is live
   at https://caderneta.roqlab.com.br (landing page, `/privacidade/`, `/apagar-conta/`; `web/README.md` to redeploy).

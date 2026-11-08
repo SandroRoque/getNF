@@ -11,7 +11,6 @@ prices, not a bill. A dashboard of real costs is wanted later.
 | Jev (TypeSafe) | Categorizes new catalog items (D67, D74) | Per token: US$0.042 per million input tokens (D67) |
 | Open Food Facts | Product names for GTINs, fed to Jev (D68) | Free |
 | SEFAZ portal | The receipt pages | Free, but rate-limited per IP |
-| LLM worker | Nightly audit and suggestions (D80) | The user's PC with LM Studio: electricity only |
 | Backups | `tools/supabase-backup.py` at 03:30 | The user's PC and disk |
 | Google Play | Publishing | US$25 once |
 | Web home | Subdomain of roqlab.com.br on Cloudflare | Free; a `.com.br` of its own is R$40/year at registro.br |
@@ -55,9 +54,8 @@ quotas at every size.
 
 ## What the table doesn't cover
 
-- **The nightly LLM worker doesn't scale.** It runs on the user's PC with a local model, one pass per caderneta. For
-  a few households that's fine; for hundreds it needs either a hosted model (an unknown cost, likely cents per
-  household a month) or to become a per-caderneta opt-in. To decide before opening up.
+- **The nightly LLM worker is suspended (D168).** It didn't scale anyway (the user's PC, a local model, one pass per
+  caderneta). If an LLM comes back, it's a capable hosted one run rarely (D108), with its own cost line here.
 - **Backups depend on the user's PC.** The free tier has no backups of its own; Pro keeps 7 days of daily backups,
   which would back up the PC's copy.
 - **Vendor risk on Jev:** a small hosted API priced in D67; a price change or shutdown means falling back to the LLM

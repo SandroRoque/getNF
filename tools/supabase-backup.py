@@ -73,6 +73,10 @@ def objects(e, prefix=""):
 def dump(e, out_dir):
   stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
   target = os.path.join(out_dir, f"db-{stamp}.dump")
+  # A failed run's partial dump is never read back; drop any left over.
+  for old in os.listdir(out_dir):
+    if old.startswith("db-") and old.endswith(".dump.part"):
+      os.remove(os.path.join(out_dir, old))
   # Tables only, not --schema=public: pg_dump ignores --schema when any --table is given (the first drill caught it).
   subprocess.run(["pg_dump", "--format=custom", "--data-only", "--table=public.*", "--exclude-table=public.taxonomy_*",
                   "--table=auth.users",

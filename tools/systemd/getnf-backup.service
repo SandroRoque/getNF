@@ -2,9 +2,14 @@
 # Install: tools/systemd/install-backup-timer.sh
 [Unit]
 Description=getNF: back up the Supabase project
-Wants=network-online.target
-After=network-online.target
+# network-online.target is a system target a user unit can't wait for: after a boot or wake the catch-up run started
+# before the network and failed on DNS, 4 nights in 7. So it retries instead, and says so on the desktop if it gives up.
+StartLimitIntervalSec=2h
+StartLimitBurst=6
+OnFailure=getnf-backup-failed.service
 
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/python3 %h/Documents/Projects/getNF/tools/supabase-backup.py
+Restart=on-failure
+RestartSec=5min

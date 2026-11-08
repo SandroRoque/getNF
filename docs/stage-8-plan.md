@@ -1,5 +1,7 @@
 # Etapa 8: o LLM como fonte de sugestões
 
+> **Suspensa em 2026-11-08 (D168):** o worker não roda mais; o código e as tabelas ficam.
+
 Plano de 2026-10-25 (D80). Escolhido pelo usuário: as quatro frentes, com o LLM local (LM Studio, modelo Swift) no PC.
 Base: D51 (sugestões com origem e estado de revisão), D57 (o LLM revisa, o Jev atribui), D66 (itens genéricos), D69
 (rotina de limpeza), D74 (Jev no Supabase), D75 (descrições das categorias).

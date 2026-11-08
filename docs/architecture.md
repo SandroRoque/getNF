@@ -16,7 +16,7 @@ flowchart TD
     E <--> F[(Supabase: rows by caderneta, RLS by membership)]
     F --> G[categorize Edge Function: Jev, every minute]
     G --> F
-    H[PC: nightly backup and LLM worker] <--> F
+    H[PC: nightly backup] <--> F
     E --> I[Reports and IPCI on the phone]
 ```
 
@@ -63,8 +63,10 @@ systemd user timers ([tools/systemd](../tools/systemd/)):
 
 - 03:30 [supabase-backup.py](../tools/supabase-backup.py): a dump of the online project (D73); restore drills with
   `supabase-restore-drill.sh`.
-- 04:00 [llm-worker.py](../tools/llm-worker.py): a local LLM (LM Studio) audits categories and suggests links and
-  categories; the user decides on the phone (D80).
+  It retries every 5 minutes when it fails (a catch-up run after a boot starts before the network) and notifies the
+  desktop if it gives up (D168).
+- [llm-worker.py](../tools/llm-worker.py): a local LLM (LM Studio) audited categories and suggested links and sizes
+  (D80). Suspended in D168: the code and tables stay, the timer is off.
 
 Their credentials, and the build's, are in `.env.local` at the repo root (gitignored; a worktree uses the main
 checkout's).

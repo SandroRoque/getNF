@@ -80,7 +80,7 @@ CPFs are covered in uploaded photos (D98).
   bundled libraries; the alternative would be other OCR/barcode libraries.
 - **Purchase history is the sensitive one.** Receipts reveal where and when someone shops. It's optional (the app
   works fully without an account) and never used beyond the app's functions; the listing's description can say so.
-- **The nightly LLM worker** runs on the maintainer's PC with access to every caderneta (D80). Fine to disclose as
-  the operator's own processing; at scale it should move or become opt-in (see `docs/costs.md`).
+- **The nightly LLM worker,** which read every caderneta on the maintainer's PC (D80), is suspended (D168). What
+  stays on the PC is the daily backup, the operator's own processing.
 - If the photo upload's purpose is judged "App functionality" rather than "Analytics" by a reviewer, either is
   defensible; the policy text matches "improving the app".

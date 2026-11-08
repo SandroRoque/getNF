@@ -3,7 +3,7 @@
 set -euo pipefail
 dir=~/.config/systemd/user
 mkdir -p "$dir"
-cp "$(dirname "$0")"/getnf-backup.{service,timer} "$dir"/
+cp "$(dirname "$0")"/getnf-backup.{service,timer} "$(dirname "$0")"/getnf-backup-failed.service "$dir"/
 systemctl --user daemon-reload
 systemctl --user enable --now getnf-backup.timer
 systemctl --user list-timers getnf-backup.timer
