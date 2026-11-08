@@ -257,8 +257,9 @@ screenshots).
 - ~~Declare the account a non-trader in Play Console (D166, due 2027-02-01)~~: done, the user confirmed 2026-11-07.
 - Run `sudo bash tools/setup-system.sh` once (udev rules for the phone, Docker at boot for the local Supabase, adb and
   kvm groups).
-- Back up `~/.config/getnf/` (the upload key, made 2026-10-30) and its password somewhere off this PC: without
-  them the Play app can't be updated.
+- Back up `~/.config/getnf/` (the upload key, made 2026-10-30, its password and `play-api.json`) somewhere off this
+  PC. The user made a backup; to review together (2026-11-07). With Play App Signing a lost upload key can be reset in
+  Play Console (decisions.md, "Release signing"), so losing it costs days of no updates, not the app.
 - The Play app (`br.com.roqlab.caderneta`, created again 2026-10-30, [play-console.md](play-console.md)) was in Internal
   testing: 0.0.1 (code 1, tag `play/1`) and code 2 (shows "1.1", D119–D128, tag `play/2`; D139), published 2026-10-30 22:xx and still reaching the
   phone. Code 3 (0.1.0, tag `play/3`) replaced it on 2026-11-02 ([releases/3.md](releases/3.md)). The user's father is to create an
