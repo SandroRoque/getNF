@@ -89,7 +89,8 @@ Não vão o seu nome, o seu e-mail nem a sua conta. O envio é feito só pelo Wi
 (Supabase, em São Paulo), numa área que só o mantenedor acessa, e é usado só para melhorar a captura e a leitura das
 notas. A cobertura dos dados privados é automática e feita no celular, a partir do texto que ele lê na foto, em
 regime de melhor esforço: o app cobre o que reconhece, e o que ele não reconhece, como um comprovante de cartão de
-formato diferente, pode sair visível. Desligue em Ajustes › Enviar fotos durante
+formato diferente, pode sair visível. O que escapar da cobertura recebe o mesmo tratamento do resto: serve só para
+melhorar a leitura das notas, e não é vendido, compartilhado nem usado para qualquer outro fim. Desligue em Ajustes › Enviar fotos durante
 o teste quando quiser.
 
 ### Caderneta compartilhada
