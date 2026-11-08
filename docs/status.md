@@ -92,6 +92,10 @@ Where things are:
 - The Play Developer API answers (D159, `tools/play.py`); uploads and track changes go through it. Data safety and the
   listing are edited in the console (the built-in browser is signed in to it).
 
+The first contributions arrived 2026-11-07 (one install in RJ, 10 items): RJ pages parse; three tickets came out of
+them. T-5 is fixed on main (D167); T-7 (card slips photographed alone go out only partly blanked) is urgent, privacy;
+T-6 (a short receipt kept as 2-3 identical photos) is for the capture.
+
 Do next, in order:
 1. ~~The phone on code 4~~: code 4 is replaced; its check is folded into code 5's (next item).
 2. **Code 5 (0.1.2, 3cf6610, `play/5`), with D164:** approved on the closed track (2026-11-04), live on internal.
