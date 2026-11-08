@@ -87,8 +87,9 @@ melhorar a leitura das notas. Com ou sem conta, se você aceitar, vão:
 
 Não vão o seu nome, o seu e-mail nem a sua conta. O envio é feito só pelo Wi-Fi. O material fica no servidor
 (Supabase, em São Paulo), numa área que só o mantenedor acessa, e é usado só para melhorar a captura e a leitura das
-notas. A cobertura dos dados privados é automática, feita no celular a partir do texto que ele lê na foto; ela foi
-verificada em fotos reais, mas uma foto mal lida pode deixar algo à mostra. Desligue em Ajustes › Enviar fotos durante
+notas. A cobertura dos dados privados é automática e feita no celular, a partir do texto que ele lê na foto, em
+regime de melhor esforço: o app cobre o que reconhece, e o que ele não reconhece, como um comprovante de cartão de
+formato diferente, pode sair visível. Desligue em Ajustes › Enviar fotos durante
 o teste quando quiser.
 
 ### Caderneta compartilhada
