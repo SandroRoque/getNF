@@ -23,6 +23,23 @@ class SefazPageTest {
   }
 
   @Test
+  fun qrAddressesWithRawPipesAreRecognised() {
+    // The WebView reports the QR address with raw `|`, which java.net.URI refuses (T-5).
+    val sc = "https://sat.sef.sc.gov.br/nfce/consulta?p=42000000000000000000650010000000011000000010|2|1|1|ab12"
+    val rj = "https://consultadfe.fazenda.rj.gov.br/consultaNFCe/QRCode?p=33000000000000000000650010000000011000000010|2|1|3|AB12"
+    assertTrue(SefazPage.isSefaz(sc))
+    assertTrue(SefazPage.isRead(sc))
+    assertTrue(SefazPage.isRead(rj))
+    assertFalse(SefazPage.isSefaz(rj))
+    assertFalse(SefazPage.isRead("https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx?p=43000|2|1|1|AB"))
+    assertEquals("sat.sef.sc.gov.br", SefazPage.hostOf(sc))
+    assertNull(SefazPage.hostOf("not a url|x"))
+    // A subresource with a pipe is judged by its path, not refused.
+    assertTrue(SefazPage.shouldBlock(Kind.Other, "https://sat.sef.sc.gov.br/img/logo.png?v=1|2", null))
+    assertFalse(SefazPage.shouldBlock(Kind.Other, "https://sat.sef.sc.gov.br/js/app.js?v=1|2", "*/*"))
+  }
+
+  @Test
   fun rjsNotFoundIsNoReceipt() {
     assertFalse(SefazPage.hasReceipt("<body><div>Não foi possível realizar a consulta. Por favor, entre em contato.</div></body>"))
     assertTrue(SefazPage.hasReceipt(javaClass.classLoader!!.getResource("rj-qrcode-server-html.html")!!.readText()))

@@ -164,6 +164,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D155 | sefaz | current | Rio de Janeiro's NFC-e: same page markup as SC, its own check runs without the person; no lookup budget for RJ |
 | D159 | release | current | The Play Developer API through a service account: `tools/play.py` reads tracks and testers and sends recorded bundles |
 | D166 | release | current | Play only in Brazil, never the EEA or UK; the account is declared a non-trader |
+| D167 | sefaz | current | QR addresses with a raw `|` are recognised: SC lookups count, RJ is no longer "another state" (T-5) |
 
 ---
 
@@ -4020,3 +4021,17 @@ The user chose not to distribute in the affected region over becoming a trader, 
   out.
 - play-console.md says so where countries are chosen.
 
+
+## D167. QR addresses with a raw `|` are recognised: SC lookups count, RJ is no longer "another state" (2026-11-07)
+
+The first testers' contributions (2026-11-07, one install, RJ receipts) carried an `outro_estado` page beside each RJ
+receipt's `pagina`: RJ's "Carregando..." page, sent as if it were an unread state's portal. The cause is older than
+D161. The WebView reports the QR address with raw `|` in its query (`?p=chave|2|1|1|hash`, as the meta.json shows),
+and `SefazPage` read hosts with `java.net.URI`, which refuses `|`; the failure was swallowed as "no host".
+- **RJ:** `isRead` said no for the QR page, so every RJ visit sent its loading page as another state's (T-5).
+- **SC, since D17:** `isSefaz` said no for the QR request, the one main-frame request a lookup is counted by, so
+  `LookupBudget` counted only Validar postbacks. The warning before a probable block came later than designed, or
+  never. From this build on it counts every opened QR address, so it shows sooner than before.
+- **Fix:** `SefazPage.hostOf` gives only the scheme and authority to `URI`; `shouldBlock` takes the path by string.
+  `SefazPageTest` holds both portals' QR addresses with raw pipes.
+- Not checked live (it would spend lookups): the next real visit's log line shows the count.

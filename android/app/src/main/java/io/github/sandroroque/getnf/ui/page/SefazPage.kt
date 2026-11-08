@@ -47,21 +47,29 @@ object SefazPage {
    * - Never touches non-SEFAZ hosts (Cloudflare's Turnstile).
    */
   fun isSefaz(url: String): Boolean {
-    val host = runCatching { URI(url).host }.getOrNull()?.lowercase() ?: return false
+    val host = hostOf(url) ?: return false
     return host == "sef.sc.gov.br" || host.endsWith(".sef.sc.gov.br")
+  }
+
+  /**
+   * The URL's host, lowercased. The QR Code's address carries raw `|` in its query (`?p=chave|2|1|1|hash`), as the
+   * WebView reports it, and [URI] refuses that character: so only the part before the path goes through it (T-5).
+   */
+  fun hostOf(url: String): String? {
+    val authority = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*://[^/?#]*").find(url)?.value ?: return null
+    return runCatching { URI(authority).host }.getOrNull()?.lowercase()
   }
 
   /** A portal whose receipt page the app reads: SC's and RJ's (D155). Any other is another state's (D161). */
   fun isRead(url: String): Boolean {
-    val host = runCatching { URI(url).host }.getOrNull()?.lowercase() ?: return false
+    val host = hostOf(url) ?: return false
     return isSefaz(url) || host == "fazenda.rj.gov.br" || host.endsWith(".fazenda.rj.gov.br")
   }
 
   fun shouldBlock(pageKind: Kind, url: String, accept: String?): Boolean {
     if (!isSefaz(url)) return false
-    val uri = URI(url)
     if (pageKind == Kind.Details) return true
-    val path = uri.path?.lowercase().orEmpty()
+    val path = url.substringBefore('#').substringBefore('?').lowercase()
     return NOT_NEEDED_ANYWHERE.any { path.endsWith(it) } || accept?.startsWith("image/") == true
   }
 
