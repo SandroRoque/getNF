@@ -19,6 +19,9 @@ data class Blank(val corners: List<Pair<Double, Double>>) {
   }
 }
 
+/** A photo the OCR found no text in: nothing about it can be checked, so no copy of it leaves the phone (T-8). */
+class UnreadablePhoto(name: String) : IllegalStateException("no text read in $name: not uploaded")
+
 /**
  * What a receipt photo shows that shouldn't leave the phone (D98): the card slip (masked card number, the
  * transaction's codes: authorization, NSU, DOC, SiTef, the acquirer), a CPF, and the operator. The phone keeps the
@@ -67,8 +70,13 @@ object SensitiveText {
     val height get() = v1 - v0
   }
 
+  /**
+   * The regions to blank. A photo the OCR read nothing from can't be checked, so it throws [UnreadablePhoto] instead of
+   * answering "nothing to blank": its copy isn't uploaded (D98, T-8). What the OCR reads only partly is blanked as far
+   * as it's recognised, the best effort the privacy policy describes (T-7).
+   */
   fun blanks(text: PhotoText): List<Blank> {
-    if (text.lines.isEmpty()) return emptyList()
+    if (text.lines.isEmpty()) throw UnreadablePhoto(text.photo)
     // The print's direction: the lines' own, from their corners (left to right as read), the median of them.
     val angle = text.printAngle() ?: 0.0
     val ax = cos(angle); val ay = sin(angle); val dx = -ay; val dy = ax

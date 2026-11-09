@@ -4098,3 +4098,18 @@ and tests that fail on purpose. Nothing in the app, the functions or the tools i
   by priority. Privacy and numbers in the build testers have is a reason to cut early (rollout.md › Cutting).
 - The Claude worktree's copy of round 2 is the finished one (it adds R13–R22); the Codex copy was an earlier
   checkpoint, whose four auth-race repro files are kept too.
+
+## D171. A photo the OCR read nothing from isn't uploaded; partial OCR stays best effort (2026-11-09, T-8)
+
+The audit's R2: `SensitiveText.blanks` answered an empty OCR result with "nothing to blank", so `WebpArchiver` sent
+the photo as it was, to the caderneta's photos and to the test's contributions, against D98's "a photo that can't be
+read isn't uploaded" (D98 only covered the OCR failing, not it reading nothing).
+- **Empty OCR throws `UnreadablePhoto`.** The sync leaves that photo for the next run, as with any archive failure
+  (it's read again each sync; such photos are rare and small work), and a contribution drops it, as it drops any
+  photo it can't archive.
+- **Partial OCR is not refused.** The audit's extension (a region the OCR misses entirely stays visible) is the case
+  T-7 settled with the user: the privacy policy says the blanking covers what the app recognises. Refusing or
+  blanking every unread stroke would take away the hard photos the test collects them for (D161). Its repro stays,
+  ignored, as the measure if that changes.
+- Tests: `SensitiveTextTest.aPhotoWithNoTextReadIsNotUploaded` (JVM) and `Round2RedactionTest.emptyOcrMustNotProduceACopy`
+  (on the emulator, through the real archiver).

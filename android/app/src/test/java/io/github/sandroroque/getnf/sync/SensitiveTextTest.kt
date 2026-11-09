@@ -7,6 +7,7 @@ import io.github.sandroroque.getnf.discounts.turnedBy
 import java.io.File
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -70,6 +71,11 @@ class SensitiveTextTest {
 
   @Test fun aReceiptWithoutASlipBlanksNothing() {
     assertEquals(emptyList<Blank>(), SensitiveText.blanks(receipt("01 7891000100103 MACA NAC KG 5,68", "Valor total R$ 5,68", "Forma de pagamento Dinheiro 10,00", "Troco 4,32")))
+  }
+
+  @Test fun aPhotoWithNoTextReadIsNotUploaded() {
+    // Nothing read is nothing checked: no blanks would mean the whole photo goes out as it is (T-8).
+    assertThrows(UnreadablePhoto::class.java) { SensitiveText.blanks(PhotoText("p.jpg", 1000, 2000, emptyList())) }
   }
 
   /** Local only: GETNF_SENSITIVE_DIR = a directory of `*.ocr.json` (real frames); prints what each would blank. */
