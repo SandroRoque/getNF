@@ -4135,3 +4135,26 @@ a send already on its way, or arriving between that read and the delete, landed 
   dropped, never stored. The compat line in releases/server.md says so; it's the safe side of the trade.
 - Tests: `TestContributionTest.aSendInFlightWhenThePersonTurnsItOffDoesNotStay`, `Round3WithdrawalTest` (1,001 photos,
   local Supabase), `contribution_withdrawal.test.sql`, and the function run under Deno against the local stack.
+
+## D173. Receipts waiting to have their lines reconciled are kept in sync_state until done (2026-11-09, T-12)
+
+The audit's R1: D164's reconciliation of removed lines worked from an in-memory set of the receipts a pull brought.
+The cursors were written page by page, so a run that failed during the reconciliation (a network error, the process
+killed) had moved the cursors past those rows and lost the set; the next run's one-minute overlap didn't reach them,
+and a line removed on another phone stayed on this one for good, in every total.
+- Each pulled receipt (from `receipt` or `receipt_line`) is written as `reconcile:<chave>` in sync_state in the same
+  transaction as the cursor that moves past it, and removed in the transaction that reconciles it. A run that stops
+  halfway leaves the rest for the next.
+- sync_state already travels with the database (backups, restores) and holds key/value rows, so no new Room version.
+- Test: `SyncEngineTest.reviewInterruptedReconciliationMustRetryAfterCursorAdvanced` (the audit's, un-ignored).
+
+## D174. A hand-typed discount can't take more than the receipt's discount leaves (2026-11-09, T-14)
+
+The audit's R6: the line sheet allowed any discount up to the line's price, and `CatalogEditor.setDiscount` kept it,
+prorating the rest over zero; the lines' discounts then added up to more than the receipt's, and its total dropped,
+where docs/data-model.md says only the split between categories may change.
+- `Derive.discountRoom`: the receipt's discount minus the other lines' known ones (typed or read from a photo), and no
+  more than the line. The editor refuses more (a message, as other edits do); the sheet shows the limit under the
+  field ("Até R$ …", "A nota não tem desconto", "O desconto da nota já está nas outras linhas") and won't save beyond.
+- Photo-read discounts that together exceed the receipt's are the photo reader's matter, not covered here.
+- Test: `CatalogEditorTest.reviewRound2ManualDiscountMustKeepReceiptTotal`, extended to two hand-typed lines.

@@ -160,7 +160,17 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
       FactRow("Chave", io.github.sandroroque.getnf.data.Chave.pretty(chave))
     }
   }
-  editing?.let { line -> LineSheet(chave, line, onOpenProduct = { editing = null; onOpenProduct(it) }, onDismiss = { editing = null }) }
+  editing?.let { line ->
+    val others = lines.filter { it.lineNo != line.lineNo && (it.discountSource == "photo" || it.discountSource == "manual") }.sumOf { it.discountCents }
+    val total = h?.discountCents ?: 0
+    val room = io.github.sandroroque.getnf.parse.Derive.discountRoom(total, line.grossCents, others)
+    val hint = when {
+      total == 0L -> "A nota não tem desconto"
+      room == 0L -> "O desconto da nota já está nas outras linhas"
+      else -> "Até ${Format.brl(room)}"
+    }
+    LineSheet(chave, line, room, hint, onOpenProduct = { editing = null; onOpenProduct(it) }, onDismiss = { editing = null })
+  }
 }
 
 private fun discountSource(source: String) = when (source) {
@@ -184,7 +194,7 @@ private fun discountMessage(o: PhotoDiscountReader.Outcome): String {
  * photo-read discount confirmed; or, for this line only, another product (a code read wrong, say).
  */
 @Composable
-private fun LineSheet(chave: String, l: LineDetail, onOpenProduct: (String) -> Unit, onDismiss: () -> Unit) {
+private fun LineSheet(chave: String, l: LineDetail, maxDiscount: Long, hint: String, onOpenProduct: (String) -> Unit, onDismiss: () -> Unit) {
   val context = LocalContext.current
   val app = context.applicationContext as GetNFApp
   val edit = rememberEdit()
@@ -197,6 +207,9 @@ private fun LineSheet(chave: String, l: LineDetail, onOpenProduct: (String) -> U
     Sub("${Format.e4(l.qtyE4)} ${l.unit.orEmpty().lowercase()} × ${Format.brl(Math.round(l.unitPriceE4 / 100.0))} na nota · ${Format.brl(l.grossCents)}")
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
       OutlinedTextField(amount, { amount = it }, label = { Text("Desconto (R$)") }, singleLine = true,
+        // The receipt's total doesn't change: a line takes only what the others leave of its discount (T-14).
+        isError = cents != null && cents > maxDiscount,
+        supportingText = { Text(hint) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
       Mark(discountSource(l.discountSource))
     }
@@ -204,7 +217,7 @@ private fun LineSheet(chave: String, l: LineDetail, onOpenProduct: (String) -> U
       if (l.discountSource == "photo" && l.discountReview != "confirmed" && cents == l.discountCents)
         Pill("Confere", ButtonKind.Solid) { edit { app.catalogEditor.confirmDiscount(chave, l.lineNo); done() } }
       if (cents != null && cents != l.discountCents)
-        Pill("Salvar", ButtonKind.Solid, enabled = cents in 0..l.grossCents) { edit { app.catalogEditor.setDiscount(chave, l.lineNo, cents); done() } }
+        Pill("Salvar", ButtonKind.Solid, enabled = cents in 0..maxDiscount) { edit { app.catalogEditor.setDiscount(chave, l.lineNo, cents); done() } }
       if (l.discountSource == "manual" || l.discountSource == "photo")
         Pill("Usar rateio", ButtonKind.Ghost) { edit { app.catalogEditor.prorateAgain(chave, l.lineNo); done() } }
     }

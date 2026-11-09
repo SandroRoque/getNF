@@ -3,8 +3,8 @@ package io.github.sandroroque.getnf.data
 import java.io.File
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import org.junit.Ignore
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -69,13 +69,19 @@ class CatalogEditorTest {
     assertFalse(dao.products().single { it.id == fresh }.deleted)
   }
 
-  @Ignore("T-14: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound2ManualDiscountMustKeepReceiptTotal() = runTest {
+  @Test fun reviewRound2ManualDiscountMustKeepReceiptTotal() = runTest {
     receipt()
     val total = dao.parsed(chave)!!.discountCents!!
     val line = dao.lines(chave).first { it.grossCents > total }
-    // Accepted by the UI: nonnegative and no more than this line's gross.
-    editor.setDiscount(chave, line.lineNo, total + 1)
+    // More than the receipt's discount is refused (T-14); the lines still add up to it.
+    assertThrows(IllegalArgumentException::class.java) { kotlinx.coroutines.runBlocking { editor.setDiscount(chave, line.lineNo, total + 1) } }
     assertEquals("manual distribution must preserve receipt discount", total, dao.lines(chave).sumOf { it.discountCents })
+    // Two lines typed by hand share it: the second can take only what the first left.
+    val (a, b) = dao.lines(chave).take(2)
+    editor.setDiscount(chave, a.lineNo, total - 10)
+    assertThrows(IllegalArgumentException::class.java) { kotlinx.coroutines.runBlocking { editor.setDiscount(chave, b.lineNo, 11) } }
+    editor.setDiscount(chave, b.lineNo, 10)
+    assertEquals(total, dao.lines(chave).sumOf { it.discountCents })
   }
 
   @Test fun aHandTypedDiscountSpreadsTheRestAgain() = runTest {

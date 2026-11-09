@@ -138,4 +138,7 @@ abstract class SyncDao {
 
   @Query("SELECT value FROM sync_state WHERE name = :name") abstract suspend fun state(name: String): String?
   @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putState(row: SyncStateRow)
+  @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putStates(rows: List<SyncStateRow>)
+  @Query("SELECT name FROM sync_state WHERE name LIKE :prefix || '%'") abstract suspend fun stateNames(prefix: String): List<String>
+  @Query("DELETE FROM sync_state WHERE name IN (:names)") abstract suspend fun deleteStates(names: List<String>)
 }

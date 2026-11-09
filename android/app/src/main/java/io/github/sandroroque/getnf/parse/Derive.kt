@@ -91,6 +91,14 @@ object Derive {
   }
 
   /**
+   * The most a discount typed by hand on one line can be (T-14): what the receipt's discount leaves after the other
+   * lines' known ones (read from a photo or typed), and no more than the line. Beyond it the lines' discounts would add
+   * up to more than the receipt's, and its total would change, where only the split between categories may.
+   */
+  fun discountRoom(totalDiscountCents: Long, lineCents: Long, otherKnownCents: Long): Long =
+    minOf(lineCents, maxOf(0, totalDiscountCents - otherKnownCents))
+
+  /**
    * Discount per line, in cents. Lines with a known discount (read from the photo) keep it; the rest of the receipt's
    * discount is prorated over the other lines. [known] maps a line's index to its discount.
    */

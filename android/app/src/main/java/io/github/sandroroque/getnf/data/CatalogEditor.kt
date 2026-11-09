@@ -312,8 +312,16 @@ class CatalogEditor(
 
   // ---- lines ----
 
-  /** A discount typed by hand; the rest of the receipt's discount is spread again over the lines without one. */
+  /**
+   * A discount typed by hand; the rest of the receipt's discount is spread again over the lines without one. More than
+   * [Derive.discountRoom] is refused: the receipt's total stays what it paid (T-14).
+   */
   suspend fun setDiscount(chave: String, lineNo: Int, cents: Long) = write {
+    val lines = dao.lines(chave)
+    val line = lines.single { it.lineNo == lineNo }
+    val others = lines.filter { it.lineNo != lineNo && (it.discountSource == "photo" || it.discountSource == "manual") }.sumOf { it.discountCents }
+    val room = Derive.discountRoom(dao.receiptDiscount(chave) ?: 0, line.grossCents, others)
+    require(cents in 0..room) { "Esse desconto passa do que sobra do desconto da nota." }
     reprorate(chave) { if (it.lineNo == lineNo) it.copy(discountCents = cents, discountSource = "manual", discountReview = REVIEW_CONFIRMED) else it }
   }
 

@@ -459,7 +459,7 @@ class SyncEngineTest {
     assertEquals("restored receipt must exist in destination", 1, destination.rows("receipt").size)
   }
 
-  @Ignore("T-12: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewInterruptedReconciliationMustRetryAfterCursorAdvanced() = runTest {
+  @Test fun reviewInterruptedReconciliationMustRetryAfterCursorAdvanced() = runTest {
     receiptWithPage()
     engine.sync(server)
     server.delete("receipt_line", listOf("chave" to "eq.$chave", "line_no" to "eq.8"))

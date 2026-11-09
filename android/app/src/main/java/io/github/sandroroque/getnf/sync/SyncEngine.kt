@@ -98,12 +98,11 @@ class SyncEngine(
   suspend fun sync(remote: SyncRemote): Report = mutex.withLock {
     val errors = mutableListOf<String>()
     io { remote.rpc("sync_taxonomy", buildJsonObject { put("lid", remote.ledgerId) }) }
-    touched.clear()
     var pulled = pull(remote, listOf(CATEGORY, TAG_TABLE))
     seedBases()
     val (pushed, photos) = push(remote, errors)
     pulled += pull(remote, TABLES)
-    reconcileLines(remote, touched)
+    reconcileLines(remote)
     pullMembers(remote)
     Report(pushed, pulled, photos, errors, storeItemsPushed).also { log("sync: $it") }
   }
@@ -345,18 +344,19 @@ class SyncEngine(
         val rows = io { remote.select(table, filters) }
         if (rows.isEmpty()) break
         apply(remote, table, rows)
-        if (table == LINES || table == RECEIPT) rows.mapTo(touched) { it.string("chave")!! }
         n += rows.size
         last = rows.last()
-        dao.putState(SyncStateRow(cursorName, last.string("updated_at")!!))
+        transaction {
+          // Written with the cursor that moves past them: once it has, the overlap won't bring these rows back (T-12).
+          if (table == LINES || table == RECEIPT) dao.putStates(rows.map { SyncStateRow(RECONCILE + it.string("chave")!!, "") }.distinct())
+          dao.putState(SyncStateRow(cursorName, last.string("updated_at")!!))
+        }
         if (rows.size < PAGE) break
       }
     }
     return n
   }
 
-  /** Receipts whose row or lines this run pulled: the ones whose lines may have been removed elsewhere. */
-  private val touched = mutableSetOf<String>()
 
   /**
    * PostgREST's filter for rows after [row] in the order of [columns]: (a > x) or (a = x and b > y) or ... Values are
@@ -372,12 +372,15 @@ class SyncEngine(
   }
 
   /**
-   * Lines another phone removed (D164). For each receipt in [chaves] that has lines here, the line numbers the server
-   * holds; a line the phone has and the server doesn't goes, unless the phone changed it meanwhile: then it goes up
-   * again next run, so a correction made before the removal arrived isn't lost.
+   * Lines another phone removed (D164). For each receipt whose row or lines a pull brought (kept in sync_state as
+   * `reconcile:<chave>` until done, so a run that stops halfway leaves them for the next, T-12) and that has lines
+   * here, the line numbers the server holds; a line the phone has and the server doesn't goes, unless the phone
+   * changed it meanwhile: then it goes up again next run, so a correction made before the removal arrived isn't lost.
    */
-  private suspend fun reconcileLines(remote: SyncRemote, chaves: Set<String>) {
-    val local = chaves.filter { dao.lineNumbers(it).isNotEmpty() }
+  private suspend fun reconcileLines(remote: SyncRemote) {
+    val pending = dao.stateNames(RECONCILE).map { it.removePrefix(RECONCILE) }
+    val (local, nothingHere) = pending.partition { dao.lineNumbers(it).isNotEmpty() }
+    nothingHere.chunked(500).forEach { chunk -> dao.deleteStates(chunk.map { RECONCILE + it }) }
     for (chunk in local.chunked(50)) {
       val onServer = mutableSetOf<Pair<String, Int>>()
       var last: JsonObject? = null
@@ -398,6 +401,7 @@ class SyncEngine(
         for (chave in chunk) for (no in dao.lineNumbers(chave)) {
           if ((chave to no) !in onServer && dao.line(chave, no)?.dirty == false) dao.deleteLine(chave, no)
         }
+        dao.deleteStates(chunk.map { RECONCILE + it })
       }
     }
   }
@@ -682,5 +686,7 @@ class SyncEngine(
       "product_tag" to listOf("product_id", "tag_id"), LINES to LINE_KEY).withDefault { listOf("id") }
     internal const val PAGE = 1000
     private const val OVERLAP_SECONDS = 60L
+    /** sync_state's prefix for a receipt whose lines wait to be reconciled. */
+    private const val RECONCILE = "reconcile:"
   }
 }
