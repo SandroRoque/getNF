@@ -1,0 +1,4 @@
+withdraw: 200 {"message":"removed 1000"}
+remaining Storage folders: 1
+remaining database rows: 0
+Expected: zero folders and rows

@@ -1,0 +1,6 @@
+After UI logout, before release: account present = True
+Traceback (most recent call last):
+  File "/home/roque/.codex/worktrees/7007/getNF/docs/review-repros/round2/run_auth_race.py", line 18, in <module>
+    assert not before,'UI logout did not complete'
+           ^^^^^^^^^^
+AssertionError: UI logout did not complete

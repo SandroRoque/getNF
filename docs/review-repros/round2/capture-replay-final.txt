@@ -1,0 +1,53 @@
+Reusing configuration cache.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:generateDebugResources
+> Task :app:extractDeepLinksDebug
+> Task :app:generateDebugBuildConfig
+> Task :app:mapDebugSourceSetPaths
+> Task :app:processDebugNavigationResources
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:checkDebugAarMetadata
+> Task :app:compileDebugNavigationResources
+> Task :app:javaPreCompileDebug
+> Task :app:packageDebugResources
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:generateDebugRFile
+> Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
+> Task :app:mergeDebugResources
+> Task :app:processDebugResources
+> Task :app:kspDebugKotlin
+> Task :app:compileDebugKotlin
+w: file:///home/roque/.codex/worktrees/7007/getNF/android/app/src/main/java/io/github/sandroroque/getnf/discounts/PhotoReceiptReader.kt:187:50 Unnecessary non-null assertion (!!) on a non-null receiver of type 'PhotoReceiptReader.Item'.
+w: file:///home/roque/.codex/worktrees/7007/getNF/android/app/src/main/java/io/github/sandroroque/getnf/discounts/PhotoReceiptReader.kt:187:65 Unnecessary non-null assertion (!!) on a non-null receiver of type 'PhotoReceiptReader.Item'.
+w: file:///home/roque/.codex/worktrees/7007/getNF/android/app/src/main/java/io/github/sandroroque/getnf/sync/SyncEngine.kt:342:51 Unnecessary non-null assertion (!!) on a non-null receiver of type 'JsonObject'.
+w: file:///home/roque/.codex/worktrees/7007/getNF/android/app/src/main/java/io/github/sandroroque/getnf/ui/receipt/ReceiptScreen.kt:307:16 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///home/roque/.codex/worktrees/7007/getNF/android/app/src/main/java/io/github/sandroroque/getnf/ui/spending/SpendingScreen.kt:133:60 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+
+> Task :app:processDebugJavaRes
+> Task :app:compileDebugJavaWithJavac
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:kspDebugUnitTestKotlin
+
+> Task :app:compileDebugUnitTestKotlin
+w: file:///home/roque/.codex/worktrees/7007/getNF/android/app/src/test/java/io/github/sandroroque/getnf/demo/DemoCaderneta.kt:165:16 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'File?'.
+w: file:///home/roque/.codex/worktrees/7007/getNF/android/app/src/test/java/io/github/sandroroque/getnf/discounts/PhotoReaderBenchTest.kt:51:74 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///home/roque/.codex/worktrees/7007/getNF/android/app/src/test/java/io/github/sandroroque/getnf/discounts/PhotoReaderBenchTest.kt:51:98 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///home/roque/.codex/worktrees/7007/getNF/android/app/src/test/java/io/github/sandroroque/getnf/sync/SensitiveTextTest.kt:82:21 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'File?'.
+w: file:///home/roque/.codex/worktrees/7007/getNF/android/app/src/test/java/io/github/sandroroque/getnf/sync/SensitiveTextTest.kt:90:81 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'File?'.
+w: file:///home/roque/.codex/worktrees/7007/getNF/android/app/src/test/java/io/github/sandroroque/getnf/sync/SensitiveTextTest.kt:112:61 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'File?'.
+w: file:///home/roque/.codex/worktrees/7007/getNF/android/app/src/test/java/io/github/sandroroque/getnf/ui/scan/CaptureBenchTest.kt:71:36 Java type mismatch: inferred type is 'File?', but 'File' was expected.
+
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:copyRoomSchemas NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+> Task :app:testDebugUnitTest
+
+BUILD SUCCESSFUL in 53s
+28 actionable tasks: 28 executed
+Configuration cache entry reused.

@@ -1,0 +1,39 @@
+PASS outsider rename_ledger ['name'] leaves state unchanged
+PASS outsider set_role ['uid', 'role'] leaves state unchanged
+PASS outsider create_invite ['role'] leaves state unchanged
+PASS outsider remove_member ['uid'] leaves state unchanged
+PASS outsider delete_ledger [] leaves state unchanged
+PASS outsider leave_ledger [] leaves state unchanged
+PASS outsider set_display_name ['name'] leaves state unchanged
+PASS outsider sync_taxonomy [] leaves state unchanged
+PASS outsider claim_fetch ['chave'] leaves state unchanged
+PASS outsider release_fetch ['chave'] leaves state unchanged
+PASS member rename_ledger ['name'] leaves state unchanged
+PASS member set_role ['uid', 'role'] leaves state unchanged
+PASS member set_role ['uid', 'role'] leaves state unchanged
+PASS member create_invite ['role'] leaves state unchanged
+PASS member remove_member ['uid'] leaves state unchanged
+PASS member delete_ledger [] leaves state unchanged
+PASS manager set_role ['uid', 'role'] leaves state unchanged
+PASS manager set_role ['uid', 'role'] leaves state unchanged
+PASS manager remove_member ['uid'] leaves state unchanged
+PASS manager delete_ledger [] leaves state unchanged
+   manager rename_ledger: HTTP 204, ledger name now 'by manager'
+PASS manager rename_ledger ['name'] leaves state unchanged
+PASS owner(LB)+member(LA) cannot move a category into LA (manager-only there)
+   HTTP 403
+   INFO moving a receipt LA->LB by a member of both: HTTP 200 moved
+   INFO moving an issuer LA->LB by a member of both: HTTP 204 moved
+PASS reference product -> category of B refused (HTTP 409)
+PASS reference store_item -> product of B refused (HTTP 409)
+PASS reference product_tag -> tag of B refused (HTTP 409)
+PASS reference receipt_line -> store_item of B refused (HTTP 409)
+PASS reference receipt_line -> receipt of B refused (HTTP 400)
+PASS reference receipt_photo -> receipt of B refused (HTTP 409)
+PASS reference receipt_scan -> receipt of B refused (HTTP 409)
+PASS reference link_suggestion -> store_item/product of B refused (HTTP 409)
+PASS outsider write into B prefix refused
+PASS manager of A (not in B) cannot read B object
+PASS owner of B can read its object
+   INFO move of a receipt with a photo LA->LB: HTTP 409 | receipt in B: False | photo rows ledger: ['A'] | page_path still under LA prefix: False
+TOTAL 33 FAILED 0

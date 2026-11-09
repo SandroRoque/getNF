@@ -1,0 +1,19 @@
+
+io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest:
+Error in theControlsAndTheExplanationWorkInBothOrientations(io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest):
+java.lang.AssertionError: Assert failed: The component with Text + InputText + EditableText contains 'Aponte para a nota' (ignoreCase: false) is not displayed!
+	at androidx.compose.ui.test.AssertionsKt.assertIsDisplayed(Assertions.kt:34)
+	at io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest.theControlsAndTheExplanationWorkInBothOrientations(CaptureLifecycleTest.kt:25)
+.
+
+Time: 10.509
+There was 1 failure:
+1) theControlsAndTheExplanationWorkInBothOrientations(io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest)
+java.lang.AssertionError: Assert failed: The component with Text + InputText + EditableText contains 'Aponte para a nota' (ignoreCase: false) is not displayed!
+	at androidx.compose.ui.test.AssertionsKt.assertIsDisplayed(Assertions.kt:34)
+	at io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest.theControlsAndTheExplanationWorkInBothOrientations(CaptureLifecycleTest.kt:25)
+
+FAILURES!!!
+Tests run: 2,  Failures: 1
+
+

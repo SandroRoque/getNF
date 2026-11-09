@@ -1,0 +1,5 @@
+PASS real mirror and separate-bucket restore: objects= 14
+PASS byte hashes match for every mirrored object
+PASS unchanged second mirror downloads zero objects
+LIMIT: explicit test restore utility; no production disaster recovery orchestration, auth refresh tokens or point-in-time snapshot tested
+PASS cleanup: temporary destination bucket and source fixture removed

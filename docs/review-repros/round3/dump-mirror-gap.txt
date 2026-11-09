@@ -1,0 +1,4 @@
+step 1 dump taken: contains the photo row = True
+step 2 online: file and row deleted
+step 3 mirror ran: file present in the mirror = False
+RESULT: dump row references a file the mirror does not have: True; restoring this pair yields a photo row with no file

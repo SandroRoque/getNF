@@ -1,0 +1,10 @@
+upload A: 200 {"message":"ok"}
+withdraw holds at Storage delete (rows were already read: only A)
+upload B while withdraw is in flight: 200 {"message":"ok"}
+withdraw answer: 200 {"message":"removed 1"}
+database rows afterwards: 0
+Storage objects afterwards: ['b6a12f22-81f3-4c17-872a-b3c4a9e71811/meta.json']
+second withdraw: 200 {"message":"removed 0"}
+Storage objects after second withdraw: ['b6a12f22-81f3-4c17-872a-b3c4a9e71811/meta.json']
+RESULT: orphan object with no row
+cleanup objects left: 0

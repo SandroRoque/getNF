@@ -1,0 +1,324 @@
+{
+  "totals": {
+    "tests": 219,
+    "skipped": 11,
+    "failures": 0,
+    "errors": 0
+  },
+  "suites": [
+    {
+      "suite": "io.github.sandroroque.getnf.data.BackupTest",
+      "tests": 8,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.CaptureSessionStoreTest",
+      "tests": 8,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.CatalogEditorTest",
+      "tests": 12,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.ChaveTest",
+      "tests": 8,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.CrashLogTest",
+      "tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.ExportReparseTest",
+      "tests": 1,
+      "skipped": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": [
+        "phoneParseMatchesTheServersLines"
+      ]
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.FeedbackOutboxTest",
+      "tests": 4,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.IpciTest",
+      "tests": 5,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.LookupBudgetTest",
+      "tests": 4,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.PhotoContributionTest",
+      "tests": 4,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.PhotoDiscountReaderTest",
+      "tests": 5,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.PhotoReadTest",
+      "tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.ProductLookupTest",
+      "tests": 9,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.ReceiptParserTest",
+      "tests": 11,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.ReceiptStoreTest",
+      "tests": 11,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.SpendingTest",
+      "tests": 8,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.SyncProblemsTest",
+      "tests": 2,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.data.TestContributionTest",
+      "tests": 7,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.demo.DemoCaderneta",
+      "tests": 1,
+      "skipped": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": [
+        "write"
+      ]
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.discounts.PhotoDiscountsEvalTest",
+      "tests": 1,
+      "skipped": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": [
+        "realReceipts"
+      ]
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.discounts.PhotoDiscountsTest",
+      "tests": 13,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.discounts.PhotoReaderBenchTest",
+      "tests": 1,
+      "skipped": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": [
+        "bench"
+      ]
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.discounts.PhotoReceiptReaderTest",
+      "tests": 4,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.parse.BuyerRedactionTest",
+      "tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.parse.DeriveTest",
+      "tests": 5,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.parse.NfcePageTest",
+      "tests": 9,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.parse.NfceParityTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.sync.SensitiveTextTest",
+      "tests": 7,
+      "skipped": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": [
+        "realFramesLeaks",
+        "realFrames"
+      ]
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.sync.SupabaseLocalTest",
+      "tests": 4,
+      "skipped": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": [
+        "pagesPastAThousandRowsAndEditsOfDifferentFieldsMerge",
+        "twoPeopleInOneCadernetaReadTheSameReceiptOfflineWithoutDuplicates",
+        "aReceiptGoesUpFromOnePhoneAndDownToAnother",
+        "turningPhotosOffTakesBackYourOwnAndLeavesOthers"
+      ]
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.sync.SyncEngineTest",
+      "tests": 17,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.ui.FormatTest",
+      "tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.ui.page.SefazPageTest",
+      "tests": 5,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.ui.scan.AttemptGuardTest",
+      "tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.ui.scan.CameraModeTest",
+      "tests": 10,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.ui.scan.CaptureBenchTest",
+      "tests": 1,
+      "skipped": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": [
+        "bench"
+      ]
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.ui.scan.PaperFinderTest",
+      "tests": 7,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    },
+    {
+      "suite": "io.github.sandroroque.getnf.ui.scan.RowAssemblyTest",
+      "tests": 11,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped_cases": []
+    }
+  ]
+}

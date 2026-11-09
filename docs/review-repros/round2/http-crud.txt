@@ -1,0 +1,541 @@
+PASS owner audit_log INSERT
+PASS owner audit_log SELECT
+PASS owner audit_log UPDATE effect
+PASS owner audit_log DELETE effect
+PASS owner barcode_lookup INSERT
+PASS owner barcode_lookup SELECT
+PASS owner barcode_lookup UPDATE effect
+PASS owner barcode_lookup DELETE effect
+PASS owner categorize_job INSERT
+PASS owner categorize_job SELECT
+PASS owner categorize_job UPDATE effect
+PASS owner categorize_job DELETE effect
+PASS owner category INSERT
+PASS owner category SELECT
+PASS owner category UPDATE effect
+PASS owner category DELETE effect
+PASS owner category_event INSERT
+PASS owner category_event SELECT
+PASS owner category_event UPDATE effect
+PASS owner category_event DELETE effect
+PASS owner category_rule INSERT
+PASS owner category_rule SELECT
+PASS owner category_rule UPDATE effect
+PASS owner category_rule DELETE effect
+PASS owner contribution_file INSERT
+PASS owner contribution_file SELECT
+PASS owner contribution_file UPDATE effect
+PASS owner contribution_file DELETE effect
+PASS owner feedback INSERT
+PASS owner feedback SELECT
+PASS owner feedback UPDATE effect
+PASS owner feedback DELETE effect
+PASS owner issuer INSERT
+PASS owner issuer SELECT
+PASS owner issuer UPDATE effect
+PASS owner issuer DELETE effect
+PASS owner ledger INSERT
+PASS owner ledger SELECT
+PASS owner ledger UPDATE effect
+PASS owner ledger DELETE effect
+PASS owner ledger_event INSERT
+PASS owner ledger_event SELECT
+PASS owner ledger_event UPDATE effect
+PASS owner ledger_event DELETE effect
+PASS owner ledger_invite INSERT
+PASS owner ledger_invite SELECT
+PASS owner ledger_invite UPDATE effect
+PASS owner ledger_invite DELETE effect
+PASS owner ledger_member INSERT
+PASS owner ledger_member SELECT
+PASS owner ledger_member UPDATE effect
+PASS owner ledger_member DELETE effect
+PASS owner lexicon INSERT
+PASS owner lexicon SELECT
+PASS owner lexicon UPDATE effect
+PASS owner lexicon DELETE effect
+PASS owner link_suggestion INSERT
+PASS owner link_suggestion SELECT
+PASS owner link_suggestion UPDATE effect
+PASS owner link_suggestion DELETE effect
+PASS owner product INSERT
+PASS owner product SELECT
+PASS owner product UPDATE effect
+PASS owner product DELETE effect
+PASS owner product_tag INSERT
+PASS owner product_tag SELECT
+PASS owner product_tag UPDATE effect
+PASS owner product_tag DELETE effect
+PASS owner receipt INSERT
+PASS owner receipt SELECT
+PASS owner receipt UPDATE effect
+PASS owner receipt DELETE effect
+PASS owner receipt_line INSERT
+PASS owner receipt_line SELECT
+PASS owner receipt_line UPDATE effect
+PASS owner receipt_line DELETE effect
+PASS owner receipt_photo INSERT
+PASS owner receipt_photo SELECT
+PASS owner receipt_photo UPDATE effect
+PASS owner receipt_photo DELETE effect
+PASS owner receipt_scan INSERT
+PASS owner receipt_scan SELECT
+PASS owner receipt_scan UPDATE effect
+PASS owner receipt_scan DELETE effect
+PASS owner store_item INSERT
+PASS owner store_item SELECT
+PASS owner store_item UPDATE effect
+PASS owner store_item DELETE effect
+PASS owner tag INSERT
+PASS owner tag SELECT
+PASS owner tag UPDATE effect
+PASS owner tag DELETE effect
+PASS owner taxonomy_node INSERT
+PASS owner taxonomy_node SELECT
+PASS owner taxonomy_node UPDATE effect
+PASS owner taxonomy_node DELETE effect
+PASS owner taxonomy_tag INSERT
+PASS owner taxonomy_tag SELECT
+PASS owner taxonomy_tag UPDATE effect
+PASS owner taxonomy_tag DELETE effect
+PASS owner ticket INSERT
+PASS owner ticket SELECT
+PASS owner ticket UPDATE effect
+PASS owner ticket DELETE effect
+PASS owner worker_report INSERT
+PASS owner worker_report SELECT
+PASS owner worker_report UPDATE effect
+PASS owner worker_report DELETE effect
+PASS manager audit_log INSERT
+PASS manager audit_log SELECT
+PASS manager audit_log UPDATE effect
+PASS manager audit_log DELETE effect
+PASS manager barcode_lookup INSERT
+PASS manager barcode_lookup SELECT
+PASS manager barcode_lookup UPDATE effect
+PASS manager barcode_lookup DELETE effect
+PASS manager categorize_job INSERT
+PASS manager categorize_job SELECT
+PASS manager categorize_job UPDATE effect
+PASS manager categorize_job DELETE effect
+PASS manager category INSERT
+PASS manager category SELECT
+PASS manager category UPDATE effect
+PASS manager category DELETE effect
+PASS manager category_event INSERT
+PASS manager category_event SELECT
+PASS manager category_event UPDATE effect
+PASS manager category_event DELETE effect
+PASS manager category_rule INSERT
+PASS manager category_rule SELECT
+PASS manager category_rule UPDATE effect
+PASS manager category_rule DELETE effect
+PASS manager contribution_file INSERT
+PASS manager contribution_file SELECT
+PASS manager contribution_file UPDATE effect
+PASS manager contribution_file DELETE effect
+PASS manager feedback INSERT
+PASS manager feedback SELECT
+PASS manager feedback UPDATE effect
+PASS manager feedback DELETE effect
+PASS manager issuer INSERT
+PASS manager issuer SELECT
+PASS manager issuer UPDATE effect
+PASS manager issuer DELETE effect
+PASS manager ledger INSERT
+PASS manager ledger SELECT
+PASS manager ledger UPDATE effect
+PASS manager ledger DELETE effect
+PASS manager ledger_event INSERT
+PASS manager ledger_event SELECT
+PASS manager ledger_event UPDATE effect
+PASS manager ledger_event DELETE effect
+PASS manager ledger_invite INSERT
+PASS manager ledger_invite SELECT
+PASS manager ledger_invite UPDATE effect
+PASS manager ledger_invite DELETE effect
+PASS manager ledger_member INSERT
+PASS manager ledger_member SELECT
+PASS manager ledger_member UPDATE effect
+PASS manager ledger_member DELETE effect
+PASS manager lexicon INSERT
+PASS manager lexicon SELECT
+PASS manager lexicon UPDATE effect
+PASS manager lexicon DELETE effect
+PASS manager link_suggestion INSERT
+PASS manager link_suggestion SELECT
+PASS manager link_suggestion UPDATE effect
+PASS manager link_suggestion DELETE effect
+PASS manager product INSERT
+PASS manager product SELECT
+PASS manager product UPDATE effect
+PASS manager product DELETE effect
+PASS manager product_tag INSERT
+PASS manager product_tag SELECT
+PASS manager product_tag UPDATE effect
+PASS manager product_tag DELETE effect
+PASS manager receipt INSERT
+PASS manager receipt SELECT
+PASS manager receipt UPDATE effect
+PASS manager receipt DELETE effect
+PASS manager receipt_line INSERT
+PASS manager receipt_line SELECT
+PASS manager receipt_line UPDATE effect
+PASS manager receipt_line DELETE effect
+PASS manager receipt_photo INSERT
+PASS manager receipt_photo SELECT
+PASS manager receipt_photo UPDATE effect
+PASS manager receipt_photo DELETE effect
+PASS manager receipt_scan INSERT
+PASS manager receipt_scan SELECT
+PASS manager receipt_scan UPDATE effect
+PASS manager receipt_scan DELETE effect
+PASS manager store_item INSERT
+PASS manager store_item SELECT
+PASS manager store_item UPDATE effect
+PASS manager store_item DELETE effect
+PASS manager tag INSERT
+PASS manager tag SELECT
+PASS manager tag UPDATE effect
+PASS manager tag DELETE effect
+PASS manager taxonomy_node INSERT
+PASS manager taxonomy_node SELECT
+PASS manager taxonomy_node UPDATE effect
+PASS manager taxonomy_node DELETE effect
+PASS manager taxonomy_tag INSERT
+PASS manager taxonomy_tag SELECT
+PASS manager taxonomy_tag UPDATE effect
+PASS manager taxonomy_tag DELETE effect
+PASS manager ticket INSERT
+PASS manager ticket SELECT
+PASS manager ticket UPDATE effect
+PASS manager ticket DELETE effect
+PASS manager worker_report INSERT
+PASS manager worker_report SELECT
+PASS manager worker_report UPDATE effect
+PASS manager worker_report DELETE effect
+PASS member audit_log INSERT
+PASS member audit_log SELECT
+PASS member audit_log UPDATE effect
+PASS member audit_log DELETE effect
+PASS member barcode_lookup INSERT
+PASS member barcode_lookup SELECT
+PASS member barcode_lookup UPDATE effect
+PASS member barcode_lookup DELETE effect
+PASS member categorize_job INSERT
+PASS member categorize_job SELECT
+PASS member categorize_job UPDATE effect
+PASS member categorize_job DELETE effect
+PASS member category INSERT
+PASS member category SELECT
+PASS member category UPDATE effect
+PASS member category DELETE effect
+PASS member category_event INSERT
+PASS member category_event SELECT
+PASS member category_event UPDATE effect
+PASS member category_event DELETE effect
+PASS member category_rule INSERT
+PASS member category_rule SELECT
+PASS member category_rule UPDATE effect
+PASS member category_rule DELETE effect
+PASS member contribution_file INSERT
+PASS member contribution_file SELECT
+PASS member contribution_file UPDATE effect
+PASS member contribution_file DELETE effect
+PASS member feedback INSERT
+PASS member feedback SELECT
+PASS member feedback UPDATE effect
+PASS member feedback DELETE effect
+PASS member issuer INSERT
+PASS member issuer SELECT
+PASS member issuer UPDATE effect
+PASS member issuer DELETE effect
+PASS member ledger INSERT
+PASS member ledger SELECT
+PASS member ledger UPDATE effect
+PASS member ledger DELETE effect
+PASS member ledger_event INSERT
+PASS member ledger_event SELECT
+PASS member ledger_event UPDATE effect
+PASS member ledger_event DELETE effect
+PASS member ledger_invite INSERT
+PASS member ledger_invite SELECT
+PASS member ledger_invite UPDATE effect
+PASS member ledger_invite DELETE effect
+PASS member ledger_member INSERT
+PASS member ledger_member SELECT
+PASS member ledger_member UPDATE effect
+PASS member ledger_member DELETE effect
+PASS member lexicon INSERT
+PASS member lexicon SELECT
+PASS member lexicon UPDATE effect
+PASS member lexicon DELETE effect
+PASS member link_suggestion INSERT
+PASS member link_suggestion SELECT
+PASS member link_suggestion UPDATE effect
+PASS member link_suggestion DELETE effect
+PASS member product INSERT
+PASS member product SELECT
+PASS member product UPDATE effect
+PASS member product DELETE effect
+PASS member product_tag INSERT
+PASS member product_tag SELECT
+PASS member product_tag UPDATE effect
+PASS member product_tag DELETE effect
+PASS member receipt INSERT
+PASS member receipt SELECT
+PASS member receipt UPDATE effect
+PASS member receipt DELETE effect
+PASS member receipt_line INSERT
+PASS member receipt_line SELECT
+PASS member receipt_line UPDATE effect
+PASS member receipt_line DELETE effect
+PASS member receipt_photo INSERT
+PASS member receipt_photo SELECT
+PASS member receipt_photo UPDATE effect
+PASS member receipt_photo DELETE effect
+PASS member receipt_scan INSERT
+PASS member receipt_scan SELECT
+PASS member receipt_scan UPDATE effect
+PASS member receipt_scan DELETE effect
+PASS member store_item INSERT
+PASS member store_item SELECT
+PASS member store_item UPDATE effect
+PASS member store_item DELETE effect
+PASS member tag INSERT
+PASS member tag SELECT
+PASS member tag UPDATE effect
+PASS member tag DELETE effect
+PASS member taxonomy_node INSERT
+PASS member taxonomy_node SELECT
+PASS member taxonomy_node UPDATE effect
+PASS member taxonomy_node DELETE effect
+PASS member taxonomy_tag INSERT
+PASS member taxonomy_tag SELECT
+PASS member taxonomy_tag UPDATE effect
+PASS member taxonomy_tag DELETE effect
+PASS member ticket INSERT
+PASS member ticket SELECT
+PASS member ticket UPDATE effect
+PASS member ticket DELETE effect
+PASS member worker_report INSERT
+PASS member worker_report SELECT
+PASS member worker_report UPDATE effect
+PASS member worker_report DELETE effect
+PASS stranger audit_log INSERT
+PASS stranger audit_log SELECT
+PASS stranger audit_log UPDATE effect
+PASS stranger audit_log DELETE effect
+PASS stranger barcode_lookup INSERT
+PASS stranger barcode_lookup SELECT
+PASS stranger barcode_lookup UPDATE effect
+PASS stranger barcode_lookup DELETE effect
+PASS stranger categorize_job INSERT
+PASS stranger categorize_job SELECT
+PASS stranger categorize_job UPDATE effect
+PASS stranger categorize_job DELETE effect
+PASS stranger category INSERT
+PASS stranger category SELECT
+PASS stranger category UPDATE effect
+PASS stranger category DELETE effect
+PASS stranger category_event INSERT
+PASS stranger category_event SELECT
+PASS stranger category_event UPDATE effect
+PASS stranger category_event DELETE effect
+PASS stranger category_rule INSERT
+PASS stranger category_rule SELECT
+PASS stranger category_rule UPDATE effect
+PASS stranger category_rule DELETE effect
+PASS stranger contribution_file INSERT
+PASS stranger contribution_file SELECT
+PASS stranger contribution_file UPDATE effect
+PASS stranger contribution_file DELETE effect
+PASS stranger feedback INSERT
+PASS stranger feedback SELECT
+PASS stranger feedback UPDATE effect
+PASS stranger feedback DELETE effect
+PASS stranger issuer INSERT
+PASS stranger issuer SELECT
+PASS stranger issuer UPDATE effect
+PASS stranger issuer DELETE effect
+PASS stranger ledger INSERT
+PASS stranger ledger SELECT
+PASS stranger ledger UPDATE effect
+PASS stranger ledger DELETE effect
+PASS stranger ledger_event INSERT
+PASS stranger ledger_event SELECT
+PASS stranger ledger_event UPDATE effect
+PASS stranger ledger_event DELETE effect
+PASS stranger ledger_invite INSERT
+PASS stranger ledger_invite SELECT
+PASS stranger ledger_invite UPDATE effect
+PASS stranger ledger_invite DELETE effect
+PASS stranger ledger_member INSERT
+PASS stranger ledger_member SELECT
+PASS stranger ledger_member UPDATE effect
+PASS stranger ledger_member DELETE effect
+PASS stranger lexicon INSERT
+PASS stranger lexicon SELECT
+PASS stranger lexicon UPDATE effect
+PASS stranger lexicon DELETE effect
+PASS stranger link_suggestion INSERT
+PASS stranger link_suggestion SELECT
+PASS stranger link_suggestion UPDATE effect
+PASS stranger link_suggestion DELETE effect
+PASS stranger product INSERT
+PASS stranger product SELECT
+PASS stranger product UPDATE effect
+PASS stranger product DELETE effect
+PASS stranger product_tag INSERT
+PASS stranger product_tag SELECT
+PASS stranger product_tag UPDATE effect
+PASS stranger product_tag DELETE effect
+PASS stranger receipt INSERT
+PASS stranger receipt SELECT
+PASS stranger receipt UPDATE effect
+PASS stranger receipt DELETE effect
+PASS stranger receipt_line INSERT
+PASS stranger receipt_line SELECT
+PASS stranger receipt_line UPDATE effect
+PASS stranger receipt_line DELETE effect
+PASS stranger receipt_photo INSERT
+PASS stranger receipt_photo SELECT
+PASS stranger receipt_photo UPDATE effect
+PASS stranger receipt_photo DELETE effect
+PASS stranger receipt_scan INSERT
+PASS stranger receipt_scan SELECT
+PASS stranger receipt_scan UPDATE effect
+PASS stranger receipt_scan DELETE effect
+PASS stranger store_item INSERT
+PASS stranger store_item SELECT
+PASS stranger store_item UPDATE effect
+PASS stranger store_item DELETE effect
+PASS stranger tag INSERT
+PASS stranger tag SELECT
+PASS stranger tag UPDATE effect
+PASS stranger tag DELETE effect
+PASS stranger taxonomy_node INSERT
+PASS stranger taxonomy_node SELECT
+PASS stranger taxonomy_node UPDATE effect
+PASS stranger taxonomy_node DELETE effect
+PASS stranger taxonomy_tag INSERT
+PASS stranger taxonomy_tag SELECT
+PASS stranger taxonomy_tag UPDATE effect
+PASS stranger taxonomy_tag DELETE effect
+PASS stranger ticket INSERT
+PASS stranger ticket SELECT
+PASS stranger ticket UPDATE effect
+PASS stranger ticket DELETE effect
+PASS stranger worker_report INSERT
+PASS stranger worker_report SELECT
+PASS stranger worker_report UPDATE effect
+PASS stranger worker_report DELETE effect
+PASS former audit_log INSERT
+PASS former audit_log SELECT
+PASS former audit_log UPDATE effect
+PASS former audit_log DELETE effect
+PASS former barcode_lookup INSERT
+PASS former barcode_lookup SELECT
+PASS former barcode_lookup UPDATE effect
+PASS former barcode_lookup DELETE effect
+PASS former categorize_job INSERT
+PASS former categorize_job SELECT
+PASS former categorize_job UPDATE effect
+PASS former categorize_job DELETE effect
+PASS former category INSERT
+PASS former category SELECT
+PASS former category UPDATE effect
+PASS former category DELETE effect
+PASS former category_event INSERT
+PASS former category_event SELECT
+PASS former category_event UPDATE effect
+PASS former category_event DELETE effect
+PASS former category_rule INSERT
+PASS former category_rule SELECT
+PASS former category_rule UPDATE effect
+PASS former category_rule DELETE effect
+PASS former contribution_file INSERT
+PASS former contribution_file SELECT
+PASS former contribution_file UPDATE effect
+PASS former contribution_file DELETE effect
+PASS former feedback INSERT
+PASS former feedback SELECT
+PASS former feedback UPDATE effect
+PASS former feedback DELETE effect
+PASS former issuer INSERT
+PASS former issuer SELECT
+PASS former issuer UPDATE effect
+PASS former issuer DELETE effect
+PASS former ledger INSERT
+PASS former ledger SELECT
+PASS former ledger UPDATE effect
+PASS former ledger DELETE effect
+PASS former ledger_event INSERT
+PASS former ledger_event SELECT
+PASS former ledger_event UPDATE effect
+PASS former ledger_event DELETE effect
+PASS former ledger_invite INSERT
+PASS former ledger_invite SELECT
+PASS former ledger_invite UPDATE effect
+PASS former ledger_invite DELETE effect
+PASS former ledger_member INSERT
+PASS former ledger_member SELECT
+PASS former ledger_member UPDATE effect
+PASS former ledger_member DELETE effect
+PASS former lexicon INSERT
+PASS former lexicon SELECT
+PASS former lexicon UPDATE effect
+PASS former lexicon DELETE effect
+PASS former link_suggestion INSERT
+PASS former link_suggestion SELECT
+PASS former link_suggestion UPDATE effect
+PASS former link_suggestion DELETE effect
+PASS former product INSERT
+PASS former product SELECT
+PASS former product UPDATE effect
+PASS former product DELETE effect
+PASS former product_tag INSERT
+PASS former product_tag SELECT
+PASS former product_tag UPDATE effect
+PASS former product_tag DELETE effect
+PASS former receipt INSERT
+PASS former receipt SELECT
+PASS former receipt UPDATE effect
+PASS former receipt DELETE effect
+PASS former receipt_line INSERT
+PASS former receipt_line SELECT
+PASS former receipt_line UPDATE effect
+PASS former receipt_line DELETE effect
+PASS former receipt_photo INSERT
+PASS former receipt_photo SELECT
+PASS former receipt_photo UPDATE effect
+PASS former receipt_photo DELETE effect
+PASS former receipt_scan INSERT
+PASS former receipt_scan SELECT
+PASS former receipt_scan UPDATE effect
+PASS former receipt_scan DELETE effect
+PASS former store_item INSERT
+PASS former store_item SELECT
+PASS former store_item UPDATE effect
+PASS former store_item DELETE effect
+PASS former tag INSERT
+PASS former tag SELECT
+PASS former tag UPDATE effect
+PASS former tag DELETE effect
+PASS former taxonomy_node INSERT
+PASS former taxonomy_node SELECT
+PASS former taxonomy_node UPDATE effect
+PASS former taxonomy_node DELETE effect
+PASS former taxonomy_tag INSERT
+PASS former taxonomy_tag SELECT
+PASS former taxonomy_tag UPDATE effect
+PASS former taxonomy_tag DELETE effect
+PASS former ticket INSERT
+PASS former ticket SELECT
+PASS former ticket UPDATE effect
+PASS former ticket DELETE effect
+PASS former worker_report INSERT
+PASS former worker_report SELECT
+PASS former worker_report UPDATE effect
+PASS former worker_report DELETE effect
+TOTAL 540 FAILED 0

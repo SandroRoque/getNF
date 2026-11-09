@@ -1,0 +1,4 @@
+run 1 starts: loaded here=True, model loaded=True
+run 2 starts while run 1 is working: loaded here=False, model loaded=True
+run 1 finishes: model still loaded for run 2 = False
+lms calls: ps; load; ps; unload

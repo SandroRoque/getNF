@@ -1,0 +1,4 @@
+receipts with a page in the database: 1100; rows returned by the script's listing request: 1000
+of the 1000 returned, 990 are this ledger's (the listing is unordered and capped, the rest of the 110 were never seen)
+a receipt row whose page object is missing -> HTTP 400 (Storage answers 400 NoSuchKey); the script retries only >=500 and does not catch it, so one such row ends the run with a traceback before later pages are checked
+cleanup receipts left: 0

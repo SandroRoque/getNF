@@ -1,0 +1,31 @@
+PYTHON_SYNTAX_OK tools/blank-buyers.py
+PYTHON_SYNTAX_OK tools/build-web.py
+PYTHON_SYNTAX_OK tools/capture-timing.py
+PYTHON_SYNTAX_OK tools/categorize-eval.py
+PYTHON_SYNTAX_OK tools/contributions.py
+PYTHON_SYNTAX_OK tools/llm-worker.py
+PYTHON_SYNTAX_OK tools/load-lexicon.py
+PYTHON_SYNTAX_OK tools/make-icons.py
+PYTHON_SYNTAX_OK tools/make-nfce-fixture.py
+PYTHON_SYNTAX_OK tools/play.py
+PYTHON_SYNTAX_OK tools/release.py
+PYTHON_SYNTAX_OK tools/supabase-backup.py
+PYTHON_SYNTAX_OK tools/taxonomy-sql.py
+PYTHON_SYNTAX_OK tools/tickets.py
+BASH_SYNTAX 0 tools/capture-bench.sh
+BASH_SYNTAX 0 tools/check.sh
+BASH_SYNTAX 0 tools/device-bench.sh
+BASH_SYNTAX 0 tools/doctor.sh
+BASH_SYNTAX 0 tools/emulator.sh
+BASH_SYNTAX 0 tools/env.sh
+BASH_SYNTAX 0 tools/harden-local-stack.sh
+BASH_SYNTAX 0 tools/local-stack-check.sh
+BASH_SYNTAX 0 tools/make-upload-key.sh
+BASH_SYNTAX 0 tools/pull-capture-dumps.sh
+BASH_SYNTAX 0 tools/setup-play-api.sh
+BASH_SYNTAX 0 tools/setup-system.sh
+BASH_SYNTAX 0 tools/supabase-restore-drill.sh
+BASH_SYNTAX 0 tools/systemd/install-backup-timer.sh
+BASH_SYNTAX 0 tools/systemd/install-llm-worker-timer.sh
+HISTORY_BLOBS_SCANNED 2220
+SECRET_CANDIDATES 0

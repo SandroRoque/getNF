@@ -1,0 +1,32 @@
+[
+    {
+        "session": "capture-diagnostic",
+        "split": "dev",
+        "receipt": "?",
+        "key": "none",
+        "frames": 4,
+        "completed": false,
+        "seconds": null,
+        "photos": 0,
+        "items": 0,
+        "legible": 0,
+        "falseCompletion": false,
+        "missing": [],
+        "fidelity": "matches live"
+    },
+    {
+        "session": "capture-success",
+        "split": "dev",
+        "receipt": "?",
+        "key": "none",
+        "frames": 1,
+        "completed": true,
+        "seconds": 0.0,
+        "photos": 1,
+        "items": 0,
+        "legible": 0,
+        "falseCompletion": false,
+        "missing": [],
+        "fidelity": "matches live"
+    }
+]

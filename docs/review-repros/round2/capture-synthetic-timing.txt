@@ -1,0 +1,108 @@
+--------- beginning of main
+11-05 14:57:29.431  4255  4450 D ReceiptCapture: frame f11: session 17 ms
+11-05 14:57:30.376  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=1215, copy=3, gray=19, ocr=961, scan=203, done=962)
+11-05 14:57:30.405  4255  4450 D ReceiptCapture: frame f12: session 28 ms
+11-05 14:57:31.237  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=962, copy=4, gray=13, ocr=860, scan=204, done=860)
+11-05 14:57:31.266  4255  4450 D ReceiptCapture: frame f13: session 28 ms
+11-05 14:57:32.084  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=861, copy=2, gray=14, ocr=845, scan=194, done=845)
+11-05 14:57:32.101  4255  4450 D ReceiptCapture: frame f14: session 17 ms
+11-05 14:57:32.914  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=845, copy=1, gray=15, ocr=829, scan=146, done=830)
+11-05 14:57:32.960  4255  4450 D ReceiptCapture: frame f15: session 45 ms
+11-05 14:57:33.741  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=830, copy=1, gray=14, ocr=822, scan=226, done=826)
+11-05 14:57:33.785  4255  4450 D ReceiptCapture: frame f16: session 38 ms
+11-05 14:57:34.606  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=827, copy=2, gray=23, ocr=856, scan=301, done=864)
+11-05 14:57:34.638  4255  4450 D ReceiptCapture: frame f17: session 28 ms
+11-05 14:57:35.521  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=864, copy=1, gray=17, ocr=914, scan=236, done=914)
+11-05 14:57:35.538  4255  4450 D ReceiptCapture: frame f18: session 16 ms
+11-05 14:57:36.293  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=915, copy=2, gray=15, ocr=769, scan=197, done=772)
+11-05 14:57:36.316  4255  4450 D ReceiptCapture: frame f19: session 22 ms
+11-05 14:57:37.148  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=772, copy=1, gray=20, ocr=853, scan=213, done=853)
+11-05 14:57:37.171  4255  4450 D ReceiptCapture: frame f20: session 22 ms
+11-05 14:57:37.972  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=859, copy=1, gray=10, ocr=810, scan=209, done=818)
+11-05 14:57:37.990  4255  4450 D ReceiptCapture: frame f21: session 17 ms
+11-05 14:57:38.752  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=818, copy=2, gray=24, ocr=779, scan=178, done=779)
+11-05 14:57:38.775  4255  4450 D ReceiptCapture: frame f22: session 22 ms
+11-05 14:57:39.590  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=779, copy=0, gray=16, ocr=835, scan=230, done=837)
+11-05 14:57:39.618  4255  4450 D ReceiptCapture: frame f23: session 27 ms
+11-05 14:57:40.528  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=839, copy=1, gray=21, ocr=936, scan=213, done=936)
+11-05 14:57:40.544  4255  4450 D ReceiptCapture: frame f24: session 15 ms
+11-05 14:57:41.372  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=937, copy=1, gray=8, ocr=834, scan=181, done=843)
+11-05 14:57:41.401  4255  4450 D ReceiptCapture: frame f25: session 28 ms
+11-05 14:57:42.239  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=843, copy=1, gray=22, ocr=861, scan=234, done=866)
+11-05 14:57:42.261  4255  4450 D ReceiptCapture: frame f26: session 21 ms
+11-05 14:57:43.016  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=866, copy=1, gray=11, ocr=776, scan=147, done=776)
+11-05 14:57:43.047  4255  4450 D ReceiptCapture: frame f27: session 30 ms
+11-05 14:57:43.829  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=776, copy=0, gray=7, ocr=811, scan=156, done=812)
+11-05 14:57:43.878  4255  4450 D ReceiptCapture: frame f28: session 49 ms
+11-05 14:57:44.639  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=814, copy=1, gray=16, ocr=800, scan=203, done=808)
+11-05 14:57:44.661  4255  4450 D ReceiptCapture: frame f29: session 22 ms
+11-05 14:57:45.373  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=811, copy=0, gray=9, ocr=722, scan=184, done=730)
+11-05 14:57:45.391  4255  4450 D ReceiptCapture: frame f30: session 18 ms
+11-05 14:57:46.110  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=731, copy=1, gray=11, ocr=735, scan=186, done=736)
+11-05 14:57:46.128  4255  4450 D ReceiptCapture: frame f31: session 17 ms
+11-05 14:57:46.873  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=736, copy=1, gray=22, ocr=762, scan=170, done=763)
+11-05 14:57:46.910  4255  4450 D ReceiptCapture: frame f32: session 35 ms
+11-05 14:57:47.614  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=763, copy=1, gray=23, ocr=740, scan=150, done=741)
+11-05 14:57:47.640  4255  4450 D ReceiptCapture: frame f33: session 25 ms
+11-05 14:57:48.372  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=741, copy=1, gray=9, ocr=754, scan=192, done=757)
+11-05 14:57:48.400  4255  4450 D ReceiptCapture: frame f34: session 28 ms
+11-05 14:57:49.216  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=757, copy=1, gray=19, ocr=843, scan=214, done=843)
+11-05 14:57:49.252  4255  4450 D ReceiptCapture: frame f35: session 36 ms
+11-05 14:57:49.983  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=844, copy=0, gray=14, ocr=766, scan=155, done=766)
+11-05 14:57:50.010  4255  4450 D ReceiptCapture: frame f36: session 26 ms
+11-05 14:57:50.879  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=766, copy=0, gray=11, ocr=895, scan=238, done=895)
+11-05 14:57:50.895  4255  4450 D ReceiptCapture: frame f37: session 16 ms
+11-05 14:57:51.613  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=897, copy=1, gray=7, ocr=732, scan=168, done=732)
+11-05 14:57:51.638  4255  4450 D ReceiptCapture: frame f38: session 19 ms
+11-05 14:57:52.406  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=736, copy=0, gray=8, ocr=780, scan=209, done=788)
+11-05 14:57:52.434  4255  4450 D ReceiptCapture: frame f39: session 28 ms
+11-05 14:57:53.239  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=788, copy=1, gray=10, ocr=825, scan=199, done=832)
+11-05 14:57:53.254  4255  4450 D ReceiptCapture: frame f40: session 14 ms
+11-05 14:57:54.039  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=832, copy=1, gray=28, ocr=799, scan=207, done=799)
+11-05 14:57:54.056  4255  4450 D ReceiptCapture: frame f41: session 17 ms
+11-05 14:57:54.872  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=799, copy=0, gray=11, ocr=822, scan=216, done=833)
+11-05 14:57:54.915  4255  4450 D ReceiptCapture: frame f42: session 43 ms
+11-05 14:57:55.739  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=833, copy=1, gray=10, ocr=863, scan=232, done=866)
+11-05 14:57:55.768  4255  4450 D ReceiptCapture: frame f43: session 29 ms
+11-05 14:57:56.551  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=866, copy=1, gray=11, ocr=810, scan=219, done=811)
+11-05 14:57:56.593  4255  4450 D ReceiptCapture: frame f44: session 39 ms
+11-05 14:57:57.439  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=811, copy=0, gray=36, ocr=879, scan=158, done=888)
+11-05 14:57:57.492  4255  4450 D ReceiptCapture: frame f45: session 53 ms
+11-05 14:57:58.228  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=891, copy=1, gray=21, ocr=783, scan=250, done=785)
+11-05 14:57:58.266  4255  4450 D ReceiptCapture: frame f46: session 37 ms
+11-05 14:57:59.006  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=786, copy=0, gray=8, ocr=776, scan=183, done=776)
+11-05 14:57:59.033  4255  4450 D ReceiptCapture: frame f47: session 27 ms
+11-05 14:57:59.910  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=776, copy=0, gray=14, ocr=903, scan=185, done=904)
+11-05 14:57:59.936  4255  4450 D ReceiptCapture: frame f48: session 25 ms
+11-05 14:58:00.773  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=904, copy=1, gray=16, ocr=862, scan=263, done=862)
+11-05 14:58:00.816  4255  4450 D ReceiptCapture: frame f49: session 41 ms
+11-05 14:58:01.577  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=862, copy=0, gray=24, ocr=803, scan=212, done=804)
+11-05 14:58:01.591  4255  4450 D ReceiptCapture: frame f50: session 13 ms
+11-05 14:58:02.339  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=804, copy=0, gray=11, ocr=761, scan=164, done=761)
+11-05 14:58:02.370  4255  4450 D ReceiptCapture: frame f51: session 31 ms
+11-05 14:58:03.185  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=765, copy=1, gray=22, ocr=842, scan=196, done=842)
+11-05 14:58:03.201  4255  4450 D ReceiptCapture: frame f52: session 15 ms
+11-05 14:58:03.906  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=842, copy=0, gray=15, ocr=719, scan=157, done=720)
+11-05 14:58:03.930  4255  4450 D ReceiptCapture: frame f53: session 24 ms
+11-05 14:58:04.712  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=720, copy=1, gray=10, ocr=806, scan=215, done=806)
+11-05 14:58:04.731  4255  4450 D ReceiptCapture: frame f54: session 17 ms
+11-05 14:58:05.525  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=807, copy=1, gray=18, ocr=811, scan=148, done=811)
+11-05 14:58:05.545  4255  4450 D ReceiptCapture: frame f55: session 20 ms
+11-05 14:58:06.312  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=812, copy=1, gray=9, ocr=786, scan=224, done=786)
+11-05 14:58:06.327  4255  4450 D ReceiptCapture: frame f56: session 15 ms
+11-05 14:58:07.105  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=786, copy=1, gray=14, ocr=782, scan=205, done=793)
+11-05 14:58:07.137  4255  4450 D ReceiptCapture: frame f57: session 27 ms
+11-05 14:58:08.026  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=793, copy=1, gray=13, ocr=919, scan=266, done=920)
+11-05 14:58:08.061  4255  4450 D ReceiptCapture: frame f58: session 35 ms
+11-05 14:58:08.772  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=921, copy=2, gray=9, ocr=735, scan=192, done=745)
+11-05 14:58:08.802  4255  4450 D ReceiptCapture: frame f59: session 29 ms
+11-05 14:58:09.539  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=745, copy=1, gray=12, ocr=764, scan=245, done=766)
+11-05 14:58:09.581  4255  4450 D ReceiptCapture: frame f60: session 41 ms
+11-05 14:58:10.376  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=766, copy=1, gray=13, ocr=836, scan=241, done=837)
+11-05 14:58:10.400  4255  4450 D ReceiptCapture: frame f61: session 23 ms
+11-05 14:58:11.218  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=837, copy=0, gray=27, ocr=839, scan=228, done=841)
+11-05 14:58:11.238  4255  4450 D ReceiptCapture: frame f62: session 19 ms
+11-05 14:58:11.987  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=842, copy=1, gray=10, ocr=766, scan=173, done=767)
+11-05 14:58:12.007  4255  4450 D ReceiptCapture: frame f63: session 20 ms
+11-05 14:58:12.763  4255  4410 D ReceiptCapture: frame: FrameTiming(sinceLast=767, copy=1, gray=11, ocr=775, scan=218, done=776)
+11-05 14:58:12.800  4255  4450 D ReceiptCapture: frame f64: session 36 ms

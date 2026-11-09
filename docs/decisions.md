@@ -4081,3 +4081,20 @@ fell back to the newest `closed` manifest (code 3), and `tools/release.py pendin
 - Code 5 is `closed` from 2026-11-04, recorded as a new line under its Play events; old lines aren't rewritten.
 - Code 3 becomes `replaced` from code 4's approval (2026-11-03); code 4 stays `replaced`. Code 6, in review, becomes
   `closed` once approved, and code 5 `replaced`.
+
+## D170. The 2026-11-04 audit lands as tickets T-8–T-26; its repros stay as ignored tests until each fix (2026-11-09)
+
+An outside review (Codex, 2026-11-04 to 11-06, on 749a325) was left uncommitted in a worktree: two reports,
+`docs/review-2026-11-04.md` and `docs/review-2026-11-04-round2.md` (findings R1–R22), the repros under
+`docs/review-repros/` (synthetic data only, a disposable local stack, no secrets: keys were read from a temp file),
+and tests that fail on purpose. Nothing in the app, the functions or the tools it points at had changed since.
+- **Tickets, one per fix rather than one per finding:** R2 → T-8; R4 → T-9; R11 and R15 → T-10; R14 → T-11; R1 →
+  T-12; R5 → T-13; R6 → T-14 (urgent: privacy, or numbers testers see); R3 → T-15; R7 → T-16; R9 → T-17; R10 → T-18;
+  R12 → T-19; R13 → T-20; R17 → T-21; R18 → T-22; R19 → T-23; R20 → T-24; R22 → T-25; R8, R16 and R21 → T-26 (the
+  LLM worker, suspended by D168: fix before switching it back on).
+- **The failing repros are `@Ignore("T-n: …")`**, so main and CI stay green and each fix un-ignores its own test as
+  the regression test. The repros that need the disposable stack still skip without `GETNF_SUPABASE_LOCAL`.
+- **Order, agreed with the user:** privacy first (T-8, T-9, T-10, T-11), then numbers (T-12, T-13, T-14); the rest
+  by priority. Privacy and numbers in the build testers have is a reason to cut early (rollout.md › Cutting).
+- The Claude worktree's copy of round 2 is the finished one (it adds R13–R22); the Codex copy was an earlier
+  checkpoint, whose four auth-race repro files are kept too.

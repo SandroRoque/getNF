@@ -1,0 +1,191 @@
+=== reviewRound3SignOutWhileTheWorkerRefreshesMustStaySignedOut
+
+io.github.sandroroque.getnf.sync.Round3AccountSwitchTest:
+Error in reviewRound3SignOutWhileTheWorkerRefreshesMustStaySignedOut(io.github.sandroroque.getnf.sync.Round3AccountSwitchTest):
+java.lang.AssertionError: a refresh already in flight must not sign the person back in expected null, but was:<Account(userId=e66bdb71-a1da-42f1-9bb3-914b51744128, email=<email>, refreshToken=bktuvsfv5zqr, name=)>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotNull(Assert.java:756)
+	at org.junit.Assert.assertNull(Assert.java:738)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest.reviewRound3SignOutWhileTheWorkerRefreshesMustStaySignedOut(Round3AccountSwitchTest.kt:64)
+
+
+Time: 13.313
+There was 1 failure:
+1) reviewRound3SignOutWhileTheWorkerRefreshesMustStaySignedOut(io.github.sandroroque.getnf.sync.Round3AccountSwitchTest)
+java.lang.AssertionError: a refresh already in flight must not sign the person back in expected null, but was:<Account(userId=e66bdb71-a1da-42f1-9bb3-914b51744128, email=<email>, refreshToken=bktuvsfv5zqr, name=)>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotNull(Assert.java:756)
+	at org.junit.Assert.assertNull(Assert.java:738)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest.reviewRound3SignOutWhileTheWorkerRefreshesMustStaySignedOut(Round3AccountSwitchTest.kt:64)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+
+=== reviewRound3SignOutMidSyncMustStopSendingTheirData
+
+io.github.sandroroque.getnf.sync.Round3AccountSwitchTest:
+Error in reviewRound3SignOutMidSyncMustStopSendingTheirData(io.github.sandroroque.getnf.sync.Round3AccountSwitchTest):
+java.lang.AssertionError: signing out must stop the run before it sends the person's receipts expected:<0> but was:<1>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest$reviewRound3SignOutMidSyncMustStopSendingTheirData$1.invokeSuspend(Round3AccountSwitchTest.kt:81)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest.reviewRound3SignOutMidSyncMustStopSendingTheirData(Round3AccountSwitchTest.kt:67)
+
+
+Time: 33.471
+There was 1 failure:
+1) reviewRound3SignOutMidSyncMustStopSendingTheirData(io.github.sandroroque.getnf.sync.Round3AccountSwitchTest)
+java.lang.AssertionError: signing out must stop the run before it sends the person's receipts expected:<0> but was:<1>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest$reviewRound3SignOutMidSyncMustStopSendingTheirData$1.invokeSuspend(Round3AccountSwitchTest.kt:81)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest.reviewRound3SignOutMidSyncMustStopSendingTheirData(Round3AccountSwitchTest.kt:67)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+
+=== reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt
+
+io.github.sandroroque.getnf.sync.Round3AccountSwitchTest:
+Error in reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt(io.github.sandroroque.getnf.sync.Round3AccountSwitchTest):
+java.util.NoSuchElementException: Collection contains no element matching the predicate.
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest$reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt$1.invokeSuspend(Round3AccountSwitchTest.kt:105)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest.reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt(Round3AccountSwitchTest.kt:84)
+
+
+Time: 2.046
+There was 1 failure:
+1) reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt(io.github.sandroroque.getnf.sync.Round3AccountSwitchTest)
+java.util.NoSuchElementException: Collection contains no element matching the predicate.
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest$reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt$1.invokeSuspend(Round3AccountSwitchTest.kt:105)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest.reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt(Round3AccountSwitchTest.kt:84)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+
+=== reviewRound3SignOutMidSyncMustStopSendingTheirData
+
+io.github.sandroroque.getnf.sync.Round3AccountSwitchTest:
+Error in reviewRound3SignOutMidSyncMustStopSendingTheirData(io.github.sandroroque.getnf.sync.Round3AccountSwitchTest):
+java.lang.AssertionError: signing out must stop the run before it sends the person's receipts expected:<0> but was:<1>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest$reviewRound3SignOutMidSyncMustStopSendingTheirData$1.invokeSuspend(Round3AccountSwitchTest.kt:83)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest.reviewRound3SignOutMidSyncMustStopSendingTheirData(Round3AccountSwitchTest.kt:67)
+
+
+Time: 33.227
+There was 1 failure:
+1) reviewRound3SignOutMidSyncMustStopSendingTheirData(io.github.sandroroque.getnf.sync.Round3AccountSwitchTest)
+java.lang.AssertionError: signing out must stop the run before it sends the person's receipts expected:<0> but was:<1>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest$reviewRound3SignOutMidSyncMustStopSendingTheirData$1.invokeSuspend(Round3AccountSwitchTest.kt:83)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest.reviewRound3SignOutMidSyncMustStopSendingTheirData(Round3AccountSwitchTest.kt:67)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+
+=== reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt
+
+io.github.sandroroque.getnf.sync.Round3AccountSwitchTest:
+Error in reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt(io.github.sandroroque.getnf.sync.Round3AccountSwitchTest):
+java.lang.AssertionError: the old database must never be pushed into the caderneta opened after it expected:<0> but was:<1>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest$reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt$1.invokeSuspend(Round3AccountSwitchTest.kt:103)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest.reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt(Round3AccountSwitchTest.kt:86)
+
+
+Time: 25.494
+There was 1 failure:
+1) reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt(io.github.sandroroque.getnf.sync.Round3AccountSwitchTest)
+java.lang.AssertionError: the old database must never be pushed into the caderneta opened after it expected:<0> but was:<1>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest$reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt$1.invokeSuspend(Round3AccountSwitchTest.kt:103)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.sync.Round3AccountSwitchTest.reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt(Round3AccountSwitchTest.kt:86)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+

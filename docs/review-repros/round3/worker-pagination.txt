@@ -1,0 +1,2 @@
+rows that exist: 2500; rows the worker received: 2500; distinct: 1729; duplicated: 771; missing: 771
+cleanup: ledger rows left 0, issuers left 0

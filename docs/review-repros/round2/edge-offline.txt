@@ -1,0 +1,4 @@
+PASS categorize missing secret rejected before DB
+PASS categorize incorrect secret rejected
+PASS categorize empty queue makes no external model request
+PASS contribute method/identifier/path validation before DB

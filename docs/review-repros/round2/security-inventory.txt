@@ -1,0 +1,93 @@
+     tablename     | rowsecurity 
+-------------------+-------------
+ audit_log         | t
+ barcode_lookup    | t
+ categorize_job    | t
+ category          | t
+ category_event    | t
+ category_rule     | t
+ contribution_file | t
+ feedback          | t
+ issuer            | t
+ ledger            | t
+ ledger_event      | t
+ ledger_invite     | t
+ ledger_member     | t
+ lexicon           | t
+ link_suggestion   | t
+ product           | t
+ product_tag       | t
+ receipt           | t
+ receipt_line      | t
+ receipt_photo     | t
+ receipt_scan      | t
+ store_item        | t
+ tag               | t
+ taxonomy_node     | t
+ taxonomy_tag      | t
+ ticket            | t
+ worker_report     | t
+(27 rows)
+
+        proname        |                                                                                                          args                                                                                                           | anon_execute | authenticated_execute |      proconfig       
+-----------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+-----------------------+----------------------
+ apply_categorization  | lid uuid, item uuid, product uuid, category uuid, confidence real, model text, threshold real                                                                                                                           | f            | f                     | {"search_path=\"\""}
+ apply_reading         | lid uuid, item uuid, product uuid, sold_by text, sold_by_source text, sold_by_confidence real, size_asked boolean, size_e6 bigint, size_unit text, pack_count integer, size_confidence real, model text, threshold real | f            | f                     | {"search_path=\"\""}
+ claim_categorize_jobs | batch integer                                                                                                                                                                                                           | f            | f                     | {"search_path=\"\""}
+ claim_fetch           | lid uuid, chave text                                                                                                                                                                                                    | f            | t                     | {"search_path=\"\""}
+ create_invite         | lid uuid, role ledger_role                                                                                                                                                                                              | f            | t                     | {"search_path=\"\""}
+ create_ledger         | name text                                                                                                                                                                                                               | f            | t                     | {"search_path=\"\""}
+ default_display_name  | uid uuid                                                                                                                                                                                                                | f            | f                     | {"search_path=\"\""}
+ delete_ledger         | lid uuid                                                                                                                                                                                                                | f            | t                     | {"search_path=\"\""}
+ delete_me             |                                                                                                                                                                                                                         | f            | t                     | {"search_path=\"\""}
+ drop_member           | lid uuid, uid uuid, op text                                                                                                                                                                                             | f            | f                     | {"search_path=\"\""}
+ fail_categorize_job   | lid uuid, item uuid, error text                                                                                                                                                                                         | f            | f                     | {"search_path=\"\""}
+ feedback_limits       |                                                                                                                                                                                                                         | f            | f                     | {"search_path=\"\""}
+ join_ledger           | code text                                                                                                                                                                                                               | f            | t                     | {"search_path=\"\""}
+ kick_categorize       |                                                                                                                                                                                                                         | f            | f                     | {"search_path=\"\""}
+ leave_ledger          | lid uuid                                                                                                                                                                                                                | f            | t                     | {"search_path=\"\""}
+ ledgers_to_hand_over  |                                                                                                                                                                                                                         | f            | t                     | {"search_path=\"\""}
+ log_ledger            | lid uuid, op text, payload jsonb                                                                                                                                                                                        | f            | f                     | {"search_path=\"\""}
+ my_ledgers            |                                                                                                                                                                                                                         | f            | t                     | {"search_path=\"\""}
+ my_managed_ledgers    |                                                                                                                                                                                                                         | f            | t                     | {"search_path=\"\""}
+ my_role               | lid uuid                                                                                                                                                                                                                | f            | t                     | {"search_path=\"\""}
+ queue_categorize      |                                                                                                                                                                                                                         | f            | f                     | {"search_path=\"\""}
+ release_fetch         | lid uuid, chave text                                                                                                                                                                                                    | f            | t                     | {"search_path=\"\""}
+ remove_member         | lid uuid, uid uuid                                                                                                                                                                                                      | f            | t                     | {"search_path=\"\""}
+ rename_ledger         | lid uuid, name text                                                                                                                                                                                                     | f            | t                     | {"search_path=\"\""}
+ seed_new_user         |                                                                                                                                                                                                                         | t            | t                     | {"search_path=\"\""}
+ set_display_name      | lid uuid, name text                                                                                                                                                                                                     | f            | t                     | {"search_path=\"\""}
+ set_role              | lid uuid, uid uuid, role ledger_role                                                                                                                                                                                    | f            | t                     | {"search_path=\"\""}
+ sync_taxonomy         | lid uuid                                                                                                                                                                                                                | f            | t                     | {"search_path=\"\""}
+ sync_taxonomy_for     | lid uuid                                                                                                                                                                                                                | f            | f                     | {"search_path=\"\""}
+(29 rows)
+
+ schemaname |    tablename    |   policyname   |        roles         |  cmd   |                                              qual                                               |                                                   with_check                                                    
+------------+-----------------+----------------+----------------------+--------+-------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------
+ public     | category        | managers_edit  | {authenticated}      | ALL    | (ledger_id IN ( SELECT my_managed_ledgers() AS my_managed_ledgers))                             | (ledger_id IN ( SELECT my_managed_ledgers() AS my_managed_ledgers))
+ public     | category        | members_read   | {authenticated}      | SELECT | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | 
+ public     | category_event  | managers_log   | {authenticated}      | INSERT |                                                                                                 | ((ledger_id IN ( SELECT my_managed_ledgers() AS my_managed_ledgers)) AND (actor = ( SELECT auth.uid() AS uid)))
+ public     | category_event  | members_read   | {authenticated}      | SELECT | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | 
+ public     | feedback        | anyone_reports | {anon,authenticated} | INSERT |                                                                                                 | true
+ public     | issuer          | members        | {authenticated}      | ALL    | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | ledger          | members_read   | {authenticated}      | SELECT | (id IN ( SELECT my_ledgers() AS my_ledgers))                                                    | 
+ public     | ledger_event    | members_read   | {authenticated}      | SELECT | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | 
+ public     | ledger_invite   | managers_read  | {authenticated}      | SELECT | (ledger_id IN ( SELECT my_managed_ledgers() AS my_managed_ledgers))                             | 
+ public     | ledger_member   | members_read   | {authenticated}      | SELECT | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | 
+ public     | link_suggestion | members        | {authenticated}      | ALL    | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | product         | members        | {authenticated}      | ALL    | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | product_tag     | members        | {authenticated}      | ALL    | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | receipt         | members        | {authenticated}      | ALL    | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | receipt_line    | members        | {authenticated}      | ALL    | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | receipt_photo   | members        | {authenticated}      | ALL    | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | receipt_scan    | members        | {authenticated}      | ALL    | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | store_item      | members        | {authenticated}      | ALL    | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | tag             | members        | {authenticated}      | ALL    | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | taxonomy_node   | read_seed      | {authenticated}      | SELECT | true                                                                                            | 
+ public     | taxonomy_tag    | read_seed      | {authenticated}      | SELECT | true                                                                                            | 
+ public     | worker_report   | members_read   | {authenticated}      | SELECT | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | 
+ storage    | objects         | member_folder  | {authenticated}      | ALL    | ((bucket_id = 'receipts'::text) AND ((storage.foldername(name))[1] IN ( SELECT (l.l)::text AS l+| ((bucket_id = 'receipts'::text) AND ((storage.foldername(name))[1] IN ( SELECT (l.l)::text AS l                +
+            |                 |                |                      |        |    FROM my_ledgers() l(l))))                                                                    |    FROM my_ledgers() l(l))))
+ storage    | objects         | own_uploads    | {authenticated}      | DELETE | ((bucket_id = 'receipts'::text) AND (owner_id = (( SELECT auth.uid() AS uid))::text))           | 
+(24 rows)
+

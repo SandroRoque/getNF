@@ -1,0 +1,82 @@
+
+io.github.sandroroque.getnf.data.BackupServiceTest:
+Error in reviewRound2RestoredArchiveMustSendReceiptToNewLedger(io.github.sandroroque.getnf.data.BackupServiceTest):
+java.lang.AssertionError: restored archive must send its receipt to the destination expected:<1> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at io.github.sandroroque.getnf.data.BackupServiceTest$reviewRound2RestoredArchiveMustSendReceiptToNewLedger$1.invokeSuspend(BackupServiceTest.kt:127)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.data.BackupServiceTest.reviewRound2RestoredArchiveMustSendReceiptToNewLedger(BackupServiceTest.kt:82)
+
+Error in reviewRound2ExportMustNotPromiseMissingPhoto(io.github.sandroroque.getnf.data.BackupServiceTest):
+java.lang.AssertionError: export must reject or explicitly report a missing photo, not claim a complete backup
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at io.github.sandroroque.getnf.data.BackupServiceTest$reviewRound2ExportMustNotPromiseMissingPhoto$1.invokeSuspend(BackupServiceTest.kt:78)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.data.BackupServiceTest.reviewRound2ExportMustNotPromiseMissingPhoto(BackupServiceTest.kt:64)
+.
+io.github.sandroroque.getnf.sync.Round2RedactionTest:
+Error in reviewRound2PartialOcrMustNotDeclarePrivateRegionSafe(io.github.sandroroque.getnf.sync.Round2RedactionTest):
+java.lang.AssertionError: partial OCR must reject export or mask independently known private region; masked fraction=1053/24531
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at io.github.sandroroque.getnf.sync.Round2RedactionTest.reviewRound2PartialOcrMustNotDeclarePrivateRegionSafe(Round2RedactionTest.kt:32)
+
+
+Time: 0.293
+There were 3 failures:
+1) reviewRound2RestoredArchiveMustSendReceiptToNewLedger(io.github.sandroroque.getnf.data.BackupServiceTest)
+java.lang.AssertionError: restored archive must send its receipt to the destination expected:<1> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at io.github.sandroroque.getnf.data.BackupServiceTest$reviewRound2RestoredArchiveMustSendReceiptToNewLedger$1.invokeSuspend(BackupServiceTest.kt:127)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.data.BackupServiceTest.reviewRound2RestoredArchiveMustSendReceiptToNewLedger(BackupServiceTest.kt:82)
+2) reviewRound2ExportMustNotPromiseMissingPhoto(io.github.sandroroque.getnf.data.BackupServiceTest)
+java.lang.AssertionError: export must reject or explicitly report a missing photo, not claim a complete backup
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at io.github.sandroroque.getnf.data.BackupServiceTest$reviewRound2ExportMustNotPromiseMissingPhoto$1.invokeSuspend(BackupServiceTest.kt:78)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.data.BackupServiceTest.reviewRound2ExportMustNotPromiseMissingPhoto(BackupServiceTest.kt:64)
+3) reviewRound2PartialOcrMustNotDeclarePrivateRegionSafe(io.github.sandroroque.getnf.sync.Round2RedactionTest)
+java.lang.AssertionError: partial OCR must reject export or mask independently known private region; masked fraction=1053/24531
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at io.github.sandroroque.getnf.sync.Round2RedactionTest.reviewRound2PartialOcrMustNotDeclarePrivateRegionSafe(Round2RedactionTest.kt:32)
+
+FAILURES!!!
+Tests run: 4,  Failures: 3
+
+

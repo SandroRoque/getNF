@@ -14,6 +14,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import org.junit.Ignore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -405,6 +406,81 @@ class SyncEngineTest {
     engine.sync(server)
     store.open(chave, "qr")
     assertNull(lists.scannedBy(chave).first())
+  }
+
+  @Test fun reviewRound2RetryAfterEveryRemoteBoundaryPreservesReceipt() = runTest {
+    suspend fun attempt(cut: Int): Int {
+      val phone = Phone("fault-$cut")
+      val remote = FakeServer()
+      phone.store.open(chave, "qr")
+      phone.store.savePage(chave, "https://example.invalid", html)
+      phone.parser.parse(phone.store.get(chave)!!)
+      val expected = phone.db.catalog().lines(chave).sumOf { it.grossCents - it.discountCents }
+      var calls = 0
+      fun boundary() { if (++calls == cut) throw java.io.IOException("synthetic interruption $cut") }
+      val failing = object : SyncRemote by remote {
+        override fun rpc(function: String, args: JsonObject) = remote.rpc(function, args).also { boundary() }
+        override fun upsert(table: String, rows: List<JsonObject>, onConflict: String, ignoreDuplicates: Boolean) {
+          remote.upsert(table, rows, onConflict, ignoreDuplicates); boundary()
+        }
+        override fun delete(table: String, filters: List<Pair<String,String>>) { remote.delete(table, filters); boundary() }
+        override fun select(table: String, filters: List<Pair<String,String>>) = remote.select(table, filters).also { boundary() }
+        override fun upload(path: String, bytes: ByteArray, type: String) { remote.upload(path, bytes, type); boundary() }
+        override fun download(path: String, target: File) { remote.download(path, target); boundary() }
+      }
+      try {
+        val error = runCatching { phone.engine.sync(failing) }.exceptionOrNull()
+        if (cut > 0) assertTrue("cut $cut reached", error is java.io.IOException)
+        phone.engine.sync(remote)
+        phone.engine.sync(remote)
+        assertEquals("one receipt after cut $cut", 1, remote.rows("receipt").size)
+        assertEquals("all lines after cut $cut", phone.db.catalog().lines(chave).size, remote.rows("receipt_line").size)
+        assertEquals(expected, remote.rows("receipt_line").sumOf { it.str("gross_cents")!!.toLong() - it.str("discount_cents")!!.toLong() })
+        assertFalse("pending upload after cut $cut", phone.store.get(chave)!!.needsUpload)
+      } finally { phone.db.close() }
+      return calls
+    }
+    val boundaries = attempt(0)
+    assertTrue(boundaries > 10)
+    for (cut in 1..boundaries) attempt(cut)
+    println("ROUND2: retried after each of $boundaries remote boundaries; receipt and cents conserved")
+  }
+
+  @Ignore("T-16: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound2RestoredCleanDatabaseMustUploadToNewLedger() = runTest {
+    receiptWithPage()
+    engine.sync(server)
+    assertFalse(store.get(chave)!!.needsUpload)
+    // BackupService copies the DB verbatim; restoring preserves these clean flags and cursors.
+    // Reopening that restored state against an empty destination must not silently skip its receipt.
+    val destination = FakeServer()
+    val remote = object : SyncRemote by destination { override val ledgerId = "ledger-2" }
+    val restoredEngine = SyncEngine(db, store, { _, _ -> byteArrayOf() }, log = {})
+    repeat(2) { restoredEngine.sync(remote) }
+    assertEquals("restored receipt must exist in destination", 1, destination.rows("receipt").size)
+  }
+
+  @Ignore("T-12: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewInterruptedReconciliationMustRetryAfterCursorAdvanced() = runTest {
+    receiptWithPage()
+    engine.sync(server)
+    server.delete("receipt_line", listOf("chave" to "eq.$chave", "line_no" to "eq.8"))
+    server.put("receipt", "ledger_id,chave", server.rows("receipt").single())
+    // Another receipt changes two minutes later, advancing both durable cursors past this removal.
+    val other = "0".repeat(44)
+    server.tick = 120_000
+    server.put("receipt", "ledger_id,chave", JsonObject(server.rows("receipt").single() +
+      buildJsonObject { put("chave", other); put("page_path", kotlinx.serialization.json.JsonNull) }))
+    server.put("receipt_line", "ledger_id,chave,line_no", JsonObject(server.rows("receipt_line").first() +
+      buildJsonObject { put("chave", other) }))
+    val interrupted = object : SyncRemote by server {
+      override fun select(table: String, filters: List<Pair<String, String>>): List<JsonObject> {
+        if (filters.any { it.first == "select" && it.second == "chave,line_no" })
+          throw java.io.IOException("review: network lost during reconciliation")
+        return server.select(table, filters)
+      }
+    }
+    assertTrue(runCatching { engine.sync(interrupted) }.isFailure)
+    engine.sync(server)
+    assertEquals("deleted line must disappear after retry", (1..7).toList(), dao.lines(chave).map { it.lineNo })
   }
 
   private fun JsonObject.str(name: String) = (this[name] as? JsonPrimitive)?.takeUnless { it is kotlinx.serialization.json.JsonNull }?.content

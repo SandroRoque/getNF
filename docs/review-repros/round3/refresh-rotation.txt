@@ -1,0 +1,9 @@
+refresh(T1): 200
+refresh(T1) again immediately (parallel caller within the reuse interval): 200; same child token as first: True
+refresh(T2): 200  [T3 now newest]
+waiting 12 s (past the default 10 s reuse interval)...
+refresh(stale T2) after the interval: 200 
+refresh(T3, the newest) afterwards: 200 
+refresh(T3): 200  [T4 newest; T2 is now two generations behind]
+refresh(T2, two generations behind) after the interval: 400 {"code":400,"error_code":"refresh_token_already_used","msg":"Invalid Refresh Token: Already Used"}
+refresh(T4, the newest) afterwards: 200   [family intact]

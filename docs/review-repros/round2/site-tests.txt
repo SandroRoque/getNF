@@ -1,0 +1,3 @@
+PASS password recovery removes fragment and sends token only to configured endpoint
+PASS confirmation renders error as text, clears token/query, sends nothing
+PASS mismatching passwords do not send

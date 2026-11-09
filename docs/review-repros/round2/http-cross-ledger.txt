@@ -1,0 +1,135 @@
+PASS owner category foreign ledger_id preserves source
+PASS owner category foreign ledger_id no destination
+PASS owner category_event foreign ledger_id preserves source
+PASS owner category_event foreign ledger_id no destination
+PASS owner issuer foreign ledger_id preserves source
+PASS owner issuer foreign ledger_id no destination
+PASS owner link_suggestion foreign ledger_id preserves source
+PASS owner link_suggestion foreign ledger_id no destination
+PASS owner product foreign ledger_id preserves source
+PASS owner product foreign ledger_id no destination
+PASS owner product_tag foreign ledger_id preserves source
+PASS owner product_tag foreign ledger_id no destination
+PASS owner receipt foreign ledger_id preserves source
+PASS owner receipt foreign ledger_id no destination
+PASS owner receipt_line foreign ledger_id preserves source
+PASS owner receipt_line foreign ledger_id no destination
+PASS owner receipt_photo foreign ledger_id preserves source
+PASS owner receipt_photo foreign ledger_id no destination
+PASS owner receipt_scan foreign ledger_id preserves source
+PASS owner receipt_scan foreign ledger_id no destination
+PASS owner store_item foreign ledger_id preserves source
+PASS owner store_item foreign ledger_id no destination
+PASS owner tag foreign ledger_id preserves source
+PASS owner tag foreign ledger_id no destination
+PASS manager category foreign ledger_id preserves source
+PASS manager category foreign ledger_id no destination
+PASS manager category_event foreign ledger_id preserves source
+PASS manager category_event foreign ledger_id no destination
+PASS manager issuer foreign ledger_id preserves source
+PASS manager issuer foreign ledger_id no destination
+PASS manager link_suggestion foreign ledger_id preserves source
+PASS manager link_suggestion foreign ledger_id no destination
+PASS manager product foreign ledger_id preserves source
+PASS manager product foreign ledger_id no destination
+PASS manager product_tag foreign ledger_id preserves source
+PASS manager product_tag foreign ledger_id no destination
+PASS manager receipt foreign ledger_id preserves source
+PASS manager receipt foreign ledger_id no destination
+PASS manager receipt_line foreign ledger_id preserves source
+PASS manager receipt_line foreign ledger_id no destination
+PASS manager receipt_photo foreign ledger_id preserves source
+PASS manager receipt_photo foreign ledger_id no destination
+PASS manager receipt_scan foreign ledger_id preserves source
+PASS manager receipt_scan foreign ledger_id no destination
+PASS manager store_item foreign ledger_id preserves source
+PASS manager store_item foreign ledger_id no destination
+PASS manager tag foreign ledger_id preserves source
+PASS manager tag foreign ledger_id no destination
+PASS member category foreign ledger_id preserves source
+PASS member category foreign ledger_id no destination
+PASS member category_event foreign ledger_id preserves source
+PASS member category_event foreign ledger_id no destination
+PASS member issuer foreign ledger_id preserves source
+PASS member issuer foreign ledger_id no destination
+PASS member link_suggestion foreign ledger_id preserves source
+PASS member link_suggestion foreign ledger_id no destination
+PASS member product foreign ledger_id preserves source
+PASS member product foreign ledger_id no destination
+PASS member product_tag foreign ledger_id preserves source
+PASS member product_tag foreign ledger_id no destination
+PASS member receipt foreign ledger_id preserves source
+PASS member receipt foreign ledger_id no destination
+PASS member receipt_line foreign ledger_id preserves source
+PASS member receipt_line foreign ledger_id no destination
+PASS member receipt_photo foreign ledger_id preserves source
+PASS member receipt_photo foreign ledger_id no destination
+PASS member receipt_scan foreign ledger_id preserves source
+PASS member receipt_scan foreign ledger_id no destination
+PASS member store_item foreign ledger_id preserves source
+PASS member store_item foreign ledger_id no destination
+PASS member tag foreign ledger_id preserves source
+PASS member tag foreign ledger_id no destination
+PASS stranger category foreign ledger_id preserves source
+PASS stranger category foreign ledger_id no destination
+PASS stranger category_event foreign ledger_id preserves source
+PASS stranger category_event foreign ledger_id no destination
+PASS stranger issuer foreign ledger_id preserves source
+PASS stranger issuer foreign ledger_id no destination
+PASS stranger link_suggestion foreign ledger_id preserves source
+PASS stranger link_suggestion foreign ledger_id no destination
+PASS stranger product foreign ledger_id preserves source
+PASS stranger product foreign ledger_id no destination
+PASS stranger product_tag foreign ledger_id preserves source
+PASS stranger product_tag foreign ledger_id no destination
+PASS stranger receipt foreign ledger_id preserves source
+PASS stranger receipt foreign ledger_id no destination
+PASS stranger receipt_line foreign ledger_id preserves source
+PASS stranger receipt_line foreign ledger_id no destination
+PASS stranger receipt_photo foreign ledger_id preserves source
+PASS stranger receipt_photo foreign ledger_id no destination
+PASS stranger receipt_scan foreign ledger_id preserves source
+PASS stranger receipt_scan foreign ledger_id no destination
+PASS stranger store_item foreign ledger_id preserves source
+PASS stranger store_item foreign ledger_id no destination
+PASS stranger tag foreign ledger_id preserves source
+PASS stranger tag foreign ledger_id no destination
+PASS former category foreign ledger_id preserves source
+PASS former category foreign ledger_id no destination
+PASS former category_event foreign ledger_id preserves source
+PASS former category_event foreign ledger_id no destination
+PASS former issuer foreign ledger_id preserves source
+PASS former issuer foreign ledger_id no destination
+PASS former link_suggestion foreign ledger_id preserves source
+PASS former link_suggestion foreign ledger_id no destination
+PASS former product foreign ledger_id preserves source
+PASS former product foreign ledger_id no destination
+PASS former product_tag foreign ledger_id preserves source
+PASS former product_tag foreign ledger_id no destination
+PASS former receipt foreign ledger_id preserves source
+PASS former receipt foreign ledger_id no destination
+PASS former receipt_line foreign ledger_id preserves source
+PASS former receipt_line foreign ledger_id no destination
+PASS former receipt_photo foreign ledger_id preserves source
+PASS former receipt_photo foreign ledger_id no destination
+PASS former receipt_scan foreign ledger_id preserves source
+PASS former receipt_scan foreign ledger_id no destination
+PASS former store_item foreign ledger_id preserves source
+PASS former store_item foreign ledger_id no destination
+PASS former tag foreign ledger_id preserves source
+PASS former tag foreign ledger_id no destination
+PASS category cross-reference parent_id
+PASS product cross-reference category_id
+PASS product cross-reference suggestion_category_id
+PASS store_item cross-reference product_id
+PASS product_tag cross-reference product_id
+PASS product_tag cross-reference tag_id
+PASS receipt cross-reference issuer_cnpj
+PASS receipt_photo cross-reference chave
+PASS receipt_line cross-reference chave
+PASS receipt_line cross-reference store_item_id
+PASS receipt_line cross-reference product_override_id
+PASS receipt_scan cross-reference chave
+PASS link_suggestion cross-reference store_item_id
+PASS link_suggestion cross-reference product_id
+TOTAL 134 FAILED 0

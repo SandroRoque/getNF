@@ -1,0 +1,39 @@
+
+io.github.sandroroque.getnf.data.BackupServiceTest:
+Error in reviewRound2ConcurrentPageWriteMustProduceCoherentBackup(io.github.sandroroque.getnf.data.BackupServiceTest):
+java.lang.AssertionError: backup must contain one coherent state; observed (https://example.invalid/before, <html>synthetic after 20.00</html>)
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at io.github.sandroroque.getnf.data.BackupServiceTest$reviewRound2ConcurrentPageWriteMustProduceCoherentBackup$1.invokeSuspend(BackupServiceTest.kt:96)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.data.BackupServiceTest.reviewRound2ConcurrentPageWriteMustProduceCoherentBackup(BackupServiceTest.kt:64)
+
+
+Time: 0.099
+There was 1 failure:
+1) reviewRound2ConcurrentPageWriteMustProduceCoherentBackup(io.github.sandroroque.getnf.data.BackupServiceTest)
+java.lang.AssertionError: backup must contain one coherent state; observed (https://example.invalid/before, <html>synthetic after 20.00</html>)
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at io.github.sandroroque.getnf.data.BackupServiceTest$reviewRound2ConcurrentPageWriteMustProduceCoherentBackup$1.invokeSuspend(BackupServiceTest.kt:96)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at io.github.sandroroque.getnf.data.BackupServiceTest.reviewRound2ConcurrentPageWriteMustProduceCoherentBackup(BackupServiceTest.kt:64)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+

@@ -17,12 +17,12 @@ import java.io.File
 class CaptureLifecycleTest {
   @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
-  private fun scan() = compose.onNodeWithContentDescription("Escanear nota").performClick()
-  private fun backHome() = compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("Escanear nota").fetchSemanticsNodes().isNotEmpty() }
+  private fun scan() = compose.onNodeWithText("Escanear").performClick()
+  private fun backHome() = compose.waitUntil(10_000) { compose.onAllNodesWithText("Escanear").fetchSemanticsNodes().isNotEmpty() }
 
   @Test fun theControlsAndTheExplanationWorkInBothOrientations() {
     scan()
-    compose.onNodeWithText("Aponte para a nota").assertIsDisplayed()
+    compose.onNodeWithText("Aponte para a nota ou um código de barras").assertIsDisplayed()
     try {
       compose.activity.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
       compose.waitUntil(10_000) { compose.activity.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }

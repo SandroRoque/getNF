@@ -1,0 +1,6 @@
+jobs queued by trigger: 60
+concurrent claims (batch 40 each, 60 jobs): A 40 B 20 overlap 0 union 60
+after 12 claim+crash rounds: status=running attempts=12
+after 7 claim+handled failure rounds: status=failed attempts=6
+done job after a late failure report from a stale run: pending
+cleanup: ledger rows left 0 store items left 0

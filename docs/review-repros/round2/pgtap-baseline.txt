@@ -1,0 +1,11 @@
+WARN: auth.email.enable_signup is deprecated and will be removed in v4, use auth.email.enabled instead.
+WARN: auth.sms.enable_signup is deprecated and will be removed in v4, use auth.sms.enabled instead.
+Target: local stack (127.0.0.1:55322)
+/tmp/getnf-review-round2/supabase/tests/database/catalog.test.sql ....... ok
+/tmp/getnf-review-round2/supabase/tests/database/categorize.test.sql .... ok
+/tmp/getnf-review-round2/supabase/tests/database/contribution.test.sql .. ok
+/tmp/getnf-review-round2/supabase/tests/database/feedback.test.sql ...... ok
+/tmp/getnf-review-round2/supabase/tests/database/ledger.test.sql ........ ok
+All tests successful.
+Files=5, Tests=100,  0 wallclock secs ( 0.03 usr  0.00 sys +  0.03 cusr  0.01 csys =  0.07 CPU)
+Result: PASS

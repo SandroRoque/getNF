@@ -1,0 +1,20 @@
+Check supabase/functions/contribute/rules_test.ts
+Check supabase/functions/categorize/reads_test.ts
+running 4 tests from ./supabase/functions/contribute/rules_test.ts
+a photo, a page and the meta file are taken with their own type ... ok (1ms)
+anything else is refused ... ok (142µs)
+withdrawing needs only the install ... ok (89µs)
+limits per install and day, and for everyone per hour ... ok (64µs)
+running 9 tests from ./supabase/functions/categorize/reads_test.ts
+the unit settles weight and volume; a fractional quantity is weighed ... ok (820µs)
+sizes the parser reads ... ok (1ms)
+sizes the parser misses (status.md): 1K and a decimal comma printed as a space ... ok (262µs)
+no size where there's none ... ok (77µs)
+packs: a count alone, and a count printed apart from the amount ... ok (228µs)
+a candidate says what it is and how it was written ... ok (92µs)
+the category keeps D74's state; the readings get theirs, in a second request ... ok (538µs)
+nothing to read and no category wanted: no request ... ok (103µs)
+a count alone is a pack with no weight or volume ... ok (114µs)
+
+ok | 13 passed | 0 failed (98ms)
+

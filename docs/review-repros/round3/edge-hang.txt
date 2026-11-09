@@ -1,0 +1,3 @@
+handler: STILL RUNNING after 8000 ms | elapsed 8003 ms | outbound calls that hung: 2 api.typesafe.ai
+job states after the stalled run: running attempts=1 error=-; running attempts=1 error=-; running attempts=1 error=-; running attempts=1 error=-; running attempts=1 error=-
+cleanup ledger rows: 0

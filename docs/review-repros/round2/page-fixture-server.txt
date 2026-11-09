@@ -1,0 +1,4 @@
+REDIRECT loopback details
+SERVED synthetic SC details
+REDIRECT loopback details
+SERVED synthetic SC details

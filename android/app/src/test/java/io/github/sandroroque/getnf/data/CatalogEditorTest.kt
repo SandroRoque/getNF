@@ -3,6 +3,7 @@ package io.github.sandroroque.getnf.data
 import java.io.File
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import org.junit.Ignore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -66,6 +67,15 @@ class CatalogEditorTest {
     val fresh = editor.unlink(b.id)
     assertEquals(fresh, dao.storeItems().single { it.id == b.id }.productId)
     assertFalse(dao.products().single { it.id == fresh }.deleted)
+  }
+
+  @Ignore("T-14: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound2ManualDiscountMustKeepReceiptTotal() = runTest {
+    receipt()
+    val total = dao.parsed(chave)!!.discountCents!!
+    val line = dao.lines(chave).first { it.grossCents > total }
+    // Accepted by the UI: nonnegative and no more than this line's gross.
+    editor.setDiscount(chave, line.lineNo, total + 1)
+    assertEquals("manual distribution must preserve receipt discount", total, dao.lines(chave).sumOf { it.discountCents })
   }
 
   @Test fun aHandTypedDiscountSpreadsTheRestAgain() = runTest {

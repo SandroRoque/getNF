@@ -1,0 +1,4 @@
+limit DAY_FILES=300 per install
+workers=1: 360 requests -> accepted 300, rejected(429) 60, other 0
+workers=8: 360 requests -> accepted 307, rejected(429) 53, other 0
+workers=32: 360 requests -> accepted 331, rejected(429) 29, other 0

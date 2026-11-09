@@ -1,0 +1,3 @@
+Result(session=capture-success, split=dev, receipt=?, key=none, frames=1, completed=true, seconds=0.0, photos=1, items=0, legible=0, falseCompletion=false, missing=[], fidelity=matches live, drops=0)
+        ends (false, false) → (true, true) at f0001, 7 rows
+  0.0s f0001 DONE             rows   0–  6 of   7 HOLD COMMIT f0001 ⊤ ⊥

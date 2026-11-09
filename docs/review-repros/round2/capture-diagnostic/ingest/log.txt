@@ -1,0 +1,5 @@
+Result(session=capture-diagnostic, split=dev, receipt=?, key=none, frames=4, completed=false, seconds=null, photos=0, items=0, legible=0, falseCompletion=false, missing=[], fidelity=matches live, drops=0)
+  0.0s f0001 FIND_RECEIPT     not placed (sides: left 21+0 found 0 cut, right 0+0 found 0 cut)
+  1.7s f0002 FIND_RECEIPT     not placed (sides: left 21+0 found 0 cut, right 0+0 found 0 cut)
+  2.8s f0003 FIND_RECEIPT     not placed (sides: left 21+0 found 0 cut, right 0+0 found 0 cut)
+  4.1s f0004 FIND_RECEIPT     not placed (sides: left 21+0 found 0 cut, right 0+0 found 0 cut)

@@ -1,0 +1,62 @@
+PASS join manager
+PASS join member
+PASS join member
+PASS former leaves
+PASS owner insert receipt
+PASS owner read receipt
+PASS owner insert issuer
+PASS owner update receipt status
+PASS owner update effect
+PASS owner create category
+PASS owner storage upload
+PASS manager read receipt
+PASS manager insert issuer
+PASS manager update receipt status
+PASS manager update effect
+PASS manager create category
+PASS manager storage upload
+PASS member read receipt
+PASS member insert issuer
+PASS member update receipt status
+PASS member update effect
+PASS member create category
+PASS member storage upload
+PASS stranger read receipt
+PASS stranger insert issuer
+PASS stranger update receipt status
+PASS stranger update effect
+PASS stranger create category
+PASS stranger storage upload
+PASS former read receipt
+PASS former insert issuer
+PASS former update receipt status
+PASS former update effect
+PASS former create category
+PASS former storage upload
+PASS member storage download
+PASS stranger storage download
+PASS former storage download
+PASS member cannot promote self
+PASS cross-ledger category FK
+PASS stranger cannot read issuer
+PASS stranger cannot read receipt
+PASS stranger cannot read receipt_photo
+PASS stranger cannot read category
+PASS stranger cannot read tag
+PASS stranger cannot read product
+PASS stranger cannot read store_item
+PASS stranger cannot read product_tag
+PASS stranger cannot read receipt_line
+PASS stranger cannot read link_suggestion
+PASS stranger cannot read receipt_scan
+PASS stranger cannot read category_event
+PASS stranger cannot read worker_report
+PASS stranger cannot read ledger_member
+PASS stranger cannot read ledger_event
+PASS private contribution_file
+PASS private ticket
+PASS private feedback
+PASS private audit_log
+PASS private category_rule
+PASS private categorize_job
+TOTAL 61 FAILED 0

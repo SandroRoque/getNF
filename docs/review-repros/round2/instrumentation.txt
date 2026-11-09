@@ -1,0 +1,65 @@
+
+io.github.sandroroque.getnf.data.ReceiptDatabaseMigrationTest:.....
+io.github.sandroroque.getnf.data.BackupServiceTest:.
+io.github.sandroroque.getnf.sync.WebpArchiverTest:...
+io.github.sandroroque.getnf.parse.NfceParityDeviceTest:.
+io.github.sandroroque.getnf.ui.scan.FrameMappingTest:..
+io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest:
+Error in theControlsAndTheExplanationWorkInBothOrientations(io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest):
+java.lang.AssertionError: Failed to inject touch input.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (ContentDescription = 'Escanear nota' (ignoreCase: false))
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performTouchInput(Actions.kt:402)
+	at androidx.compose.ui.test.AndroidActions.performClickImpl(Actions.android.kt:23)
+	at androidx.compose.ui.test.ActionsKt.performClick(Actions.kt:60)
+	at io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest.scan(CaptureLifecycleTest.kt:20)
+	at io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest.theControlsAndTheExplanationWorkInBothOrientations(CaptureLifecycleTest.kt:24)
+
+Error in rotationKeepsCaptureAndReentryStartsANewSession(io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest):
+java.lang.AssertionError: Failed to inject touch input.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (ContentDescription = 'Escanear nota' (ignoreCase: false))
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performTouchInput(Actions.kt:402)
+	at androidx.compose.ui.test.AndroidActions.performClickImpl(Actions.android.kt:23)
+	at androidx.compose.ui.test.ActionsKt.performClick(Actions.kt:60)
+	at io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest.scan(CaptureLifecycleTest.kt:20)
+	at io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest.rotationKeepsCaptureAndReentryStartsANewSession(CaptureLifecycleTest.kt:39)
+
+
+Time: 7.075
+There were 2 failures:
+1) theControlsAndTheExplanationWorkInBothOrientations(io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest)
+java.lang.AssertionError: Failed to inject touch input.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (ContentDescription = 'Escanear nota' (ignoreCase: false))
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performTouchInput(Actions.kt:402)
+	at androidx.compose.ui.test.AndroidActions.performClickImpl(Actions.android.kt:23)
+	at androidx.compose.ui.test.ActionsKt.performClick(Actions.kt:60)
+	at io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest.scan(CaptureLifecycleTest.kt:20)
+	at io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest.theControlsAndTheExplanationWorkInBothOrientations(CaptureLifecycleTest.kt:24)
+2) rotationKeepsCaptureAndReentryStartsANewSession(io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest)
+java.lang.AssertionError: Failed to inject touch input.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (ContentDescription = 'Escanear nota' (ignoreCase: false))
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performTouchInput(Actions.kt:402)
+	at androidx.compose.ui.test.AndroidActions.performClickImpl(Actions.android.kt:23)
+	at androidx.compose.ui.test.ActionsKt.performClick(Actions.kt:60)
+	at io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest.scan(CaptureLifecycleTest.kt:20)
+	at io.github.sandroroque.getnf.ui.scan.CaptureLifecycleTest.rotationKeepsCaptureAndReentryStartsANewSession(CaptureLifecycleTest.kt:39)
+
+FAILURES!!!
+Tests run: 14,  Failures: 2
+
+

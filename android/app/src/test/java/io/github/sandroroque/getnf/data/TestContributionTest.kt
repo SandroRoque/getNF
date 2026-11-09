@@ -9,6 +9,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.junit.Ignore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -116,6 +117,38 @@ class TestContributionTest {
     assertFalse(c.active)
     c.enabled = true
     assertFalse("on again: nothing to take back", c.withdrawPending)
+  }
+
+  @Ignore("T-10: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound2WithdrawalDuringAnInflightSendMustNotLeaveAnUpload() {
+    prefs.enabled = true
+    val c = contribution()
+    c.addPage(TestContribution.Kind.Page, null, "https://example.invalid", "<p>synthetic</p>")
+    val entered = java.util.concurrent.CountDownLatch(1)
+    val resume = java.util.concurrent.CountDownLatch(1)
+    val remoteFiles = java.util.Collections.synchronizedList(mutableListOf<String>())
+    val errors = java.util.Collections.synchronizedList(mutableListOf<Throwable>())
+    val sender = Thread {
+      try {
+        c.send(archiver) { _, file, _ ->
+          // A blocking HTTP upload has read its bytes, but the server hasn't persisted them yet.
+          file.readBytes()
+          entered.countDown()
+          check(resume.await(5, java.util.concurrent.TimeUnit.SECONDS))
+          remoteFiles.add(file.name)
+        }
+      } catch (e: Throwable) { errors.add(e) }
+    }
+    sender.start()
+    try {
+      assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
+      c.enabled = false
+      assertTrue(c.withdrawPending)
+      remoteFiles.clear() // the replacement worker's withdrawal finishes before the old POST
+      c.withdrawPending = false
+    } finally { resume.countDown(); sender.join(6000) }
+    assertFalse(sender.isAlive)
+    assertFalse(c.active)
+    assertTrue("withdrawal finished but old blocking upload persisted ${remoteFiles.size} file(s); errors=${errors.map { it.javaClass.simpleName }}", remoteFiles.isEmpty())
   }
 
   @Test fun sayingNoAtFirstTakesNothingBack() {

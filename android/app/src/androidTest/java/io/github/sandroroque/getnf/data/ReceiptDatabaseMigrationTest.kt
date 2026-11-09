@@ -13,6 +13,23 @@ import org.junit.runner.RunWith
 class ReceiptDatabaseMigrationTest {
   @get:Rule val helper = MigrationTestHelper(InstrumentationRegistry.getInstrumentation(), ReceiptDatabase::class.java)
 
+  @Test fun reviewRound2EveryHistoricalSchemaMigratesTo14() {
+    for (version in 1..13) {
+      val name = "review-from-$version.db"
+      helper.createDatabase(name, version).use { db ->
+        db.execSQL("INSERT INTO receipt (chave, qrUrl, capturedAt, pageUrl, pageFile, pageFetchedAt, version, uploadedVersion, remoteId, uploadError) VALUES ('synthetic', NULL, 1, NULL, 'page.html', 2, 3, 3, 'supabase', NULL)")
+        db.execSQL("INSERT INTO receipt_photo (receipt, localName, position, uploaded, segment) VALUES ('synthetic', 'a.jpg', 0, 1, NULL)")
+        if (version >= 2) db.execSQL("INSERT INTO product (id, name, sizeE6, sizeUnit, sizeSource, archived, createdAt) VALUES ('p', 'Synthetic', 500000, 'kg', 'manual', 0, 1)")
+      }
+      helper.runMigrationsAndValidate(name, 14, true, ReceiptDatabase.MIGRATION_3_4).use { db ->
+        db.query("SELECT COUNT(*) FROM receipt_photo WHERE receipt = 'synthetic'").use { c -> c.moveToFirst(); assertEquals("from $version", 1, c.getInt(0)) }
+        if (version >= 2) db.query("SELECT name, sizeE6, sizeSource FROM product WHERE id = 'p'").use { c ->
+          c.moveToFirst(); assertEquals("Synthetic", c.getString(0)); assertEquals(500000L, c.getLong(1)); assertEquals("manual", c.getString(2))
+        }
+      }
+    }
+  }
+
   @Test fun version1ReceiptsAndPhotosSurviveVersion2() {
     val name = "migration-test.db"
     helper.createDatabase(name, 1).use { db ->
