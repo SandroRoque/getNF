@@ -99,7 +99,14 @@ balance showing) was settled with the user: the blanking stays as it is, the pri
 and restates that nothing is sold or used otherwise (site redeployed 2026-11-07). T-6 (a short receipt kept as 2-3
 identical photos) is open, for the capture.
 
+The 2026-11-04 outside audit (D170) became T-8–T-26. Fixed on main 2026-11-09: T-8 (D171), T-9–T-11 (D172; the
+server half online the same day, T-9 resolved), T-12 (D173), T-14 (D174), T-13 (D175). Waiting: the line_surcharge
+migration online (before any Room 15 build), `/apagar-conta/` redeployed (T-11's web half), and a build with them.
+
 Do next, in order:
+0. **Code 7, cut early** (privacy and numbers in the build testers have, rollout.md › Cutting): apply
+   `20261109010000_line_surcharge.sql` online first, then cut from main. Then the audit's normal tickets (T-15–T-21)
+   by priority; T-26 before the LLM worker is switched back on.
 1. ~~The phone on code 4~~: code 4 is replaced; its check is folded into code 5's (next item).
 2. **Code 6 (0.1.3, 6916fe9, `play/6`), with D167 (T-5):** uploaded straight to the closed track 2026-11-09 and
    promoted to internal; Google's review to be confirmed in the console (Publishing overview), and whether it got a
