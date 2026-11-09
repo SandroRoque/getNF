@@ -24,12 +24,27 @@ class TestContribution(
   /** BuildConfig.TEST_PERIOD: the build was made for the closed test. */
   val testBuild: Boolean,
   private val about: String,
-  val installId: () -> String,
+  /** The install's id (D152), used until the first withdrawal: what was sent before D172 went under it. */
+  private val firstInstallId: () -> String,
 ) {
   /** Where the answer is kept: SharedPreferences in the app, a map in tests. */
   interface Prefs {
     var enabled: Boolean?
     var withdraw: Boolean
+    /** The id sends go under since the last withdrawal (D172); null before any. */
+    var install: String?
+  }
+
+  /** The id this install's sends go under: the server refuses one that was withdrawn, so each withdrawal moves on to a new one. */
+  fun installId(): String = prefs.install ?: firstInstallId()
+
+  /**
+   * The server took back everything sent under [installId] and refuses it from now on (D172): later sends, if the
+   * person turns this on again, go under a new id.
+   */
+  fun withdrawn() {
+    prefs.install = UUID.randomUUID().toString()
+    prefs.withdraw = false
   }
 
   private val json = Json { encodeDefaults = false; ignoreUnknownKeys = true }

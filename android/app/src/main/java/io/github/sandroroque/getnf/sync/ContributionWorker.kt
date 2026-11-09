@@ -33,7 +33,7 @@ class ContributionWorker(context: Context, params: WorkerParameters) : Coroutine
     try {
       if (contribution.withdrawPending) {
         client.contribute(mapOf("install" to contribution.installId(), "withdraw" to "1"), ByteArray(0).toRequestBody())
-        contribution.withdrawPending = false
+        contribution.withdrawn()
         Log.i(TAG, "took back what was sent")
       }
       if (contribution.active) {

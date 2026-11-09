@@ -69,6 +69,9 @@ class GetNFApp : Application() {
       override var withdraw: Boolean
         get() = prefs.getBoolean("withdraw", false)
         set(v) { prefs.edit().putBoolean("withdraw", v).commit() }
+      override var install: String?
+        get() = prefs.getString("install", null)
+        set(v) { prefs.edit().putString("install", v).commit() }
     }
     io.github.sandroroque.getnf.data.TestContribution(store, File(filesDir, "contributions"), BuildConfig.TEST_PERIOD && !underInstrumentation(),
       crashLog.about, ::installId)

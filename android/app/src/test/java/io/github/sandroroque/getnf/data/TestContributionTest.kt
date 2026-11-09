@@ -9,9 +9,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.junit.Ignore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -19,7 +19,7 @@ import org.junit.Test
 /** The closed test's photos and pages wait on the phone until they're sent (D161). */
 class TestContributionTest {
   private val dir = Files.createTempDirectory("contributions").toFile()
-  private val prefs = object : TestContribution.Prefs { override var enabled: Boolean? = null; override var withdraw = false }
+  private val prefs = object : TestContribution.Prefs { override var enabled: Boolean? = null; override var withdraw = false; override var install: String? = null }
   private val install = "00000000-0000-0000-0000-00000000f001"
   private fun contribution(testBuild: Boolean = true) = TestContribution(prefs, dir, testBuild, "Caderneta 0.1.1 (4)") { install }
   /** The copy is the original's bytes reversed: enough to see which photo it came from. */
@@ -119,36 +119,54 @@ class TestContributionTest {
     assertFalse("on again: nothing to take back", c.withdrawPending)
   }
 
-  @Ignore("T-10: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound2WithdrawalDuringAnInflightSendMustNotLeaveAnUpload() {
+  /**
+   * The audit's R11 (T-10): a send already on its way when the person turns this off must not stay on the server. The
+   * server (D172) records the withdrawal of an id first and refuses that id from then on, taking back a file stored
+   * meanwhile; the app moves on to a new id, so sending again after turning it on isn't refused.
+   */
+  @Test fun aSendInFlightWhenThePersonTurnsItOffDoesNotStay() {
     prefs.enabled = true
     val c = contribution()
     c.addPage(TestContribution.Kind.Page, null, "https://example.invalid", "<p>synthetic</p>")
     val entered = java.util.concurrent.CountDownLatch(1)
     val resume = java.util.concurrent.CountDownLatch(1)
-    val remoteFiles = java.util.Collections.synchronizedList(mutableListOf<String>())
-    val errors = java.util.Collections.synchronizedList(mutableListOf<Throwable>())
+    // The server: files kept per install id, and the ids withdrawn.
+    val stored = java.util.Collections.synchronizedList(mutableListOf<Pair<String, String>>())
+    val withdrawn = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+    fun post(query: Map<String, String>, file: File) {
+      val id = query.getValue("install")
+      if (id in withdrawn) throw SupabaseException(400, "withdrawn")
+      stored += id to file.name
+    }
+    val refused = java.util.Collections.synchronizedList(mutableListOf<String>())
     val sender = Thread {
-      try {
-        c.send(archiver) { _, file, _ ->
-          // A blocking HTTP upload has read its bytes, but the server hasn't persisted them yet.
-          file.readBytes()
-          entered.countDown()
-          check(resume.await(5, java.util.concurrent.TimeUnit.SECONDS))
-          remoteFiles.add(file.name)
-        }
-      } catch (e: Throwable) { errors.add(e) }
+      c.send(archiver, onRefused = { refused += it }) { query, file, _ ->
+        file.readBytes()
+        entered.countDown()
+        check(resume.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        post(query, file)
+      }
     }
     sender.start()
     try {
       assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
       c.enabled = false
       assertTrue(c.withdrawPending)
-      remoteFiles.clear() // the replacement worker's withdrawal finishes before the old POST
-      c.withdrawPending = false
+      // The worker's withdrawal reaches the server before the old send does.
+      val id = c.installId()
+      withdrawn += id; stored.removeAll { it.first == id }
+      c.withdrawn()
     } finally { resume.countDown(); sender.join(6000) }
     assertFalse(sender.isAlive)
-    assertFalse(c.active)
-    assertTrue("withdrawal finished but old blocking upload persisted ${remoteFiles.size} file(s); errors=${errors.map { it.javaClass.simpleName }}", remoteFiles.isEmpty())
+    assertTrue("nothing stays after the withdrawal: $stored", stored.isEmpty())
+    assertEquals(1, refused.size)
+    assertFalse(c.withdrawPending)
+    // On again: sends go under a new id, which the server takes.
+    c.enabled = true
+    c.addPage(TestContribution.Kind.Page, null, "https://example.invalid", "<p>synthetic</p>")
+    assertNotEquals(install, c.installId())
+    c.send(archiver) { query, file, _ -> post(query, file) }
+    assertTrue(stored.isNotEmpty() && stored.all { it.first == c.installId() })
   }
 
   @Test fun sayingNoAtFirstTakesNothingBack() {

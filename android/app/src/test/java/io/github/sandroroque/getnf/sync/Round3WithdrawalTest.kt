@@ -12,7 +12,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.junit.Ignore
 import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -50,7 +49,7 @@ class Round3WithdrawalTest {
     return chave
   }
 
-  @Ignore("T-11: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound3WithdrawingMoreThanAThousandPhotosMustLeaveNoObject() {
+  @Test fun reviewRound3WithdrawingMoreThanAThousandPhotosMustLeaveNoObject() {
     assumeTrue("set GETNF_SUPABASE_LOCAL (disposable stack only)", keys != null)
     val client = SupabaseClient(url, keys!![0])
     val session = newUser().let { (e, p) -> client.signIn(e, p) }
@@ -64,7 +63,7 @@ class Round3WithdrawalTest {
     assertEquals("every uploaded object must be gone after the withdrawal", 0, objects)
   }
 
-  @Ignore("T-11: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound3DeleteMeWithMoreThanAThousandPhotosInASharedCadernetaMustLeaveNoObject() {
+  @Test fun reviewRound3DeleteMeWithMoreThanAThousandPhotosInASharedCadernetaMustLeaveNoObject() {
     assumeTrue("set GETNF_SUPABASE_LOCAL (disposable stack only)", keys != null)
     val client = SupabaseClient(url, keys!![0])
     val ana = newUser().let { (e, p) -> client.signIn(e, p) }
@@ -72,9 +71,8 @@ class Round3WithdrawalTest {
     val casa = client.rpc(ana, "create_ledger", buildJsonObject { put("name", "Casa") }).jsonPrimitive.content
     client.rpc(bia, "join_ledger", buildJsonObject { put("code", client.rpc(ana, "create_invite", buildJsonObject { put("lid", casa) }).jsonPrimitive.content) })
     seed(client, bia, casa)
-    // LedgerService.deleteMe, lines for a caderneta Bia shares with Ana (copied: it needs an Android Context):
-    val files = client.select(bia, "receipt_photo", listOf("ledger_id" to "eq.$casa", "created_by" to "eq.${bia.userId}"))
-      .flatMap { row -> listOfNotNull(row["object_path"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content, row["mask_path"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content) }
+    // LedgerService.deleteMe, its lines for a caderneta Bia shares with Ana (it needs an Android Context):
+    val files = PhotoWithdrawal.paths(PhotoWithdrawal.mine(client, bia, casa))
     client.deleteObjects(bia, files)
     client.rpc(bia, "delete_me")
     val left = client.listObjects(ana, "$casa/").size

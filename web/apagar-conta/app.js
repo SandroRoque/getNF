@@ -46,6 +46,20 @@ async function listObjects(folder) {
   }
 }
 
+/** This person's photos in a caderneta, page by page: one read stops at 1,000 rows (T-11). */
+async function myPhotoPaths(ledger) {
+  const found = [];
+  for (let offset = 0; ; ) {
+    const page = await rest("receipt_photo", {
+      select: "object_path,mask_path", ledger_id: `eq.${ledger}`, created_by: `eq.${session.userId}`,
+      order: "chave,local_name", limit: 1000, offset,
+    });
+    found.push(...page.flatMap((p) => [p.object_path, p.mask_path].filter(Boolean)));
+    if (page.length < 1000) return found;
+    offset += page.length;
+  }
+}
+
 async function deleteObjects(paths) {
   for (let i = 0; i < paths.length; i += 500) {
     await call(`/storage/v1/object/${BUCKET}`, { method: "DELETE", body: { prefixes: paths.slice(i, i + 500) } });
@@ -126,8 +140,7 @@ async function deleteAccount() {
     for (const l of await myLedgers()) {
       const files = l.alone
         ? await listObjects(`${l.id}/`)
-        : (await rest("receipt_photo", { select: "object_path,mask_path", ledger_id: `eq.${l.id}`, created_by: `eq.${session.userId}` }))
-            .flatMap((p) => [p.object_path, p.mask_path].filter(Boolean));
+        : await myPhotoPaths(l.id);
       if (files.length) await deleteObjects(files);
     }
     await rpc("delete_me");

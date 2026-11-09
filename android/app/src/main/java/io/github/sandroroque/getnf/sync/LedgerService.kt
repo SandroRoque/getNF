@@ -95,8 +95,7 @@ class LedgerService(private val settings: AccountSettings) {
     for (ledger in mine) {
       val alone = c.select(s, "ledger_member", listOf("ledger_id" to "eq.$ledger")).size == 1
       val files = if (alone) c.listObjects(s, "$ledger/")
-        else c.select(s, "receipt_photo", listOf("ledger_id" to "eq.$ledger", "created_by" to "eq.${s.userId}"))
-          .flatMap { listOfNotNull(it.textOrNull("object_path"), it.textOrNull("mask_path")) }
+        else PhotoWithdrawal.paths(PhotoWithdrawal.mine(c, s, ledger))
       c.deleteObjects(s, files)
     }
     c.rpc(s, "delete_me"); Unit

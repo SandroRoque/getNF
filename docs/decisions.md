@@ -4113,3 +4113,25 @@ read isn't uploaded" (D98 only covered the OCR failing, not it reading nothing).
   ignored, as the measure if that changes.
 - Tests: `SensitiveTextTest.aPhotoWithNoTextReadIsNotUploaded` (JVM) and `Round2RedactionTest.emptyOcrMustNotProduceACopy`
   (on the emulator, through the real archiver).
+
+## D172. Withdrawals are final per install id, and they empty Storage, not the rows; photo rows are read page by page (2026-11-09, T-9, T-10, T-11)
+
+The audit found three ways a withdrawal left private files online: `contribute` deleted only the objects its one
+read of `contribution_file` returned (1,000 at most) and then every row, so the rest lost their only reference (R4);
+a send already on its way, or arriving between that read and the delete, landed after the withdrawal had succeeded
+(R11, R15); and the app's `PhotoWithdrawal` and `deleteMe` (and `/apagar-conta/`) had R4's shape for receipt photos
+(R14).
+- **The server can't tell a late send from a new one, so the id tells it.** `contribution_withdrawal` records an
+  install id before anything is deleted; from then on that id is refused (400, which the app drops), and a send that
+  stored its file before seeing the record takes it back. The app sends under its own contribution id, first the
+  install's (what codes 4–6 sent under, so their withdrawal still reaches it), a new random one after each withdrawal.
+  The install id that reports use (D152) doesn't change.
+- **Storage is the truth.** The withdrawal lists the install's folder in `storage.objects` (a service-role-only
+  function, `contribution_objects`) and removes a page at a time until it's empty, then the rows.
+- **Photo rows page through `limit`/`offset` in a fixed order** (`PhotoWithdrawal.mine`), collected before anything is
+  deleted; the withdrawal deletes only the rows of the objects it removed, by their whole key, so a photo uploaded
+  meanwhile keeps its row for the next run. `deleteMe` and the deletion page read the same way.
+- Old clients that turn contributions back on after a withdrawal keep sending under the withdrawn id: refused and
+  dropped, never stored. The compat line in releases/server.md says so; it's the safe side of the trade.
+- Tests: `TestContributionTest.aSendInFlightWhenThePersonTurnsItOffDoesNotStay`, `Round3WithdrawalTest` (1,001 photos,
+  local Supabase), `contribution_withdrawal.test.sql`, and the function run under Deno against the local stack.
