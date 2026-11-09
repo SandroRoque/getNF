@@ -637,13 +637,14 @@ class SyncEngine(
     put("qty_e4", l.qtyE4); put("unit", l.unit); put("unit_price_e4", l.unitPriceE4); put("gross_cents", l.grossCents)
     put("store_item_id", l.storeItemId); put("product_override_id", l.productOverrideId); put("discount_cents", l.discountCents)
     put("discount_source", l.discountSource); put("discount_review", l.discountReview); put("orphaned", l.orphaned)
+    put("surcharge_cents", l.surchargeCents)
   }
 
   private fun line(o: JsonObject) = ReceiptLineRow(
     o.string("chave")!!, o.long("line_no")!!.toInt(), o.string("description")!!, o.string("code")!!, o.long("qty_e4")!!,
     o.string("unit"), o.long("unit_price_e4")!!, o.long("gross_cents")!!, o.string("store_item_id")!!,
     o.string("product_override_id"), o.long("discount_cents") ?: 0, o.string("discount_source")!!,
-    o.string("discount_review") ?: "unreviewed", o.bool("orphaned") ?: false,
+    o.string("discount_review") ?: "unreviewed", o.bool("orphaned") ?: false, surchargeCents = o.long("surcharge_cents") ?: 0,
   )
 
   private fun photoJson(chave: String, name: String, position: Int, segment: CaptureSegment?, file: File, objectPath: String,

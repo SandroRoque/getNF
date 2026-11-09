@@ -119,7 +119,11 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
     if (h == null) item { EmptyState("A página desta nota ainda não foi lida.") } else item {
       Row(verticalAlignment = Alignment.Bottom) {
         MidNumber(h.paidCents?.let(Format::brl) ?: "?", Modifier.weight(1f))
-        if ((h.discountCents ?: 0) != 0L) Sub("${Format.brl(h.grossCents ?: 0)} − ${Format.brl(h.discountCents ?: 0)}")
+        // What was paid beyond the items less the discount is the surcharge (D175).
+        val discount = h.discountCents ?: 0
+        val surcharge = h.paidCents?.let { it - (h.grossCents ?: 0) + discount }?.takeIf { it > 0 } ?: 0
+        if (discount != 0L || surcharge != 0L) Sub(Format.brl(h.grossCents ?: 0) +
+          (if (discount != 0L) " − ${Format.brl(discount)}" else "") + (if (surcharge != 0L) " + ${Format.brl(surcharge)}" else ""))
       }
     }
     status?.let { item { Sub(it) } }
@@ -129,8 +133,9 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
         title = l.productName ?: l.description,
         subtitle = "${Format.e4(l.qtyE4)} ${l.unit.orEmpty().lowercase()} × ${Format.brl(Math.round(l.unitPriceE4 / 100.0))}" +
           (if (l.discountCents != 0L) " · −${Format.brl(l.discountCents)} ${discountSource(l.discountSource)}" else "") +
+          (if (l.surchargeCents != 0L) " · +${Format.brl(l.surchargeCents)} de acréscimo" else "") +
           (if (l.override) " · outro produto" else ""),
-        amount = Format.brl(l.grossCents - l.discountCents),
+        amount = Format.brl(l.grossCents - l.discountCents + l.surchargeCents),
         onClick = { editing = l },
       )
     }

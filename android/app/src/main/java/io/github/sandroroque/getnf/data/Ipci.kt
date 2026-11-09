@@ -62,7 +62,7 @@ object Ipci {
     var level = 100.0
     for ((period, ls) in byMonth) {
       val prices = ls.filter { basisOf(it) == basis[it.productId] }.groupBy { it.productId }.mapNotNull { (id, pls) ->
-        val o = pls.fold(Obs(0, 0.0, 0)) { a, l -> Obs(a.net + l.netCents, a.qty + quantity(l), a.estimated + if (l.discountSource == "prorated") l.discountCents else 0) }
+        val o = pls.fold(Obs(0, 0.0, 0)) { a, l -> Obs(a.net + l.netCents - l.surchargeCents, a.qty + quantity(l), a.estimated + if (l.discountSource == "prorated") l.discountCents else 0) }
         if (o.qty > 0 && o.net > 0) id to o else null
       }.toMap()
       val links = prices.mapNotNull { (id, o) ->

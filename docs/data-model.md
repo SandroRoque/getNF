@@ -83,7 +83,7 @@ Dinheiro é sempre `Long` em centavos. Quantidade e preço unitário são `Long`
 | Desconto | `discount_cents`; `discount_source` = `html` \| `photo` \| `manual` \| `prorated`; `discount_review` = `unreviewed` \| `confirmed` | extração, OCR, usuário ou rateio |
 | Estado | `orphaned` bool | o reprocessamento (ver abaixo) |
 
-O produto efetivo da linha é `product_override_id`, se houver, senão o produto do item da loja. O valor líquido não é guardado; é sempre calculado como `gross_cents − discount_cents`. O rateio só escreve linhas com
+O produto efetivo da linha é `product_override_id`, se houver, senão o produto do item da loja. O valor líquido não é guardado; é sempre calculado como `gross_cents − discount_cents + surcharge_cents`, onde `surcharge_cents` é a parte da linha no acréscimo da nota, rateada pelo valor como o desconto (D175). O rateio só escreve linhas com
 `discount_source = prorated`, e só distribui o desconto total da nota menos os descontos já observados ou manuais.
 
 ### Catálogo

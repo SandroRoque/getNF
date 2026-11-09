@@ -33,11 +33,14 @@ data class SpendingLine(
   val soldBy: String? = null,
   /** How many items the unit as sold holds, when System-1 read it (D108): 12 for a pack of 12 × 500 ml. */
   val packCount: Int? = null,
+  /** The line's share of the receipt's surcharge (D175): part of what was paid, not of the shelf price. */
+  val surchargeCents: Long = 0,
 ) {
   /** `kg` or `l` when the quantity is itself a weight or a volume: by the unit's spelling, else by how it's sold. */
   val measure: String? get() = Derive.unitKind(unit) ?: when (soldBy) { "weight" -> "kg"; "volume" -> "l"; else -> null }
 
-  val netCents: Long get() = grossCents - discountCents
+  /** What this line cost: the price, less its discount, plus its share of a surcharge. */
+  val netCents: Long get() = grossCents - discountCents + surchargeCents
 }
 
 @Dao
@@ -48,7 +51,8 @@ abstract class SpendingDao {
       l.discountCents, l.discountSource, p.id AS productId, p.categoryId, l.qtyE4, l.unit, l.unitPriceE4,
       CASE WHEN p.sizeSource = 'manual' THEN p.sizeE6 WHEN s.readSizeSource IS NOT NULL THEN s.readSizeE6 ELSE s.parsedSizeE6 END AS sizeE6,
       CASE WHEN p.sizeSource = 'manual' THEN p.sizeUnit WHEN s.readSizeSource IS NOT NULL THEN s.readSizeUnit ELSE s.parsedSizeUnit END AS sizeUnit,
-      COALESCE(s.soldByUser, s.soldBy) AS soldBy, CASE WHEN s.readSizeSource IS NOT NULL THEN s.readPackCount END AS packCount
+      COALESCE(s.soldByUser, s.soldBy) AS soldBy, CASE WHEN s.readSizeSource IS NOT NULL THEN s.readPackCount END AS packCount,
+      l.surchargeCents
     FROM receipt_line l
     JOIN store_item s ON s.id = l.storeItemId
     JOIN product p ON p.id = COALESCE(l.productOverrideId, s.productId)
@@ -186,6 +190,7 @@ fun onePerReceipt(lines: List<SpendingLine>): List<SpendingLine> =
       val qty = same.sumOf { it.qtyE4 }
       same.first().copy(
         qtyE4 = qty, grossCents = same.sumOf { it.grossCents }, discountCents = same.sumOf { it.discountCents },
+        surchargeCents = same.sumOf { it.surchargeCents },
         unitPriceE4 = if (qty == 0L) same.first().unitPriceE4 else Math.round(same.sumOf { it.unitPriceE4.toDouble() * it.qtyE4 } / qty),
       )
     }

@@ -118,7 +118,8 @@ abstract class ReceiptDao {
   autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7),
     AutoMigration(from = 7, to = 8, spec = ReceiptDatabase.ReuploadBlanked::class), AutoMigration(from = 8, to = 9, spec = ReceiptDatabase.ReuploadBlanked::class),
     AutoMigration(from = 9, to = 10), AutoMigration(from = 10, to = 11), AutoMigration(from = 11, to = 12),
-    AutoMigration(from = 12, to = 13), AutoMigration(from = 13, to = 14)],
+    AutoMigration(from = 12, to = 13), AutoMigration(from = 13, to = 14),
+    AutoMigration(from = 14, to = 15, spec = ReceiptDatabase.ReparseSurcharged::class)],
 )
 abstract class ReceiptDatabase : RoomDatabase() {
   abstract fun receipts(): ReceiptDao
@@ -139,10 +140,20 @@ abstract class ReceiptDatabase : RoomDatabase() {
     override fun onPostMigrate(connection: SQLiteConnection) = connection.execSQL(REUPLOAD)
   }
 
+  /**
+   * 14 → 15 (D175, T-13): lines get their share of a surcharge. Receipts that paid more than their items less the
+   * discount had one, which the parser read and dropped: they're parsed again.
+   */
+  class ReparseSurcharged : AutoMigrationSpec {
+    override fun onPostMigrate(db: SupportSQLiteDatabase) = db.execSQL(REPARSE_SURCHARGED)
+    override fun onPostMigrate(connection: SQLiteConnection) = connection.execSQL(REPARSE_SURCHARGED)
+  }
+
   companion object {
+    private const val REPARSE_SURCHARGED = "UPDATE `receipt_parsed` SET `parserVersion` = 0 WHERE `paidCents` > `grossCents` - COALESCE(`discountCents`, 0)"
     private const val REUPLOAD = "UPDATE `receipt_photo` SET `uploaded` = 0"
     const val NAME = "getnf.db"
-    const val VERSION = 14
+    const val VERSION = 15
     /** [name]: each caderneta has its own database on the phone (D104, [LocalFiles]). */
     fun open(context: Context, name: String = NAME): ReceiptDatabase =
       Room.databaseBuilder(context, ReceiptDatabase::class.java, name).addMigrations(MIGRATION_3_4).build()

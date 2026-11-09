@@ -108,6 +108,8 @@ class ReceiptParser(
     val lineCents = p.items.map { it.totalCents ?: 0 }
     val known = p.items.withIndex().mapNotNull { (i, item) -> kept[item.line]?.let { i to it.discountCents } }.toMap()
     val discounts = Derive.lineDiscounts(p.totals.discountCents, lineCents, known)
+    // A surcharge (acréscimo, outras despesas) is part of what was paid: spread by value, as the discount is (D175).
+    val surcharges = Derive.allocateCents(p.totals.surchargeCents ?: 0, lineCents)
 
     val rows = p.items.mapIndexed { i, item ->
       val code = item.code ?: ""
@@ -139,6 +141,7 @@ class ReceiptParser(
         discountSource = if (i in known) kept.getValue(item.line).discountSource else discounts[i].source.value,
         discountReview = if (i in known) kept.getValue(item.line).discountReview else "unreviewed",
         dirty = true,
+        surchargeCents = surcharges[i],
       )
     }
     dao.insertLines(rows)

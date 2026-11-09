@@ -6,7 +6,6 @@ import java.io.File
 import java.time.Instant
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import org.junit.Ignore
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -30,7 +29,7 @@ class Round2ArithmeticTest {
     val l = SpendingLine("synthetic",1,1767272400000,null,null,0,0,"manual","p",null,0,"UN",0,null,null)
     assertTrue(Ipci.compute(listOf(l)).all { it.index.isFinite() && it.change.isFinite() && it.reading==null })
   }
-  @Ignore("T-13: reproduces the audit's finding; un-ignore with the fix") @Test fun surchargeMustReachSpending() = runTest {
+  @Test fun surchargeMustReachSpending() = runTest {
     val db=testDatabase();val dir=File(tmp.root,"receipts");val store=ReceiptStore(dir,db)
     val html=javaClass.classLoader!!.getResource("sc-detalhes-server-html.html")!!.readText()
     val chave=NfcePage.parse(html).chave!!

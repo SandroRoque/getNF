@@ -92,7 +92,7 @@ abstract class EditDao {
     LEFT JOIN category c ON c.id = p.categoryId
     LEFT JOIN category sc ON sc.id = p.suggestionCategoryId
     LEFT JOIN (
-      SELECT COALESCE(l.productOverrideId, s.productId) AS pid, SUM(l.grossCents - l.discountCents) AS spent, COUNT(DISTINCT l.receipt) AS n
+      SELECT COALESCE(l.productOverrideId, s.productId) AS pid, SUM(l.grossCents - l.discountCents + l.surchargeCents) AS spent, COUNT(DISTINCT l.receipt) AS n
       FROM receipt_line l JOIN store_item s ON s.id = l.storeItemId GROUP BY pid
     ) u ON u.pid = p.id
     WHERE p.deleted = 0 AND p.archived = 0 AND u.n > 0
@@ -166,7 +166,7 @@ abstract class EditDao {
   @Query(
     """
     SELECT l.receipt AS chave, l.lineNo, rp.issuedAt, i.name AS issuerName, l.qtyE4, l.unit, l.unitPriceE4,
-      l.grossCents - l.discountCents AS netCents, l.productOverrideId IS NOT NULL AS override
+      l.grossCents - l.discountCents + l.surchargeCents AS netCents, l.productOverrideId IS NOT NULL AS override
     FROM receipt_line l JOIN store_item s ON s.id = l.storeItemId
     LEFT JOIN receipt_parsed rp ON rp.chave = l.receipt LEFT JOIN issuer i ON i.cnpj = rp.issuerCnpj
     WHERE COALESCE(l.productOverrideId, s.productId) = :id

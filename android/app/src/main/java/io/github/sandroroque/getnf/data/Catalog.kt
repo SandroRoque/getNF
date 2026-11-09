@@ -75,6 +75,7 @@ data class LineDetail(
   val override: Boolean = false,
   val discountReview: String = "unreviewed",
   val storeDescription: String = description,
+  val surchargeCents: Long = 0,
 )
 
 /** A receipt's parsed header with its store's name. */
@@ -267,6 +268,8 @@ data class ReceiptLineRow(
   val discountReview: String = "unreviewed",
   val orphaned: Boolean = false,
   @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
+  /** This line's share of the receipt's surcharge (acréscimo), prorated by its value (D175, T-13). */
+  @ColumnInfo(defaultValue = "0") val surchargeCents: Long = 0,
 )
 
 /**
@@ -356,7 +359,8 @@ abstract class CatalogDao {
     """
     SELECT l.lineNo, l.description, l.code, l.qtyE4, l.unit, l.unitPriceE4, l.grossCents, l.discountCents,
            l.discountSource, p.name AS productName, c.label AS categoryLabel, pc.label AS parentLabel,
-           p.id AS productId, l.productOverrideId IS NOT NULL AS override, l.discountReview, s.description AS storeDescription
+           p.id AS productId, l.productOverrideId IS NOT NULL AS override, l.discountReview, s.description AS storeDescription,
+           l.surchargeCents
     FROM receipt_line l
     JOIN store_item s ON s.id = l.storeItemId
     JOIN product p ON p.id = COALESCE(l.productOverrideId, s.productId)
@@ -400,7 +404,7 @@ abstract class CatalogDao {
     """
     SELECT strftime('%Y-%m', rp.issuedAt / 1000, 'unixepoch', '-3 hours') AS month,
            COALESCE(c.seedPath, '') AS category,
-           SUM(l.grossCents - l.discountCents) AS netCents
+           SUM(l.grossCents - l.discountCents + l.surchargeCents) AS netCents
     FROM receipt_line l
     JOIN receipt_parsed rp ON rp.chave = l.receipt
     JOIN store_item s ON s.id = l.storeItemId

@@ -4158,3 +4158,21 @@ where docs/data-model.md says only the split between categories may change.
   field ("Até R$ …", "A nota não tem desconto", "O desconto da nota já está nas outras linhas") and won't save beyond.
 - Photo-read discounts that together exceed the receipt's are the photo reader's matter, not covered here.
 - Test: `CatalogEditorTest.reviewRound2ManualDiscountMustKeepReceiptTotal`, extended to two hand-typed lines.
+
+## D175. A receipt's surcharge is spread over its lines, like the discount (2026-11-09, T-13)
+
+The audit's R5: the parser read a surcharge ("Acréscimo", "Outras despesas") and checked the totals with it, but the
+lines had nowhere to keep it, so spending summed gross − discount and a receipt that paid R$ 31,64 counted R$ 30,64.
+None of the user's receipts has one; delivery receipts can (a fee).
+- **Per line, by value, as the discount's proration** (`Derive.allocateCents`): `receipt_line.surchargeCents` (Room
+  15, an AutoMigration) and `surcharge_cents` online. A line's net is gross − discount + surcharge everywhere it's
+  summed (spending, categories, stores, products), so each category carries its share and the totals are what was
+  paid. Chosen over a notice on the receipt (it would leave the totals wrong) with the user.
+- **The IPCI leaves it out:** it measures prices, and a fee isn't the price of what was bought.
+- **Receipts already parsed:** the 14 → 15 migration marks those that paid more than items less discount
+  (`paidCents > grossCents − discountCents`) to be parsed again, which fills their lines; nothing else is re-parsed.
+- The receipt screen shows the share on each line ("+R$ … de acréscimo") and the header's breakdown ("… − … + …").
+- Old clients: they neither send nor read the column; a line they push again keeps it (their upsert names only the
+  columns they know). The migration must be online before a build with Room 15 goes out.
+- Tests: `Round2ArithmeticTest.surchargeMustReachSpending` (un-ignored), `ReceiptDatabaseMigrationTest.version15ParsesSurchargedReceiptsAgain`
+  (emulator), `SupabaseLocalTest` against the migration.
