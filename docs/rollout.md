@@ -39,11 +39,13 @@ confirmed in the Play Console, not as intended.
 |---|---|
 | preparing | CI run URL green for the sha · `tools/check.sh` full · `bundleRelease` from the sha, `aab: sha256:…` recorded · release APK on the emulator (signed out, demo, a capture from a video, Enviar comentário reaching the inbox) · the phone updated from Play over the previous version, data still there (once the build is on a track the phone's account gets; a sideload can't replace a Play install, D162) · no open blocking ticket that applies to this build, including regressions outside its scope · notes written from Contents and checked by the user · Data safety, policy, listing still true |
 | internal | Uploaded, `play/<code>` pushed on the sha · installed from Play on the phone and a real receipt read · pre-launch report for this code: no unresolved blocker, the rest triaged · migrations the build needs applied online (`## Server`) |
-| submitted | The same AAB added from the library to the closed track · sent for review · approved, or rejected with the reason |
-| closed | An account in the closed test (not opted in to internal testing) installs this versionCode from Play |
+| submitted | The same AAB added from the library to the closed track · sent for review · approved and published (it becomes `closed` that day), or rejected with the reason |
+| closed | A newer code is approved on the closed track (`replaced`), or this one is promoted. Its check, in the manifest: an account in the closed test (not opted in to internal testing) installs this versionCode from Play |
 
 **Rejected** is a fact about the submission, not the AAB: if the fix is outside the app (the review login, the
 listing, a declaration), fix it and resubmit the same bundle; a new code only when the app must change.
+
+`closed` means what testers get from Play now, whether or not anyone has installed it yet (D169).
 
 There are no fixed waits between states. The closed test's 14 days are a property of the testers (see
 play-console.md: each of at least 12 testers opted in continuously for 14 days), not of any build.

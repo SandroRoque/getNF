@@ -85,7 +85,7 @@ listing's description (play-console.md) says SC and RJ.
 Where things are:
 - **0.1.2 (code 5, `play/5`, 3cf6610, with D164) was approved on the closed track on 2026-11-04** (Submission
   activity, checked 2026-11-05) and is what a tester installs or updates to now; code 4 is `replaced`. Code 5's
-  manifest stays `submitted` until an account in the closed test installs it from Play (releases/5.md). Testers
+  manifest is `closed` (D169: approved on the closed track is what testers have). Testers
   already opted in get it as an ordinary Play update: nobody needs inviting again.
 - What testers send lands in the `contributions` bucket and the `contribution_file` table (secret key only):
   `tools/contributions.py list` shows it per install and item, `fetch` downloads into `test-media/contributions/`

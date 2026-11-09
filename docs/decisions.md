@@ -4067,3 +4067,17 @@ wake the timer's catch-up run started before the network and failed on DNS. `net
 target a user unit can't wait for. The unit now retries every 5 minutes (at most 6 starts in 2 h) and, if it gives up,
 `getnf-backup-failed.service` sends a desktop notification: the worker's report was the only place the age showed,
 in a screen nobody opens. A failed run's partial dump is removed on the next run.
+
+## D169. A build approved on the closed track is `closed` the day it's published, not when someone installs it (2026-11-09)
+
+The user saw the dashboard say testers have 0.1.0 (code 3) while they have 0.1.2 (code 5), approved and published on
+2026-11-04. D158's states let `submitted` leave for `closed` only once an account in the closed test installed that
+code from Play; nobody had, so code 5 stayed `submitted`: the board showed it under "Em revisão", "Com os testadores"
+fell back to the newest `closed` manifest (code 3), and `tools/release.py pending` counted from code 3 too.
+- **The state is what testers can get:** approval and publication on the closed track move `submitted` to `closed`
+  that day, dated from the Play Console as before. An install says whether anyone tried it, not what testers have.
+- **The install stays a check**, in the manifest's Checks (the phone updated from Play), so a build nobody has opened
+  still shows as unverified, but in its checks rather than in its state.
+- Code 5 is `closed` from 2026-11-04, recorded as a new line under its Play events; old lines aren't rewritten.
+- Code 3 becomes `replaced` from code 4's approval (2026-11-03); code 4 stays `replaced`. Code 6, in review, becomes
+  `closed` once approved, and code 5 `replaced`.
