@@ -47,11 +47,28 @@ class FeedbackOutboxTest {
     outbox.add(FeedbackOutbox.Kind.Comment, "normal", at = 2_000)
     val refused = mutableListOf<String>()
     val sent = outbox.send(onRefused = { refused += it }) {
-      if (it["body"]!!.jsonPrimitive.content == "demais") throw SupabaseException(400, "too many reports")
+      if (it["body"]!!.jsonPrimitive.content == "demais") throw SupabaseException(400, "violates check constraint", "23514")
     }
     assertEquals(1, sent)
-    assertEquals(listOf("too many reports"), refused)
+    assertEquals(listOf("violates check constraint"), refused)
     assertFalse(outbox.pending().any())
+  }
+
+  @Test fun overTheServersLimitTheyWaitForLater() {
+    outbox.add(FeedbackOutbox.Kind.Crash, "primeiro", at = 1_000)
+    outbox.add(FeedbackOutbox.Kind.Comment, "segundo", at = 2_000)
+    var tries = 0
+    val refused = mutableListOf<String>()
+    try {
+      outbox.send(onRefused = { refused += it }) { tries++; throw SupabaseException(400, "too many reports this hour", FeedbackOutbox.OVER_LIMIT) }
+      throw AssertionError("the limit must reach the worker, to back off")
+    } catch (_: IOException) {}
+    assertEquals("the rest would be turned away too", 1, tries)
+    assertEquals(emptyList<String>(), refused)
+    assertEquals(2, outbox.pending().size)
+    val bodies = mutableListOf<String>()
+    assertEquals(2, outbox.send { bodies += it["body"]!!.jsonPrimitive.content })
+    assertEquals(listOf("primeiro", "segundo"), bodies)
   }
 
   @Test fun aLongReportIsCutToTheTablesLimit() {

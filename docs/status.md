@@ -1,7 +1,7 @@
 # Status and next steps
 
-Last updated 2026-11-08. A handoff for picking the project up again. For *why* things are the way they are, read
-`docs/decisions.md` (D1–D150). For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
+Last updated 2026-11-09. A handoff for picking the project up again. For *why* things are the way they are, read
+`docs/decisions.md`. For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
 
@@ -31,7 +31,7 @@ and the IPCI on the phone; the user decides on the phone what Jev wasn't sure of
 - **App (`android/`):** four tabs (D81): **Início** (this month), **Gastos** (period › category › product › purchase ›
   receipt, with Lojas as a second lens), **Para você** (every pending decision as a card), **Catálogo** (Produtos,
   Categorias, Lojas, Notas; all editing starts here), with scan in the middle of the bar and Ajustes behind the account
-  icon on Início. The "Calmo" look in light and dark, Portuguese throughout. Room database (v13), export/restore to one
+  icon on Início. The "Calmo" look in light and dark, Portuguese throughout. Room database (its version is `ReceiptDatabase.VERSION`), export/restore to one
   zip in Ajustes. Works without an account; with one it syncs the open caderneta (`sync/SyncEngine`).
 - **Capture (D82–D95, D97):** planned live from OCR of the print: the receipt is assembled from its rows as the camera
   moves, only frames that add rows are saved, and a finished capture keeps the fewest photos that read it. Changes go
@@ -102,6 +102,10 @@ identical photos) is open, for the capture.
 The 2026-11-04 outside audit (D170) became T-8–T-26. Fixed on main 2026-11-09: T-8 (D171), T-9–T-11 (D172; the
 server half online the same day, T-9 resolved), T-12 (D173), T-14 (D174), T-13 (D175). Waiting: the line_surcharge
 migration online (before any Room 15 build), `/apagar-conta/` redeployed (T-11's web half), and a build with them.
+
+A critique of the whole project on 2026-11-09 found one more defect, T-27 (a report turned away by the server's flood
+limit was deleted from the phone), fixed on main the same day with D176, which also puts the server's tests in
+`tools/check.sh`. It waits for a build, like the others.
 
 Do next, in order:
 0. **Code 7, cut early** (privacy and numbers in the build testers have, rollout.md › Cutting): apply
@@ -265,8 +269,11 @@ screenshots).
   `timing.tsv` (D129). On the phone, before a release: `tools/device-bench.sh` (installs and removes only its own
   test APK, D129).
 - **Before every push:** `tools/check.sh` runs from the pre-push hook (build, JVM tests, capture benchmark; D129).
+  With the local Supabase running it also runs the server's tests (D176): pgTAP, the Edge Functions' Deno tests and
+  the JVM tests that talk to it (`SupabaseLocalTest`, the Round2/Round3 ones). Without it they're skipped with a
+  warning, so keep the stack up (`npx supabase start`, from the main checkout).
 - **On GitHub:** every push to main runs `tools/check.sh --quick` (`.github/workflows/check.yml`, D140); the result is
-  the ✓/✗ next to each commit.
+  the ✓/✗ next to each commit. GitHub has no Supabase, so the server's tests don't run there.
 - **Crashes:** the app writes each crash to `files/crashes/` and offers it on Início at the next start (D140). Play
   Console › Android vitals has the crashes and ANRs of Play installs: look there after each release.
 - **Parser:** `NfceParityTest` holds the parser to golden files first written from the old JS parser (D48); a

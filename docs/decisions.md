@@ -4176,3 +4176,33 @@ None of the user's receipts has one; delivery receipts can (a fee).
   columns they know). The migration must be online before a build with Room 15 goes out.
 - Tests: `Round2ArithmeticTest.surchargeMustReachSpending` (un-ignored), `ReceiptDatabaseMigrationTest.version15ParsesSurchargedReceiptsAgain`
   (emulator), `SupabaseLocalTest` against the migration.
+
+## D176. A report over the server's limit waits on the phone; the server's tests run before every push (2026-11-09, T-27)
+
+From a critique of the whole project (2026-11-09), two things the audit of D170 hadn't settled.
+
+**Reports.** The `feedback` table turns reports away past 30 a day from one install or 300 an hour from everyone
+(D152), with a 400 the app took as final: `FeedbackOutbox.send` deleted the report. The hourly limit is shared, and
+the publishable key is in every copy of the app, so anyone could fill it and every tester's crash report sent in that
+hour was lost without a trace.
+- The limit's answer carries Postgres's `P0001` (checked on the local Supabase: `{"code":"P0001",…}`, 400).
+  `SupabaseClient` now keeps the Data API's `code` beside Auth's `error_code`, and the outbox treats `P0001` as "not
+  now": the report stays, the sending stops (the rest would be turned away too) and the worker backs off and tries
+  again. A row the server refuses for itself (a check constraint) is still dropped.
+- On the phone only, so it works with the server as it is and needs no migration. Chosen over answering 429 from the
+  trigger: that would need a migration and would leave codes 2–6 as they are anyway.
+- Tests: `FeedbackOutboxTest.overTheServersLimitTheyWaitForLater`; `SupabaseLocalTest.aReportOverTheDailyLimitWaitsOnThePhone`
+  sends 31 reports to the real table.
+
+**Checks.** The audit's design note on D140 stood: `SupabaseLocalTest` and the audit's own HTTP tests skip without
+`GETNF_SUPABASE_LOCAL`, and neither pgTAP nor the functions' Deno tests ran in `tools/check.sh`, so a green check said
+nothing of the contract between the phone and the database (where T-15 came from).
+- `tools/check.sh` (the pre-push hook, and `--quick`) now runs them when the local Supabase answers on
+  127.0.0.1:54321: migrations not yet applied locally are applied, then `npx supabase test db`, `deno test
+  supabase/functions`, and the JVM tests that talk to the stack, with the keys read from `npx supabase status`. A
+  failure stops the push. Only the local stack is ever used.
+- Without the stack they're skipped with a warning, as the capture benchmark is without `test-media/`. So GitHub's run
+  still doesn't cover them: a Supabase started inside the workflow is the next step if the PC stops being where every
+  push comes from. Not done now, to keep the workflow short while there's one developer.
+- Found on the way: `npx supabase` failed on this PC (the CLI's Linux binary was missing from the npx cache since
+  that morning); `npm install` in the cache directory brought it back.

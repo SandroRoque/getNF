@@ -1,9 +1,11 @@
 package io.github.sandroroque.getnf.sync
 
+import io.github.sandroroque.getnf.data.FeedbackOutbox
 import io.github.sandroroque.getnf.data.ReceiptParser
 import io.github.sandroroque.getnf.data.ReceiptStore
 import io.github.sandroroque.getnf.data.testDatabase
 import java.io.File
+import java.io.IOException
 import java.util.UUID
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
@@ -172,5 +174,27 @@ class SupabaseLocalTest {
     assertEquals(listOf(left.single()["object_path"]!!.jsonPrimitive.content), client.listObjects(bia, "$casa/"))
     // Running it again finds nothing.
     assertEquals(0, PhotoWithdrawal.withdraw(client, ana))
+  }
+
+  /** D176: the table's own limit comes back as something the outbox knows, so the report waits instead of going. */
+  @Test fun aReportOverTheDailyLimitWaitsOnThePhone() {
+    assumeTrue("set GETNF_SUPABASE_LOCAL to run against a local Supabase", keys != null)
+    val install = UUID.randomUUID().toString()
+    val outbox = FeedbackOutbox(tmp.newFolder("feedback"), "SupabaseLocalTest", { install })
+    val client = SupabaseClient(url, keys!![0])
+    try {
+      repeat(31) { outbox.add(FeedbackOutbox.Kind.Comment, "relato $it", at = 1_000L + it) }
+      var sent = 0
+      try {
+        outbox.send { client.insertAnonymous("feedback", it); sent++ }
+        throw AssertionError("the 31st report of a day must be turned away")
+      } catch (_: IOException) {}
+      assertEquals(30, sent)
+      assertEquals("the one turned away is still there", 1, outbox.pending().size)
+    } finally {
+      val request = Request.Builder().url("$url/rest/v1/feedback?install_id=eq.$install").header("apikey", keys[1])
+        .header("Authorization", "Bearer ${keys[1]}").delete().build()
+      OkHttpClient().newCall(request).execute().close()
+    }
   }
 }

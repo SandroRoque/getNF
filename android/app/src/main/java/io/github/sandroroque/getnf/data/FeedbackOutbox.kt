@@ -36,8 +36,10 @@ class FeedbackOutbox(private val dir: File, val about: String, private val insta
 
   /**
    * Sends every waiting report through [post], oldest first; each sent is deleted. A network failure stops it (the
-   * rest wait for the next try, and the [IOException] goes up for the worker to back off); a report the server
-   * refuses (too long, too many today) is dropped, since sending it again won't change the answer.
+   * rest wait for the next try, and the [IOException] goes up for the worker to back off). So does the server's
+   * flood limit (D176): it's about the hour or the day, not the report, and anyone with the app's key can fill the
+   * hourly one, so the report waits. A report the server refuses for itself (a row it won't take) is dropped, since
+   * sending it again won't change the answer.
    */
   fun send(onRefused: (String) -> Unit = {}, post: (JsonObject) -> Unit): Int {
     var sent = 0
@@ -48,6 +50,7 @@ class FeedbackOutbox(private val dir: File, val about: String, private val insta
         post(row)
         sent++
       } catch (e: SupabaseException) {
+        if (e.code == OVER_LIMIT) throw IOException("the server is taking no reports for now: ${e.message}", e)
         onRefused(e.message ?: "refused")
       }
       f.delete()
@@ -58,5 +61,7 @@ class FeedbackOutbox(private val dir: File, val about: String, private val insta
   companion object {
     /** The table's limit. */
     const val MAX_BODY = 30_000
+    /** What `feedback_limits` raises (the migration of D152), as the Data API passes it on with its 400. */
+    const val OVER_LIMIT = "P0001"
   }
 }

@@ -24,7 +24,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 
 /** A response from Supabase that retrying won't fix (bad login, a rejected row...). */
-/** [code] is Supabase's own name for the error, when it gives one (`invalid_credentials`, `weak_password`). */
+/** [code] is Supabase's own name for the error, when it gives one (`invalid_credentials`, `weak_password`), or Postgres's (`P0001`). */
 class SupabaseException(val status: Int, message: String, val code: String? = null) : Exception(message)
 
 /** A signed-in user. The refresh token is what's kept; access tokens last an hour and are renewed each sync. */
@@ -198,7 +198,8 @@ class SupabaseClient(val url: String, private val key: String, private val http:
       val o = runCatching { Json.parseToJsonElement(text).jsonObject }.getOrNull()
       val message = o?.let { listOf("msg", "message", "error_description", "error").firstNotNullOfOrNull { k -> it[k]?.jsonPrimitive?.content } }
         ?: text.take(200)
-      val code = o?.get("error_code")?.jsonPrimitive?.content
+      // Auth names its errors in `error_code`; the Data API passes Postgres's own in `code` (P0001, 23514...).
+      val code = (o?.get("error_code") ?: o?.get("code"))?.jsonPrimitive?.content
       // 5xx and 429 may pass on a retry: report them as network trouble, so the worker backs off and tries again.
       if (r.code >= 500 || r.code == 429) throw IOException("${request.method} ${request.url.encodedPath}: ${r.code} $message")
       throw SupabaseException(r.code, "${request.method} ${request.url.encodedPath}: ${r.code} $message", code)

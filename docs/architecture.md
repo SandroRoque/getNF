@@ -30,7 +30,7 @@ Kotlin and Jetpack Compose, one module, package `io.github.sandroroque.getnf`:
 | `ui/page` | The SEFAZ page in a WebView, the lookup budget check (D16, D17, D99–D101) |
 | `parse` | [NfcePage.kt](../android/app/src/main/java/io/github/sandroroque/getnf/parse/NfcePage.kt) reads the page; [Derive.kt](../android/app/src/main/java/io/github/sandroroque/getnf/parse/Derive.kt) makes store items and line discounts; buyer redaction |
 | `discounts` | OCR of the saved photos, pairing discount lines with items (D54, D101) |
-| `data` | Room ([ReceiptDatabase.kt](../android/app/src/main/java/io/github/sandroroque/getnf/data/ReceiptDatabase.kt), v11), the receipt store, the catalog and its editor, spending and IPCI, backup/restore, the lookup budget |
+| `data` | Room ([ReceiptDatabase.kt](../android/app/src/main/java/io/github/sandroroque/getnf/data/ReceiptDatabase.kt)), the receipt store, the catalog and its editor, spending and IPCI, backup/restore, the lookup budget |
 | `sync` | [SyncEngine.kt](../android/app/src/main/java/io/github/sandroroque/getnf/sync/SyncEngine.kt) and its worker, cadernetas (ledgers), photo uploads and withdrawal, the page reminder |
 | `ui/*` | The four tabs (D81): Início, Gastos, Para você, Catálogo; Ajustes; the "Calmo" theme |
 
