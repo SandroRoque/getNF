@@ -94,17 +94,20 @@ Where things are:
   listing are edited in the console (the built-in browser is signed in to it).
 
 The first contributions arrived 2026-11-07 (one install in RJ, 10 items): RJ pages parse; three tickets came out of
-them. T-5 is fixed on main (D167), for the next build. T-7 (a voucher slip photographed alone went out with its
+them. T-5 is fixed (D167) in code 6, uploaded 2026-11-09. T-7 (a voucher slip photographed alone went out with its
 balance showing) was settled with the user: the blanking stays as it is, the privacy policy now calls it best effort
 and restates that nothing is sold or used otherwise (site redeployed 2026-11-07). T-6 (a short receipt kept as 2-3
 identical photos) is open, for the capture.
 
 Do next, in order:
 1. ~~The phone on code 4~~: code 4 is replaced; its check is folded into code 5's (next item).
-2. **Code 5 (0.1.2, 3cf6610, `play/5`), with D164:** approved on the closed track (2026-11-04), live on internal.
-   Check whether this upload got a pre-launch report. Then the user's phone updates through Play (D162; the user will
-   plug it in later) and releases/5.md gets its phone check: October still shows R$ 821,85 in 5 receipts, 7
-   decisions, the account, and the photos question appears.
+2. **Code 6 (0.1.3, 6916fe9, `play/6`), with D167 (T-5):** uploaded straight to the closed track 2026-11-09 and
+   promoted to internal; Google's review to be confirmed in the console (Publishing overview), and whether it got a
+   pre-launch report. Then the user's phone updates through Play (D162; the user will plug it in later) and
+   releases/6.md gets its phone check (code 5's is folded into it): October still shows R$ 821,85 in 5 receipts, 7
+   decisions, the account, and the photos question appears. Once a tester has code 6, resolve T-5
+   (`tools/tickets.py resolve T-5 --version 0.1.3 --commit dca8121`). Code 5 (approved 2026-11-04) is what testers
+   have until then.
 3. ~~T-4~~ discarded by D165: corrections follow a SEFAZ line's number; orphans wait for the photo reader.
 4. **Watching** (rollout.md › Watching): each session, `tools/tickets.py inbox`, `tools/contributions.py list --days 1`, the
    sync and refused-rows reports, Vitals; findings become tickets.

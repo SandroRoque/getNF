@@ -149,9 +149,9 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
 
 > Correções na sincronização de cadernetas divididas: quando duas pessoas editam o mesmo produto, cada uma mantém o que mudou (o nome de uma e o tamanho da outra, por exemplo); um item que sai de uma nota sai também nos outros celulares; e cadernetas com muitas notas agora são baixadas por inteiro.
 
-- **Release notes, 0.1.3** (code 6; Play shows up to 500):
+- **Release notes, 0.1.3** (code 6; Play shows up to 500; the first draft was too technical, rewritten with the user):
 
-> Correção: o app volta a contar cada consulta de nota de Santa Catarina, então o aviso de que a SEFAZ pode bloquear a sua rede por um tempo aparece na hora certa (antes, chegava tarde ou nem aparecia). Nas notas do Rio de Janeiro, a tela de carregamento da SEFAZ não vai mais junto das fotos do teste como se fosse de outro estado.
+> Correção: a SEFAZ de Santa Catarina bloqueia a sua internet por um tempo depois de umas 5 consultas por hora, e o app deve avisar antes disso. Ao ler o QR Code, esse aviso chegava tarde ou nem aparecia; agora aparece na hora certa. E, para quem aceitou enviar as fotos do teste, as notas do Rio de Janeiro não mandam mais uma tela de carregamento desnecessária junto.
 
 - **Closed testing › testers** (D153): Google Groups, `testadores-da-caderneta@googlegroups.com`
   (https://groups.google.com/g/testadores-da-caderneta: anyone can join, members and conversations visible to
