@@ -1,0 +1,9 @@
+$ . tools/env.sh && cd android && ./gradlew --init-script ../docs/review-repros/2026-11-09/repro.init.gradle -PreproDir=localdb :app:testDebugUnitTest --tests "*Review1109Localdb*"
+(run 2026-11-10)
+<testcase name="aRestoredDatabaseThatFailsToOpenIsRolledBackOnTheNextStart"
+<failure message="org.junit.ComparisonFailure: after a start that never got the restored database open (cleanUp not reached), the next start must roll back to restore/previous instead of crashing on the same file forever expected:<[ORIGINAL]> but was:<[unopenable]>"
+<testcase name="aRestoreStagedForTheDemoIsNotAppliedToTheUsersCaderneta"
+<failure message="org.junit.ComparisonFailure: a restore staged for the demo's files must never replace the user's caderneta (and cleanUp must not then delete it) expected:<[USER'S REAL] DATABASE> but was:<[DEMO] DATABASE>"
+<testcase name="aBackupWhoseDatabaseIsNotADatabaseIsRefusedBeforeAnythingChanges"
+<failure message="java.lang.AssertionError: inspect must refuse a backup whose db/getnf.db is not an SQLite database of a version <= 15 (check the header and PRAGMA user_version), not accept it"
+3 tests completed, 3 failed

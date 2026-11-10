@@ -1,0 +1,199 @@
+Pager usage is off.
+== functions in public: definer, search_path, ACL
+        proname        |                                                                                                          args                                                                                                           | definer |      proconfig       |                                               proacl                                               
+-----------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------+----------------------+----------------------------------------------------------------------------------------------------
+ apply_categorization  | lid uuid, item uuid, product uuid, category uuid, confidence real, model text, threshold real                                                                                                                           | t       | {"search_path=\"\""} | {postgres=X/postgres,service_role=X/postgres}
+ apply_reading         | lid uuid, item uuid, product uuid, sold_by text, sold_by_source text, sold_by_confidence real, size_asked boolean, size_e6 bigint, size_unit text, pack_count integer, size_confidence real, model text, threshold real | t       | {"search_path=\"\""} | {postgres=X/postgres,service_role=X/postgres}
+ claim_categorize_jobs | batch integer                                                                                                                                                                                                           | t       | {"search_path=\"\""} | {postgres=X/postgres,service_role=X/postgres}
+ claim_fetch           | lid uuid, chave text                                                                                                                                                                                                    | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ contribution_objects  | install uuid, n integer                                                                                                                                                                                                 | t       | {"search_path=\"\""} | {postgres=X/postgres,service_role=X/postgres}
+ create_invite         | lid uuid, role ledger_role                                                                                                                                                                                              | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ create_ledger         | name text                                                                                                                                                                                                               | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ default_display_name  | uid uuid                                                                                                                                                                                                                | t       | {"search_path=\"\""} | {postgres=X/postgres,service_role=X/postgres}
+ delete_ledger         | lid uuid                                                                                                                                                                                                                | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ delete_me             |                                                                                                                                                                                                                         | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ drop_member           | lid uuid, uid uuid, op text                                                                                                                                                                                             | t       | {"search_path=\"\""} | {postgres=X/postgres,service_role=X/postgres}
+ fail_categorize_job   | lid uuid, item uuid, error text                                                                                                                                                                                         | t       | {"search_path=\"\""} | {postgres=X/postgres,service_role=X/postgres}
+ feedback_limits       |                                                                                                                                                                                                                         | t       | {"search_path=\"\""} | {postgres=X/postgres,service_role=X/postgres}
+ join_ledger           | code text                                                                                                                                                                                                               | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ keep_page             |                                                                                                                                                                                                                         | f       |                      | {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ keep_user_choices     |                                                                                                                                                                                                                         | f       |                      | {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ kick_categorize       |                                                                                                                                                                                                                         | t       | {"search_path=\"\""} | {postgres=X/postgres,service_role=X/postgres}
+ leave_ledger          | lid uuid                                                                                                                                                                                                                | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ ledgers_to_hand_over  |                                                                                                                                                                                                                         | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ log_ledger            | lid uuid, op text, payload jsonb                                                                                                                                                                                        | t       | {"search_path=\"\""} | {postgres=X/postgres,service_role=X/postgres}
+ my_ledgers            |                                                                                                                                                                                                                         | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ my_managed_ledgers    |                                                                                                                                                                                                                         | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ my_role               | lid uuid                                                                                                                                                                                                                | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ queue_categorize      |                                                                                                                                                                                                                         | t       | {"search_path=\"\""} | {postgres=X/postgres,service_role=X/postgres}
+ release_fetch         | lid uuid, chave text                                                                                                                                                                                                    | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ remove_member         | lid uuid, uid uuid                                                                                                                                                                                                      | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ rename_ledger         | lid uuid, name text                                                                                                                                                                                                     | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ seed_new_user         |                                                                                                                                                                                                                         | t       | {"search_path=\"\""} | {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ set_display_name      | lid uuid, name text                                                                                                                                                                                                     | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ set_role              | lid uuid, uid uuid, role ledger_role                                                                                                                                                                                    | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ sync_taxonomy         | lid uuid                                                                                                                                                                                                                | t       | {"search_path=\"\""} | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ sync_taxonomy_for     | lid uuid                                                                                                                                                                                                                | t       | {"search_path=\"\""} | {postgres=X/postgres,service_role=X/postgres}
+ ticket_touch          |                                                                                                                                                                                                                         | f       | {"search_path=\"\""} | {postgres=X/postgres,service_role=X/postgres}
+ touch                 |                                                                                                                                                                                                                         | f       |                      | {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+(34 rows)
+
+== tables: RLS, ACL
+         relname         | relkind | rls | force |                                             relacl                                             |       reloptions        
+-------------------------+---------+-----+-------+------------------------------------------------------------------------------------------------+-------------------------
+ audit_log_id_seq        | S       | f   | f     | {postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres} | 
+ category_rule_id_seq    | S       | f   | f     | {postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres} | 
+ feedback_id_seq         | S       | f   | f     | {postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres} | 
+ ledger_event_id_seq     | S       | f   | f     | {postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres} | 
+ ticket_id_seq           | S       | f   | f     | {postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres} | 
+ worker_report_id_seq    | S       | f   | f     | {postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres} | 
+ audit_log               | r       | t   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}                                    | 
+ barcode_lookup          | r       | t   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}                                    | 
+ categorize_job          | r       | t   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}                                    | 
+ category                | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ category_event          | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ category_rule           | r       | t   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}                                    | 
+ contribution_file       | r       | t   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}                                    | 
+ contribution_withdrawal | r       | t   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}                                    | 
+ feedback                | r       | t   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}                                    | 
+ issuer                  | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ ledger                  | r       | t   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}           | 
+ ledger_event            | r       | t   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}           | 
+ ledger_invite           | r       | t   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}           | 
+ ledger_member           | r       | t   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}           | 
+ lexicon                 | r       | t   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}                                    | 
+ link_suggestion         | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ product                 | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ product_tag             | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ receipt                 | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ receipt_line            | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ receipt_photo           | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ receipt_scan            | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ store_item              | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ tag                     | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ taxonomy_node           | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ taxonomy_tag            | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ ticket                  | r       | t   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}                                    | 
+ worker_report           | r       | t   | f     | {postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}    | 
+ tickets_abertos         | v       | f   | f     | {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}                                    | {security_invoker=true}
+(35 rows)
+
+== column ACLs
+ attrelid |  attname   |                   attacl                   
+----------+------------+--------------------------------------------
+ feedback | kind       | {anon=a/postgres,authenticated=a/postgres}
+ feedback | body       | {anon=a/postgres,authenticated=a/postgres}
+ feedback | about      | {anon=a/postgres,authenticated=a/postgres}
+ feedback | install_id | {anon=a/postgres,authenticated=a/postgres}
+ feedback | written_at | {anon=a/postgres,authenticated=a/postgres}
+(5 rows)
+
+== policies
+ schemaname |    tablename    |   policyname   |  cmd   |        roles         |                                              qual                                               |                                                   with_check                                                    
+------------+-----------------+----------------+--------+----------------------+-------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------
+ public     | category        | managers_edit  | ALL    | {authenticated}      | (ledger_id IN ( SELECT my_managed_ledgers() AS my_managed_ledgers))                             | (ledger_id IN ( SELECT my_managed_ledgers() AS my_managed_ledgers))
+ public     | category        | members_read   | SELECT | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | 
+ public     | category_event  | managers_log   | INSERT | {authenticated}      |                                                                                                 | ((ledger_id IN ( SELECT my_managed_ledgers() AS my_managed_ledgers)) AND (actor = ( SELECT auth.uid() AS uid)))
+ public     | category_event  | members_read   | SELECT | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | 
+ public     | feedback        | anyone_reports | INSERT | {anon,authenticated} |                                                                                                 | true
+ public     | issuer          | members        | ALL    | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | ledger          | members_read   | SELECT | {authenticated}      | (id IN ( SELECT my_ledgers() AS my_ledgers))                                                    | 
+ public     | ledger_event    | members_read   | SELECT | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | 
+ public     | ledger_invite   | managers_read  | SELECT | {authenticated}      | (ledger_id IN ( SELECT my_managed_ledgers() AS my_managed_ledgers))                             | 
+ public     | ledger_member   | members_read   | SELECT | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | 
+ public     | link_suggestion | members        | ALL    | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | product         | members        | ALL    | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | product_tag     | members        | ALL    | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | receipt         | members        | ALL    | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | receipt_line    | members        | ALL    | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | receipt_photo   | members        | ALL    | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | receipt_scan    | members        | ALL    | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | store_item      | members        | ALL    | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | tag             | members        | ALL    | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))
+ public     | taxonomy_node   | read_seed      | SELECT | {authenticated}      | true                                                                                            | 
+ public     | taxonomy_tag    | read_seed      | SELECT | {authenticated}      | true                                                                                            | 
+ public     | worker_report   | members_read   | SELECT | {authenticated}      | (ledger_id IN ( SELECT my_ledgers() AS my_ledgers))                                             | 
+ storage    | objects         | member_folder  | ALL    | {authenticated}      | ((bucket_id = 'receipts'::text) AND ((storage.foldername(name))[1] IN ( SELECT (l.l)::text AS l+| ((bucket_id = 'receipts'::text) AND ((storage.foldername(name))[1] IN ( SELECT (l.l)::text AS l                +
+            |                 |                |        |                      |    FROM my_ledgers() l(l))))                                                                    |    FROM my_ledgers() l(l))))
+ storage    | objects         | own_uploads    | DELETE | {authenticated}      | ((bucket_id = 'receipts'::text) AND (owner_id = (( SELECT auth.uid() AS uid))::text))           | 
+(24 rows)
+
+== triggers
+     tgrelid     |      tgname       |                                                   pg_get_triggerdef                                                   
+-----------------+-------------------+-----------------------------------------------------------------------------------------------------------------------
+ auth.users      | seed_new_user     | CREATE TRIGGER seed_new_user AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION seed_new_user()
+ issuer          | touch             | CREATE TRIGGER touch BEFORE INSERT OR UPDATE ON public.issuer FOR EACH ROW EXECUTE FUNCTION touch()
+ receipt         | keep_page         | CREATE TRIGGER keep_page BEFORE UPDATE ON public.receipt FOR EACH ROW EXECUTE FUNCTION keep_page()
+ receipt         | touch             | CREATE TRIGGER touch BEFORE INSERT OR UPDATE ON public.receipt FOR EACH ROW EXECUTE FUNCTION touch()
+ receipt_photo   | touch             | CREATE TRIGGER touch BEFORE INSERT OR UPDATE ON public.receipt_photo FOR EACH ROW EXECUTE FUNCTION touch()
+ category        | touch             | CREATE TRIGGER touch BEFORE INSERT OR UPDATE ON public.category FOR EACH ROW EXECUTE FUNCTION touch()
+ tag             | touch             | CREATE TRIGGER touch BEFORE INSERT OR UPDATE ON public.tag FOR EACH ROW EXECUTE FUNCTION touch()
+ product         | keep_user_choices | CREATE TRIGGER keep_user_choices BEFORE UPDATE ON public.product FOR EACH ROW EXECUTE FUNCTION keep_user_choices()
+ product         | touch             | CREATE TRIGGER touch BEFORE INSERT OR UPDATE ON public.product FOR EACH ROW EXECUTE FUNCTION touch()
+ store_item      | keep_user_choices | CREATE TRIGGER keep_user_choices BEFORE UPDATE ON public.store_item FOR EACH ROW EXECUTE FUNCTION keep_user_choices()
+ store_item      | queue_categorize  | CREATE TRIGGER queue_categorize AFTER INSERT ON public.store_item FOR EACH ROW EXECUTE FUNCTION queue_categorize()
+ store_item      | touch             | CREATE TRIGGER touch BEFORE INSERT OR UPDATE ON public.store_item FOR EACH ROW EXECUTE FUNCTION touch()
+ product_tag     | touch             | CREATE TRIGGER touch BEFORE INSERT OR UPDATE ON public.product_tag FOR EACH ROW EXECUTE FUNCTION touch()
+ receipt_line    | touch             | CREATE TRIGGER touch BEFORE INSERT OR UPDATE ON public.receipt_line FOR EACH ROW EXECUTE FUNCTION touch()
+ categorize_job  | touch             | CREATE TRIGGER touch BEFORE UPDATE ON public.categorize_job FOR EACH ROW EXECUTE FUNCTION touch()
+ link_suggestion | touch             | CREATE TRIGGER touch BEFORE INSERT OR UPDATE ON public.link_suggestion FOR EACH ROW EXECUTE FUNCTION touch()
+ ledger          | touch             | CREATE TRIGGER touch BEFORE INSERT OR UPDATE ON public.ledger FOR EACH ROW EXECUTE FUNCTION touch()
+ ledger_member   | touch             | CREATE TRIGGER touch BEFORE INSERT OR UPDATE ON public.ledger_member FOR EACH ROW EXECUTE FUNCTION touch()
+ receipt_scan    | touch             | CREATE TRIGGER touch BEFORE INSERT OR UPDATE ON public.receipt_scan FOR EACH ROW EXECUTE FUNCTION touch()
+ ticket          | ticket_touch      | CREATE TRIGGER ticket_touch BEFORE UPDATE ON public.ticket FOR EACH ROW EXECUTE FUNCTION ticket_touch()
+ feedback        | feedback_limits   | CREATE TRIGGER feedback_limits BEFORE INSERT ON public.feedback FOR EACH ROW EXECUTE FUNCTION feedback_limits()
+(21 rows)
+
+== buckets
+      id       | public | file_size_limit |           allowed_mime_types            
+---------------+--------+-----------------+-----------------------------------------
+ receipts      | f      |                 | 
+ contributions | f      |         2097152 | {image/webp,text/html,application/json}
+(2 rows)
+
+== publications
+ pubname | schemaname | tablename | attnames | rowfilter 
+---------+------------+-----------+----------+-----------
+(0 rows)
+
+== cron
+  jobname   | schedule  |             command             
+------------+-----------+---------------------------------
+ categorize | * * * * * | select public.kick_categorize()
+(1 row)
+
+== default privileges
+     defaclrole      |  defaclnamespace   | defaclobjtype |                                                                 defaclacl                                                                  
+---------------------+--------------------+---------------+--------------------------------------------------------------------------------------------------------------------------------------------
+ postgres            | public             | f             | {postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ supabase_admin      | public             | S             | {postgres=rwU/supabase_admin,anon=rwU/supabase_admin,authenticated=rwU/supabase_admin,service_role=rwU/supabase_admin}
+ supabase_admin      | public             | r             | {postgres=arwdDxtm/supabase_admin,anon=arwdDxtm/supabase_admin,authenticated=arwdDxtm/supabase_admin,service_role=arwdDxtm/supabase_admin}
+ supabase_admin      | public             | f             | {postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}
+ postgres            | storage            | r             | {postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}
+ postgres            | storage            | f             | {postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+ postgres            | storage            | S             | {postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}
+ supabase_auth_admin | auth               | r             | {postgres=arwdDxtm/supabase_auth_admin,dashboard_user=arwdDxtm/supabase_auth_admin}
+ supabase_auth_admin | auth               | S             | {postgres=rwU/supabase_auth_admin,dashboard_user=rwU/supabase_auth_admin}
+ supabase_auth_admin | auth               | f             | {postgres=X/supabase_auth_admin,dashboard_user=X/supabase_auth_admin}
+ supabase_admin      | realtime           | r             | {postgres=arwdDxtm/supabase_admin,dashboard_user=arwdDxtm/supabase_admin}
+ supabase_admin      | realtime           | S             | {postgres=rwU/supabase_admin,dashboard_user=rwU/supabase_admin}
+ supabase_admin      | realtime           | f             | {postgres=X/supabase_admin,dashboard_user=X/supabase_admin}
+ supabase_admin      | graphql_public     | S             | {postgres=rwU/supabase_admin,anon=rwU/supabase_admin,authenticated=rwU/supabase_admin,service_role=rwU/supabase_admin}
+ supabase_admin      | graphql_public     | r             | {postgres=arwdDxtm/supabase_admin,anon=arwdDxtm/supabase_admin,authenticated=arwdDxtm/supabase_admin,service_role=arwdDxtm/supabase_admin}
+ supabase_admin      | graphql_public     | f             | {postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}
+ supabase_admin      | extensions         | r             | {postgres=a*r*w*d*D*x*t*m*/supabase_admin}
+ supabase_admin      | extensions         | f             | {postgres=X*/supabase_admin}
+ supabase_admin      | extensions         | S             | {postgres=r*w*U*/supabase_admin}
+ supabase_admin      | graphql            | r             | {postgres=arwdDxtm/supabase_admin,anon=arwdDxtm/supabase_admin,authenticated=arwdDxtm/supabase_admin,service_role=arwdDxtm/supabase_admin}
+ supabase_admin      | graphql            | f             | {postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}
+ supabase_admin      | graphql            | S             | {postgres=rwU/supabase_admin,anon=rwU/supabase_admin,authenticated=rwU/supabase_admin,service_role=rwU/supabase_admin}
+ supabase_admin      | supabase_functions | r             | {postgres=arwdDxtm/supabase_admin,anon=arwdDxtm/supabase_admin,authenticated=arwdDxtm/supabase_admin,service_role=arwdDxtm/supabase_admin}
+ supabase_admin      | supabase_functions | f             | {postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}
+ supabase_admin      | supabase_functions | S             | {postgres=rwU/supabase_admin,anon=rwU/supabase_admin,authenticated=rwU/supabase_admin,service_role=rwU/supabase_admin}
+ supabase_admin      | cron               | S             | {postgres=r*w*U*/supabase_admin}
+ supabase_admin      | cron               | r             | {postgres=a*r*w*d*D*x*t*m*/supabase_admin}
+ supabase_admin      | cron               | f             | {postgres=X*/supabase_admin}
+ postgres            | public             | r             | {postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}
+ postgres            | public             | S             | {postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}
+(30 rows)
+

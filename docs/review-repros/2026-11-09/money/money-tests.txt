@@ -1,0 +1,16 @@
+$ . tools/env.sh; cd android
+$ ./gradlew --init-script ../docs/review-repros/2026-11-09/repro.init.gradle -PreproDir=money :app:testDebugUnitTest --tests '*Review1109MoneyTest*' -i
+
+Review1109MoneyTest > aProductInADeletedCategoryMustAskForACategory FAILED
+    java.lang.AssertionError: reports say 'sem categoria' for it, so the catalog must ask (toPick), not show 'Antiga'
+Review1109MoneyTest > aProratedShareMustNotExceedItsLine FAILED
+    java.lang.AssertionError: line 1: discount 1000 > its price 200 (net -800)
+Review1109MoneyTest > handTypedDiscountsOnEveryLineMustStillAddUpToTheReceipts FAILED
+    java.lang.AssertionError: the lines' discounts must still add up to the receipt's discount expected:<50> but was:<0>
+Review1109MoneyTest > aCategoryCycleMustNotHangTheReports FAILED
+    org.junit.ComparisonFailure: slices() over a cyclic tree expected:<[finished]> but was:<[still running after 1.5 s (generateSequence never ends)]>
+Review1109MoneyTest > aPriceThatComesBackMustBringTheIndexBack STANDARD_OUT
+    REVIEW index by month: 2026-01=100.00, 2026-02=64.84, 2026-03=77.11
+Review1109MoneyTest > aPriceThatComesBackMustBringTheIndexBack FAILED
+    java.lang.AssertionError: every price in month 3 equals month 1, so the level should be 100 again expected:<100.0> but was:<77.11054127039704>
+5 tests completed, 5 failed   (each failure is the defect; run 2026-11-10 on fcc3396)

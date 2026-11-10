@@ -1,0 +1,16 @@
+// Review 2026-11-09: lets the audit's JVM tests live under docs/review-repros/ instead of the app's test tree.
+// Usage, from android/:
+//   ./gradlew --init-script ../docs/review-repros/2026-11-09/repro.init.gradle -PreproDir=money \
+//       :app:testDebugUnitTest --tests '*Review1109*'
+// -PreproDir names one sub-folder of docs/review-repros/2026-11-09/ (its Kotlin files join the app's JVM test sources
+// for that run only). Nothing in android/ is changed.
+allprojects {
+  plugins.withId('com.android.application') {
+    def sub = findProperty('reproDir')
+    if (sub != null) {
+      def dir = new File(rootProject.projectDir, "../docs/review-repros/2026-11-09/${sub}").canonicalFile
+      android.sourceSets.getByName('test').kotlin.srcDir(dir)
+      logger.lifecycle("review repros: + ${dir}")
+    }
+  }
+}

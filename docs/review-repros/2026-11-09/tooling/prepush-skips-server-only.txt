@@ -1,0 +1,4 @@
+$ bash docs/review-repros/2026-11-09/tooling/prepush-skips-server-only.sh   (2026-11-10)
+push of a migration-only commit:
+  hook exit=0 output=''
+  FAIL: expected check.sh (with the server tests, D176) to run before pushing a migration; it was skipped

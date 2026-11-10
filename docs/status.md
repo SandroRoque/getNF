@@ -107,10 +107,14 @@ A critique of the whole project on 2026-11-09 found one more defect, T-27 (a rep
 limit was deleted from the phone), fixed on main the same day with D176, which also puts the server's tests in
 `tools/check.sh`. It waits for a build, like the others.
 
+A third audit (2026-11-09/10, D177) found 22 more, filed as T-28–T-49 (8 urgent: sync stopping for a member or on a
+missing page object, buyer data left in pages and photos, a category cycle hanging the reports, discount sums, the
+demo replacing a caderneta). Report: `docs/review-2026-11-09.md`; repros in `docs/review-repros/2026-11-09/`.
+
 Do next, in order:
 0. **Code 7, cut early** (privacy and numbers in the build testers have, rollout.md › Cutting): apply
-   `20261109010000_line_surcharge.sql` online first, then cut from main. Then the audit's normal tickets (T-15–T-21)
-   by priority; T-26 before the LLM worker is switched back on.
+   `20261109010000_line_surcharge.sql` online first, then cut from main. Then D177's urgent tickets (T-28, T-29
+   first), then the normal ones (T-15–T-21, T-36–T-44) by priority; T-26 before the LLM worker is switched back on.
 1. ~~The phone on code 4~~: code 4 is replaced; its check is folded into code 5's (next item).
 2. **Code 6 (0.1.3, 6916fe9, `play/6`), with D167 (T-5):** uploaded straight to the closed track 2026-11-09 and
    promoted to internal; Google's review to be confirmed in the console (Publishing overview), and whether it got a

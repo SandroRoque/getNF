@@ -1,0 +1,10 @@
+$ . tools/env.sh && cd android && ./gradlew --init-script ../docs/review-repros/2026-11-09/repro.init.gradle -PreproDir=sync :app:testDebugUnitTest --tests '*Review1109Sync*'
+(run 2026-11-10)
+Review1109SyncWedgeTest > aPlainMembersTreeEditMustNotStopEverySync FAILED
+  java.lang.AssertionError: run 1: one refused tree event must be parked like a refused row, not fail the whole sync; it threw 403 at pushEvents, so nothing is ever pulled again (product from another phone pulled: false)
+Review1109SyncWedgeTest > aReceiptWhosePageObjectIsMissingMustNotStopEverySync FAILED
+  java.lang.AssertionError: a receipt whose page can't be downloaded must be skipped (or adopted without its page), not fail every sync; statuses thrown per run (SyncWorker signs out on 400): [400, 400]; product pulled: false expected:<[]> but was:<[400, 400]>
+
+Storage's answer for a missing object, local stack (service key, read only):
+$ curl -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" http://127.0.0.1:54321/storage/v1/object/authenticated/receipts/00000000-0000-0000-0000-000000000000/nochave/page.html
+{"statusCode":"404","error":"not_found","message":"Object not found","code":"NoSuchKey"} HTTP 400

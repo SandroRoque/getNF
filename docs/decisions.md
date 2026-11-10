@@ -4206,3 +4206,21 @@ nothing of the contract between the phone and the database (where T-15 came from
   push comes from. Not done now, to keep the workflow short while there's one developer.
 - Found on the way: `npx supabase` failed on this PC (the CLI's Linux binary was missing from the npx cache since
   that morning); `npm install` in the cache directory brought it back.
+
+## D177. The 2026-11-09 audit lands as tickets T-28–T-49; its repros stay under docs/, run by an init script (2026-11-10)
+
+A third audit (2026-11-09/10, on fcc3396, after D171–D176) looked for what the earlier two hadn't: 22 findings,
+8 P1, 9 P2, 5 P3, in `docs/review-2026-11-09.md`. It concentrates where several people and phones meet: a member's
+category edit and a missing page object stop a phone's sync for good (one of them signing the person out every run),
+the buyer's name and address survive in pages saved from the WebView's DOM, the photo blanking misses lines it read
+correctly, and a category parent cycle (two phones, or `sync_taxonomy` itself) hangs the reports. The server's
+functions and the fixes of D171–D176 held.
+- **Tickets, one per fix:** P1-1 → T-28 … P1-8 → T-35 (urgent: privacy, numbers, data loss), P2-1 → T-36 … P2-9 →
+  T-44, P3-1 → T-45, P3-2 → T-46, P3-3 → T-47, P3-4 and P3-5 → T-48; the critique of D79's weights is T-49, an idea.
+  A likely cause of T-6 got a note and a repro.
+- **The repros stay in `docs/review-repros/2026-11-09/`, not in the app's tests:** `repro.init.gradle` adds one area's
+  folder to the JVM tests for a run, so main and CI stay green without `@Ignore`. Each fix moves its test into
+  `android/app/src/test` as the regression test (as D170's repros did) and deletes it from the folder.
+- **Order:** the urgent ones before more testers join shared cadernetas; T-28 and T-29 first (a phone that stops
+  syncing hides everything else), then T-30/T-31 (privacy), then the numbers.
+- Coverage was partial in several areas (the report's table says which); a later pass should start there.

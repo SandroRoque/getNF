@@ -1,0 +1,19 @@
+$ . tools/env.sh && cd android && ./gradlew --init-script ../docs/review-repros/2026-11-09/repro.init.gradle -PreproDir=parsing :app:testDebugUnitTest --tests '*Review1109Parsing*'
+(run 2026-11-10)
+> Task :app:testDebugUnitTest FAILED
+Review1109ParsingReceiptParserTest > defect_duplicateItemNumberEscapesTheParser FAILED
+Review1109ParsingReceiptParserTest > defect_lookupBudgetEntriesFromTheFutureNeverAgeOut FAILED
+Review1109ParsingNfcePageTest > defect_truncatedPageParsesWithoutAnyWarning FAILED
+Review1109ParsingNfcePageTest > defect_unrecognisedSurchargeLabelMissesTheLines FAILED
+Review1109ParsingNfcePageTest > defect_storeCodeWithoutDigitsIsLost FAILED
+Review1109ParsingNfcePageTest > defect_storeCodesWithNonDigitsCollide FAILED
+11 tests completed, 6 failed
+BUILD FAILED in 1s
+
+Failure messages (from the JUnit XML):
+message="java.lang.AssertionError: a page with no totals block ("Valor a pagar", "Qtd. total de itens" missing) should carry a warning, or be refused, instead of becoming a complete-looking receipt of 5 items; warnings=[], payable=null"
+message="java.lang.AssertionError: what the lines add up to (spending) should equal what was paid; surcharge=null, warnings=[gross - discount + surcharge != payable (12)] expected:<1200> but was:<1000>"
+message="java.lang.AssertionError: a code with no digits ("SAC") should be kept; null becomes "" in ReceiptParser, and every such line of the store shares one store item (codes: [null, null])"
+message="java.lang.AssertionError: two lines with store codes 123-4 and 123-5 should keep distinct codes (got [123, 123]); as is, Derive.codeKey makes them one store item, so one product and one category for both. Actual: 123"
+message="java.lang.AssertionError: a page the parser can't store should end as Outcome.Failed with the error recorded, not throw out of parse(): android.database.SQLException"
+message="java.lang.AssertionError: two hours after a block, the budget should be free again; status=Status(used=5, remaining=0, blocked=true, nextFreeAt=954000000) (nextFreeAt is 82800000 ms away)"

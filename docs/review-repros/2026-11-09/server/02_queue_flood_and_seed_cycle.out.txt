@@ -1,0 +1,98 @@
+BEGIN
+INSERT 0 3
+SET
+SET
+              set_config              
+--------------------------------------
+ 5c16d535-7503-4295-9120-3c4f7fd9ddae
+(1 row)
+
+INSERT 0 1
+INSERT 0 2000
+INSERT 0 1
+SET
+              set_config              
+--------------------------------------
+ f2d41cb0-058f-4fc3-8661-0790aaa64c0c
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+RESET
+UPDATE 2001
+UPDATE 1
+             check             | count 
+-------------------------------+-------
+ A1 jobs queued by one account |  2001
+(1 row)
+
+              check              |  max   
+---------------------------------+--------
+ A2 longest description accepted | 200004
+(1 row)
+
+                     check                     | position |                 note                 | minutes 
+-----------------------------------------------+----------+--------------------------------------+---------
+ A3 tester's item position in the global queue |     2002 | claimed at 25/min => minutes of wait |      81
+(1 row)
+
+SET
+               check                | flooder | count 
+------------------------------------+---------+-------
+ A4 one cron run claims (by ledger) | t       |    25
+(1 row)
+
+RESET
+        set_config        
+--------------------------
+ beverages.alcoholic.beer
+(1 row)
+
+      set_config       
+-----------------------
+ personal_care.hygiene
+(1 row)
+
+     check     |            x             |           y           
+---------------+--------------------------+-----------------------
+ B0 seed nodes | beverages.alcoholic.beer | personal_care.hygiene
+(1 row)
+
+SET
+SET
+UPDATE 1
+RESET
+UPDATE 1
+SET
+SET
+ sync_taxonomy 
+---------------
+ 
+(1 row)
+
+RESET
+      check       | holds 
+------------------+-------
+ B1 X.parent is Y | t
+(1 row)
+
+                     check                      | holds 
+------------------------------------------------+-------
+ B2 Y.parent is X (cycle written by the server) | t
+(1 row)
+
+SET
+SET
+INSERT 0 1
+INSERT 0 1
+                         check                          | count 
+--------------------------------------------------------+-------
+ C1 scan mark attributed to a non-member login accepted |     1
+(1 row)
+
+SAVEPOINT
+ERROR:  insert or update on table "receipt_scan" violates foreign key constraint "receipt_scan_user_id_fkey"
+DETAIL:  Key is not present in table "users".
+ROLLBACK
+RESET
+ROLLBACK
