@@ -1,0 +1,9 @@
+attacker's own folder:             200
+victim's folder, plain:            400
+victim's folder via %2e%2e:        400
+victim's folder via ..%2F:         400
+objects now in the victim's folder (service key):
+   []
+objects at the bucket root:
+   ['f83480a0-ad66-4bac-bf37-9de006c95d84']
+cleaned up
