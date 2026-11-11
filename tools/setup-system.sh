@@ -17,6 +17,9 @@ user="${SUDO_USER:-}"
 if [[ -n "$user" ]]; then
   getent group adbusers >/dev/null && gpasswd -a "$user" adbusers >/dev/null
   getent group kvm >/dev/null && gpasswd -a "$user" kvm >/dev/null
+  # Docker's socket is root:docker; without the group, npx supabase start/test can't reach it.
+  # (The group is root-equivalent on this machine, as with any local Docker.)
+  getent group docker >/dev/null && gpasswd -a "$user" docker >/dev/null
 fi
 
 if [[ -e /dev/kvm ]]; then echo "KVM: OK"; else echo "KVM: /dev/kvm missing -> enable SVM Mode in BIOS and reboot"; fi
