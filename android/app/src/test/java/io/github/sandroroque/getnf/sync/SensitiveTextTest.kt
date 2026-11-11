@@ -85,6 +85,7 @@ class SensitiveTextTest {
     val json = Json { ignoreUnknownKeys = true }
     for (f in dir!!.walk().filter { it.name.endsWith(".ocr.json") }.sortedBy { it.path }) {
       val p = json.decodeFromString<PhotoText>(f.readText())
+      if (p.lines.isEmpty()) { println("== ${f.parentFile.name}/${f.name}: nothing read, not uploaded (T-8)"); continue }
       println("== ${f.parentFile.name}/${f.name}: " + blanked(p).joinToString(" | "))
       // Beside each frame's JPEG, a preview of the copy as it would go up (GETNF_SENSITIVE_OUT).
       val jpg = File(f.path.removeSuffix(".ocr.json")).takeIf { it.isFile } ?: continue
@@ -107,13 +108,17 @@ class SensitiveTextTest {
     val json = Json { ignoreUnknownKeys = true }
     val private = listOf(Regex("\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}"), Regex("\\d{4,6}\\S{0,3}[*+xX#•]{2,}\\S{0,4}\\d{3,4}"),
       Regex("^CPF\\b.*\\d{3}", RegexOption.IGNORE_CASE), Regex("\\b[O0]PER[A-Z0-9]{0,5}\\b", RegexOption.IGNORE_CASE),
-      Regex(":\\s*\\d{4,}\\s*-\\s*\\p{L}{3,}"))
+      Regex(":\\s*\\d{4,}\\s*-\\s*\\p{L}{3,}"),
+      // D181: a half-masked CPF, the stars alone before a card's last four, a named customer or payer.
+      Regex("[*xX#•]{3}\\.\\d{3}\\.\\d{3}-"), Regex("[*+xX#•]{6,}\\d{4}"), Regex("\\b(CLIENTE|PAGADOR)\\s*:", RegexOption.IGNORE_CASE))
     var frames = 0; var seen = 0; var leaked = 0
     for (f in dir!!.walk().filter { it.name.endsWith(".ocr.json") }.sortedBy { it.path }) {
       val p = json.decodeFromString<PhotoText>(f.readText())
+      if (p.lines.isEmpty()) continue // not uploaded at all (T-8)
       frames++
       val covered = blanked(p)
-      for (l in p.lines.filter { l -> private.any { it.containsMatchIn(l.text.trim()) } }) {
+      // Also with the spaces taken out: a card number printed in groups (D181).
+      for (l in p.lines.filter { l -> private.any { it.containsMatchIn(l.text.trim()) || it.containsMatchIn(l.text.replace(" ", "")) } }) {
         seen++
         if (l.text !in covered) { leaked++; println("LEAK ${f.parentFile.name}/${f.name}: ${l.text}") }
       }

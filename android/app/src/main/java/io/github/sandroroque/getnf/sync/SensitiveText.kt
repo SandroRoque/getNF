@@ -24,15 +24,30 @@ class UnreadablePhoto(name: String) : IllegalStateException("no text read in $na
 
 /**
  * What a receipt photo shows that shouldn't leave the phone (D98): the card slip (masked card number, the
- * transaction's codes: authorization, NSU, DOC, SiTef, the acquirer), a CPF, and the operator. The phone keeps the
+ * transaction's codes: authorization, NSU, DOC, SiTef, the acquirer), a CPF (whole or half-masked), the operator, the
+ * identified consumer's block (D181: the CPF line and the name and address it wraps onto), and a named customer or
+ * payer with their phone. The phone keeps the
  * full photo; the copy uploaded has these blanked. Read from the photo's OCR; when in doubt, blank more: a slip's
  * lines are blanked as one block from its first to its last line, so a line OCR garbled inside it goes too. Lines are
  * ordered down the print and blocks follow it, whatever the receipt's angle in the photo (D99).
  */
 object SensitiveText {
   // OCR reads the masking stars as *, +, x, # or a mix ("559876++e***6759").
-  private val MASKED_CARD = Regex("\\d{4,6}\\S{0,3}[*+xX#•]{2,}\\S{0,4}\\d{3,4}")
-  private val CPF = Regex("\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}")
+  // Checked with the spaces taken out, so "5598 76** **** 6759" counts; or the stars alone before the last four.
+  private val MASKED_CARD = Regex("\\d{4,6}\\S{0,3}[*+xX#•]{2,}\\S{0,4}\\d{3,4}|(?<![\\d*+xX#•])[*+xX#•]{6,}\\d{4}(?!\\d)")
+  // A CPF, whole or with some of its groups masked (a Pix payer's "***.456.789-**").
+  private val CPF = Regex("(\\d{3}|[*xX#•]{3})\\.\\d{3}\\.(\\d{3}|[*xX#•]{3})-(\\d{2}|[*xX#•]{2})")
+  // Who bought or paid, named on the slip or by the store's own programme: a label and a colon. Their phone or e-mail
+  // on the next lines goes too; a phone alone is the store's, in its header.
+  private val PERSON = Regex("\\b(CLIENTE|PAGADOR|FAVORECIDO)\\s*[:;]")
+  private val CONTACT = Regex("\\b(TELEFONE|FONE|TEL|CELULAR|E-?MAIL)\\s*[:;.]")
+  // The identified consumer's block (an NFC-e's division VI): "CONSUMIDOR - CPF … - name" wrapping onto the address.
+  // Not "Consumidor não identificado", nor "Via consumidor" in the authorization block.
+  private val CONSUMER = Regex("\\bCONSUMIDOR\\b")
+  private val NO_CONSUMER = Regex("NAO IDENTIFICADO|VIA\\s+(DO\\s+)?CONSUMIDOR")
+  // What follows that block on a DANFE: the receipt's number and authorization, the key, the taxes, the QR code.
+  private val AFTER_CONSUMER = Regex("\\b(TRIBUTOS|PROTOCOLO|NFC-?E|SERIE|EMISSAO|CHAVE|CONSULT\\w*|QR|AUTORIZACAO)\\b")
+  private const val MAX_CONSUMER_LINES = 4
   // The slip's own words, as whole tokens; SEFAZ's "Protocolo de autorização" and "Data de autorização" aren't these.
   private val SLIP = Regex("\\b(CARTAO|CREDITO|DEBITO|DOC|NSU|AUT|AUTORIZ\\w*|SITEF|TEF|CV|REDE|CIELO|STONE|GETNET|PAGSEGURO|SAFRAPAY|MASTERCARD|VISA|ELO|HIPERCARD|AMEX|MAESTRO)\\b")
   // OCR misspells the totals' payment line ("Forna de paganento"): its "DE PAG…" is enough.
@@ -101,7 +116,7 @@ object SensitiveText {
     // The card slip: from its first to its last line down the receipt, the width of everything printed on those lines.
     val slip = lines.indices.filter { i ->
       val t = plain(lines[i].line)
-      !NOT_SLIP.containsMatchIn(t) && !ITEM.containsMatchIn(t) && (MASKED_CARD.containsMatchIn(t) || SLIP.containsMatchIn(t))
+      !NOT_SLIP.containsMatchIn(t) && !ITEM.containsMatchIn(t) && (MASKED_CARD.containsMatchIn(t.replace(" ", "")) || SLIP.containsMatchIn(t))
     }
     if (slip.isNotEmpty()) {
       val runs = mutableListOf(mutableListOf(slip.first()))
@@ -114,10 +129,31 @@ object SensitiveText {
         if (span.size <= MAX_SLIP_LINES) result += block(span) else run.forEach { result += block(listOf(lines[it])) }
       }
     }
-    for (p in lines) {
+    var person = -10
+    for ((i, p) in lines.withIndex()) {
       val t = plain(p.line)
-      if (CPF.containsMatchIn(t) || (t.contains("CPF") && t.count(Char::isDigit) >= 9) || looksLikeOperator(t) && !ITEM.containsMatchIn(t))
+      if (PERSON.containsMatchIn(t) && !ITEM.containsMatchIn(t)) person = i
+      if (i - person in 1..2 && CONTACT.containsMatchIn(t)) result += block(listOf(p))
+      val cpfLabel = t.contains("CPF")
+      if (CPF.containsMatchIn(t) || (cpfLabel && t.count(Char::isDigit) >= 6) ||
+        (looksLikeOperator(t) || PERSON.containsMatchIn(t)) && !ITEM.containsMatchIn(t))
         result += block(listOf(p))
+      // A CPF label whose number OCR read as a line of its own, dots or not.
+      if (cpfLabel && t.count(Char::isDigit) < 6) lines.getOrNull(i + 1)?.let { next ->
+        val n = plain(next.line)
+        if (n.count(Char::isDigit) >= 9 && n.count(Char::isLetter) <= 2) result += block(listOf(next))
+      }
+      // The identified consumer: its line and the rows it wraps onto, up to the next section or a few lines.
+      if (CONSUMER.containsMatchIn(t) && !NO_CONSUMER.containsMatchIn(t) &&
+        (cpfLabel || t.contains("CNPJ") || t.count(Char::isDigit) >= 9)) {
+        var end = i
+        while (end + 1 < lines.size && end - i < MAX_CONSUMER_LINES) {
+          val n = plain(lines[end + 1].line)
+          if (AFTER_CONSUMER.containsMatchIn(n) || ITEM.containsMatchIn(n)) break
+          end++
+        }
+        result += block(lines.subList(i, end + 1))
+      }
     }
     return result
   }

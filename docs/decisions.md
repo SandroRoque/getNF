@@ -4276,3 +4276,28 @@ by the global pattern, but the name and address were saved, synced to the cadern
   buyer (`BuyerRedactionTest`).
 - `tools/blank-buyers.py` has the same rules. Running it over the pages already online waits for T-24 (it lists only
   1,000 pages and stops at a missing one); then a dry run first.
+
+## D181. Photo blanking covers the consumer's block, a CPF on its own line, cards in groups, a named customer or payer (2026-11-10, T-31)
+
+`SensitiveText` left lines the OCR had read correctly (the 2026-11-09 audit, P1-4; not T-7/T-8's partial reads):
+the rows an identified consumer's line wraps onto (name, address), a CPF read as its own line after its label, a
+masked card number printed in groups or as stars alone before the last four, a "CLIENTE:" line and its phone, and a
+Pix payer's half-masked CPF.
+- **The consumer's block:** a line with CONSUMIDOR and an identification (CPF/CNPJ, or nine digits) is blanked with the
+  rows after it, up to the next section of the DANFE (the receipt's number, series, emission, protocol, key, taxes, QR)
+  or four rows. "Consumidor não identificado" and "Via consumidor" aren't it.
+- **A CPF label** with fewer than six digits blanks the next line when that line is a number (nine digits or more, at
+  most two letters). A "CPF" line with six digits or more is blanked (it was nine), and the CPF pattern takes masked
+  groups (`***.456.789-**`).
+- **Cards:** the masked-card pattern is matched with the spaces taken out, and six or more stars before four digits
+  count too.
+- **People:** CLIENTE, PAGADOR or FAVORECIDO with a colon blanks the line, and a phone or e-mail line within two rows
+  after it. A phone line alone is not blanked: on the first pass it took the store's address and phone in the header
+  of nearly every receipt, which isn't private and helps nobody blanked.
+- **Measured on the local real frames** (`SensitiveTextTest.realFramesLeaks`, 2,082 frames with text): its leak
+  counter now also knows these shapes; with the old rules 25 of 1,555 private lines were left showing (masked cards in
+  groups), now 0. The lines newly blanked besides those are all on card slips (authorization codes, the value), the
+  slip block growing with the card line it now recognises. That test and `realFrames` skip frames with no text, which
+  T-8 made throw.
+- Tests: the five repros, plus an unidentified consumer and the sections around an identified one staying
+  (`SensitiveTextReadLinesTest`).
