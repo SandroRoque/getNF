@@ -119,7 +119,7 @@ abstract class ReceiptDao {
     AutoMigration(from = 7, to = 8, spec = ReceiptDatabase.ReuploadBlanked::class), AutoMigration(from = 8, to = 9, spec = ReceiptDatabase.ReuploadBlanked::class),
     AutoMigration(from = 9, to = 10), AutoMigration(from = 10, to = 11), AutoMigration(from = 11, to = 12),
     AutoMigration(from = 12, to = 13), AutoMigration(from = 13, to = 14),
-    AutoMigration(from = 14, to = 15, spec = ReceiptDatabase.ReparseSurcharged::class)],
+    AutoMigration(from = 14, to = 15, spec = ReceiptDatabase.ReparseSurcharged::class), AutoMigration(from = 15, to = 16)],
 )
 abstract class ReceiptDatabase : RoomDatabase() {
   abstract fun receipts(): ReceiptDao
@@ -153,7 +153,7 @@ abstract class ReceiptDatabase : RoomDatabase() {
     private const val REPARSE_SURCHARGED = "UPDATE `receipt_parsed` SET `parserVersion` = 0 WHERE `paidCents` > `grossCents` - COALESCE(`discountCents`, 0)"
     private const val REUPLOAD = "UPDATE `receipt_photo` SET `uploaded` = 0"
     const val NAME = "getnf.db"
-    const val VERSION = 15
+    const val VERSION = 16
     /** [name]: each caderneta has its own database on the phone (D104, [LocalFiles]). */
     fun open(context: Context, name: String = NAME): ReceiptDatabase =
       Room.databaseBuilder(context, ReceiptDatabase::class.java, name).addMigrations(MIGRATION_3_4).build()

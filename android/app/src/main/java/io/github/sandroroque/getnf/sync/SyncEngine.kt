@@ -125,7 +125,7 @@ class SyncEngine(
     n += pushRows(remote, errors, "product_tag", "ledger_id,product_id,tag_id", dao.dirtyProductTags(), { "${it.productId}/${it.tagId}" },
       ::productTagJson, { dao.productTag(it.productId, it.tagId) }) { dao.upsertProductTag(it.copy(dirty = false)) }
     n += pushLines(remote, errors)
-    n += pushEvents(remote)
+    n += pushEvents(remote, errors)
     n += pushRows(remote, errors, "link_suggestion", BY_ID, dao.dirtyLinkSuggestions(), { it.id }, ::linkJson, { dao.linkSuggestion(it.id) }) {
       dao.putLinkSuggestion(it.copy(dirty = false))
     }
@@ -276,13 +276,31 @@ class SyncEngine(
 
   private fun pagePath(remote: SyncRemote, r: Receipt) = r.pageFile?.let { "${remote.ledgerId}/${r.chave}/page.html" }
 
-  /** Tree edits (D75), after the categories they name. Append-only on the server: a resend changes nothing. */
-  private suspend fun pushEvents(remote: SyncRemote): Int {
-    val events = database.categoryEvents().dirty()
+  /**
+   * Tree edits (D75), after the categories they name. Append-only on the server: a resend changes nothing. One the
+   * server refuses (a plain member's, T-29) is parked like a refused row, so it shows in Ajustes and the run goes on;
+   * an event never changes, so it waits there until "Tentar de novo".
+   */
+  private suspend fun pushEvents(remote: SyncRemote, errors: MutableList<String>): Int {
+    val parked = dao.parked(EVENTS).mapTo(HashSet()) { it.rowKey }
+    val events = database.categoryEvents().dirty().filter { it.id !in parked }
     if (events.isEmpty()) return 0
-    io { remote.upsert("category_event", events.map { owned(remote, eventJson(it)) }, "id", ignoreDuplicates = true) }
-    database.categoryEvents().pushed(events.map { it.id })
-    return events.size
+    fun send(batch: List<io.github.sandroroque.getnf.data.CategoryEventRow>) =
+      remote.upsert(EVENTS, batch.map { owned(remote, eventJson(it)) }, "id", ignoreDuplicates = true)
+    val sent = try {
+      io { send(events) }
+      events
+    } catch (e: SupabaseException) {
+      if (e.status == 401) throw e
+      events.filter { event ->
+        try { io { send(listOf(event)) }; true } catch (e: SupabaseException) {
+          if (e.status == 401) throw e
+          park(EVENTS, event.id, eventJson(event).toString(), e, errors); false
+        }
+      }
+    }
+    database.categoryEvents().pushed(sent.map { it.id })
+    return sent.size
   }
 
   /** Each photo's archive copy (D61) and mask, then its row; confirmed one by one, so a run resumes where it stopped. */
@@ -410,7 +428,7 @@ class SyncEngine(
   /** The whole member list each run (it's small, and a member who left must disappear, D104). */
   private suspend fun pullMembers(remote: SyncRemote) {
     val members = io { remote.select("ledger_member", listOf("ledger_id" to "eq.${remote.ledgerId}")) }
-      .map { MemberRow(it.string("user_id")!!, it.string("display_name").orEmpty(), it.string("user_id") == remote.userId) }
+      .map { MemberRow(it.string("user_id")!!, it.string("display_name").orEmpty(), it.string("user_id") == remote.userId, it.string("role")) }
     transaction { dao.clearMembers(); dao.putMembers(members) }
   }
 
@@ -702,6 +720,7 @@ class SyncEngine(
     private const val CATEGORY = "category"
     private const val RECEIPT = "receipt"
     private const val LINES = "receipt_line"
+    private const val EVENTS = "category_event"
     // Row ids are unique per caderneta (D104).
     private const val BY_ID = "ledger_id,id"
     private const val TAG_TABLE = "tag"

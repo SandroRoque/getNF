@@ -1,7 +1,7 @@
 -- Cadernetas (D104): sharing, roles, invites, leaving, deleting a login, and the shared fetch queue.
 -- Run: npx supabase test db
 begin;
-select plan(39);
+select plan(40);
 
 -- Ana creates "Casa" and invites Bia (manager, by Ana) and Caio (member, by Bia). Davi stays outside.
 insert into auth.users (id, email) values
@@ -88,6 +88,9 @@ select throws_ok($$insert into public.category (ledger_id, label) values (curren
 update public.category set label = 'Frutinhas' where ledger_id = current_setting('t.casa')::uuid and seed_path = 'food.produce.fruit';
 select is((select label from public.category where ledger_id = current_setting('t.casa')::uuid and seed_path = 'food.produce.fruit'),
           'Frutas', 'nor rename one');
+select throws_ok($$insert into public.category_event (id, ledger_id, op, category_id, at)
+  values (gen_random_uuid(), current_setting('t.casa')::uuid, 'rename', gen_random_uuid(), now())$$,
+                 '42501', null, 'nor log a tree edit (the phone parks it, T-29)');
 
 set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-0000000000b1", "role": "authenticated"}';
 update public.category set label = 'Frutinhas', user_modified = true

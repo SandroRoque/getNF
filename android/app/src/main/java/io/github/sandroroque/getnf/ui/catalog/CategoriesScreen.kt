@@ -52,13 +52,16 @@ private sealed interface Action {
 /**
  * The category tree, editable (D75): create, rename and describe, move, merge, split and delete. Every edit is logged
  * so later reviews and models can learn from it. A split keeps the products in the category and sends them to the
- * review list to pick one of the new parts.
+ * review list to pick one of the new parts. In a shared caderneta only its owner and managers edit the tree (D104):
+ * a plain member sees it, and why it isn't theirs to change (T-29).
  */
 @Composable
 fun CategoryTree() {
   val context = LocalContext.current
   val app = context.applicationContext as GetNFApp
   val categories by remember { app.database.edit().categories() }.collectAsStateWithLifecycle(emptyList())
+  val role by remember { app.database.sync().myRole() }.collectAsStateWithLifecycle(null)
+  val edits = io.github.sandroroque.getnf.data.editsTree(role)
   var action by remember { mutableStateOf<Action?>(null) }
   val edit = rememberEdit()
   val editor = app.catalogEditor
@@ -73,10 +76,11 @@ fun CategoryTree() {
 
   LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp)) {
     item {
-      Row(Modifier.padding(vertical = 10.dp)) { Pill("Nova categoria", ButtonKind.Outline) { action = Action.Create(null) } }
+      if (edits) Row(Modifier.padding(vertical = 10.dp)) { Pill("Nova categoria", ButtonKind.Outline) { action = Action.Create(null) } }
+      else Sub("Nesta caderneta, só quem administra muda as categorias.", Modifier.padding(vertical = 12.dp))
     }
     items(flatten(categories), key = { it.first.id }) { (c, depth) ->
-      Column(Modifier.fillMaxWidth().clickable { action = Action.Menu(c) }) {
+      Column(Modifier.fillMaxWidth().clickable(enabled = edits) { action = Action.Menu(c) }) {
         Row(Modifier.fillMaxWidth().padding(start = (depth * 18).dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.CenterVertically) {
           if (depth == 0) Dot(colorOf(c.id))
           Column(Modifier.weight(1f).padding(start = if (depth == 0) 10.dp else 0.dp)) {

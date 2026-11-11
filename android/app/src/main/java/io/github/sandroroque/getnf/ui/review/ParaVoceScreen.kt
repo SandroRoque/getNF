@@ -56,8 +56,9 @@ fun ParaVoceScreen(onOpenPage: (String) -> Unit, onOpenProduct: (String) -> Unit
   val sizes by remember { app.database.edit().sizeSuggestions() }.collectAsStateWithLifecycle(emptyList())
   val checks by remember { app.database.lists().photoDiscountChecks() }.collectAsStateWithLifecycle(emptyList())
   val soldBy by remember { app.database.edit().soldBySuggestions() }.collectAsStateWithLifecycle(emptyList())
-  val queue = remember(receipts, products, categories, links, sizes, checks, soldBy) {
-    decisions(receipts, products, categories, links, sizes, checks, soldBy)
+  val role by remember { app.database.sync().myRole() }.collectAsStateWithLifecycle(null)
+  val queue = remember(receipts, products, categories, links, sizes, checks, soldBy, role) {
+    decisions(receipts, products, categories, links, sizes, checks, soldBy, editsTree = io.github.sandroroque.getnf.data.editsTree(role))
   }
   val byId = remember(categories) { categories.associateBy { it.id } }
   val edit = rememberEdit()

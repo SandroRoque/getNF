@@ -36,9 +36,18 @@ data class LineRemovedRow(val receipt: String, val lineNo: Int)
 @Entity(tableName = "receipt_scan", primaryKeys = ["chave", "userId"])
 data class ReceiptScanRow(val chave: String, val userId: String)
 
-/** The open caderneta's members as they last synced, for naming who scanned what ("por Ana", D104). */
+/**
+ * The open caderneta's members as they last synced, for naming who scanned what ("por Ana", D104), with their role:
+ * the person's own decides whether the category tree is theirs to edit ([editsTree], T-29).
+ */
 @Entity(tableName = "member")
-data class MemberRow(@androidx.room.PrimaryKey val userId: String, val name: String, val you: Boolean)
+data class MemberRow(@androidx.room.PrimaryKey val userId: String, val name: String, val you: Boolean, val role: String? = null)
+
+/**
+ * Whether the person may edit the category tree (D75): the server lets only a caderneta's owner and managers do it
+ * (D104), so a plain member's edit would only be refused (T-29). Null: not synced yet, or a phone on its own.
+ */
+fun editsTree(role: String?) = role == null || role == "owner" || role == "manager"
 
 @Dao
 abstract class SyncDao {
@@ -49,6 +58,7 @@ abstract class SyncDao {
   @Insert(onConflict = OnConflictStrategy.IGNORE) abstract suspend fun putScans(rows: List<ReceiptScanRow>)
   @Query("DELETE FROM member") abstract suspend fun clearMembers()
   @Insert abstract suspend fun putMembers(rows: List<MemberRow>)
+  @Query("SELECT role FROM member WHERE you = 1 LIMIT 1") abstract fun myRole(): kotlinx.coroutines.flow.Flow<String?>
 
   @Query("SELECT * FROM sync_parked WHERE tableName = :table") abstract suspend fun parked(table: String): List<SyncParkedRow>
   @Query("SELECT * FROM sync_parked ORDER BY at DESC") abstract suspend fun parked(): List<SyncParkedRow>

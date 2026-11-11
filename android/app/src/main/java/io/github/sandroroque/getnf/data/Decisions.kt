@@ -131,11 +131,11 @@ sealed interface Decision {
   }
 }
 
-/** The queue, most money first (D81). */
+/** The queue, most money first (D81). A category's description is asked only of who may edit the tree ([editsTree]). */
 fun decisions(
   receipts: List<ReceiptListItem>, products: List<ProductSummary>, categories: List<CategoryNode>,
   links: List<LinkSuggestionView>, sizes: List<SizeSuggestionView>, photoChecks: List<PhotoDiscountCheck>,
-  soldBy: List<SoldBySuggestionView> = emptyList(),
+  soldBy: List<SoldBySuggestionView> = emptyList(), editsTree: Boolean = true,
 ): List<Decision> {
   val spent = products.associate { it.productId to it.spentCents }
   val children = categories.groupBy { it.parentId }
@@ -150,7 +150,7 @@ fun decisions(
   sizes.mapTo(out) { Decision.Size(it, spent[it.productId] ?: 0) }
   soldBy.mapTo(out) { Decision.SoldBy(it, spent[it.productId] ?: 0) }
   photoChecks.mapTo(out) { Decision.CheckPhotoDiscounts(it) }
-  categories.filter { it.description == null && it.descriptionSuggestion != null }.mapTo(out) { Decision.Description(it) }
+  if (editsTree) categories.filter { it.description == null && it.descriptionSuggestion != null }.mapTo(out) { Decision.Description(it) }
   return out.sortedByDescending { it.cents }
 }
 

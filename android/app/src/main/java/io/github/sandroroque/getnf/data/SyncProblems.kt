@@ -17,7 +17,7 @@ object SyncProblems {
   private val KINDS = mapOf(
     "issuer" to "Loja", "receipt" to "Nota", "receipt_line" to "Itens da nota", "category" to "Categoria",
     "tag" to "Marcador", "product" to "Produto", "store_item" to "Item de loja", "product_tag" to "Marcador de um produto",
-    "link_suggestion" to "Sugestão",
+    "link_suggestion" to "Sugestão", "category_event" to "Mudança nas categorias",
   )
 
   fun describe(row: SyncParkedRow): Item {
@@ -26,7 +26,7 @@ object SyncProblems {
     // A receipt and its lines are keyed by the chave, whose digits 3–6 are the year and month it was issued.
     val chave = (field("chave") ?: row.rowKey).takeIf { it.length == 44 && it.all(Char::isDigit) }
     val kind = KINDS[row.tableName] ?: row.tableName
-    val name = field("name") ?: field("label") ?: field("description")
+    val name = field("name") ?: field("label") ?: field("description") ?: field("new_label") ?: field("old_label")
     val title = when {
       name != null -> "$kind: $name"
       chave != null -> "$kind de ${chave.substring(4, 6)}/20${chave.substring(2, 4)}"

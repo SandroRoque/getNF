@@ -4239,3 +4239,24 @@ on every run, and nothing after that row was ever pulled (the 2026-11-09 audit, 
   is what it is on this phone.
 - Not done here: why a row loses its object (an upload stopped halfway, a withdrawal, a hand repair) wasn't measured;
   the sync report's errors list now names each one.
+
+## D179. A refused tree edit is parked like a refused row; a plain member doesn't see the tree's edits (2026-11-10, T-29)
+
+Only a caderneta's owner and managers may edit the category tree (D104, policies `managers_edit` and `managers_log`),
+but the phone offered the edits to everyone. A member's category row was refused and parked (D145); the tree event
+went through `pushEvents`, which had no catch, so every later sync failed at that step and nothing was pulled again
+(the 2026-11-09 audit, P1-2).
+- **The engine:** `pushEvents` now does what `pushRows` does: one request, and if it's refused, one by one, parking
+  each refused event in `sync_parked` (table `category_event`, labelled "Mudança nas categorias" in Ajustes ›
+  Não sincronizado). An event never changes, so it waits there until "Tentar de novo"; if the person was made a
+  manager meanwhile, that sends it.
+- **The phone knows the role:** the member list each sync already pulled now keeps `role` (Room 15 → 16, an added
+  nullable column). `editsTree(role)` is true for owner, manager, or no role yet (a phone on its own, or before the
+  first sync).
+- **The UI:** for a plain member, Categorias shows the tree without the menu or "Nova categoria", and says only who
+  administers changes it; Para você and Início don't ask them to accept a reviewer's description. Picking a product's
+  category stays theirs (the server allows it).
+- The server's refusal is now a pgTAP case (`ledger.test.sql`), so the policy and the phone can't drift apart unseen.
+- Not covered: copying receipts into another caderneta (LocalCadernetas) creates the categories it needs there; a
+  member copying into a caderneta they don't administer gets those rows parked, which is visible and doesn't stop the
+  sync now.

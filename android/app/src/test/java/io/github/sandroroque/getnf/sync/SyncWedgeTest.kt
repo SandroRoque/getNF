@@ -1,8 +1,11 @@
 package io.github.sandroroque.getnf.sync
 
+import io.github.sandroroque.getnf.data.CategoryEventRow
 import io.github.sandroroque.getnf.data.ReceiptStore
+import io.github.sandroroque.getnf.data.editsTree
 import io.github.sandroroque.getnf.data.testDatabase
 import java.io.File
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -10,7 +13,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -52,7 +58,38 @@ class SyncWedgeTest {
     put("id", id); put("name", "Produto $id"); put("created_at", "2026-11-01T10:00:00+00:00"); put("updated_at", "2026-11-01T10:00:00+00:00")
   }
 
-  private fun member() = buildJsonObject { put("user_id", "me"); put("display_name", "Eu") }
+  private fun member() = buildJsonObject { put("user_id", "me"); put("display_name", "Eu"); put("role", "member") }
+
+  @Test fun aPlainMembersTreeEditMustNotStopEverySync() = runTest {
+    // A member (not a manager, D104) renamed a category on the phone: the editor doesn't check the role.
+    db.categoryEvents().insert(CategoryEventRow("ev-1", "rename", "cat-1", oldLabel = "a", newLabel = "b", at = 1))
+    val server = MiniServer().apply {
+      refuseUpsert["category_event"] = 403 // managers_log: RLS 42501, which PostgREST answers 403
+      tables["product"] = mutableListOf(product("p-from-another-phone"))
+      tables["ledger_member"] = mutableListOf(member())
+    }
+    for (run in 1..2) {
+      try { engine.sync(server) } catch (e: SupabaseException) {
+        fail("run $run: one refused tree event must be parked like a refused row, not fail the whole sync (T-29); " +
+          "it threw ${e.status}")
+      }
+    }
+    assertEquals("Produto p-from-another-phone", db.sync().product("p-from-another-phone")?.name)
+    // It shows in "Não sincronizado", and the phone now knows the person is a plain member: no more tree edits.
+    assertEquals(listOf("ev-1"), db.sync().parked("category_event").map { it.rowKey })
+    assertEquals("member", db.sync().myRole().first())
+    assertFalse(editsTree(db.sync().myRole().first()))
+    // "Tentar de novo" (unparkAll) sends it again; once the server takes it, it's no longer dirty.
+    db.sync().unparkAll()
+    server.refuseUpsert.remove("category_event")
+    engine.sync(server)
+    assertEquals(emptyList<CategoryEventRow>(), db.categoryEvents().dirty())
+    assertEquals(1, server.tables["category_event"]?.size)
+  }
+
+  @Test fun editsTreeFollowsTheRole() {
+    assertTrue(editsTree(null)); assertTrue(editsTree("owner")); assertTrue(editsTree("manager")); assertFalse(editsTree("member"))
+  }
 
   @Test fun aReceiptWhosePageObjectIsMissingMustNotStopEverySync() = runTest {
     val chave = "42000000000000000000650000000000011000000000"
