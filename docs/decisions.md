@@ -4260,3 +4260,19 @@ went through `pushEvents`, which had no catch, so every later sync failed at tha
 - Not covered: copying receipts into another caderneta (LocalCadernetas) creates the categories it needs there; a
   member copying into a caderneta they don't administer gets those rows parked, which is visible and doesn't stop the
   sync now.
+
+## D180. The buyer's block is found by its heading's text, in either shape the page comes in (2026-11-10, T-30)
+
+`BuyerRedaction` matched only the server's `<h4>Consumidor</h4><ul>`. What the app saves is the WebView's DOM, where
+the portal's jQuery Mobile (always on RJ, sometimes on SC) has made the heading
+`<h4 …><a …>Consumidor<span …> click to collapse contents</span></a></h4><div …><ul>`: the dotted CPF was still caught
+by the global pattern, but the name and address were saved, synced to the caderneta and sent with contributions
+(the 2026-11-09 audit, P1-3; none of the real saved pages with that shape named a buyer, so no leak is known).
+- **How:** every `<h4>` is read for its text (tags dropped, jQuery Mobile's hidden status span dropped); the one that
+  reads "Consumidor" has its first list after it, before the next heading, replaced by the "removido" line. Anything
+  else in the page is left byte for byte, as before, so what the parser reads doesn't change. No HTML library: the app
+  has none, and re-serializing the page would change every saved page.
+- **Tests:** the server shape, the WebView shape (the repo's DOM fixture), and RJ's page in both shapes, with a CNPJ
+  buyer (`BuyerRedactionTest`).
+- `tools/blank-buyers.py` has the same rules. Running it over the pages already online waits for T-24 (it lists only
+  1,000 pages and stops at a missing one); then a dry run first.

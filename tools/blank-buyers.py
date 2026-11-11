@@ -9,16 +9,32 @@ Same rules as the phone's BuyerRedaction.kt. Reads SUPABASE_URL and SUPABASE_SEC
 import argparse, importlib.util, json, os, re, time, urllib.error, urllib.request
 
 REMOVED = "Consumidor removido pelo getNF"
-CONSUMER = re.compile(r"(<h4[^>]*>\s*Consumidor\s*</h4>\s*<ul[^>]*>)(.*?)(</ul>)", re.I | re.S)
+# The block is found by its heading's text, in the server's shape or the WebView's jQuery Mobile one (T-30, D180).
+HEADING = re.compile(r"<h4\b[^>]*>(.*?)</h4\s*>", re.I | re.S)
+LIST = re.compile(r"(<ul\b[^>]*>)(.*?)(</ul\s*>)", re.I | re.S)
+STATUS = re.compile(r"<span\b[^>]*ui-collapsible-heading-status[^>]*>.*?</span\s*>", re.I | re.S)
+TAG = re.compile(r"<[^>]*>")
 CPF = re.compile(r"(?<![\d.])\d{3}\.\d{3}\.\d{3}-\d{2}(?![\d])")
 
 
+def label(inner):
+  return " ".join(TAG.sub(" ", STATUS.sub("", inner)).split()).lower()
+
+
 def blank(html):
-  def consumer(m):
-    inside = m.group(2)
-    if "não identificado" in inside.lower() or REMOVED in inside: return m.group(0)
-    return m.group(1) + f"<li><strong>{REMOVED}</strong></li>" + m.group(3)
-  return CPF.sub("***.***.***-**", CONSUMER.sub(consumer, html))
+  out, copied = [], 0
+  for h in HEADING.finditer(html):
+    if h.start() < copied or label(h.group(1)) != "consumidor": continue
+    after = HEADING.search(html, h.end())
+    nxt = after.start() if after else len(html)
+    l = LIST.search(html, h.end())
+    if not l or l.end() > nxt: continue
+    inside = l.group(2)
+    if "não identificado" in inside.lower() or REMOVED in inside: continue
+    out += [html[copied:l.end(1)], f"<li><strong>{REMOVED}</strong></li>"]
+    copied = l.start(3)
+  out.append(html[copied:])
+  return CPF.sub("***.***.***-**", "".join(out))
 
 
 def main():
