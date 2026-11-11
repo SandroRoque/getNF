@@ -4332,5 +4332,6 @@ over it, on the server and then on every phone, with no error.
   is still the last pusher's (review L2).
 - **Checked:** the review's test un-ignored, its mirror (the scanning phone is the stale one) and a re-read that does
   change a line (its surcharge goes up, the correction stays) fail on the old parser and engine and pass now, with the
-  whole unit suite. `line_merge.test.sql` (pgTAP) runs the two upserts as PostgREST writes them. It and
-  `SupabaseLocalTest` haven't run yet: Docker is down.
+  whole unit suite. Against the local stack: `line_merge.test.sql` (pgTAP) runs the two upserts as PostgREST writes
+  them, and `SupabaseLocalTest.aStalePhonesReReadKeepsTheOtherPhonesLineCorrection` runs L1 through the real API. With
+  the default dropped, the field upsert fails with 23502 on the existing row, which is why the migration is needed.

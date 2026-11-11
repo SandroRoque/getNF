@@ -3,6 +3,7 @@ package io.github.sandroroque.getnf.sync
 import io.github.sandroroque.getnf.data.FeedbackOutbox
 import io.github.sandroroque.getnf.data.ReceiptParser
 import io.github.sandroroque.getnf.data.ReceiptStore
+import io.github.sandroroque.getnf.data.syncJson
 import io.github.sandroroque.getnf.data.testDatabase
 import java.io.File
 import java.io.IOException
@@ -121,6 +122,61 @@ class SupabaseLocalTest {
       assertEquals("Nome de A", product.name)
       assertEquals(500_000L, product.sizeE6)
     }
+  }
+
+  /** Two phones on one account, the receipt read and synced on both: the stale one's re-read keeps the other's correction (D182, review L1). */
+  @Test fun aStalePhonesReReadKeepsTheOtherPhonesLineCorrection() = runTest {
+    assumeTrue("set GETNF_SUPABASE_LOCAL to run against a local Supabase", keys != null)
+    val (a, b, remote) = twoPhonesWithTheReceipt()
+    val ca = a.db.catalog()
+    val line = ca.lines(chave).first()
+    val other = ca.products().first { p -> ca.storeItems().none { it.id == line.storeItemId && it.productId == p.id } }.id
+    a.db.sync().upsertLine(line.copy(productOverrideId = other, discountCents = 7, discountSource = "manual", discountReview = "confirmed", dirty = true))
+    assertEquals(emptyList<String>(), a.engine.sync(remote).errors)
+    // B hasn't synced since. Its re-read changes a line (as an older parser's surcharge would), then it syncs.
+    val cb = b.db.catalog()
+    val stale = cb.lines(chave).single { it.lineNo == line.lineNo }
+    b.db.sync().upsertLine(stale.copy(surchargeCents = stale.surchargeCents + 5))
+    b.db.sync().putBase(io.github.sandroroque.getnf.data.SyncBaseRow("receipt_line", "$chave/${line.lineNo}",
+      cb.lines(chave).single { it.lineNo == line.lineNo }.syncJson().toString()))
+    b.parser.parse(b.store.get(chave)!!)
+    assertEquals(emptyList<String>(), b.engine.sync(remote).errors)
+    assertEquals(emptyList<String>(), a.engine.sync(remote).errors)
+    for (p in listOf(a, b)) {
+      val l = p.db.catalog().lines(chave).single { it.lineNo == line.lineNo }
+      assertEquals(other, l.productOverrideId)
+      assertEquals("manual", l.discountSource)
+      assertEquals(7L, l.discountCents)
+      assertEquals(stale.surchargeCents, l.surchargeCents)
+    }
+  }
+
+  /** Review 2026-11-11, L8: a store item moved to another product goes up as {id, product_id}, which NOT NULL refuses. */
+  @org.junit.Ignore("review 2026-11-11 L8: refused with 23502 while the defect exists; un-ignore with the fix")
+  @Test fun aStoreItemMovedToAnotherProductReachesTheOtherPhone() = runTest {
+    assumeTrue("set GETNF_SUPABASE_LOCAL to run against a local Supabase", keys != null)
+    val (a, b, remote) = twoPhonesWithTheReceipt()
+    val ca = a.db.catalog()
+    val item = ca.storeItems().first()
+    val other = ca.products().first { it.id != item.productId }.id
+    ca.updateStoreItem(item.copy(productId = other, dirty = true))
+    assertEquals(emptyList<String>(), a.engine.sync(remote).errors)
+    assertEquals(emptyList<String>(), b.engine.sync(remote).errors)
+    assertEquals(other, b.db.catalog().storeItems().single { it.id == item.id }.productId)
+  }
+
+  private suspend fun twoPhonesWithTheReceipt(): Triple<Phone, Phone, SupabaseRemote> {
+    val (email, password) = newUser()
+    val client = SupabaseClient(url, keys!![0])
+    val session = client.signIn(email, password)
+    val remote = SupabaseRemote(client, session, Ledgers.pick(Ledgers.mine(client, session), null, session.userId)!!)
+    val a = Phone(tmp.newFolder("a")); val b = Phone(tmp.newFolder("b"))
+    a.store.open(chave, "qr"); a.store.savePage(chave, "https://x", html); a.parser.parse(a.store.get(chave)!!)
+    assertEquals(emptyList<String>(), a.engine.sync(remote).errors)
+    b.store.load(); assertEquals(emptyList<String>(), b.engine.sync(remote).errors)
+    b.parser.parse(b.store.get(chave)!!)
+    repeat(2) { for (p in listOf(a, b)) assertEquals(emptyList<String>(), p.engine.sync(remote).errors) }
+    return Triple(a, b, remote)
   }
 
   @Test fun twoPeopleInOneCadernetaReadTheSameReceiptOfflineWithoutDuplicates() = runTest {
