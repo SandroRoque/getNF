@@ -152,7 +152,6 @@ class SupabaseLocalTest {
   }
 
   /** Review 2026-11-11, L8: a store item moved to another product goes up as {id, product_id}, which NOT NULL refuses. */
-  @org.junit.Ignore("review 2026-11-11 L8: refused with 23502 while the defect exists; un-ignore with the fix")
   @Test fun aStoreItemMovedToAnotherProductReachesTheOtherPhone() = runTest {
     assumeTrue("set GETNF_SUPABASE_LOCAL to run against a local Supabase", keys != null)
     val (a, b, remote) = twoPhonesWithTheReceipt()

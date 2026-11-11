@@ -149,7 +149,10 @@ class SyncEngine(
     toJson: (T) -> JsonObject, current: suspend (T) -> T?, merges: Boolean = false, clean: suspend (T) -> Unit,
   ): Int {
     if (rows.isEmpty()) return 0
-    val parked = dao.parked(table).associate { it.rowKey to it.payload }
+    val parkedRows = dao.parked(table)
+    // A field upsert refused for a NOT NULL column (review L8) is tried again each run until the server, given the
+    // defaults of D183, takes it.
+    val parked = parkedRows.filterNot { merges && NOT_NULL in it.error }.associate { it.rowKey to it.payload }
     val ready = rows.map { it to toJson(it) }.filter { (row, json) -> parked[keyOf(row)] != json.toString() }
     if (ready.isEmpty()) return 0
     val bases = if (!merges) emptyMap() else ready.map { keyOf(it.first) }.chunked(500)
@@ -183,7 +186,7 @@ class SyncEngine(
         // The server now has the fields sent, and the base already had the others.
         if (merges) dao.putBase(SyncBaseRow(table, keyOf(row), json.toString()))
       }
-      if (parked.isNotEmpty()) dao.unpark(table, sent.map { keyOf(it.first) })
+      if (parkedRows.isNotEmpty()) dao.unpark(table, sent.map { keyOf(it.first) })
     }
     return sent.count { it.first in requested }
   }
@@ -747,6 +750,8 @@ class SyncEngine(
     private const val CATEGORY = "category"
     private const val RECEIPT = "receipt"
     private const val LINES = "receipt_line"
+    /** Postgres's wording for 23502, as PostgREST passes it on. */
+    private const val NOT_NULL = "violates not-null constraint"
     private const val EVENTS = "category_event"
     // Row ids are unique per caderneta (D104).
     private const val BY_ID = "ledger_id,id"

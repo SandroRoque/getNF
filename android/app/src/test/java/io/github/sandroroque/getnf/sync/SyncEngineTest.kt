@@ -413,6 +413,26 @@ class SyncEngineTest {
     assertTrue(other.store.get(chave)!!.needsUpload)
   }
 
+  /** Review L8 (D183): a catalog row the server refused for a NOT NULL column goes again, and leaves Ajustes once it's taken. */
+  @Test fun aCatalogRowRefusedForANotNullColumnIsSentAgain() = runTest {
+    receiptWithPage()
+    engine.sync(server)
+    val item = dao.storeItems().first()
+    val other = dao.products().first { it.id != item.productId }.id
+    dao.updateStoreItem(item.copy(productId = other, dirty = true))
+    server.refuse["store_item"] = other
+    engine.sync(server)
+    // As an older server answered: 23502 for the columns the field upsert left out.
+    val parked = db.sync().parked("store_item").single()
+    db.sync().park(parked.copy(error = "POST /rest/v1/store_item: 400 null value in column \"code_kind\" of relation \"store_item\" violates not-null constraint"))
+    server.refuse.clear()
+    val report = engine.sync(server)
+    assertTrue(report.errors.toString(), report.errors.isEmpty())
+    assertEquals(other, server.rows("store_item").single { it.str("id") == item.id }.str("product_id"))
+    assertTrue(db.sync().parked("store_item").isEmpty())
+    assertFalse(dao.storeItems().single { it.id == item.id }.dirty)
+  }
+
   @Test fun aRefusedRowIsParkedAndNotSentAgainUntilItChanges() = runTest {
     receiptWithPage()
     engine.sync(server)

@@ -166,6 +166,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D166 | release | current | Play only in Brazil, never the EEA or UK; the account is declared a non-trader |
 | D167 | sefaz | current | QR addresses with a raw `|` are recognised: SC lookups count, RJ is no longer "another state" (T-5) |
 | D168 | categorizer | current | The nightly LLM worker is suspended; the backup retries and notifies when it fails |
+| D183 | sync | current | The catalog's field upserts pass NOT NULL: defaults for the columns they leave out; refused rows go again (review L8) |
 | D182 | sync | current | Receipt lines merge by field: a changed line sends its extracted columns and only the corrections it changed (review L1) |
 
 ---
@@ -4335,3 +4336,29 @@ over it, on the server and then on every phone, with no error.
   whole unit suite. Against the local stack: `line_merge.test.sql` (pgTAP) runs the two upserts as PostgREST writes
   them, and `SupabaseLocalTest.aStalePhonesReReadKeepsTheOtherPhonesLineCorrection` runs L1 through the real API. With
   the default dropped, the field upsert fails with 23502 on the existing row, which is why the migration is needed.
+
+## D183. The catalog's field merge reaches the server: defaults for the columns a field upsert leaves out (2026-11-11, review L8)
+
+Found while fixing L1 (D182), then reproduced against the local stack. D164's push sends a changed catalog row as its
+id and the fields it changed. Postgres checks NOT NULL and CHECK on the row an upsert proposes before it finds the
+conflict, so a field upsert that leaves out a NOT NULL column with no default fails with 23502 although the row
+exists. D164 was checked against the local stack with `product` only, which has no such column. `store_item` has four,
+`tag` two, `category` one. So moving a store item to another product, moving or reordering a category, or changing a
+tag's slug or description alone, was refused: the row parked (D104), showed in Ajustes (D145), and never reached the
+other phones. The JVM tests' fake server accepted any column set.
+- **Chosen:** defaults for those columns (`20261111010000_catalog_field_merge_defaults.sql`): `code_kind` 'store',
+  `code`, `description`, `label`, `slug` '', `product_id` a random uuid. They only let the proposed row pass; the
+  update writes just the fields sent, so no row holds them. A field upsert always meets an existing row: the phone
+  sends one only for a row with a base, and catalog rows are never deleted one by one (they carry `deleted`), only
+  with their caderneta, when RLS and the caderneta's foreign key refuse the insert. So no insert-if-missing is needed,
+  unlike lines (D182), which are deleted one by one.
+- **Considered:** sending the NOT NULL columns with every changed row, as D182 does for a line's extracted columns. That
+  is right for lines, whose required columns are all the page's reading, but here they include what people edit
+  (`product_id`, `label`, `slug`), and sending a stale copy of them is T-2 again. A PATCH per row works without a
+  migration but costs a request per row, and the parser's wording updates touch many store items.
+- **The migration alone fixes clients testers have** (codes 2–6 send the same requests). Rows they already parked stay
+  parked until they change or are sent again from Ajustes. A client with this sends a row parked for a NOT NULL
+  refusal again each run until the server takes it, so testers' stuck edits go up after the update.
+- **Checked:** `catalog_merge.test.sql` (pgTAP) and `SupabaseLocalTest.aStoreItemMovedToAnotherProductReachesTheOtherPhone`
+  (failing with 23502 before, passing with the migration); `SyncEngineTest.aCatalogRowRefusedForANotNullColumnIsSentAgain`
+  fails on the old engine and passes now; the whole suite, local stack included.
