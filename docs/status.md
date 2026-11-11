@@ -109,12 +109,17 @@ limit was deleted from the phone), fixed on main the same day with D176, which a
 
 A third audit (2026-11-09/10, D177) found 22 more, filed as T-28–T-49 (8 urgent: sync stopping for a member or on a
 missing page object, buyer data left in pages and photos, a category cycle hanging the reports, discount sums, the
-demo replacing a caderneta). Report: `docs/review-2026-11-09.md`; repros in `docs/review-repros/2026-11-09/`.
+demo replacing a caderneta), and a follow-up found T-50 (no way to delete a receipt). Report:
+`docs/review-2026-11-09.md`; repros in `docs/review-repros/2026-11-09/` (each fix moves its test into the app's tests).
+The audit's coverage was partial (its Coverage table); still to examine, in this order: sync when another person
+signs in on the same phone, the server's auth and storage limits (`config.toml`, invite codes, Edge Function
+failures), the Room migrations one by one; the rest after the open store. One area per session, without subagents
+(they kept running out of usage).
 
 Do next, in order:
-0. **Code 7, cut early** (privacy and numbers in the build testers have, rollout.md › Cutting): apply
-   `20261109010000_line_surcharge.sql` online first, then cut from main. Then D177's urgent tickets (T-28, T-29
-   first), then the normal ones (T-15–T-21, T-36–T-44) by priority; T-26 before the LLM worker is switched back on.
+0. **D177's first fixes, then code 7, cut early** (privacy and numbers in the build testers have, rollout.md ›
+   Cutting): T-28 and T-29 (a phone that stops syncing hides everything else), T-30, T-31; then apply
+   `20261109010000_line_surcharge.sql` online and cut from main. Then T-32–T-35, then the normal ones (T-15–T-21, T-36–T-44) by priority; T-26 before the LLM worker is switched back on.
 1. ~~The phone on code 4~~: code 4 is replaced; its check is folded into code 5's (next item).
 2. **Code 6 (0.1.3, 6916fe9, `play/6`), with D167 (T-5):** uploaded straight to the closed track 2026-11-09 and
    promoted to internal; Google's review to be confirmed in the console (Publishing overview), and whether it got a
@@ -255,9 +260,10 @@ npx supabase start                                                  # local Supa
 Debug builds talk to the online Supabase with the URL and publishable key from `.env.local` at the repo root (a worktree falls
 back to the main checkout's copy). `-Pgetnf.supabaseUrl/-Pgetnf.supabaseKey` point the emulator at a local Supabase.
 Testing something that needs an account (D145's card) is done that way, against the local Supabase with a user made
-through its admin API (`SupabaseLocalTest.newUser` shows how), never on the online project. As of 2026-10-31 the
-emulator's debug build is the plain one again (online project, signed out, the demo caderneta restored for the
-screenshots).
+through its admin API (`SupabaseLocalTest.newUser` shows how), never on the online project. Since 2026-11-10 the
+emulator's debug build is the audit's: main as of fcc3396, pointed at the local Supabase, the demo left, signed in to
+a throwaway local account. To go back to the plain one (online project, signed out, the demo for screenshots): sign
+out in Ajustes, install a plain debug build, enter the demo.
 
 ## Tests
 
