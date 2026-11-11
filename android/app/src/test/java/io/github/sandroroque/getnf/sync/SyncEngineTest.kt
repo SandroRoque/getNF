@@ -283,6 +283,36 @@ class SyncEngineTest {
   }
 
 
+  /**
+   * Review 2026-11-11, L1. A re-read marks every line of the receipt dirty and a dirty line goes up whole, so a phone
+   * that re-reads (an app update with a newer parser, or Room 14 → 15's ReparseSurcharged) before it has pulled another
+   * phone's correction writes its stale copy over that correction, for everyone.
+   */
+  @Ignore("review 2026-11-11 L1: fails while the defect exists; un-ignore with the fix") @Test fun aStalePhonesReReadMustNotUndoAnotherPhonesLineCorrection() = runTest {
+    val a = Phone("a"); val b = Phone("b")
+    twoPhonesWithTheReceipt(a, b)
+    // B reads the adopted page itself, as the worker does after a sync, and everything settles.
+    b.parser.parse(b.store.get(chave)!!); b.engine.sync(server); a.engine.sync(server)
+    // A says by hand what one line's product is and what its discount was, and syncs. B hasn't synced since.
+    val ca = a.db.catalog()
+    val first = ca.lines(chave).first()
+    val other = ca.products().first { p -> ca.storeItems().none { it.id == first.storeItemId && it.productId == p.id } }.id
+    val corrected = ca.lines(chave).map { l ->
+      if (l.lineNo == first.lineNo) l.copy(productOverrideId = other, discountSource = "manual", discountReview = "confirmed", dirty = true) else l
+    }
+    ca.deleteLines(chave); ca.insertLines(corrected)
+    a.engine.sync(server)
+    assertEquals(other, server.rows("receipt_line").single { it.str("line_no") == "${first.lineNo}" }.str("product_override_id"))
+    // B's app updates to a newer parser: at start it reads its saved pages again, then syncs.
+    b.parser.parse(b.store.get(chave)!!)
+    b.engine.sync(server)
+    a.engine.sync(server)
+    val online = server.rows("receipt_line").single { it.str("line_no") == "${first.lineNo}" }
+    assertEquals("the server still has A's product for the line", other, online.str("product_override_id"))
+    assertEquals("the server still has A's discount as typed", "manual", online.str("discount_source"))
+    assertEquals("A still has its own correction", other, a.db.catalog().lines(chave).single { it.lineNo == first.lineNo }.productOverrideId)
+  }
+
   @Test fun aReceiptOnlyTheServerHasIsAdoptedWithItsPage() = runTest {
     server.objects["ledger-1/$chave/page.html"] = html.toByteArray()
     server.put("receipt", "ledger_id,chave", buildJsonObject {
