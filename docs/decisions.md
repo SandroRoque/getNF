@@ -166,6 +166,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D166 | release | current | Play only in Brazil, never the EEA or UK; the account is declared a non-trader |
 | D167 | sefaz | current | QR addresses with a raw `|` are recognised: SC lookups count, RJ is no longer "another state" (T-5) |
 | D168 | categorizer | current | The nightly LLM worker is suspended; the backup retries and notifies when it fails |
+| D182 | sync | current | Receipt lines merge by field: a changed line sends its extracted columns and only the corrections it changed (review L1) |
 
 ---
 
@@ -4301,3 +4302,35 @@ Pix payer's half-masked CPF.
   T-8 made throw.
 - Tests: the five repros, plus an unidentified consumer and the sections around an identified one staying
   (`SensitiveTextReadLinesTest`).
+
+## D182. Receipt lines merge by field: a re-read no longer undoes another phone's correction (2026-11-11, review L1)
+
+The 2026-11-11 review's L1, reproduced by a test: a re-read rewrote every line of the receipt dirty, and a dirty line
+went up whole. So a phone that re-read its pages (an app update with a newer parser, or Room 14 → 15's
+`ReparseSurcharged`, in the next build) before pulling another phone's correction sent its stale copy of the line
+over it, on the server and then on every phone, with no error.
+- **Chosen:** D164's merge, extended to lines and split by what a column is. The phone keeps what the server last held
+  of each line (`sync_base`, key `chave/line_no`). A line that equals its base sends nothing. A changed one sends its
+  extracted columns (what the page says, which are NOT NULL online) and only the corrections that differ from the base
+  (`product_override_id`, `discount_*`). A pull into a dirty line keeps the phone's changed fields and takes the rest.
+  Considered: only marking a line dirty when the re-read changed it (the review's first step). Kept, but it isn't
+  enough on its own: `ReparseSurcharged` does change lines, and they would still go up whole.
+- **A clean line's base before the re-read:** the parser stores the old line as its base before rewriting it, since
+  the next build re-reads at start, before any sync could seed one. The sync also seeds a base for every clean line
+  without one, as D164 does for the catalog. A line corrected after the update and before the first sync has no base
+  and goes whole once, as catalog rows did.
+- **A removed line:** fields alone can't recreate a row another phone has removed meanwhile (D164 keeps a correction
+  made before the removal arrived). So a changed line is first sent whole as insert-if-missing (`ignore-duplicates`),
+  which changes nothing when the row is there, then as fields. Reconciling a line the server doesn't have drops its
+  base, and so does pushing a removal.
+- **Server:** Postgres checks NOT NULL on the row an upsert proposes before it finds the conflict, so a field upsert
+  needs every NOT NULL column it leaves out to have a default. Sending the extracted columns whole covers all of them
+  but `discount_source`, which gets a default in `20261111000000_line_discount_source_default.sql`. That has to be
+  applied before a build with this is uploaded, alongside the surcharge migration. The JVM tests' fake server now
+  refuses a line upsert missing a NOT NULL column, which it accepted before.
+- **Not changed:** extracted columns still go whole when the line changed, so which parser's reading the server holds
+  is still the last pusher's (review L2).
+- **Checked:** the review's test un-ignored, its mirror (the scanning phone is the stale one) and a re-read that does
+  change a line (its surcharge goes up, the correction stays) fail on the old parser and engine and pass now, with the
+  whole unit suite. `line_merge.test.sql` (pgTAP) runs the two upserts as PostgREST writes them. It and
+  `SupabaseLocalTest` haven't run yet: Docker is down.

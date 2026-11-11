@@ -20,8 +20,9 @@ import kotlinx.serialization.json.put
  * Reads a receipt's saved page into its header, lines and store items, on the phone (D49), with the same rules as the
  * server's ingest.js. A store item already known by its code keeps its product, and so its category; an unknown code
  * gets a new uncategorized product. Discounts read from a photo or set by hand survive a re-parse, matched by line
- * number. A page that can't be read keeps the receipt and its earlier lines, with the error recorded. Everything it
- * writes is marked dirty, for the next sync to push (D70).
+ * number. A page that can't be read keeps the receipt and its earlier lines, with the error recorded. What it writes
+ * is marked dirty, for the next sync to push (D70); a line the re-read left as it was keeps its state, and a clean line
+ * it changes keeps the server's copy as its base first, so the push sends only what the re-read changed (D182).
  */
 class ReceiptParser(
   private val database: ReceiptDatabase,
@@ -103,6 +104,13 @@ class ReceiptParser(
     // What a person or a photo said about a line outlives the page's re-reading.
     val old = dao.lines(chave).associateBy { it.lineNo }
     val kept = old.filterValues { it.discountSource == "photo" || it.discountSource == "manual" }
+    // A clean line is what the server held when this phone last saw it. Kept as its base before the re-read rewrites
+    // it, so the push sends only the fields the re-read changed and not this phone's copy of the others: they may be
+    // stale, with another phone's correction already online (D182, review L1).
+    val sync = database.sync()
+    val clean = old.values.filter { !it.dirty }
+    val based = clean.map { it.syncKey }.chunked(500).flatMap { sync.bases(LINE_TABLE, it) }.mapTo(HashSet()) { it.rowKey }
+    for (l in clean) if (l.syncKey !in based) sync.putBase(SyncBaseRow(LINE_TABLE, l.syncKey, l.syncJson().toString()))
     dao.deleteLines(chave)
 
     val lineCents = p.items.map { it.totalCents ?: 0 }
@@ -134,7 +142,7 @@ class ReceiptParser(
         item.id
       }
       val previous = old[item.line]
-      ReceiptLineRow(
+      val row = ReceiptLineRow(
         chave, item.line, description, code, item.qtyE4 ?: 0, item.unit, item.unitPriceE4 ?: 0, lineCents[i], storeItemId,
         productOverrideId = previous?.productOverrideId,
         discountCents = discounts[i].cents,
@@ -143,10 +151,11 @@ class ReceiptParser(
         dirty = true,
         surchargeCents = surcharges[i],
       )
+      // Read the same as before: nothing to push (D182).
+      if (previous != null && row.copy(dirty = previous.dirty) == previous) previous else row
     }
     dao.insertLines(rows)
     // Lines the page no longer has go from the server too (D164); a number that's back isn't removed.
-    val sync = database.sync()
     sync.putRemovedLines((old.keys - rows.map { it.lineNo }.toSet()).map { LineRemovedRow(chave, it) })
     sync.clearRemovedLines(chave, rows.map { it.lineNo })
 

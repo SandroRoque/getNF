@@ -2,8 +2,12 @@ package io.github.sandroroque.getnf.sync
 
 import io.github.sandroroque.getnf.data.CategoryRow
 import io.github.sandroroque.getnf.data.ProductRow
+import io.github.sandroroque.getnf.data.ReceiptLineRow
 import io.github.sandroroque.getnf.data.ReceiptParser
 import io.github.sandroroque.getnf.data.ReceiptStore
+import io.github.sandroroque.getnf.data.SyncBaseRow
+import io.github.sandroroque.getnf.data.syncJson
+import io.github.sandroroque.getnf.data.syncKey
 import io.github.sandroroque.getnf.data.testDatabase
 import java.io.File
 import java.time.Instant
@@ -284,33 +288,73 @@ class SyncEngineTest {
 
 
   /**
-   * Review 2026-11-11, L1. A re-read marks every line of the receipt dirty and a dirty line goes up whole, so a phone
-   * that re-reads (an app update with a newer parser, or Room 14 → 15's ReparseSurcharged) before it has pulled another
-   * phone's correction writes its stale copy over that correction, for everyone.
+   * Review 2026-11-11, L1 (D182). A phone that re-reads its pages (an app update with a newer parser, or Room 14 → 15's
+   * ReparseSurcharged) before it has pulled another phone's correction must not write its stale copy over it.
    */
-  @Ignore("review 2026-11-11 L1: fails while the defect exists; un-ignore with the fix") @Test fun aStalePhonesReReadMustNotUndoAnotherPhonesLineCorrection() = runTest {
+  @Test fun aStalePhonesReReadMustNotUndoAnotherPhonesLineCorrection() = runTest {
     val a = Phone("a"); val b = Phone("b")
     twoPhonesWithTheReceipt(a, b)
-    // B reads the adopted page itself, as the worker does after a sync, and everything settles.
-    b.parser.parse(b.store.get(chave)!!); b.engine.sync(server); a.engine.sync(server)
-    // A says by hand what one line's product is and what its discount was, and syncs. B hasn't synced since.
-    val ca = a.db.catalog()
-    val first = ca.lines(chave).first()
-    val other = ca.products().first { p -> ca.storeItems().none { it.id == first.storeItemId && it.productId == p.id } }.id
-    val corrected = ca.lines(chave).map { l ->
+    staleReRead(corrector = a, rereader = b)
+  }
+
+  /** The mirror: the phone that scanned the receipt is the stale one. */
+  @Test fun theScanningPhonesStaleReReadKeepsTheOthersCorrectionToo() = runTest {
+    val a = Phone("a"); val b = Phone("b")
+    twoPhonesWithTheReceipt(a, b)
+    staleReRead(corrector = b, rereader = a)
+  }
+
+  /** The re-read does change a line (its parser is newer): that field goes up, and the correction still stays. */
+  @Test fun aReReadThatChangesALineSendsOnlyWhatItChanged() = runTest {
+    val a = Phone("a"); val b = Phone("b")
+    twoPhonesWithTheReceipt(a, b)
+    staleReRead(corrector = a, rereader = b) { line ->
+      // What an older parser had read and the server held when B last synced: another surcharge share.
+      val old = line.copy(surchargeCents = line.surchargeCents + 999)
+      val rest = b.db.catalog().lines(chave).filter { it.lineNo != old.lineNo }
+      b.db.catalog().deleteLines(chave); b.db.catalog().insertLines(rest + old)
+      b.db.sync().putBase(SyncBaseRow("receipt_line", old.syncKey, old.syncJson().toString()))
+      server.put("receipt_line", "ledger_id,chave,line_no", buildJsonObject { put("chave", chave); put("line_no", old.lineNo); put("surcharge_cents", old.surchargeCents) })
+      line.surchargeCents
+    }
+  }
+
+  /**
+   * Both phones hold the receipt ([twoPhonesWithTheReceipt]); [corrector] then corrects one line by hand and syncs while
+   * [rereader] stays offline. [olderParser], given that line on [rereader], may make it look as an older parser read
+   * it and return what the re-read will put back; null when the re-read changes nothing. Then [rereader] re-reads
+   * and syncs, and the correction must stand everywhere.
+   */
+  private suspend fun staleReRead(corrector: Phone, rereader: Phone, olderParser: (suspend (ReceiptLineRow) -> Long)? = null) {
+    // Each reads the adopted page itself, as the worker does after a sync, and everything settles.
+    for (p in listOf(corrector, rereader)) p.parser.parse(p.store.get(chave)!!)
+    repeat(2) { for (p in listOf(corrector, rereader)) p.engine.sync(server) }
+    val first = rereader.db.catalog().lines(chave).first()
+    val surcharge = olderParser?.invoke(first)
+    // The corrector says by hand what the line's product is and what its discount was, and syncs. The other hasn't.
+    val cc = corrector.db.catalog()
+    val other = cc.products().first { p -> cc.storeItems().none { it.id == first.storeItemId && it.productId == p.id } }.id
+    val corrected = cc.lines(chave).map { l ->
       if (l.lineNo == first.lineNo) l.copy(productOverrideId = other, discountSource = "manual", discountReview = "confirmed", dirty = true) else l
     }
-    ca.deleteLines(chave); ca.insertLines(corrected)
-    a.engine.sync(server)
+    cc.deleteLines(chave); cc.insertLines(corrected)
+    corrector.engine.sync(server)
     assertEquals(other, server.rows("receipt_line").single { it.str("line_no") == "${first.lineNo}" }.str("product_override_id"))
-    // B's app updates to a newer parser: at start it reads its saved pages again, then syncs.
-    b.parser.parse(b.store.get(chave)!!)
-    b.engine.sync(server)
-    a.engine.sync(server)
+    // The other phone's app updates to a newer parser: at start it reads its saved pages again, then syncs.
+    rereader.parser.parse(rereader.store.get(chave)!!)
+    val report = rereader.engine.sync(server)
+    assertTrue(report.errors.toString(), report.errors.isEmpty())
+    corrector.engine.sync(server)
     val online = server.rows("receipt_line").single { it.str("line_no") == "${first.lineNo}" }
-    assertEquals("the server still has A's product for the line", other, online.str("product_override_id"))
-    assertEquals("the server still has A's discount as typed", "manual", online.str("discount_source"))
-    assertEquals("A still has its own correction", other, a.db.catalog().lines(chave).single { it.lineNo == first.lineNo }.productOverrideId)
+    assertEquals("the server still has the corrected product for the line", other, online.str("product_override_id"))
+    assertEquals("the server still has the discount as typed", "manual", online.str("discount_source"))
+    for (p in listOf(corrector, rereader)) {
+      val line = p.db.catalog().lines(chave).single { it.lineNo == first.lineNo }
+      assertEquals("both phones end with the correction", other, line.productOverrideId)
+      assertEquals("manual", line.discountSource)
+      if (surcharge != null) assertEquals("the newer reading went up", surcharge, line.surchargeCents)
+    }
+    if (surcharge != null) assertEquals("$surcharge", online.str("surcharge_cents"))
   }
 
   @Test fun aReceiptOnlyTheServerHasIsAdoptedWithItsPage() = runTest {
@@ -545,10 +589,20 @@ class SyncEngineTest {
       return kotlinx.serialization.json.JsonNull
     }
 
+    // Like the server's defaults: the caderneta, and who wrote a scan mark.
+    private fun owned(table: String, row: JsonObject) = JsonObject(row + ("ledger_id" to JsonPrimitive(ledgerId)) +
+      (if (table == "receipt_scan" && "user_id" !in row) mapOf("user_id" to JsonPrimitive(userId)) else emptyMap()))
+
+    /** NOT NULL columns with no default, as in the migrations. */
+    private val required = mapOf("receipt_line" to listOf("chave", "line_no", "description", "code", "qty_e4", "unit_price_e4", "gross_cents", "store_item_id"))
+
+    fun has(table: String, key: String, row: JsonObject): Boolean {
+      val owned = owned(table, row)
+      return tables[table]?.containsKey(key.split(",").joinToString("|") { owned.str(it)!! }) == true
+    }
+
     fun put(table: String, key: String, row: JsonObject) {
-      // Like the server's defaults: the caderneta, and who wrote a scan mark.
-      val owned = JsonObject(row + ("ledger_id" to JsonPrimitive(ledgerId)) +
-        (if (table == "receipt_scan" && "user_id" !in row) mapOf("user_id" to JsonPrimitive(userId)) else emptyMap()))
+      val owned = owned(table, row)
       val k = key.split(",").joinToString("|") { owned.str(it)!! }
       val old = tables.getOrPut(table) { mutableMapOf() }[k]
       clock = clock.plusMillis(tick)
@@ -564,8 +618,13 @@ class SyncEngineTest {
     override fun upsert(table: String, rows: List<JsonObject>, onConflict: String, ignoreDuplicates: Boolean) {
       if (failUpserts) throw java.io.IOException("offline")
       refuse[table]?.let { bad -> if (rows.any { bad in it.toString() }) throw SupabaseException(400, "refused") }
+      // Postgres checks NOT NULL on the row an upsert proposes, before it finds the conflict.
+      if (!ignoreDuplicates) required[table]?.let { columns ->
+        rows.firstOrNull { row -> columns.any { it !in row } }?.let { throw SupabaseException(400, "23502 not null: $it") }
+      }
       pushed += rows
-      rows.forEach { put(table, onConflict, it) }
+      // ignore-duplicates: a row already there is left as it is.
+      rows.forEach { if (!ignoreDuplicates || !has(table, onConflict, it)) put(table, onConflict, it) }
     }
 
     override fun delete(table: String, filters: List<Pair<String, String>>) {

@@ -131,6 +131,7 @@ abstract class SyncDao {
   @Query("SELECT * FROM sync_base WHERE tableName = :table AND rowKey = :key") abstract suspend fun base(table: String, key: String): SyncBaseRow?
   @Query("SELECT * FROM sync_base WHERE tableName = :table AND rowKey IN (:keys)") abstract suspend fun bases(table: String, keys: List<String>): List<SyncBaseRow>
   @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putBase(row: SyncBaseRow)
+  @Query("DELETE FROM sync_base WHERE tableName = :table AND rowKey IN (:keys)") abstract suspend fun deleteBases(table: String, keys: List<String>)
   // Unchanged rows without a base yet (rows from before D164): what the phone holds is what the server held.
   @Query("SELECT * FROM category WHERE dirty = 0 AND id NOT IN (SELECT rowKey FROM sync_base WHERE tableName = 'category')")
   abstract suspend fun categoriesWithoutBase(): List<CategoryRow>
@@ -140,6 +141,8 @@ abstract class SyncDao {
   abstract suspend fun productsWithoutBase(): List<ProductRow>
   @Query("SELECT * FROM store_item WHERE dirty = 0 AND id NOT IN (SELECT rowKey FROM sync_base WHERE tableName = 'store_item')")
   abstract suspend fun storeItemsWithoutBase(): List<StoreItemRow>
+  @Query("SELECT * FROM receipt_line WHERE dirty = 0 AND NOT EXISTS (SELECT 1 FROM sync_base b WHERE b.tableName = 'receipt_line' AND b.rowKey = receipt_line.receipt || '/' || receipt_line.lineNo)")
+  abstract suspend fun linesWithoutBase(): List<ReceiptLineRow>
 
   @Insert(onConflict = OnConflictStrategy.IGNORE) abstract suspend fun putRemovedLines(rows: List<LineRemovedRow>)
   @Query("SELECT * FROM line_removed ORDER BY receipt, lineNo") abstract suspend fun removedLines(): List<LineRemovedRow>

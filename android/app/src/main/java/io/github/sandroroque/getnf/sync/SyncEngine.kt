@@ -17,6 +17,10 @@ import io.github.sandroroque.getnf.data.ReceiptParsedRow
 import io.github.sandroroque.getnf.data.ReceiptStore
 import io.github.sandroroque.getnf.data.StoreItemRow
 import io.github.sandroroque.getnf.data.SyncBaseRow
+import io.github.sandroroque.getnf.data.LINE_CORRECTIONS
+import io.github.sandroroque.getnf.data.lineSyncKey
+import io.github.sandroroque.getnf.data.syncJson
+import io.github.sandroroque.getnf.data.syncKey
 import io.github.sandroroque.getnf.data.SyncParkedRow
 import io.github.sandroroque.getnf.data.MemberRow
 import io.github.sandroroque.getnf.data.ReceiptScanRow
@@ -76,7 +80,9 @@ fun interface PhotoArchiver {
  *
  * Catalog rows (categories, tags, products, store items) merge field by field (D164): the phone keeps what the server
  * last held of each ([SyncBaseRow]), pushes only the fields it changed since, and a pull into a row it changed takes
- * the server's other fields. The same field changed on two phones ends with the one that pushes last. Lines a re-read
+ * the server's other fields. The same field changed on two phones ends with the one that pushes last. Receipt lines
+ * merge that way too (D182): a phone sends a changed line's extracted columns and only the corrections it changed, so
+ * one that re-reads a page never sends its stale copy of another phone's correction. Lines a re-read
  * page dropped are removed on the server one by one ([LineRemovedRow]); a phone that pulls changed lines of a receipt
  * drops the ones the server no longer has.
  */
@@ -188,6 +194,7 @@ class SyncEngine(
     for (t in dao.tagsWithoutBase()) dao.putBase(SyncBaseRow(TAG_TABLE, t.id, tagJson(t).toString()))
     for (p in dao.productsWithoutBase()) dao.putBase(SyncBaseRow("product", p.id, productJson(p).toString()))
     for (s in dao.storeItemsWithoutBase()) dao.putBase(SyncBaseRow("store_item", s.id, storeItemJson(s).toString()))
+    for (l in dao.linesWithoutBase()) dao.putBase(SyncBaseRow(LINES, l.syncKey, lineJson(l).toString()))
   }
 
   private suspend fun park(table: String, key: String, payload: String, e: SupabaseException, errors: MutableList<String>) {
@@ -240,7 +247,8 @@ class SyncEngine(
    * removed ones go, never "whatever this phone lacks", which would take lines another phone's newer read added. The
    * removals go first, so a phone that pulls the lines this upsert touches also sees them gone; with no line to
    * upsert, the receipt row is sent again to the same end. Per receipt, so one that can't go up (its receipt failed)
-   * doesn't hold back the others.
+   * doesn't hold back the others. A line with no base goes whole; one with a base as its extracted columns and the
+   * corrections that differ from it (D182), after an insert-if-missing of the whole line.
    */
   private suspend fun pushLines(remote: SyncRemote, errors: MutableList<String>): Int {
     var n = 0
@@ -252,20 +260,42 @@ class SyncEngine(
       val gone = removed[chave].orEmpty()
       val payload = rows.map(::lineJson).toString() + gone
       if (parked[chave] == payload) continue
+      val bases = rows.map { it.syncKey }.chunked(500).flatMap { dao.bases(LINES, it) }
+        .associate { it.rowKey to json.parseToJsonElement(it.payload) as JsonObject }
+      // A line with no base goes whole. One with a base sends nothing if it's what the server held, else its extracted
+      // columns and the corrections that differ from the base.
+      val whole = rows.filter { bases[it.syncKey] == null }.map(::lineJson)
+      val changed = rows.mapNotNull { row ->
+        val base = bases[row.syncKey] ?: return@mapNotNull null
+        val all = lineJson(row)
+        if (all.all { (field, value) -> base[field] == value }) return@mapNotNull null
+        row to JsonObject(all.filter { (field, value) -> field !in LINE_CORRECTIONS || base[field] != value })
+      }
+      // Fields alone can't make a row another phone has removed meanwhile: such a line is first put back whole, as
+      // this phone has it, and an insert that finds the row there changes nothing (a correction outlives a removal, D182).
+      val ifMissing = changed.map { lineJson(it.first) }
+      val sends = whole + changed.map { it.second }
       try {
         if (gone.isNotEmpty()) io {
           remote.delete(LINES, listOf("ledger_id" to "eq.${remote.ledgerId}", "chave" to "eq.$chave", "line_no" to "in.(${gone.joinToString(",")})"))
         }
-        if (rows.isNotEmpty()) io { remote.upsert(LINES, rows.map { owned(remote, lineJson(it)) }, "ledger_id,chave,line_no") }
-        else store.get(chave)?.takeIf { it.uploadedVersion != null }?.let { r ->
+        if (ifMissing.isNotEmpty()) io { remote.upsert(LINES, ifMissing.map { owned(remote, it) }, "ledger_id,chave,line_no", ignoreDuplicates = true) }
+        // PostgREST takes the same keys in every row of a request.
+        for (group in sends.groupBy { it.keys }.values) io { remote.upsert(LINES, group.map { owned(remote, it) }, "ledger_id,chave,line_no") }
+        if (sends.isEmpty() && gone.isNotEmpty()) store.get(chave)?.takeIf { it.uploadedVersion != null }?.let { r ->
           io { remote.upsert(RECEIPT, listOf(owned(remote, receiptJson(r, dao.parsed(chave), pagePath(remote, r)))), "ledger_id,chave") }
         }
         transaction {
-          for (row in rows) if (dao.line(row.receipt, row.lineNo) == row) dao.upsertLine(row.copy(dirty = false))
+          for (row in rows) {
+            if (dao.line(row.receipt, row.lineNo) == row) dao.upsertLine(row.copy(dirty = false))
+            // The server now has the fields sent, and the base already had the others.
+            dao.putBase(SyncBaseRow(LINES, row.syncKey, lineJson(row).toString()))
+          }
           dao.clearRemovedLines(chave, gone)
+          dao.deleteBases(LINES, gone.map { lineSyncKey(chave, it) })
         }
         if (chave in parked) dao.unpark(LINES, listOf(chave))
-        n += rows.size + gone.size
+        n += sends.size + gone.size
       } catch (e: SupabaseException) {
         if (e.status == 401) throw e
         park(LINES, chave, payload, e, errors)
@@ -418,7 +448,10 @@ class SyncEngine(
       }
       transaction {
         for (chave in chunk) for (no in dao.lineNumbers(chave)) {
-          if ((chave to no) !in onServer && dao.line(chave, no)?.dirty == false) dao.deleteLine(chave, no)
+          if ((chave to no) in onServer) continue
+          // No row online to merge into: a line that goes up again goes whole (D182).
+          dao.deleteBases(LINES, listOf(lineSyncKey(chave, no)))
+          if (dao.line(chave, no)?.dirty == false) dao.deleteLine(chave, no)
         }
         dao.deleteStates(chunk.map { RECONCILE + it })
       }
@@ -451,7 +484,8 @@ class SyncEngine(
         val l = line(o)
         // Only for receipts the phone has (all of them, once receipts were pulled).
         if (store.receipts.value.none { it.chave == l.receipt }) continue
-        if (dao.line(l.receipt, l.lineNo)?.dirty != true) dao.upsertLine(l)
+        merged(LINES, o, ::line, { dao.line(it.receipt, it.lineNo) }, { it.dirty }, ::lineJson, l.syncKey) { it.copy(dirty = true) }
+          ?.let { dao.upsertLine(it) }
       }
     }
     "link_suggestion" -> transaction {
@@ -507,11 +541,10 @@ class SyncEngine(
    */
   private suspend fun <T> merged(
     table: String, o: JsonObject, fromJson: (JsonObject) -> T, local: suspend (T) -> T?, dirty: (T) -> Boolean,
-    toJson: (T) -> JsonObject, markDirty: (T) -> T,
+    toJson: (T) -> JsonObject, key: String = o.string("id")!!, markDirty: (T) -> T,
   ): T? {
     val pulled = fromJson(o)
     val server = toJson(pulled)
-    val key = o.string("id")!!
     val base = dao.base(table, key)?.let { json.parseToJsonElement(it.payload) as JsonObject }
     dao.putBase(SyncBaseRow(table, key, server.toString()))
     val mine = local(pulled)?.takeIf(dirty) ?: return pulled
@@ -677,13 +710,7 @@ class SyncEngine(
 
   private fun productTag(o: JsonObject) = ProductTagRow(o.string("product_id")!!, o.string("tag_id")!!, o.bool("deleted") ?: false)
 
-  private fun lineJson(l: ReceiptLineRow) = buildJsonObject {
-    put("chave", l.receipt); put("line_no", l.lineNo); put("description", l.description); put("code", l.code)
-    put("qty_e4", l.qtyE4); put("unit", l.unit); put("unit_price_e4", l.unitPriceE4); put("gross_cents", l.grossCents)
-    put("store_item_id", l.storeItemId); put("product_override_id", l.productOverrideId); put("discount_cents", l.discountCents)
-    put("discount_source", l.discountSource); put("discount_review", l.discountReview); put("orphaned", l.orphaned)
-    put("surcharge_cents", l.surchargeCents)
-  }
+  private fun lineJson(l: ReceiptLineRow) = l.syncJson()
 
   private fun line(o: JsonObject) = ReceiptLineRow(
     o.string("chave")!!, o.long("line_no")!!.toInt(), o.string("description")!!, o.string("code")!!, o.long("qty_e4")!!,
