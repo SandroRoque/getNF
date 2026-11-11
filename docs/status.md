@@ -117,9 +117,10 @@ failures), the Room migrations one by one; the rest after the open store. One ar
 (they kept running out of usage).
 
 Do next, in order:
-0. **D177's first fixes, then code 7, cut early** (privacy and numbers in the build testers have, rollout.md ›
-   Cutting): T-28 and T-29 (a phone that stops syncing hides everything else), T-30, T-31; then apply
-   `20261109010000_line_surcharge.sql` online and cut from main. Then T-32–T-35, then the normal ones (T-15–T-21, T-36–T-44) by priority; T-26 before the LLM worker is switched back on.
+0. **Code 7, cut early** (privacy and numbers in the build testers have, rollout.md › Cutting): D177's first fixes
+   are on main (T-28 D178, T-29 D179 with Room 16, T-30 D180, T-31 D181; resolved, not yet in a release). Apply
+   `20261109010000_line_surcharge.sql` online and cut from main. After T-24, run `tools/blank-buyers.py` (dry run
+   first) over the pages online: it now knows the WebView's heading too. Then T-32–T-35, then the normal ones (T-15–T-21, T-36–T-44) by priority; T-26 before the LLM worker is switched back on.
 1. ~~The phone on code 4~~: code 4 is replaced; its check is folded into code 5's (next item).
 2. **Code 6 (0.1.3, 6916fe9, `play/6`), with D167 (T-5):** uploaded straight to the closed track 2026-11-09 and
    promoted to internal; Google's review to be confirmed in the console (Publishing overview), and whether it got a
