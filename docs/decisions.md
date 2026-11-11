@@ -4224,3 +4224,18 @@ functions and the fixes of D171–D176 held.
 - **Order:** the urgent ones before more testers join shared cadernetas; T-28 and T-29 first (a phone that stops
   syncing hides everything else), then T-30/T-31 (privacy), then the numbers.
 - Coverage was partial in several areas (the report's table says which); a later pass should start there.
+
+## D178. Only a refused refresh signs the person out; a page Storage won't give waits, and the sync goes on (2026-11-10, T-28)
+
+`SyncWorker` signed the person out on any 400 or 401 that escaped the run, taking every refusal for an expired
+refresh token. Storage answers a missing object with a 400, so a receipt row whose page object is gone signed them out
+on every run, and nothing after that row was ever pulled (the 2026-11-09 audit, P1-1).
+- **Sign-out:** only when `refresh()` itself is refused (400/401). Any other refusal fails that run and keeps the
+  session; the next run tries again.
+- **A page that won't download:** the receipt is adopted without its page (or, if the phone had it already, left
+  waiting) and the pull goes on. The object path is kept in sync_state as `page:<chave>` and tried again at each run,
+  before the pull; once it comes, the page is adopted and read as usual. A page the phone fetched itself meanwhile
+  drops the entry. Meanwhile the receipt counts as one waiting for its page (the reminder, the lookup button), which
+  is what it is on this phone.
+- Not done here: why a row loses its object (an upload stopped halfway, a withdrawal, a hand repair) wasn't measured;
+  the sync report's errors list now names each one.

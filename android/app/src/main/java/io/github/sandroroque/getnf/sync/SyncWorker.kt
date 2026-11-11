@@ -35,7 +35,15 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
     val client = SupabaseClient(project.url, project.key)
     try {
-      val session = client.refresh(account.refreshToken).also { app.accountSettings.signedIn(it) }
+      // Only a refused refresh token means the sign-in is gone (signed out elsewhere, or expired); a refusal later in
+      // the run is about one request, and signing out for it would do so on every run (T-28).
+      val session = try {
+        client.refresh(account.refreshToken).also { app.accountSettings.signedIn(it) }
+      } catch (e: SupabaseException) {
+        if (e.status == 400 || e.status == 401) app.accountSettings.signOut()
+        Log.w(TAG, "sign-in refused", e)
+        return@withContext Result.failure()
+      }
       val open = app.accountSettings.ledgerId()
       val mine = Ledgers.mine(client, session)
       // "Enviar fotos" was turned off: take back what was sent before anything else goes up (D105).
@@ -70,8 +78,6 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
       Log.w(TAG, "server unreachable, will retry", e)
       Result.retry()
     } catch (e: SupabaseException) {
-      // A refresh token that no longer works (signed out elsewhere, or expired): ask for a new sign-in.
-      if (e.status == 400 || e.status == 401) app.accountSettings.signOut()
       Log.w(TAG, "sync refused", e)
       Result.failure()
     }

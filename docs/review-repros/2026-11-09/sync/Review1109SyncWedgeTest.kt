@@ -72,24 +72,4 @@ class Review1109SyncWedgeTest {
     }
     assertEquals("Produto p-from-another-phone", db.sync().product("p-from-another-phone")?.name)
   }
-
-  @Test fun aReceiptWhosePageObjectIsMissingMustNotStopEverySync() = runTest {
-    val chave = "42000000000000000000650000000000011000000000"
-    val server = MiniServer().apply {
-      // A receipt row whose page_path names an object Storage doesn't have.
-      tables["receipt"] = mutableListOf(buildJsonObject {
-        put("chave", chave); put("captured_at", "2026-11-01T10:00:00+00:00"); put("page_path", "ledger-1/$chave/page.html")
-        put("updated_at", "2026-11-01T10:00:00+00:00")
-      })
-      tables["product"] = mutableListOf(product("p-1"))
-      tables["ledger_member"] = mutableListOf(member())
-    }
-    val failures = mutableListOf<Int>()
-    for (run in 1..2) {
-      try { engine.sync(server) } catch (e: SupabaseException) { failures += e.status }
-    }
-    assertEquals("a receipt whose page can't be downloaded must be skipped (or adopted without its page), not fail " +
-      "every sync; statuses thrown per run (SyncWorker signs out on 400): $failures; product pulled: " +
-      "${db.sync().product("p-1") != null}", emptyList<Int>(), failures)
-  }
 }

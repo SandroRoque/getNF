@@ -98,10 +98,11 @@ class SyncEngine(
   suspend fun sync(remote: SyncRemote): Report = mutex.withLock {
     val errors = mutableListOf<String>()
     io { remote.rpc("sync_taxonomy", buildJsonObject { put("lid", remote.ledgerId) }) }
-    var pulled = pull(remote, listOf(CATEGORY, TAG_TABLE))
+    var pulled = pull(remote, listOf(CATEGORY, TAG_TABLE), errors)
     seedBases()
     val (pushed, photos) = push(remote, errors)
-    pulled += pull(remote, TABLES)
+    retryPages(remote, errors)
+    pulled += pull(remote, TABLES, errors)
     reconcileLines(remote)
     pullMembers(remote)
     Report(pushed, pulled, photos, errors, storeItemsPushed).also { log("sync: $it") }
@@ -328,7 +329,7 @@ class SyncEngine(
    * starting after the last row of the one before (D164): a page boundary inside a run of equal timestamps neither
    * skips nor repeats a row.
    */
-  private suspend fun pull(remote: SyncRemote, tables: List<String>): Int {
+  private suspend fun pull(remote: SyncRemote, tables: List<String>, errors: MutableList<String>): Int {
     var n = 0
     for (table in tables) {
       val cursorName = "cursor:$table"
@@ -343,7 +344,7 @@ class SyncEngine(
         }
         val rows = io { remote.select(table, filters) }
         if (rows.isEmpty()) break
-        apply(remote, table, rows)
+        apply(remote, table, rows, errors)
         n += rows.size
         last = rows.last()
         transaction {
@@ -413,11 +414,11 @@ class SyncEngine(
     transaction { dao.clearMembers(); dao.putMembers(members) }
   }
 
-  private suspend fun apply(remote: SyncRemote, table: String, rows: List<JsonObject>) = when (table) {
+  private suspend fun apply(remote: SyncRemote, table: String, rows: List<JsonObject>, errors: MutableList<String>) = when (table) {
     CATEGORY -> applyCategories(rows)
     TAG_TABLE -> applyTags(rows)
     "issuer" -> transaction { for (o in rows) { val cnpj = o.string("cnpj")!!; if (dao.issuer(cnpj)?.dirty != true) dao.upsertIssuer(IssuerRow(cnpj, o.string("name")!!)) } }
-    "receipt" -> applyReceipts(remote, rows)
+    "receipt" -> applyReceipts(remote, rows, errors)
     "product" -> transaction {
       for (o in rows) merged("product", o, ::product, { dao.product(it.id) }, { it.dirty }, ::productJson) { it.copy(dirty = true) }?.let { dao.upsertProduct(it) }
     }
@@ -504,29 +505,28 @@ class SyncEngine(
 
   /**
    * A receipt the phone doesn't have (saved from elsewhere) is adopted with its page; the parser then reads it here.
-   * For known receipts the phone's own parse stands, unless the phone never parsed them.
+   * For known receipts the phone's own parse stands, unless the phone never parsed them. A page Storage won't give is
+   * left for later ([fetchPage]): the receipt comes in without it, and the rest of the pull goes on (T-28).
    */
-  private suspend fun applyReceipts(remote: SyncRemote, rows: List<JsonObject>) {
+  private suspend fun applyReceipts(remote: SyncRemote, rows: List<JsonObject>, errors: MutableList<String>) {
     for (o in rows) {
       val chave = o.string("chave")!!
       if (o.bool("deleted") == true) continue
       val known = store.receipts.value.find { it.chave == chave }
       val pagePath = o.string("page_path")
       if (known == null) {
-        val dir = store.dir(chave).apply { mkdirs() }
-        if (pagePath != null) io { remote.download(pagePath, File(dir, ReceiptStore.PAGE_FILE)) }
+        val page = pagePath != null && fetchPage(remote, chave, pagePath, errors)
         store.adoptRemote(
           Receipt(
             chave = chave, qrUrl = o.string("qr_url"), capturedAt = o.millis("captured_at") ?: 0, pageUrl = o.string("page_url"),
-            pageFile = pagePath?.let { ReceiptStore.PAGE_FILE }, pageFetchedAt = o.millis("page_fetched_at"),
+            pageFile = if (page) ReceiptStore.PAGE_FILE else null, pageFetchedAt = o.millis("page_fetched_at"),
             version = 1, uploadedVersion = 1, remoteId = REMOTE_ID, scannedHere = false,
           ),
           emptyList(),
         )
       } else if (known.pageFile == null && pagePath != null) {
         // Another member fetched the page of a receipt this phone was waiting on (D104): no lookup needed here.
-        io { remote.download(pagePath, File(store.dir(chave).apply { mkdirs() }, ReceiptStore.PAGE_FILE)) }
-        store.adoptPage(chave, o.string("page_url"), o.millis("page_fetched_at"))
+        if (fetchPage(remote, chave, pagePath, errors)) store.adoptPage(chave, o.string("page_url"), o.millis("page_fetched_at"))
       }
       val local = dao.parsed(chave)
       if (local == null || (local.source != ReceiptParsedRow.SOURCE_PHONE && !local.dirty)) {
@@ -539,6 +539,33 @@ class SyncEngine(
           taxMunicipalCents = o.long("tax_municipal_cents"), taxTotalCents = o.long("tax_total_cents"),
         ))
       }
+    }
+  }
+
+  /**
+   * Downloads a receipt's page from Storage. One that fails (Storage answers a missing object with a 400, T-28) is
+   * recorded as `page:<chave>` in sync_state and tried again each run by [retryPages], instead of failing the run: a
+   * row whose object is gone would otherwise stop every sync at the same receipt.
+   */
+  private suspend fun fetchPage(remote: SyncRemote, chave: String, path: String, errors: MutableList<String>): Boolean = try {
+    io { remote.download(path, File(store.dir(chave).apply { mkdirs() }, ReceiptStore.PAGE_FILE)) }
+    dao.deleteStates(listOf(PAGE_PENDING + chave))
+    true
+  } catch (e: SupabaseException) {
+    if (e.status == 401) throw e
+    errors += "receipt $chave: page not downloaded: ${e.message}"
+    dao.putState(SyncStateRow(PAGE_PENDING + chave, path))
+    false
+  }
+
+  /** Pages an earlier run couldn't download; one the phone got meanwhile (a lookup of its own) is no longer wanted. */
+  private suspend fun retryPages(remote: SyncRemote, errors: MutableList<String>) {
+    for (name in dao.stateNames(PAGE_PENDING)) {
+      val chave = name.removePrefix(PAGE_PENDING)
+      val r = store.get(chave)
+      val path = dao.state(name)
+      if (r == null || r.pageFile != null || path == null) { dao.deleteStates(listOf(name)); continue }
+      if (fetchPage(remote, chave, path, errors)) store.adoptPage(chave, r.pageUrl, r.pageFetchedAt)
     }
   }
 
@@ -689,5 +716,7 @@ class SyncEngine(
     private const val OVERLAP_SECONDS = 60L
     /** sync_state's prefix for a receipt whose lines wait to be reconciled. */
     private const val RECONCILE = "reconcile:"
+    /** sync_state's prefix for a receipt whose page is still to be downloaded (T-28); the value is its object path. */
+    private const val PAGE_PENDING = "page:"
   }
 }
