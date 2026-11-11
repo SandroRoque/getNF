@@ -46,8 +46,8 @@ android {
         applicationId = "br.com.roqlab.caderneta"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.1.3"
+        versionCode = 7
+        versionName = "0.1.4"
         // The closed test (D161): a build that asks testers for their photos. Every Play build is one until the
         // production release, which is built with -Pgetnf.testPeriod=false.
         buildConfigField("boolean", "TEST_PERIOD", providers.gradleProperty("getnf.testPeriod").orNull?.toBoolean()?.toString() ?: "true")
