@@ -1,5 +1,0 @@
-Command (from the worktree root):
-. tools/env.sh && cd android && ./gradlew --init-script ../docs/review-repros/2026-11-09/repro.init.gradle -PreproDir=capture :app:testDebugUnitTest --tests '*Review1109CapturePhotoDiscount*'
-
-Result (2026-11-10):
-failure message="java.lang.AssertionError: expected the lines' discounts to add up to at most the receipt's R$ 0,50 (or nothing applied); got 70 cents (verdict PARTIAL, applied true; line 1: 40 manual, line 2: 30 photo)"

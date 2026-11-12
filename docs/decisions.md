@@ -4381,3 +4381,17 @@ caderneta online.
   and the marker's target covers the process dying, which no scope does.
 - **Checked:** `BackupTest.aRestoreStagedForOtherFilesIsLeftAlone` (the review's repro, moved in), the old marker and
   `clear()`; the whole unit suite.
+
+## D185. Photo discounts must fit in what the typed ones leave of the receipt's (2026-11-11, T-34)
+
+The 2026-11-09 review's P1-7. "Descontos: ler das fotos" judged the photos' readings alone against the receipt's
+discount, then wrote them next to the lines a person had typed a discount on (D174 caps each typed value, and left
+photo sums to the reader). R$ 0,40 typed on one line and R$ 0,30 read on another, on a receipt with R$ 0,50 off,
+was PARTIAL and applied: the lines carried R$ 0,70 and spending came out R$ 0,20 low.
+- **Chosen:** `PhotoDiscounts.read` takes the typed discounts. Readings on a typed line are dropped (a typed value is
+  never replaced, as before); the rest must fit with the typed ones in the receipt's discount, or it's a CONFLICT and
+  nothing changes. Typed plus read equal to the receipt's is COMPLETE.
+- **Considered:** applying the readings that fit and dropping the rest. Which one is wrong can't be told, and the
+  conflict path already says "Nada mudou", so the person can fix the typed value and read again.
+- **Checked:** `PhotoDiscountReaderTest.aPhotoReadingOnTopOfATypedDiscountMustFitTheReceipts` (the review's repro,
+  moved in) and the complete case; the whole unit suite.

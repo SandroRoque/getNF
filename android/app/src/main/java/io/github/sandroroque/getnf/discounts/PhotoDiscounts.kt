@@ -121,7 +121,11 @@ object PhotoDiscounts {
     return PhotoReading(byLine, unassigned, conflicts)
   }
 
-  fun read(photos: List<PhotoText>, items: List<Item>, totalDiscountCents: Long): Result {
+  /**
+   * [typed] maps lines whose discount a person typed to it (D185, T-34): their readings are dropped, since a typed
+   * value is never replaced, and the readings must fit in what the typed ones leave of the receipt's discount.
+   */
+  fun read(photos: List<PhotoText>, items: List<Item>, totalDiscountCents: Long, typed: Map<Int, Long> = emptyMap()): Result {
     // Read along the print: a photo taken sideways has its lines' "above" across the image (D101).
     val readings = photos.map { readPhoto(it.alongPrint(), items) }
     val problems = readings.flatMap { it.conflicts }.toMutableList()
@@ -135,16 +139,18 @@ object PhotoDiscounts {
         problems += "line $line: photos disagree (${counts.joinToString { "${it.key}×${it.value}" }})"
         null
       } else Found(line, counts[0].key, vs.filter { it.first == counts[0].key }.map { it.second })
-    }
+    }.filter { it.lineNo !in typed }
     val gross = items.associate { it.lineNo to it.grossCents }
     for (f in found) if (f.cents > (gross[f.lineNo] ?: 0)) problems += "line ${f.lineNo}: discount ${f.cents} exceeds the line's ${gross[f.lineNo]}"
     val sum = found.sumOf { it.cents }
-    if (sum > totalDiscountCents) problems += "discounts read add up to $sum, the page's total is $totalDiscountCents"
+    val typedSum = typed.values.sum()
+    if (sum + typedSum > totalDiscountCents) problems += "discounts read add up to $sum" +
+      (if (typedSum > 0) " and typed ones to $typedSum" else "") + ", the page's total is $totalDiscountCents"
     val unassigned = readings.sumOf { it.unassigned }
     val verdict = when {
       problems.isNotEmpty() -> Verdict.CONFLICT
       found.isEmpty() -> Verdict.NONE
-      sum == totalDiscountCents -> Verdict.COMPLETE
+      sum + typedSum == totalDiscountCents -> Verdict.COMPLETE
       else -> Verdict.PARTIAL
     }
     return Result(verdict, if (verdict == Verdict.CONFLICT) emptyList() else found, sum, totalDiscountCents, unassigned, problems)

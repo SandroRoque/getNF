@@ -99,4 +99,31 @@ class PhotoDiscountReaderTest {
     assertFalse(out.applied)
     assertEquals(before, dao.lines(chave))
   }
+
+  /** T-34 (D185): a typed R$ 0,40 and the photo's R$ 0,30 would add up to more than the receipt's R$ 0,50. */
+  @Test fun aPhotoReadingOnTopOfATypedDiscountMustFitTheReceipts() = runTest {
+    val r = receipt()
+    val lines = dao.lines(chave)
+    dao.deleteLines(chave)
+    dao.insertLines(lines.map { if (it.lineNo == 1) it.copy(discountCents = 40, discountSource = "manual", discountReview = "confirmed") else it })
+    val before = dao.lines(chave)
+    val out = reader.read(r)
+    assertEquals(Verdict.CONFLICT, out.result.verdict)
+    assertFalse(out.applied)
+    assertEquals(before, dao.lines(chave))
+  }
+
+  /** Typed R$ 0,20 and read R$ 0,30 are the receipt's R$ 0,50: complete, nothing left to prorate. */
+  @Test fun aTypedAndAReadDiscountThatCloseTheReceiptAreComplete() = runTest {
+    val r = receipt()
+    val lines = dao.lines(chave)
+    dao.deleteLines(chave)
+    dao.insertLines(lines.map { if (it.lineNo == 1) it.copy(discountCents = 20, discountSource = "manual", discountReview = "confirmed") else it })
+    val out = reader.read(r)
+    assertEquals(Verdict.COMPLETE, out.result.verdict)
+    val after = dao.lines(chave).associateBy { it.lineNo }
+    assertEquals(20L to "manual", after[1]!!.discountCents to after[1]!!.discountSource)
+    assertEquals(30L to "photo", after[2]!!.discountCents to after[2]!!.discountSource)
+    assertEquals(50L, after.values.sumOf { it.discountCents })
+  }
 }

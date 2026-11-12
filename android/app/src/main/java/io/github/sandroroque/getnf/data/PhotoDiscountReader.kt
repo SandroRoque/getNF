@@ -13,8 +13,8 @@ import kotlinx.serialization.json.Json
 /**
  * Reads a receipt's per-item discounts from its photos and applies them (D54). OCR text is cached next to each photo
  * (`<photo>.ocr1.json`), so reading again is quick. Discounts found become `photo` (unreviewed); the rest of the
- * receipt's discount is prorated over the other lines. A discount set by hand is never replaced. On a conflict, or
- * when nothing is found, the lines stay as they were. It runs by itself once a page is read ([readIfPending], D101).
+ * receipt's discount is prorated over the other lines. A discount set by hand is never replaced, and counts against
+ * what the photos may add (D185). On a conflict, or when nothing is found, the lines stay as they were. It runs by itself once a page is read ([readIfPending], D101).
  */
 class PhotoDiscountReader(
   private val database: ReceiptDatabase,
@@ -32,7 +32,8 @@ class PhotoDiscountReader(
     val lines = dao.lines(receipt.chave)
     val items = lines.map { PhotoDiscounts.Item(it.lineNo, it.code, it.description, it.grossCents) }
     val texts = withContext(Dispatchers.Default) { receipt.photos.map { text(receipt.chave, it) } }
-    val result = PhotoDiscounts.read(texts, items, parsed.discountCents ?: 0)
+    val typed = lines.filter { it.discountSource == "manual" }.associate { it.lineNo to it.discountCents }
+    val result = PhotoDiscounts.read(texts, items, parsed.discountCents ?: 0, typed)
     val apply = result.verdict == PhotoDiscounts.Verdict.COMPLETE || result.verdict == PhotoDiscounts.Verdict.PARTIAL
     if (apply) write(receipt.chave, parsed.discountCents ?: 0, result.discounts)
     return Outcome(result, apply, texts.size)
