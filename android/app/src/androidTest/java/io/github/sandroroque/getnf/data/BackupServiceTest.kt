@@ -163,6 +163,7 @@ class BackupServiceTest {
       override fun delete(table: String, filters: List<Pair<String,String>>) {}
       override fun upload(path: String, bytes: ByteArray, type: String) {}
       override fun download(path: String, target: File) { error("no remote objects") }
+      override fun deleteObjects(paths: List<String>) {}
     }
     val restoredStore = ReceiptStore(receiptsRoot, restored).apply { load() }
     // No caderneta recorded, like a database from before D193: its sent receipt (markUploaded) isn't in the destination.

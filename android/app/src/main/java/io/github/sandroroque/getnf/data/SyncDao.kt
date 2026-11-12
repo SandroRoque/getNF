@@ -154,4 +154,10 @@ abstract class SyncDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putStates(rows: List<SyncStateRow>)
   @Query("SELECT name FROM sync_state WHERE name LIKE :prefix || '%'") abstract suspend fun stateNames(prefix: String): List<String>
   @Query("DELETE FROM sync_state WHERE name IN (:names)") abstract suspend fun deleteStates(names: List<String>)
+
+  // A deleted receipt's sync bookkeeping (T-50, D194): none of it has a foreign key to cascade from.
+  @Query("DELETE FROM line_removed WHERE receipt = :chave") abstract suspend fun forgetRemovedLines(chave: String)
+  @Query("DELETE FROM sync_base WHERE tableName = 'receipt_line' AND rowKey LIKE :chave || '/%'") abstract suspend fun forgetLineBases(chave: String)
+  @Query("DELETE FROM sync_parked WHERE tableName IN ('receipt', 'receipt_line') AND rowKey = :chave") abstract suspend fun forgetParked(chave: String)
+  @Query("DELETE FROM receipt_scan WHERE chave = :chave") abstract suspend fun forgetScans(chave: String)
 }

@@ -82,6 +82,8 @@ abstract class ReceiptDao {
   @Query("SELECT * FROM capture_session ORDER BY receipt, position") abstract suspend fun sessions(): List<CaptureSessionRow>
 
   @Query("SELECT * FROM receipt WHERE chave = :chave") abstract suspend fun receipt(chave: String): ReceiptRow?
+  /** Its photos, sessions, header and lines go with it (foreign keys, CASCADE). */
+  @Query("DELETE FROM receipt WHERE chave = :chave") abstract suspend fun delete(chave: String): Int
   @Query("SELECT * FROM receipt_photo WHERE receipt = :chave ORDER BY position") abstract suspend fun photos(chave: String): List<PhotoRow>
   @Query("SELECT * FROM capture_session WHERE receipt = :chave ORDER BY position") abstract suspend fun sessions(chave: String): List<CaptureSessionRow>
 

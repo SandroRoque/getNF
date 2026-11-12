@@ -4547,3 +4547,34 @@ with no category, store item or receipt (reproduced against the local stack). Ch
 - **Checked:** `SyncEngineTest.aDatabaseOfAnotherCadernetaSendsNothingToIt` and `…FromBeforeTheRecordIsKnownByItsReceipts`;
   `Round3RestoreTest` against the local stack; `BackupServiceTest`'s restore test on the emulator (real export and
   restore); the audit's three tests, un-ignored and turned to this behaviour; the whole suite.
+
+## D194. A receipt can be deleted: from the phone at once, from the caderneta by a tombstone (2026-11-12, T-50)
+
+The 2026-11-09 audit found that data-model.md › "6. Exclusões" described deleting a receipt but nothing did it; a
+wrong or test receipt stayed in every total. Now "Mais" › "Apagar" on a receipt (read or still waiting for its page)
+asks once ("Apagar esta nota? <loja>, <dia>. Ela tem 8 itens e 3 fotos, que serão apagados também. […] Os produtos
+continuam no catálogo.") and deletes it.
+- **On the phone, at once:** the receipt row with what cascades from it (photos, header, lines, photo reads, capture
+  sessions), its directory (photos, page), and its sync bookkeeping, which has no foreign key (removed lines, line
+  bases, parked rows, scan marks, pending reconcile and page). Products and store items stay.
+- **In the caderneta, at the next sync:** `deleted:<chave>` in `sync_state` holds the time. The push calls
+  `delete_receipt(lid, chave, at)` first, which removes the lines, photo rows and scan marks, keeps the receipt row as
+  a tombstone (`deleted`, in the schema since the start but unused, and the new `deleted_at`), and returns the Storage
+  objects that held the page, photos and masks; the phone then removes those, keeping the list in `sync_state` until
+  it's done. Any member may delete, as any member may write a receipt.
+- **The other phones:** a pulled tombstone deletes their copy (without sending anything back).
+- **What a tombstone yields to:** only a scan made after the deletion (`captured_at` later than `deleted_at`), which
+  brings the receipt back with its new lines. A phone that hadn't pulled the removal and sends its older copy (a
+  re-read page) changes nothing, and its lines, photos and scan marks are dropped by a trigger, so a deletion is never
+  undone behind the person's back. The other way round, a deletion sent late by a phone that was offline doesn't take
+  a receipt someone scanned again after it.
+- **Considered:** deleting the server row outright, which no pull can see (the other phones would keep the receipt and
+  send it back); and letting any newer copy win, which brings a deleted receipt back whenever another phone re-reads
+  its page.
+- **Older clients (codes up to 7):** their pull skips tombstones, so the receipt stays on their phones until they
+  update; codes with D164 drop its lines (the server has none). What they send of it is dropped. Accepted for the
+  closed test.
+- **Checked:** pgTAP `receipt_deletion.test.sql` (13); `SyncEngineTest`'s three deletion tests (this phone, the other
+  phone, a stale copy then a new scan); `SupabaseLocalTest.aDeletedReceiptLeavesTheCadernetaWithItsFiles` against the
+  local stack (PostgREST and Storage); on the emulator, deleting a receipt and a receipt of the example (the list and
+  the totals follow).

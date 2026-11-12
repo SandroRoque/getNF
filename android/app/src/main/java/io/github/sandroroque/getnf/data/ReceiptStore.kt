@@ -1,6 +1,8 @@
 package io.github.sandroroque.getnf.data
 
 import android.util.Log
+import androidx.room.immediateTransaction
+import androidx.room.useWriterConnection
 import io.github.sandroroque.getnf.discounts.PhotoText
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -50,7 +52,7 @@ data class Receipt(
 
 class ReceiptStore(
   private val root: File,
-  database: ReceiptDatabase,
+  private val database: ReceiptDatabase,
   private val now: () -> Long = System::currentTimeMillis,
   private val warn: (String, Throwable?) -> Unit = { message, error -> Log.w(TAG, message, error) },
 ) {
@@ -251,6 +253,29 @@ class ReceiptStore(
     }
   }
 
+  /**
+   * Deletes a receipt from the phone (T-50, D194): its row with everything hanging from it (photos, header, lines), its
+   * directory (photos, page), and its sync bookkeeping. Products and store items stay in the catalog.
+   * [byUser]: the person deleted it here, so the next sync deletes it from the caderneta too ([DELETED] in sync_state,
+   * valued with the time); false when the removal came from the caderneta. Returns whether there was one to delete.
+   */
+  suspend fun delete(chave: String, byUser: Boolean = true): Boolean = io {
+    mutex.withLock {
+      val sync = database.sync()
+      val deleted = database.useWriterConnection { it.immediateTransaction {
+        val found = dao.delete(chave) > 0
+        sync.forgetRemovedLines(chave); sync.forgetLineBases(chave); sync.forgetParked(chave); sync.forgetScans(chave)
+        sync.deleteStates(listOf("reconcile:$chave", "page:$chave"))
+        if (found && byUser) sync.putState(SyncStateRow(DELETED + chave, now().toString()))
+        found
+      } }
+      // After the rows: a crash in between leaves a stray directory, never rows whose files are gone.
+      if (deleted) dir(chave).deleteRecursively()
+      publish()
+      deleted
+    }
+  }
+
   /** Changes receipt-level fields only; photos have their own calls. */
   private suspend fun update(chave: String, bump: Boolean = true, change: (Receipt) -> Receipt) = io {
     mutex.withLock {
@@ -316,6 +341,8 @@ class ReceiptStore(
     const val MANIFEST = "receipt.json"
     const val MIGRATED_MANIFEST = "receipt.json.migrated"
     const val PAGE_FILE = "page.html"
+    /** sync_state's prefix for a receipt deleted here and not yet in the caderneta (D194); the value is when, in millis. */
+    const val DELETED = "deleted:"
     private const val TAG = "ReceiptStore"
   }
 }

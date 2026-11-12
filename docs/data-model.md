@@ -213,9 +213,10 @@ O total da nota não muda; só muda a distribuição entre as categorias.
 
 ### 6. Exclusões
 
-- **Nota:** "Apagar a nota de 12/03 no Mercado X? Ela tem 23 linhas e 14 fotos, que serão apagadas também." O usuário
-  confirma. A nota, as linhas, as fotos e a página são apagadas no celular e, pela cópia, no servidor. Produtos que
-  ficaram sem compras continuam no catálogo.
+- **Nota:** "Apagar esta nota? Mercado X, 12/03/2026. Ela tem 23 itens e 14 fotos, que serão apagados também." O
+  usuário confirma. A nota, as linhas, as fotos e a página são apagadas no celular e, na próxima sincronização, no
+  servidor, onde a nota fica como lápide (`deleted`) para os outros celulares a apagarem também; só um novo escaneamento,
+  depois da exclusão, a traz de volta (D194). Produtos que ficaram sem compras continuam no catálogo.
 - **Produto sem compras:** é apagado direto, com os itens da loja sem compras que apontavam para ele.
 - **Produto com compras:** a tela mostra quantas compras ele tem e oferece arquivar: o produto some das listas e as
   compras continuam nos relatórios. Não existe apagar um produto e perder suas compras. Se ele aparecer de novo numa

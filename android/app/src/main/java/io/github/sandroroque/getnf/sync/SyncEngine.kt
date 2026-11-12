@@ -33,6 +33,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -58,6 +59,8 @@ interface SyncRemote {
   fun select(table: String, filters: List<Pair<String, String>>): List<JsonObject>
   fun upload(path: String, bytes: ByteArray, type: String)
   fun download(path: String, target: File)
+  /** Removes Storage objects; one already gone is no error. */
+  fun deleteObjects(paths: List<String>)
 }
 
 /** Turns a receipt photo into its small archive copy (D61). */
@@ -147,6 +150,7 @@ class SyncEngine(
   private suspend fun push(remote: SyncRemote, errors: MutableList<String>): Pair<Int, Int> {
     storeItemsPushed = 0
     var n = 0
+    n += pushDeletions(remote, errors)
     n += pushRows(remote, errors, "issuer", "ledger_id,cnpj", dao.dirtyIssuers(), { it.cnpj }, ::issuerJson, { dao.issuer(it.cnpj) }) { dao.upsertIssuer(it.copy(dirty = false)) }
     n += pushReceipts(remote, errors)
     n += pushRows(remote, errors, "category", BY_ID, dao.dirtyCategories(), { it.id }, ::categoryJson, { dao.category(it.id) }, merges = true) { dao.upsertCategory(it.copy(dirty = false)) }
@@ -232,6 +236,44 @@ class SyncEngine(
   }
 
   private fun owned(remote: SyncRemote, o: JsonObject) = JsonObject(o + ("ledger_id" to JsonPrimitive(remote.ledgerId)))
+
+  /**
+   * Receipts deleted here (T-50, D194), first: a receipt scanned again since goes up after this as the new copy it is.
+   * The server removes the rows, keeps a tombstone and names the Storage objects that held the page and photos; those
+   * are removed next, each set kept in sync_state until it's done ([DELETED_FILES]), so a run that stops in between
+   * leaves nothing behind online.
+   */
+  private suspend fun pushDeletions(remote: SyncRemote, errors: MutableList<String>): Int {
+    var n = 0
+    for (name in dao.stateNames(ReceiptStore.DELETED)) {
+      val chave = name.removePrefix(ReceiptStore.DELETED)
+      val at = dao.state(name)?.toLongOrNull() ?: run { dao.deleteStates(listOf(name)); continue }
+      try {
+        val files = io {
+          remote.rpc("delete_receipt", buildJsonObject { put("lid", remote.ledgerId); put("receipt_chave", chave); put("at", iso(at)) })
+        }.let { it as? JsonArray }.orEmpty().mapNotNull { (it as? JsonPrimitive)?.takeUnless { p -> p is JsonNull }?.content }
+        transaction {
+          if (files.isNotEmpty()) dao.putState(SyncStateRow(DELETED_FILES + chave, JsonArray(files.map(::JsonPrimitive)).toString()))
+          dao.deleteStates(listOf(name))
+        }
+        n++
+      } catch (e: SupabaseException) {
+        if (e.status == 401) throw e
+        errors += "receipt $chave: not deleted: ${e.message}"
+      }
+    }
+    for (name in dao.stateNames(DELETED_FILES)) {
+      val paths = dao.state(name)?.let { json.parseToJsonElement(it) as? JsonArray }.orEmpty().map { it.jsonPrimitive.content }
+      try {
+        if (paths.isNotEmpty()) io { remote.deleteObjects(paths) }
+        dao.deleteStates(listOf(name))
+      } catch (e: SupabaseException) {
+        if (e.status == 401) throw e
+        errors += "${name.removePrefix(DELETED_FILES)}: files not deleted: ${e.message}"
+      }
+    }
+    return n
+  }
 
   /** The receipt row with its parsed header; the page goes to storage when the receipt itself changed. */
   private suspend fun pushReceipts(remote: SyncRemote, errors: MutableList<String>): Int {
@@ -591,8 +633,14 @@ class SyncEngine(
   private suspend fun applyReceipts(remote: SyncRemote, rows: List<JsonObject>, errors: MutableList<String>) {
     for (o in rows) {
       val chave = o.string("chave")!!
-      if (o.bool("deleted") == true) continue
       val known = store.receipts.value.find { it.chave == chave }
+      if (o.bool("deleted") == true) {
+        // Deleted in the caderneta (D194): the copy here goes too, unless it was scanned here after the deletion,
+        // which then goes up and brings the receipt back.
+        val deletedAt = o.millis("deleted_at")
+        if (known != null && (deletedAt == null || known.capturedAt <= deletedAt)) store.delete(chave, byUser = false)
+        continue
+      }
       val pagePath = o.string("page_path")
       if (known == null) {
         val page = pagePath != null && fetchPage(remote, chave, pagePath, errors)
@@ -799,6 +847,8 @@ class SyncEngine(
     private const val RECONCILE = "reconcile:"
     /** sync_state's prefix for a receipt whose page is still to be downloaded (T-28); the value is its object path. */
     private const val PAGE_PENDING = "page:"
+    /** sync_state's prefix for a deleted receipt's Storage objects still to be removed (D194); the value is a JSON array. */
+    private const val DELETED_FILES = "deleted-files:"
     /** The caderneta this database syncs with, recorded at its first sync (D193). */
     const val LEDGER = "ledger"
     /** Present while this database is another caderneta's (D193): its value is that one's id, or "" if unknown. */

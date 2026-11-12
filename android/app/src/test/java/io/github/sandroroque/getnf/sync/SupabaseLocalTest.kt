@@ -95,6 +95,32 @@ class SupabaseLocalTest {
     assertEquals(lines.dropLast(1).map { it.lineNo }, b.db.catalog().lines(chave).map { it.lineNo })
   }
 
+  /** T-50 (D194): through PostgREST and Storage, the deletion and its files, and the other phone. */
+  @Test fun aDeletedReceiptLeavesTheCadernetaWithItsFiles() = runTest {
+    assumeTrue("set GETNF_SUPABASE_LOCAL to run against a local Supabase", keys != null)
+    val (email, password) = newUser()
+    val client = SupabaseClient(url, keys!![0])
+    val session = client.signIn(email, password)
+    val ledger = Ledgers.pick(Ledgers.mine(client, session), null, session.userId)!!
+    val remote = SupabaseRemote(client, session, ledger)
+    val a = Phone(tmp.newFolder("a")); val b = Phone(tmp.newFolder("b"))
+    a.store.open(chave, "qr"); a.store.savePage(chave, "https://x", html); a.parser.parse(a.store.get(chave)!!)
+    a.store.addPhoto(chave, a.store.newPhotoFile(chave).apply { writeBytes(byteArrayOf(1)) })
+    assertEquals(emptyList<String>(), a.engine.sync(remote).errors)
+    b.store.load(); b.engine.sync(remote)
+    assertEquals(2, client.listObjects(session, "$ledger/").size) // the page and the photo
+
+    a.store.delete(chave)
+    assertEquals(emptyList<String>(), a.engine.sync(remote).errors)
+    val row = client.select(session, "receipt", listOf("chave" to "eq.$chave")).single()
+    assertEquals("true", row["deleted"]!!.jsonPrimitive.content)
+    assertEquals(0, client.select(session, "receipt_line", listOf("chave" to "eq.$chave")).size)
+    assertEquals(0, client.select(session, "receipt_photo", emptyList()).size)
+    assertEquals(emptyList<String>(), client.listObjects(session, "$ledger/"))
+    b.engine.sync(remote)
+    assertEquals(null, b.store.get(chave))
+  }
+
   @Test fun pagesPastAThousandRowsAndEditsOfDifferentFieldsMerge() = runTest {
     assumeTrue("set GETNF_SUPABASE_LOCAL to run against a local Supabase", keys != null)
     val (email, password) = newUser()

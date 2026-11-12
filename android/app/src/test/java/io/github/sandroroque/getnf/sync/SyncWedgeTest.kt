@@ -47,6 +47,7 @@ class SyncWedgeTest {
     override fun select(table: String, filters: List<Pair<String, String>>): List<JsonObject> =
       if (filters.any { it.first == "or" || it.first == "select" }) emptyList() else tables[table].orEmpty()
     override fun upload(path: String, bytes: ByteArray, type: String) { objects[path] = bytes }
+    override fun deleteObjects(paths: List<String>) { paths.forEach(objects::remove) }
     // Supabase Storage answers a missing object with HTTP 400 {"statusCode":"404","error":"not_found"} (checked on the
     // local stack: GET /storage/v1/object/authenticated/receipts/<missing> -> 400).
     override fun download(path: String, target: File) {

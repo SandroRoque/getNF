@@ -20,6 +20,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -372,6 +373,72 @@ class SyncEngineTest {
     assertNull(store.get(chave)!!.uploadError)
   }
 
+  /** T-50 (D194): a receipt deleted here leaves the phone at once and the caderneta at the next sync, files and all. */
+  @Test fun aDeletedReceiptLeavesThePhoneAndThenTheCaderneta() = runTest {
+    receiptWithPage()
+    store.addPhoto(chave, store.newPhotoFile(chave).apply { writeBytes(byteArrayOf(9)) })
+    engine.sync(server)
+    val products = dao.products().size
+    assertTrue(server.objects.keys.any { it.endsWith(".webp") })
+    assertTrue(store.delete(chave))
+    assertNull(store.get(chave))
+    assertTrue(dao.lines(chave).isEmpty())
+    assertFalse(store.dir(chave).exists())
+    assertEquals(products, dao.products().size) // the catalog keeps them
+    val report = engine.sync(server)
+    assertTrue(report.errors.toString(), report.errors.isEmpty())
+    val row = server.rows("receipt").single()
+    assertEquals("true", row.str("deleted"))
+    assertTrue(server.rows("receipt_line").isEmpty())
+    assertTrue(server.rows("receipt_photo").isEmpty())
+    assertTrue(server.rows("receipt_scan").isEmpty())
+    assertTrue(server.objects.toString(), server.objects.isEmpty())
+    assertEquals(products, server.rows("product").size)
+    assertTrue(db.sync().stateNames("deleted").isEmpty())
+    // The next run neither sends it again nor brings it back.
+    engine.sync(server)
+    assertNull(store.get(chave))
+  }
+
+  @Test fun theOtherPhonesOfTheCadernetaDeleteItToo() = runTest {
+    receiptWithPage()
+    engine.sync(server)
+    val b = Phone("b")
+    b.engine.sync(server)
+    assertNotNull(b.store.get(chave))
+    store.delete(chave)
+    engine.sync(server)
+    b.engine.sync(server)
+    assertNull(b.store.get(chave))
+    assertTrue(b.db.catalog().lines(chave).isEmpty())
+    // Pulled, not done there: b has no deletion of its own to send.
+    assertTrue(b.db.sync().stateNames("deleted").isEmpty())
+  }
+
+  @Test fun aPhoneThatHadntHeardSendsItsCopyInVainButAScanAfterwardsBringsItBack() = runTest {
+    receiptWithPage()
+    engine.sync(server)
+    val b = Phone("b")
+    b.engine.sync(server)
+    store.delete(chave)
+    engine.sync(server)
+    // b reads the page again (its first parse) before it pulls the removal: its copy and lines go up, and change nothing.
+    b.parser.parse(b.store.get(chave)!!)
+    b.engine.sync(server)
+    assertEquals("true", server.rows("receipt").single().str("deleted"))
+    assertTrue(server.rows("receipt_line").isEmpty())
+    assertNull(b.store.get(chave))
+    // Scanned again here, after the deletion: back in the caderneta, and on b.
+    Thread.sleep(5) // the scan's time must be later than the deletion's, as it would be by hand
+    receiptWithPage()
+    val report = engine.sync(server)
+    assertTrue(report.errors.toString(), report.errors.isEmpty())
+    assertEquals("false", server.rows("receipt").single().str("deleted"))
+    assertTrue(server.rows("receipt_line").isNotEmpty())
+    b.engine.sync(server)
+    assertNotNull(b.store.get(chave))
+  }
+
   /** Another phone in the same caderneta: its own database and files, the same server. */
   private inner class Phone(name: String) {
     val db = testDatabase()
@@ -520,6 +587,7 @@ class SyncEngineTest {
         override fun select(table: String, filters: List<Pair<String,String>>) = remote.select(table, filters).also { boundary() }
         override fun upload(path: String, bytes: ByteArray, type: String) { remote.upload(path, bytes, type); boundary() }
         override fun download(path: String, target: File) { remote.download(path, target); boundary() }
+        override fun deleteObjects(paths: List<String>) { remote.deleteObjects(paths); boundary() }
       }
       try {
         val error = runCatching { phone.engine.sync(failing) }.exceptionOrNull()
@@ -627,12 +695,34 @@ class SyncEngineTest {
     fun rows(table: String) = tables[table].orEmpty().values.toList()
 
     override fun rpc(function: String, args: JsonObject): kotlinx.serialization.json.JsonElement {
+      if (function == "delete_receipt") return deleteReceipt(args.str("receipt_chave")!!, Instant.parse(args.str("at")!!))
       if (rows("category").isNotEmpty()) return kotlinx.serialization.json.JsonNull
       for ((i, node) in seed.withIndex()) put("category", "ledger_id,id", buildJsonObject {
         put("id", id(node.first)); put("seed_path", node.first); put("label", node.first); put("parent_id", node.second?.let(::id))
         put("sort", i); put("user_modified", false); put("deleted", false)
       })
       return kotlinx.serialization.json.JsonNull
+    }
+
+    /** As supabase/migrations/20261112000000_receipt_deletion.sql (D194). */
+    private fun deleteReceipt(chave: String, at: Instant): kotlinx.serialization.json.JsonArray {
+      val r = rows("receipt").find { it.str("chave") == chave }
+      if (r == null || r.str("deleted") == "true" || instant(r.str("captured_at")!!) > at) return kotlinx.serialization.json.JsonArray(emptyList())
+      val files = (listOfNotNull(r.str("page_path")) + rows("receipt_photo").filter { it.str("chave") == chave }
+        .flatMap { listOfNotNull(it.str("object_path"), it.str("mask_path")) }).distinct()
+      for (t in listOf("receipt_line", "receipt_photo", "receipt_scan")) tables[t]?.values?.removeIf { it.str("chave") == chave }
+      put("receipt", "ledger_id,chave", JsonObject(r + mapOf("deleted" to JsonPrimitive(true), "deleted_at" to JsonPrimitive(at.toString()),
+        "page_path" to kotlinx.serialization.json.JsonNull)))
+      return kotlinx.serialization.json.JsonArray(files.map(::JsonPrimitive))
+    }
+    private fun instant(t: String) = java.time.OffsetDateTime.parse(if (t.endsWith("Z")) t.replace("Z", "+00:00") else t).toInstant()
+
+    /** The tombstone triggers: an older copy of a deleted receipt, and anything under one, change nothing. */
+    private fun skipped(table: String, row: JsonObject): Boolean {
+      val chave = row.str("chave") ?: return false
+      val r = rows("receipt").find { it.str("chave") == chave }?.takeIf { it.str("deleted") == "true" } ?: return false
+      return table in setOf("receipt_line", "receipt_photo", "receipt_scan") ||
+        (table == "receipt" && instant(row.str("captured_at")!!) <= instant(r.str("deleted_at")!!))
     }
 
     // Like the server's defaults: the caderneta, and who wrote a scan mark.
@@ -670,7 +760,12 @@ class SyncEngineTest {
       }
       pushed += rows
       // ignore-duplicates: a row already there is left as it is.
-      rows.forEach { if (!ignoreDuplicates || !has(table, onConflict, it)) put(table, onConflict, it) }
+      rows.forEach {
+        if (skipped(table, it)) return@forEach
+        // A scan after the deletion brings the receipt back.
+        val row = if (table == "receipt") JsonObject(it + mapOf("deleted" to JsonPrimitive(false), "deleted_at" to kotlinx.serialization.json.JsonNull)) else it
+        if (!ignoreDuplicates || !has(table, onConflict, row)) put(table, onConflict, row)
+      }
     }
 
     override fun delete(table: String, filters: List<Pair<String, String>>) {
@@ -738,5 +833,6 @@ class SyncEngineTest {
 
     override fun upload(path: String, bytes: ByteArray, type: String) { objects[path] = bytes }
     override fun download(path: String, target: File) = target.writeBytes(objects.getValue(path))
+    override fun deleteObjects(paths: List<String>) { paths.forEach(objects::remove) }
   }
 }

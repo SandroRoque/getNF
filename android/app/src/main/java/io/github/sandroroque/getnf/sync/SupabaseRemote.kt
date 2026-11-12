@@ -17,4 +17,5 @@ class SupabaseRemote(
   override fun select(table: String, filters: List<Pair<String, String>>) = client.select(session, table, filters)
   override fun upload(path: String, bytes: ByteArray, type: String) = client.upload(session, path, bytes.toRequestBody(type.toMediaType()))
   override fun download(path: String, target: File) = client.download(session, path, target)
+  override fun deleteObjects(paths: List<String>) = client.deleteObjects(session, paths)
 }

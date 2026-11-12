@@ -78,6 +78,7 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
   var status by remember { mutableStateOf<String?>(null) }
   var editing by remember { mutableStateOf<LineDetail?>(null) }
   var more by remember { mutableStateOf(false) }
+  var deleting by remember { mutableStateOf(false) }
   val h = header
   // The app couldn't read this receipt's discounts from its photos: once, ask whether they may help improve it (D103).
   var offerPhotos by remember { mutableStateOf(false) }
@@ -163,8 +164,10 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
         }
       })
       FactRow("Chave", io.github.sandroroque.getnf.data.Chave.pretty(chave))
+      FactRow("Apagar", "esta nota", onClick = { more = false; deleting = true })
     }
   }
+  if (deleting) DeleteReceiptDialog(chave, onDismiss = { deleting = false }, onDeleted = onBack)
   editing?.let { line ->
     val (known, open) = lines.filter { it.lineNo != line.lineNo }.partition { it.discountSource == "photo" || it.discountSource == "manual" }
     val others = known.sumOf { it.discountCents }
@@ -259,6 +262,7 @@ private fun WaitingForPage(chave: String, photos: List<String>, onBack: () -> Un
     io.github.sandroroque.getnf.ui.page.budgetText(network, app.lookupBudget.status(network.key))
   }
   var more by remember { mutableStateOf(false) }
+  var deleting by remember { mutableStateOf(false) }
   LazyColumn(
     Modifier.fillMaxSize().statusBarsPadding(),
     contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
@@ -297,9 +301,56 @@ private fun WaitingForPage(chave: String, photos: List<String>, onBack: () -> Un
     Column {
       FactRow("Página", "buscar na SEFAZ", onClick = { more = false; budgetCheck.request(chave, onFetch = { onOpenPage(chave) }, onLater = {}) })
       FactRow("Chave", io.github.sandroroque.getnf.data.Chave.pretty(chave))
+      FactRow("Apagar", "esta nota", onClick = { more = false; deleting = true })
     }
   }
+  if (deleting) DeleteReceiptDialog(chave, onDismiss = { deleting = false }, onDeleted = onBack)
   budgetCheck.Dialog()
+}
+
+/**
+ * Deleting a receipt (T-50, D194), as data-model.md › Exclusões has it: what goes with it, asked once. It leaves the
+ * phone at once and the caderneta at the next sync; the products stay in the catalog.
+ */
+@Composable
+private fun DeleteReceiptDialog(chave: String, onDismiss: () -> Unit, onDeleted: () -> Unit) {
+  val app = LocalContext.current.applicationContext as GetNFApp
+  val context = LocalContext.current
+  val scope = rememberCoroutineScope()
+  val listed by remember(chave) { app.database.lists().receipts() }.collectAsStateWithLifecycle(emptyList())
+  val r = listed.firstOrNull { it.chave == chave }
+  val what = listOfNotNull(
+    r?.lines?.takeIf { it > 0 }?.let { Format.count(it, "item", "itens") },
+    r?.photos?.takeIf { it > 0 }?.let { Format.count(it, "foto", "fotos") },
+  )
+  // As the lists name it, with the day when that's the store: "SUPERMERCADO EXEMPLO, 15/01/2026", "Nota de 10/2026".
+  val name = r?.let {
+    val day = it.issuedAt?.let { t -> java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.forLanguageTag("pt-BR")).format(Date(t)) }
+    if (it.hasPage && it.storeName != null && day != null) "${it.storeName}, $day" else it.title
+  }
+  val shared = app.accountSettings.account() != null && !app.accountSettings.demo
+  androidx.compose.material3.AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("Apagar esta nota?") },
+    text = {
+      Text(listOfNotNull(
+        name?.let { "$it." },
+        what.takeIf { it.isNotEmpty() }?.let { "Ela tem ${it.joinToString(" e ")}, que serão apagados também." },
+        if (shared) "Ela sai também da caderneta, para todos que a usam." else null,
+        "Os produtos continuam no catálogo.",
+      ).joinToString(" "))
+    },
+    confirmButton = {
+      androidx.compose.material3.TextButton(onClick = {
+        scope.launch {
+          app.receiptStore.delete(chave)
+          if (shared) io.github.sandroroque.getnf.sync.SyncWorker.enqueue(context)
+          onDismiss(); onDeleted()
+        }
+      }) { Text("Apagar", color = Calmo.up) }
+    },
+    dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancelar") } },
+  )
 }
 
 /**
