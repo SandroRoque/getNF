@@ -3,6 +3,8 @@
 # for a push that changes only supabase/ (a migration, an Edge Function, a pgTAP test).
 # Runs the real tools/githooks/pre-push in a throwaway repo under $TMPDIR with a stub check.sh. Touches nothing else.
 set -euo pipefail
+# From a hook, GIT_DIR and friends point at the real repository: the throwaway one must not inherit them.
+unset $(git rev-parse --local-env-vars)
 hook="$(cd "$(dirname "$0")/.." && pwd)/githooks/pre-push"
 t="$(mktemp -d)"; trap 'rm -rf "$t"' EXIT
 cd "$t"; git init -q -b main .; git config user.email r@example.invalid; git config user.name r
