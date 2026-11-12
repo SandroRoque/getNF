@@ -62,6 +62,13 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
       // belongs to (they left, or another person signed in) waits for them to open another in Ajustes.
       val ledger = if (open == null) Ledgers.pick(mine, null, session.userId)?.also { app.accountSettings.openLedger(it) }
         else open.takeIf { mine.any { m -> m.id == open } }
+      // Another caderneta was opened in Ajustes after this process started: its database is still the one before, and
+      // the restart that swaps it is on its way. Sending it now would put one caderneta's receipts in another, so the
+      // run stops here and the restarted app syncs (T-25). A check, not the timing of the process's death.
+      if (app.accountSettings.localFiles() != app.localFiles) {
+        Log.i(TAG, "another caderneta was opened: waiting for the restart")
+        return@withContext Result.success()
+      }
       if (ledger != null) {
         val remote = SupabaseRemote(client, session, ledger)
         val report = app.syncEngine.sync(remote)

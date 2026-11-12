@@ -5,8 +5,15 @@ Same rules as the phone's BuyerRedaction.kt. Reads SUPABASE_URL and SUPABASE_SEC
 
   python3 tools/blank-buyers.py            # report what would change (counts only, never the contents)
   python3 tools/blank-buyers.py --write    # replace those pages
+
+Every receipt with a page is read, a page at a time by key (T-24: PostgREST answers at most 1,000 rows a request), and
+a page whose object is missing is counted and skipped instead of stopping the run. Only the `receipts` bucket: the
+`contributions` bucket's pages were blanked on the phone before they went (D104). The PC backup's mirror takes the
+blanked copies at its next run (the objects changed), and its earlier copies expire with it (D191).
 """
-import argparse, importlib.util, json, os, re, time, urllib.error, urllib.request
+import argparse, importlib.util, json, os, re, time, urllib.error, urllib.parse, urllib.request
+
+PAGE = 500
 
 REMOVED = "Consumidor removido pelo getNF"
 # The block is found by its heading's text, in the server's shape or the WebView's jQuery Mobile one (T-30, D180).
@@ -37,6 +44,38 @@ def blank(html):
   return CPF.sub("***.***.***-**", "".join(out))
 
 
+def pages(get, size=PAGE):
+  """Every receipt's page path, in key order, [size] rows a request: none missed or repeated."""
+  after = None
+  while True:
+    query = "select=ledger_id,chave,page_path&page_path=not.is.null&order=ledger_id,chave&limit=%d" % size
+    if after:
+      lid, chave = after
+      query += "&or=" + urllib.parse.quote("(ledger_id.gt.%s,and(ledger_id.eq.%s,chave.gt.%s))" % (lid, lid, chave))
+    rows = json.loads(get("/rest/v1/receipt?" + query))
+    yield from (r["page_path"] for r in rows)
+    if len(rows) < size: return
+    after = rows[-1]["ledger_id"], rows[-1]["chave"]
+
+
+def run(get, put, write):
+  """(pages, changed, missing): what blanking every page found, and replaced when [write]."""
+  total = changed = missing = 0
+  for path in pages(get):
+    total += 1
+    try:
+      html = get("/storage/v1/object/receipts/" + path).decode("utf-8")
+    except urllib.error.HTTPError as err:
+      if err.code not in (400, 404): raise
+      missing += 1  # the row names an object Storage doesn't have (NoSuchKey comes as 400)
+      continue
+    clean = blank(html)
+    if clean == html: continue
+    changed += 1
+    if write: put("/storage/v1/object/receipts/" + path, clean.encode("utf-8"))
+  return total, changed, missing
+
+
 def main():
   p = argparse.ArgumentParser(); p.add_argument("--write", action="store_true"); args = p.parse_args()
   spec = importlib.util.spec_from_file_location("backup", os.path.join(os.path.dirname(__file__), "supabase-backup.py"))
@@ -52,18 +91,13 @@ def main():
         if err.code < 500 or attempt == 3: raise
         time.sleep(2 ** attempt)
 
-  rows = json.loads(get("/rest/v1/receipt?select=page_path&page_path=not.is.null"))
-  changed = 0
-  for r in rows:
-    path = r["page_path"]
-    html = get("/storage/v1/object/receipts/" + path).decode("utf-8")
-    clean = blank(html)
-    if clean == html: continue
-    changed += 1
-    if args.write:
-      urllib.request.urlopen(urllib.request.Request(base + "/storage/v1/object/receipts/" + path, clean.encode("utf-8"), method="POST",
-                                                    headers={**auth, "content-type": "text/html; charset=utf-8", "x-upsert": "true"})).read()
-  print(f"{len(rows)} pages, {changed} with a buyer or a CPF" + (" — replaced" if args.write else " (dry run; --write replaces them)"))
+  def put(path, body):
+    urllib.request.urlopen(urllib.request.Request(base + path, body, method="POST",
+                                                  headers={**auth, "content-type": "text/html; charset=utf-8", "x-upsert": "true"})).read()
+
+  total, changed, missing = run(get, put, args.write)
+  print(f"{total} pages, {changed} with a buyer or a CPF" + (f", {missing} missing in Storage" if missing else "")
+        + (" — replaced" if args.write else " (dry run; --write replaces them)"))
 
 
 if __name__ == "__main__":

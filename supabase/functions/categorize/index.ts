@@ -28,10 +28,14 @@ const THRESHOLD = Number(Deno.env.get("THRESHOLD") ?? "0.9");
 const BATCH = Number(Deno.env.get("BATCH") ?? "25");
 const INSTRUCTIONS = "What kind of product is this item from a Brazilian supermarket receipt?";
 const OFF_FIELDS = "product_name,product_name_pt,brands,quantity,categories_tags";
+// A provider that stops answering mustn't hold the run (and its claimed jobs) past the 10 minutes after which the
+// queue takes them up again (T-22): Jev's call fails the job, Open Food Facts' is skipped.
+const JEV_TIMEOUT_MS = 20_000;
+const OFF_TIMEOUT_MS = 8_000;
 
 type Job = {
   ledger_id: string; store_item_id: string; product_id: string; code_kind: string; code: string; description: string;
-  wants_category: boolean; unit: string | null; qty_e4: number | null;
+  attempts: number; wants_category: boolean; unit: string | null; qty_e4: number | null;
 };
 type Option = { key: string; id: string; text: string };
 
@@ -72,7 +76,10 @@ Deno.serve(async (req) => {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.error(`job ${job.store_item_id}: ${message}`);
-      await db.rpc("fail_categorize_job", { lid: job.ledger_id, item: job.store_item_id, error: message.slice(0, 500) });
+      // For this attempt only: if the job was taken up again meanwhile, this run's failure changes nothing (T-22).
+      await db.rpc("fail_categorize_job", {
+        lid: job.ledger_id, item: job.store_item_id, error: message.slice(0, 500), attempt: job.attempts,
+      });
       outcomes.failed = (outcomes.failed ?? 0) + 1;
     }
   }
@@ -149,9 +156,9 @@ async function openFoodFacts(gtin: string): Promise<Record<string, string>> {
   let product = cached?.product ?? null;
   if (!cached) {
     const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${gtin}.json?fields=${OFF_FIELDS}`, {
-      headers: { "User-Agent": "getNF/0.1 (personal receipt app)" },
-    });
-    if (r.ok || r.status === 404) {
+      headers: { "User-Agent": "getNF/0.1 (personal receipt app)" }, signal: AbortSignal.timeout(OFF_TIMEOUT_MS),
+    }).catch((e) => { console.warn(`Open Food Facts ${gtin}: ${e}`); return null; });
+    if (r && (r.ok || r.status === 404)) {
       const body = await r.json();
       product = body.status === 1 ? body.product : null;
       await db.from("barcode_lookup").upsert({ gtin, product });
@@ -171,6 +178,7 @@ async function jev(state: Record<string, string>, questions: Record<string, unkn
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${Deno.env.get("JEV_API_KEY")}` },
     body: JSON.stringify({ model: JEV_MODEL, state, questions }),
+    signal: AbortSignal.timeout(JEV_TIMEOUT_MS),
   });
   if (!r.ok) throw new Error(`Jev ${r.status}: ${(await r.text()).slice(0, 200)}`);
   const answers = (await r.json()).answers ?? {};

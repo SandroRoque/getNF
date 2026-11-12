@@ -62,4 +62,17 @@ class LookupBudgetTest {
     assertEquals(1, stored.lines().size)
     assertNull(budget.status("wifi").nextFreeAt)
   }
+
+  @Test
+  fun entriesFromAClockThatRanAheadAreDropped() { // T-45
+    clock += 24 * 3_600_000L // a day ahead
+    budget.markBlocked("wifi")
+    clock -= 24 * 3_600_000L // clock corrected
+    clock += 2 * 3_600_000L // two real hours later
+    val s = budget.status("wifi")
+    assertFalse(s.blocked)
+    assertEquals(LookupBudget.LIMIT, s.remaining)
+    budget.record("wifi")
+    assertEquals(1, stored.lines().size)
+  }
 }

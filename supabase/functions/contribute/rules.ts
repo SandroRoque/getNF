@@ -35,10 +35,3 @@ export function parse(params: URLSearchParams, contentType: string | null, lengt
   if (length != null && (length < 1 || length > MAX_BYTES)) return "size out of range";
   return { kind: "file", install, item, name, type };
 }
-
-/** Whether one more file of [bytes] fits under the limits, given what was received; null if it does. */
-export function overLimit(today: { files: number; bytes: number }, lastHourAll: number, bytes: number): string | null {
-  if (today.files >= DAY_FILES || today.bytes + bytes > DAY_BYTES) return "too much from this install today";
-  if (lastHourAll >= HOUR_FILES) return "too much this hour";
-  return null;
-}

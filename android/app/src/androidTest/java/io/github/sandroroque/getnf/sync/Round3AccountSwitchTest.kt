@@ -8,7 +8,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.junit.Ignore
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -86,7 +85,8 @@ class Round3AccountSwitchTest {
     assertEquals("signing out must stop the run before it sends the person's receipts", 0, sent)
   }
 
-  @Ignore("T-25: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt() = runBlocking {
+  /** T-25. */
+  @Test fun reviewRound3OpeningAnotherCadernetaBeforeTheRestartMustNotPushTheOldDatabaseIntoIt() = runBlocking {
     val session = signIn()
     val client = SupabaseClient(proxy, key)
     val mine = Ledgers.mine(client, session)

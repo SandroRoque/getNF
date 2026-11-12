@@ -24,7 +24,7 @@ class LookupBudget(private val load: () -> String, private val save: (String) ->
   @Synchronized
   fun status(network: String): Status {
     val t = now()
-    val recent = decode(load()).filter { it.network == network && t - it.at < WINDOW_MS }
+    val recent = decode(load()).filter { it.network == network && it.inWindow(t) }
     val block = recent.filter { it.blocked }.maxOfOrNull { it.at }
     if (block != null) return Status(used = LIMIT, remaining = 0, blocked = true, nextFreeAt = block + WINDOW_MS)
     val lookups = recent.map { it.at }.sorted()
@@ -36,8 +36,14 @@ class LookupBudget(private val load: () -> String, private val save: (String) ->
 
   private fun update(change: (List<Entry>) -> List<Entry>) {
     val t = now()
-    save(encode(change(decode(load())).filter { t - it.at < WINDOW_MS }))
+    save(encode(change(decode(load())).filter { it.inWindow(t) }))
   }
+
+  /**
+   * Within the last window. An entry stamped after [t] was written while the clock ran ahead: it can't be placed in
+   * real time, so it's dropped rather than kept for the whole skew plus an hour (T-45).
+   */
+  private fun Entry.inWindow(t: Long) = at <= t && t - at < WINDOW_MS
 
   private fun encode(entries: List<Entry>) = entries.joinToString("\n") { "${it.at}|${it.network}|${if (it.blocked) 1 else 0}" }
 

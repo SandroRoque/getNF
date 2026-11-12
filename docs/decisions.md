@@ -4600,3 +4600,40 @@ required; rows are placed twice (the date, the access key, the total); and the R
 ("# | COD | DESC") and missing "Consulte pela Chave" leave D97's markers unfound, so every row must be read. Left for
 a phone session of such a receipt (T-51): changing the assembly on emulator frames would tune it to
 an artefact.
+
+## D196. The low tickets: limits that hold, ids that can't be borrowed, the worker fixed before it returns (2026-11-12, T-22–T-26, T-45–T-48)
+
+The low-priority tickets from the two audits (2026-11-04 round 2, 2026-11-09), each with a test that failed before:
+
+- **T-45, lookup budget:** an entry stamped later than now (the clock ran ahead, then was corrected) is dropped, not
+  kept for the skew plus an hour. It can't be placed in real time, and SEFAZ's block lasts about an hour anyway.
+- **T-48, Ajustes from Início:** the badge is a 48 dp touch target around the 32 dp circle (shifted 8 dp so the circle
+  stays on the margin), and a screen reader always hears "Ajustes", never the initial. Para você's empty state no
+  longer promises "sugestões do revisor" while the worker is suspended (D168).
+- **T-47, device transfer:** `dataExtractionRules` excludes every domain from cloud backup and device-to-device
+  transfer, so a new phone set up from this one gets nothing, as the privacy policy says. Chosen over allowing the
+  transfer: the refresh token would travel too, and the export in Ajustes is the way to move data on purpose.
+- **T-25, opening another caderneta:** the sync stops when the open caderneta's files are no longer the ones this
+  process's database was opened with (`accountSettings.localFiles() != app.localFiles`): the restart is on its way and
+  syncs. D104's "never push into another caderneta" now rests on a check instead of the process dying in time.
+- **T-46, "por Ana":** a trigger stamps `receipt_scan.user_id` and `receipt_photo.created_by` with the caller's id on
+  insert and keeps the row's on update; with no caller (service role, a foreign key's action) it does nothing. A
+  trigger rather than a policy because no client sends those columns (the defaults are `auth.uid()`) and a member may
+  update a photo row someone else sent, which must keep its sender. No id is refused, so the foreign key's error no
+  longer says whether an id is a login.
+- **T-22, categorize queue:** a stale `running` job on its sixth attempt fails at the next claim instead of being taken
+  up for ever; a failure counts only for the attempt still running (`fail_categorize_job(..., attempt)`), so a late
+  answer from a run that lost the job can't reopen what another finished; Jev's call times out after 20 s (the job
+  fails and retries) and Open Food Facts' after 8 s (skipped, the item is still read). The three-argument
+  `fail_categorize_job` stays, limited to running jobs, until the function with the fourth argument is deployed.
+- **T-23, contribution quota:** `reserve_contribution` counts and writes the row in one call under an advisory lock;
+  the row goes before the upload and is removed if the upload fails. 360 sends 32 at a time against the local
+  database: 300 accepted, 60 refused (the audit saw 331). The TypeScript copy of the rule was removed: the SQL is it.
+- **T-24, `blank-buyers.py`:** pages by key (500 a request) and counts a missing object instead of stopping. Its dry
+  run online afterwards: 25 pages, none with a buyer, so nothing was written.
+- **T-26, LLM worker (before it's switched back on):** an answer without a valid category writes nothing (the product
+  stays unchecked and out of the error rate); tables are read by key (`KEYS`, keyset filters) so rows changing during
+  the read are neither missed nor repeated; overlapping runs share the model through a gate lock, a shared users lock
+  and a mark, so the last run out unloads it, and only if a run loaded it.
+
+T-49 (the IPCI's weights, D79) is a change to a method the user chose and waits for them.

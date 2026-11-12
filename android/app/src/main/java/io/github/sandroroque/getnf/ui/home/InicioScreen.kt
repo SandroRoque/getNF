@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -117,7 +118,9 @@ fun InicioScreen(
     item {
       Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Sub(month?.let { label(it, long = true).replaceFirstChar { c -> c.uppercase() } } ?: "Caderneta", Modifier.weight(1f))
-        AccountBadge(account?.let { io.github.sandroroque.getnf.ui.settings.displayName(it) }?.take(1), onSettings)
+        AccountBadge(account?.let { io.github.sandroroque.getnf.ui.settings.displayName(it) }?.take(1), onSettings,
+          // The touch area is 8 dp wider than the circle on each side: keep the circle on the page's margin.
+          Modifier.offset(x = 8.dp))
       }
     }
     crash?.let { report ->

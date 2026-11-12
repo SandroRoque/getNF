@@ -1,6 +1,6 @@
 // deno test supabase/functions/contribute/rules_test.ts
 import { assertEquals } from "jsr:@std/assert@1";
-import { DAY_FILES, HOUR_FILES, MAX_BYTES, overLimit, parse } from "./rules.ts";
+import { MAX_BYTES, parse } from "./rules.ts";
 
 const install = "0b6a3c1e-8f2d-4c55-9a7e-2d1f0e9b7a61";
 const item = "5f0c2b9a-1e3d-4a7b-8c6d-9e0f1a2b3c4d";
@@ -26,9 +26,3 @@ Deno.test("withdrawing needs only the install", () => {
   assertEquals(parse(q(`install=${install}&withdraw=1`), null, null), { kind: "withdraw", install });
 });
 
-Deno.test("limits per install and day, and for everyone per hour", () => {
-  assertEquals(overLimit({ files: 0, bytes: 0 }, 0, 1000), null);
-  assertEquals(overLimit({ files: DAY_FILES, bytes: 0 }, 0, 1000), "too much from this install today");
-  assertEquals(overLimit({ files: 1, bytes: 150 * 1024 * 1024 }, 0, 1), "too much from this install today");
-  assertEquals(overLimit({ files: 1, bytes: 0 }, HOUR_FILES, 1), "too much this hour");
-});

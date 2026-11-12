@@ -10,7 +10,7 @@
 // 5xx the app retries. The install id is random, kept by the app, and never tied to an account.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { overLimit, parse } from "./rules.ts";
+import { DAY_BYTES, DAY_FILES, HOUR_FILES, parse } from "./rules.ts";
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false },
@@ -54,22 +54,21 @@ Deno.serve(async (req) => {
 
   if (await withdrawn(request.install)) return answer(400, "withdrawn");
 
-  const dayAgo = new Date(Date.now() - 86_400_000).toISOString();
-  const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
-  const today = await db.from("contribution_file").select("bytes").eq("install_id", request.install).gt("received_at", dayAgo);
-  const hour = await db.from("contribution_file").select("*", { count: "exact", head: true }).gt("received_at", hourAgo);
-  if (today.error || hour.error) return answer(500, (today.error ?? hour.error)!.message);
-  const over = overLimit({ files: today.data.length, bytes: today.data.reduce((s, r) => s + r.bytes, 0) }, hour.count ?? 0, body.length);
+  // The limits are checked and the row written in one call, so parallel sends can't all pass the count (T-23). The row
+  // goes first; if the file then doesn't store, it goes too.
+  const { data: over, error: quota } = await db.rpc("reserve_contribution", {
+    install: request.install, item: request.item, file: request.name, size: body.length,
+    day_files: DAY_FILES, day_bytes: DAY_BYTES, hour_files: HOUR_FILES,
+  });
+  if (quota) return answer(500, quota.message);
   if (over) return answer(429, over);
 
   const path = `${request.install}/${request.item}/${request.name}`;
   const { error: up } = await db.storage.from(BUCKET).upload(path, body, { contentType: request.type, upsert: true });
-  if (up) return answer(500, up.message);
-  const { error: row } = await db.from("contribution_file").upsert({
-    install_id: request.install, item_id: request.item, name: request.name, bytes: body.length,
-    received_at: new Date().toISOString(),
-  });
-  if (row) return answer(500, row.message);
+  if (up) {
+    await db.from("contribution_file").delete().match({ install_id: request.install, item_id: request.item, name: request.name });
+    return answer(500, up.message);
+  }
   // A withdrawal recorded while this file was on its way: the file goes again, and the app drops it (T-10).
   if (await withdrawn(request.install)) {
     await db.storage.from(BUCKET).remove([path]);

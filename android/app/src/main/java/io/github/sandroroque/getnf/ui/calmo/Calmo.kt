@@ -31,6 +31,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -134,14 +139,22 @@ fun BackHeader(label: String, onBack: () -> Unit, trailing: @Composable RowScope
   }
 }
 
-/** A small round initial: the way to Ajustes. */
+/**
+ * A small round initial: the way to Ajustes. The circle is 32 dp but the touch area 48 dp, and a screen reader always
+ * hears "Ajustes", never the initial (T-48).
+ */
 @Composable
-fun AccountBadge(initial: String?, onClick: () -> Unit) {
-  Box(Modifier.size(32.dp).clip(CircleShape).border(1.dp, Calmo.line, CircleShape).clickable(onClick = onClick),
+fun AccountBadge(initial: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
+  Box(modifier.size(48.dp).clip(CircleShape)
+    // One node for a screen reader: the click's own semantics are cleared with the rest, so it's restated here.
+    .clearAndSetSemantics { contentDescription = "Ajustes"; role = Role.Button; onClick { onClick(); true } }
+    .clickable(onClick = onClick),
     contentAlignment = Alignment.Center) {
-    // Signed out there's no initial: a person outline instead.
-    if (initial == null) Icon(Icons.Person, "Ajustes", Modifier.size(18.dp), tint = Calmo.fg)
-    else Text(initial.uppercase(), style = MaterialTheme.typography.labelMedium, color = Calmo.fg)
+    Box(Modifier.size(32.dp).border(1.dp, Calmo.line, CircleShape), contentAlignment = Alignment.Center) {
+      // Signed out there's no initial: a person outline instead.
+      if (initial == null) Icon(Icons.Person, null, Modifier.size(18.dp), tint = Calmo.fg)
+      else Text(initial.uppercase(), style = MaterialTheme.typography.labelMedium, color = Calmo.fg)
+    }
   }
 }
 

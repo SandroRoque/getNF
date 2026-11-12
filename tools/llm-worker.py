@@ -20,15 +20,21 @@ Tasks, per caderneta (D104):
 Nothing leaves the PC except to the user's own Supabase project, and, for the regression gate, the item
 descriptions Jev already sees (D74). Reads SUPABASE_URL, SUPABASE_SECRET_KEY and LMSTUDIO_API_KEY from
 .env.local and never prints them. The model is loaded for the run and unloaded after, unless it was loaded
-already.
+already or another run still uses it.
 """
-import argparse, datetime, json, os, random, re, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
+import argparse, datetime, fcntl, json, os, random, re, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL = "swift-1.5-qwen3.8-27b-gsq-rco@iq2_s"
 IDENT = "getnf-llm"
 LMS = os.path.expanduser("~/.lmstudio/bin/lms")
 LLM_NAME = "llm:swift-1.5"
+# Runs share the model through these (T-26): a lock each run holds while it uses the model, and a mark that a run
+# loaded it (so the last run out unloads it, never one the user loaded).
+STATE_DIR = os.path.expanduser("~/.local/state")
+# Each table's key, in order: pages are read after the last key seen, so a phone syncing meanwhile can't make a row
+# be read twice or missed (T-26, R16). The worker reads one caderneta at a time, so the key within one is enough.
+KEYS = {"receipt_line": ("chave", "line_no"), "issuer": ("cnpj",), "taxonomy_node": ("path",), "barcode_lookup": ("gtin",)}
 
 
 def env():
@@ -63,14 +69,19 @@ class Supabase:
     except urllib.error.HTTPError as e:
       raise RuntimeError(f"{method} {path}: {e.code} {e.read().decode()[:300]}") from None
 
-  def select(self, table, **params):
-    rows, offset = [], 0
+  def select(self, table, size=1000, **params):
+    """Every row that matches, a page at a time in key order (KEYS; "id" otherwise)."""
+    key = KEYS.get(table, ("id",))
+    rows, last = [], None
     while True:
-      page = self.call("GET", f"/rest/v1/{table}", params={"select": "*", **params, "limit": 1000, "offset": offset})
+      q = {"select": "*", **params, "order": ",".join(f"{k}.asc" for k in key), "limit": size}
+      if last is not None:
+        q["or"] = after(key, last)
+      page = self.call("GET", f"/rest/v1/{table}", params=q)
       rows += page
-      if len(page) < 1000:
+      if len(page) < size:
         return rows
-      offset += 1000
+      last = [page[-1][k] for k in key]
 
   def write(self, method, table, body, **params):
     if self.dry:
@@ -92,23 +103,56 @@ class Supabase:
       return json.load(r)["answers"]
 
 
+def after(key, last):
+  """PostgREST's filter for the rows after [last] in [key] order: (a > x) or (a = x and b > y)..."""
+  q = lambda v: '"' + str(v).replace('"', '') + '"'
+  terms = []
+  for i, k in enumerate(key):
+    eqs = [f"{key[j]}.eq.{q(last[j])}" for j in range(i)]
+    gt = f"{k}.gt.{q(last[i])}"
+    terms.append(f"and({','.join(eqs + [gt])})" if eqs else gt)
+  return "(" + ",".join(terms) + ")"
+
+
 class Llm:
-  def __init__(self, key, url="http://127.0.0.1:1234"):
-    self.key, self.url, self.loaded_here = key, url, False
+  """The model for one run. Overlapping runs (a manual one during the nightly) share it: the first loads it, the last
+  out unloads it, and one the user loaded themselves stays (T-26, R21)."""
+
+  def __init__(self, key, url="http://127.0.0.1:1234", state_dir=STATE_DIR):
+    self.key, self.url = key, url
+    self.gate_path = os.path.join(state_dir, "getnf-llm.gate")    # held briefly, to load or unload
+    self.users_path = os.path.join(state_dir, "getnf-llm.users")  # held shared by every run using the model
+    self.mark = os.path.join(state_dir, "getnf-llm.loaded")       # a run loaded it
 
   def __enter__(self):
-    loaded = subprocess.run([LMS, "ps"], capture_output=True, text=True).stdout
-    if IDENT not in loaded:
-      log("loading", MODEL)
-      subprocess.run([LMS, "load", MODEL, "--gpu", "max", "-c", "8192", "--parallel", "1", "--no-speculative-draft-mtp",
-                      "--identifier", IDENT, "-y"], check=True, capture_output=True)
-      self.loaded_here = True
+    os.makedirs(os.path.dirname(self.gate_path), exist_ok=True)
+    with open(self.gate_path, "a") as gate:
+      fcntl.flock(gate, fcntl.LOCK_EX)
+      loaded = subprocess.run([LMS, "ps"], capture_output=True, text=True).stdout
+      if IDENT not in loaded:
+        log("loading", MODEL)
+        subprocess.run([LMS, "load", MODEL, "--gpu", "max", "-c", "8192", "--parallel", "1", "--no-speculative-draft-mtp",
+                        "--identifier", IDENT, "-y"], check=True, capture_output=True)
+        open(self.mark, "w").close()
+      self.users = open(self.users_path, "a")
+      fcntl.flock(self.users, fcntl.LOCK_SH)
     return self
 
   def __exit__(self, *exc):
-    if self.loaded_here:
-      subprocess.run([LMS, "unload", IDENT], capture_output=True)
-      log("unloaded the model")
+    with open(self.gate_path, "a") as gate:
+      fcntl.flock(gate, fcntl.LOCK_EX)  # no run starts while this one decides
+      try:
+        # Exclusive only if no other run holds it: then this is the last one out.
+        fcntl.flock(self.users, fcntl.LOCK_EX | fcntl.LOCK_NB)
+      except BlockingIOError:
+        log("another run still uses the model: left loaded")
+      else:
+        if os.path.exists(self.mark):
+          subprocess.run([LMS, "unload", IDENT], capture_output=True)
+          os.remove(self.mark)
+          log("unloaded the model")
+      finally:
+        self.users.close()
 
   def ask(self, system, user, max_tokens=2048):
     """One JSON answer. The model may think aloud first; the last JSON object in the reply is the answer."""
@@ -206,12 +250,18 @@ def audit(db, llm, u, limit, sample, now):
   sampled = random.sample(rest, min(sample, len(rest)))
   rules = ("\nRegras desta casa (aprendidas com as correções do usuário):\n" + "\n".join(f"- {r}" for r in u.rules) + "\n") if u.rules else ""
   system = AUDIT.format(categories=u.category_list(), rules=rules)
-  agree = disagree = 0
+  agree = disagree = invalid = 0
   for p in chosen + sampled:
     current = u.path[p["category_id"]]
     a = llm.ask(system, f"Produto: {u.words(p['id'])}\nCategoria atual: {current}\nEstá certa?")
     llm_cat = u.by_path(a.get("categoria"))
-    ok = llm_cat is None or llm_cat == p["category_id"]
+    if llm_cat is None:
+      # No answer, or a category not in the list: no verdict. Nothing is written, so the product stays unchecked and
+      # out of the error rate (T-26, R8).
+      invalid += 1
+      log(f"  audit ??   {u.words(p['id'])[:50]} | no valid category in the answer")
+      continue
+    ok = llm_cat == p["category_id"]
     db.write("POST", "audit_log", {"ledger_id": u.lid, "product_id": p["id"], "category_id": p["category_id"],
                                    "llm_category_id": llm_cat, "agree": ok, "sample": p in sampled, "model": LLM_NAME})
     change = {"llm_checked_at": now}
@@ -220,7 +270,7 @@ def audit(db, llm, u, limit, sample, now):
     db.write("PATCH", "product", change, id=f"eq.{p['id']}", ledger_id=f"eq.{u.lid}")
     agree += ok; disagree += not ok
     log(f"  audit {'ok  ' if ok else 'DIFF'} {u.words(p['id'])[:50]} | {current} -> {u.path.get(llm_cat, '-')}")
-  return {"audited": agree + disagree, "disagreed": disagree}
+  return {"audited": agree + disagree, "disagreed": disagree, "unanswered": invalid}
 
 
 LEARN = """O usuário corrigiu a categoria de um produto de nota fiscal brasileira. Descubra o que a correção ensina:
@@ -370,7 +420,8 @@ def describe(db, llm, u):
 
 
 def report(db, u, results, now):
-  audits = db.select("audit_log", ledger_id=f"eq.{u.lid}", sample="eq.true", order="at.desc")[:50]
+  audits = db.call("GET", "/rest/v1/audit_log",
+                   params={"select": "*", "ledger_id": f"eq.{u.lid}", "sample": "eq.true", "order": "at.desc,id.desc", "limit": 50})
   auto = [p for p in u.products.values() if p.get("category_review") == "automatic" and u.spent.get(p["id"])]
   unchecked = [p for p in auto if not p.get("llm_checked_at")]
   checked = sorted(p["llm_checked_at"] for p in auto if p.get("llm_checked_at"))

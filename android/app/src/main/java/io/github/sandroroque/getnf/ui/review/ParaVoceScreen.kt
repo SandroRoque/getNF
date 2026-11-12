@@ -83,7 +83,7 @@ fun ParaVoceScreen(onOpenPage: (String) -> Unit, onOpenProduct: (String) -> Unit
   ) {
     item { TabHeader("Para você") { if (queue.isNotEmpty()) Text("${queue.size}", style = MaterialTheme.typography.bodyMedium, color = Calmo.mute) } }
     if (queue.isEmpty()) item {
-      EmptyState("Nada para decidir. Notas novas e sugestões do revisor aparecem aqui quando precisarem de você.")
+      EmptyState("Nada para decidir. Notas novas e o que a categorização automática não souber aparecem aqui quando precisarem de você.")
     }
     items(queue, key = { it.key }) { d ->
       when (d) {
