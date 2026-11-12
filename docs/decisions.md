@@ -4598,5 +4598,5 @@ corpus: the frames jump 8 s apart and the emulator crops them, so it isn't a swe
 each keep it from completing: the card slip lying against the receipt is taken into the paper and its rows are
 required; rows are placed twice (the date, the access key, the total); and the RJ contingency layout's header
 ("# | COD | DESC") and missing "Consulte pela Chave" leave D97's markers unfound, so every row must be read. Left for
-a phone session of such a receipt (a ticket of its own): changing the assembly on emulator frames would tune it to
+a phone session of such a receipt (T-51): changing the assembly on emulator frames would tune it to
 an artefact.

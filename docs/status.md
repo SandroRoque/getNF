@@ -97,8 +97,7 @@ The first contributions arrived 2026-11-07 (one install in RJ, 10 items): RJ pag
 them. T-5 is fixed (D167) in code 6, uploaded 2026-11-09. T-7 (a voucher slip photographed alone went out with its
 balance showing) was settled with the user: the blanking stays as it is, the privacy policy now calls it best effort
 and restates that nothing is sold or used otherwise (site redeployed 2026-11-07). T-6 (a short receipt kept as 2-3
-identical photos) is fixed on main (D195); its other half, the same receipt's capture never completing, is left for a
-phone session of such a receipt (D195).
+identical photos) is fixed on main (D195); its other half, the same receipt's capture never completing, is T-51 (D195).
 
 The 2026-11-04 outside audit (D170) became T-8–T-26. Fixed on main 2026-11-09: T-8 (D171), T-9–T-11 (D172; the
 server half online the same day, T-9 resolved), T-12 (D173), T-14 (D174), T-13 (D175). Waiting: the line_surcharge
@@ -139,7 +138,7 @@ commit them there, not from a worktree. Since then, all on main and pushed, none
 Do next, in order:
 0. **The normal tickets left:** T-50 is done (D194) and T-6's identical photos (D195). T-6's other half (an RJ
    contingency receipt never completes: the card slip taken into the paper, rows placed twice, D97's markers not
-   found) needs a ticket of its own (the session couldn't write tickets) and a phone dump of such a receipt; the
+   found) is T-51, which needs a phone dump of such a receipt; the
    tester's photos replayed on the emulator are in `test-media/live-dumps/emulator/`, outside the corpus. The
    emulator's camera plays that replay: restart it with `tools/emulator.sh` for a plain one. Then the low ones (T-22–T-26, T-45–T-49);
    T-26 before the LLM worker is switched back on. After T-24, run `tools/blank-buyers.py` (dry run first) over the
