@@ -66,6 +66,8 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val remote = SupabaseRemote(client, session, ledger)
         val report = app.syncEngine.sync(remote)
         report.errors.forEach { Log.w(TAG, it) }
+        // Another caderneta's data (a backup restored here, T-16): nothing was sent; Ajustes says so.
+        if (report.foreign) return@withContext Result.success()
         // Receipts adopted from the server came with their page: read it on the phone too (D49), and push the result.
         val again = if (app.receiptParser.parsePending(store.receipts.value) > 0) app.syncEngine.sync(remote) else null
         // New store items are jobs for the categorizer online, done within seconds to a minute: come back for its

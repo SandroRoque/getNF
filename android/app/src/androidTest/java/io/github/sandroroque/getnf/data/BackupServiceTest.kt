@@ -6,7 +6,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import kotlinx.coroutines.runBlocking
-import org.junit.Ignore
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -121,7 +120,8 @@ class BackupServiceTest {
     } finally { db.close() }
   }
 
-  @Ignore("T-16: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound2RestoredArchiveMustSendReceiptToNewLedger() = runBlocking {
+  /** T-16 (D193): a real export and restore, then a sync with another caderneta: reported, nothing sent. */
+  @Test fun reviewRound2RestoredArchiveMustSendReceiptToNewLedger() = runBlocking {
     val files = tmp.newFolder("files"); val dbFile = File(tmp.root, "databases/getnf.db").apply { parentFile!!.mkdirs() }
     val receiptsRoot = File(files, "receipts")
     val db = open(dbFile)
@@ -165,8 +165,10 @@ class BackupServiceTest {
       override fun download(path: String, target: File) { error("no remote objects") }
     }
     val restoredStore = ReceiptStore(receiptsRoot, restored).apply { load() }
-    io.github.sandroroque.getnf.sync.SyncEngine(restored, restoredStore, { _, _ -> byteArrayOf() }, log = {}).sync(remote)
-    assertEquals("restored archive must send its receipt to the destination", 1, receiptsSent)
+    // No caderneta recorded, like a database from before D193: its sent receipt (markUploaded) isn't in the destination.
+    val report = io.github.sandroroque.getnf.sync.SyncEngine(restored, restoredStore, { _, _ -> byteArrayOf() }, log = {}).sync(remote)
+    org.junit.Assert.assertTrue("a restored archive of another caderneta is reported", report.foreign)
+    assertEquals("and sends nothing to it", 0, receiptsSent)
     restored.close()
   }
 }

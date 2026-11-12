@@ -13,7 +13,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.junit.Ignore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -49,7 +48,8 @@ class Round3RestoreTest {
     val engine = SyncEngine(db, store, { _, _ -> byteArrayOf(82, 73, 70, 70) }, contribute = { true }, log = {})
   }
 
-  @Ignore("T-16: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound3RestoredDatabaseMustReachTheCadernetaOfTheNewAccount() = runTest {
+  /** T-16 (D193): against the local stack, a database of A's caderneta sends nothing to B's, then or after an edit. */
+  @Test fun reviewRound3RestoredDatabaseMustReachTheCadernetaOfTheNewAccount() = runTest {
     assumeTrue("set GETNF_SUPABASE_LOCAL (disposable stack only)", keys != null)
     val client = SupabaseClient(url, keys!![0])
     val a = newUser().let { (e, p) -> client.signIn(e, p) }
@@ -83,8 +83,9 @@ class Round3RestoreTest {
       "local products=${phone.db.catalog().products().size}")
     println("R3 server A untouched: lines=${client.select(a, "receipt_line", listOf("ledger_id" to "eq.$la")).size}")
 
-    assertEquals("the restored receipt must exist in the new caderneta", 1, receiptsInB)
-    assertTrue("an edit made after restoring must not vanish or be parked silently",
-      productsInB.any { it["name"]?.jsonPrimitive?.content == "Editado depois de restaurar" } && parked.isEmpty())
+    assertTrue("another caderneta's database is reported, not synced", first.foreign && second.foreign && third.foreign)
+    assertEquals("nothing of it reaches B's caderneta", 0, receiptsInB)
+    assertEquals("not even an edit made after restoring (no half catalog)", 0, productsInB.size)
+    assertTrue(parked.isEmpty())
   }
 }

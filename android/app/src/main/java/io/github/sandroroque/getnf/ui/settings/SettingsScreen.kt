@@ -96,6 +96,7 @@ fun SettingsScreen(go: SettingsRoutes) {
     else {
       val sync = syncState(app)
       AccountCard(account, sync, go.account)
+      ForeignData(app, sync)
       RefusedRows(app, sync)
       Group("Caderneta")
       // The first sync picks the caderneta to open: read again after each.
@@ -257,6 +258,22 @@ private fun ContributionRow(app: GetNFApp, signedIn: Boolean) {
     else "As fotos já enviadas serão apagadas do servidor quando você entrar na conta de novo.",
     Modifier.padding(top = 8.dp),
   )
+}
+
+/**
+ * This phone's data is another caderneta's (T-16, D193): a backup restored into this one. Nothing of it is sent here,
+ * so the server and the other members never get half of it; opening the caderneta it came from syncs it again.
+ */
+@Composable
+private fun ForeignData(app: GetNFApp, sync: SyncState) {
+  var foreign by remember { mutableStateOf(false) }
+  LaunchedEffect(sync.last, sync.running) { foreign = app.database.sync().state(io.github.sandroroque.getnf.sync.SyncEngine.FOREIGN) != null }
+  if (!foreign) return
+  LeadCard {
+    Text("Não sincronizado", style = MaterialTheme.typography.titleSmall, color = Calmo.fg)
+    Sub("Os dados deste celular vieram de uma cópia de segurança de outra caderneta, por isso não são enviados a esta. " +
+      "Eles continuam aqui. Para voltar a sincronizar, abra em Cadernetas a caderneta de onde a cópia veio.")
+  }
 }
 
 /**

@@ -99,9 +99,11 @@ class SyncEngine(
   private val json = Json { ignoreUnknownKeys = true }
 
   /** [storeItems]: how many of [pushed] were store items, each a job for the categorizer online (D74, D121). */
-  data class Report(val pushed: Int, val pulled: Int, val photos: Int, val errors: List<String>, val storeItems: Int = 0)
+  /** [foreign]: this database belongs to another caderneta, so nothing was sent or taken (T-16, D193). */
+  data class Report(val pushed: Int, val pulled: Int, val photos: Int, val errors: List<String>, val storeItems: Int = 0, val foreign: Boolean = false)
 
   suspend fun sync(remote: SyncRemote): Report = mutex.withLock {
+    if (!belongsTo(remote)) return@withLock Report(0, 0, 0, listOf("this database belongs to another caderneta: not synced"), foreign = true)
     val errors = mutableListOf<String>()
     io { remote.rpc("sync_taxonomy", buildJsonObject { put("lid", remote.ledgerId) }) }
     var pulled = pull(remote, listOf(CATEGORY, TAG_TABLE), errors)
@@ -112,6 +114,30 @@ class SyncEngine(
     reconcileLines(remote)
     pullMembers(remote)
     Report(pushed, pulled, photos, errors, storeItemsPushed).also { log("sync: $it") }
+  }
+
+  /**
+   * Whether this database is [remote]'s caderneta's (T-16, D193). Its rows carry what that caderneta's server already
+   * has ("sent, version 3"), which means nothing anywhere else: a backup restored into another caderneta would send
+   * nothing, then only what's edited later, half a catalog. So the first sync records the caderneta, and a database
+   * that has one syncs with no other; Ajustes says so ([FOREIGN]).
+   * A database from before the record: if it sent receipts and none of the latest are in [remote]'s caderneta, it was
+   * another's.
+   */
+  private suspend fun belongsTo(remote: SyncRemote): Boolean {
+    val recorded = dao.state(LEDGER)
+    val ours = when {
+      recorded != null -> recorded == remote.ledgerId
+      else -> {
+        val sent = database.receipts().receipts().filter { it.remoteId != null }.sortedByDescending { it.capturedAt }.take(20).map { it.chave }
+        sent.isEmpty() || io {
+          remote.select("receipt", listOf("select" to "chave", "ledger_id" to "eq.${remote.ledgerId}", "chave" to "in.(${sent.joinToString(",")})"))
+        }.isNotEmpty()
+      }
+    }
+    if (ours) { if (recorded == null) dao.putState(SyncStateRow(LEDGER, remote.ledgerId)); dao.deleteStates(listOf(FOREIGN)) }
+    else dao.putState(SyncStateRow(FOREIGN, recorded ?: ""))
+    return ours
   }
 
   // ---- push ----
@@ -773,5 +799,9 @@ class SyncEngine(
     private const val RECONCILE = "reconcile:"
     /** sync_state's prefix for a receipt whose page is still to be downloaded (T-28); the value is its object path. */
     private const val PAGE_PENDING = "page:"
+    /** The caderneta this database syncs with, recorded at its first sync (D193). */
+    const val LEDGER = "ledger"
+    /** Present while this database is another caderneta's (D193): its value is that one's id, or "" if unknown. */
+    const val FOREIGN = "foreign_ledger"
   }
 }

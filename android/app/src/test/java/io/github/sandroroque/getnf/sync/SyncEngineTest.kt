@@ -18,7 +18,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import org.junit.Ignore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -540,17 +539,44 @@ class SyncEngineTest {
     println("ROUND2: retried after each of $boundaries remote boundaries; receipt and cents conserved")
   }
 
-  @Ignore("T-16: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound2RestoredCleanDatabaseMustUploadToNewLedger() = runTest {
+  /**
+   * T-16 (D193): a database synced with one caderneta (restored from a backup) meets another. Its "already sent" marks
+   * mean nothing there, so nothing goes: not the receipts silently skipped, nor later edits as half a catalog.
+   */
+  @Test fun aDatabaseOfAnotherCadernetaSendsNothingToIt() = runTest {
     receiptWithPage()
     engine.sync(server)
     assertFalse(store.get(chave)!!.needsUpload)
-    // BackupService copies the DB verbatim; restoring preserves these clean flags and cursors.
-    // Reopening that restored state against an empty destination must not silently skip its receipt.
     val destination = FakeServer()
     val remote = object : SyncRemote by destination { override val ledgerId = "ledger-2" }
     val restoredEngine = SyncEngine(db, store, { _, _ -> byteArrayOf() }, log = {})
-    repeat(2) { restoredEngine.sync(remote) }
-    assertEquals("restored receipt must exist in destination", 1, destination.rows("receipt").size)
+    assertTrue(restoredEngine.sync(remote).foreign)
+    // An edit made afterwards doesn't go either.
+    val product = dao.products().first()
+    dao.updateProduct(product.copy(name = "Editado depois de restaurar", dirty = true))
+    assertTrue(restoredEngine.sync(remote).foreign)
+    assertEquals(0, destination.writes)
+    assertEquals(emptyList<JsonObject>(), destination.pushed)
+    assertEquals("ledger-1", db.sync().state(SyncEngine.FOREIGN))
+    // Its own caderneta still syncs it, and the notice goes.
+    assertFalse(restoredEngine.sync(server).foreign)
+    assertTrue(server.rows("product").any { it.str("name") == "Editado depois de restaurar" })
+    assertEquals(null, db.sync().state(SyncEngine.FOREIGN))
+  }
+
+  /** A database from before the record (D193): its latest sent receipts tell whose it is. */
+  @Test fun aDatabaseFromBeforeTheRecordIsKnownByItsReceipts() = runTest {
+    receiptWithPage()
+    engine.sync(server)
+    db.sync().deleteStates(listOf(SyncEngine.LEDGER))
+    val destination = FakeServer()
+    val remote = object : SyncRemote by destination { override val ledgerId = "ledger-2" }
+    assertTrue(engine.sync(remote).foreign)
+    assertEquals("", db.sync().state(SyncEngine.FOREIGN))
+    assertEquals(0, destination.writes)
+    db.sync().deleteStates(listOf(SyncEngine.FOREIGN))
+    assertFalse(engine.sync(server).foreign)
+    assertEquals("ledger-1", db.sync().state(SyncEngine.LEDGER))
   }
 
   @Test fun reviewInterruptedReconciliationMustRetryAfterCursorAdvanced() = runTest {

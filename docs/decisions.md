@@ -4527,3 +4527,23 @@ an hour, and a 200,000-character description went to the provider.
   revisiting if the closed test opens to people we don't know.
 - **Checked:** `categorize_fair.test.sql` (pgTAP: 40 older jobs of one caderneta, the other's one job in the first
   batch of 5; a long description refused), `categorize.test.sql` unchanged.
+
+## D193. A database syncs only with its own caderneta; another's is reported, not sent (2026-11-12, T-16)
+
+The 2026-11-04 audit's R7. A backup holds the whole database, with each row's sync state ("on the server, version
+3"), and says nothing of which caderneta that server state is. Restored into another caderneta (another account, or
+the first sync picking another of the person's cadernetas), nothing went up, and later edits went up alone: a product
+with no category, store item or receipt (reproduced against the local stack). Chosen with the user, of two options:
+- **Chosen (A):** the first sync records the caderneta in `sync_state` (`ledger`); a database that has one syncs with
+  no other. Met with another, the sync sends and takes nothing and records `foreign_ledger`; the worker stops there
+  (no "Sincronizado há" either) and Ajustes shows "Não sincronizado": the data came from another caderneta's backup,
+  stays on the phone, and opening the caderneta it came from syncs it again (the notice goes then).
+- **Databases from before the record:** if it has sent receipts and none of its 20 latest are in the caderneta it
+  meets, it's another's; otherwise that caderneta is recorded. One extra request, once per database.
+- **Not chosen (B), importing into the other caderneta:** reset every row's sync state and send everything, which
+  needs the seed categories and tags mapped between cadernetas and store items reconciled with the destination's;
+  "Copiar notas" (D104) does part of it, between cadernetas on the phone. If someone needs it, it can come as a button
+  on the notice.
+- **Checked:** `SyncEngineTest.aDatabaseOfAnotherCadernetaSendsNothingToIt` and `…FromBeforeTheRecordIsKnownByItsReceipts`;
+  `Round3RestoreTest` against the local stack; `BackupServiceTest`'s restore test on the emulator (real export and
+  restore); the audit's three tests, un-ignored and turned to this behaviour; the whole suite.
