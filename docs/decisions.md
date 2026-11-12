@@ -4395,3 +4395,38 @@ was PARTIAL and applied: the lines carried R$ 0,70 and spending came out R$ 0,20
   conflict path already says "Nada mudou", so the person can fix the typed value and read again.
 - **Checked:** `PhotoDiscountReaderTest.aPhotoReadingOnTopOfATypedDiscountMustFitTheReceipts` (the review's repro,
   moved in) and the complete case; the whole unit suite.
+
+## D186. With no line left to take the rest, a typed discount must close the receipt's (2026-11-11, T-33)
+
+The 2026-11-09 review's P1-6. D174 capped a typed discount from above only. Once every other line had a typed or
+photo-read discount, nothing took the rest of the receipt's discount, so typed values adding up to less made spending
+count more than was paid: a one-line receipt with R$ 5,00 off, typed 0,00, counted R$ 5,00 too much.
+- **Chosen:** `Derive.discountRange`. While another line still takes a share, a line may take anything up to what the
+  others leave (D174). When none does, it must take exactly what the others leave; if that's more than the line or
+  below zero, nothing fits and another line has to change. The sheet says which ("esta fica com R$ …", or "ajuste uma
+  delas"); `CatalogEditor.setDiscount` refuses the rest. The photo reader does the same: a PARTIAL reading that leaves
+  no line to take the rest is a CONFLICT and changes nothing.
+- **Considered:** an explicit unassigned discount that spending still subtracts (the review's other suggestion). It
+  is a new column on the server, in Room and in every report, for a case a person reaches only by typing on every
+  line; the exact remainder keeps the invariant (the lines add up to what was paid) with no new state.
+- **Checked:** `CatalogEditorTest.handTypedDiscountsOnEveryLineStillAddUpToTheReceipts` (the review's repro, moved
+  in), `PhotoDiscountReaderTest.aPartialReadingWithNoLineLeftToTakeTheRestChangesNothing`; the whole unit suite.
+
+## D187. A category parent cycle is refused by the server and survived by the app (2026-11-11, T-32)
+
+The 2026-11-09 review's P1-5. Nothing kept a cycle out of `category.parent_id`: two managers moving categories under
+each other before syncing both landed (each phone checks its own tree, parents merge by field, D164), and
+`sync_taxonomy_for` wrote one by itself when the seed moved a node under one the user had moved. Every walk up the
+tree in the app was unbounded, so Início and Gastos hung at start for every member.
+- **Chosen, both sides:** on the server (`20261111020000_category_no_cycles.sql`) a trigger refuses a parent that lies
+  under the row (23514, under a per-caderneta advisory lock so two concurrent moves check one after the other), and
+  `sync_taxonomy_for` skips a seed move that would close a cycle while the rest of the seed still applies. In the app
+  every walk up goes through `chainUp`, which stops at a node seen before; the totals in Categorias count each node
+  once; and `flatten` lists a cycle's members at the top level, so a manager sees them and can move one out.
+- **Why both:** the trigger keeps new cycles out, but a phone can still hold one for a while (its own parked move plus
+  the other phone's move pulled), and a cycle may already be online; the app must not hang on data it was given.
+- **A refused move** parks on the phone like any refused row (D104) and shows under "Não sincronizado" (D145).
+- **Checked:** `CategoryCycleTest` (the review's repro M3 moved in; slices, `flatten`, `pathOf` over a cycle, each
+  with a timeout); `category_cycle.test.sql` (pgTAP: a direct move, a self-parent, the phone's field upsert, and the
+  seed's scenario B, where the harmless part of the seed still applies); the review's SQL repro B now ends with no
+  cycle; the whole unit suite and the server's tests.

@@ -166,15 +166,19 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
     }
   }
   editing?.let { line ->
-    val others = lines.filter { it.lineNo != line.lineNo && (it.discountSource == "photo" || it.discountSource == "manual") }.sumOf { it.discountCents }
+    val (known, open) = lines.filter { it.lineNo != line.lineNo }.partition { it.discountSource == "photo" || it.discountSource == "manual" }
+    val others = known.sumOf { it.discountCents }
     val total = h?.discountCents ?: 0
-    val room = io.github.sandroroque.getnf.parse.Derive.discountRoom(total, line.grossCents, others)
+    val range = io.github.sandroroque.getnf.parse.Derive.discountRange(total, line.grossCents, others, open.isNotEmpty())
     val hint = when {
       total == 0L -> "A nota não tem desconto"
-      room == 0L -> "O desconto da nota já está nas outras linhas"
-      else -> "Até ${Format.brl(room)}"
+      // No other line takes a share any more (T-33): this one closes the receipt's discount, or another must change.
+      open.isEmpty() && range.isEmpty() -> "As outras linhas não fecham o desconto da nota (${Format.brl(total)}): ajuste uma delas"
+      open.isEmpty() -> "As outras linhas já têm desconto: esta fica com ${Format.brl(range.first)}"
+      range.last == 0L -> "O desconto da nota já está nas outras linhas"
+      else -> "Até ${Format.brl(range.last)}"
     }
-    LineSheet(chave, line, room, hint, onOpenProduct = { editing = null; onOpenProduct(it) }, onDismiss = { editing = null })
+    LineSheet(chave, line, range, hint, onOpenProduct = { editing = null; onOpenProduct(it) }, onDismiss = { editing = null })
   }
 }
 
@@ -199,7 +203,7 @@ private fun discountMessage(o: PhotoDiscountReader.Outcome): String {
  * photo-read discount confirmed; or, for this line only, another product (a code read wrong, say).
  */
 @Composable
-private fun LineSheet(chave: String, l: LineDetail, maxDiscount: Long, hint: String, onOpenProduct: (String) -> Unit, onDismiss: () -> Unit) {
+private fun LineSheet(chave: String, l: LineDetail, allowed: LongRange, hint: String, onOpenProduct: (String) -> Unit, onDismiss: () -> Unit) {
   val context = LocalContext.current
   val app = context.applicationContext as GetNFApp
   val edit = rememberEdit()
@@ -212,8 +216,8 @@ private fun LineSheet(chave: String, l: LineDetail, maxDiscount: Long, hint: Str
     Sub("${Format.e4(l.qtyE4)} ${l.unit.orEmpty().lowercase()} × ${Format.brl(Math.round(l.unitPriceE4 / 100.0))} na nota · ${Format.brl(l.grossCents)}")
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
       OutlinedTextField(amount, { amount = it }, label = { Text("Desconto (R$)") }, singleLine = true,
-        // The receipt's total doesn't change: a line takes only what the others leave of its discount (T-14).
-        isError = cents != null && cents > maxDiscount,
+        // The receipt's total doesn't change: a line takes only what the others leave of its discount (T-14, T-33).
+        isError = cents != null && cents != l.discountCents && cents !in allowed,
         supportingText = { Text(hint) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
       Mark(discountSource(l.discountSource))
@@ -222,7 +226,7 @@ private fun LineSheet(chave: String, l: LineDetail, maxDiscount: Long, hint: Str
       if (l.discountSource == "photo" && l.discountReview != "confirmed" && cents == l.discountCents)
         Pill("Confere", ButtonKind.Solid) { edit { app.catalogEditor.confirmDiscount(chave, l.lineNo); done() } }
       if (cents != null && cents != l.discountCents)
-        Pill("Salvar", ButtonKind.Solid, enabled = cents in 0..maxDiscount) { edit { app.catalogEditor.setDiscount(chave, l.lineNo, cents); done() } }
+        Pill("Salvar", ButtonKind.Solid, enabled = cents in allowed) { edit { app.catalogEditor.setDiscount(chave, l.lineNo, cents); done() } }
       if (l.discountSource == "manual" || l.discountSource == "photo")
         Pill("Usar rateio", ButtonKind.Ghost) { edit { app.catalogEditor.prorateAgain(chave, l.lineNo); done() } }
     }

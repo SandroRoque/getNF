@@ -126,4 +126,17 @@ class PhotoDiscountReaderTest {
     assertEquals(30L to "photo", after[2]!!.discountCents to after[2]!!.discountSource)
     assertEquals(50L, after.values.sumOf { it.discountCents })
   }
+
+  /** T-33 (D186): every other line typed, the photo's reading on the last: no line is left to take the rest. */
+  @Test fun aPartialReadingWithNoLineLeftToTakeTheRestChangesNothing() = runTest {
+    val r = receipt()
+    val lines = dao.lines(chave)
+    dao.deleteLines(chave)
+    dao.insertLines(lines.map { if (it.lineNo == 2) it else it.copy(discountCents = if (it.lineNo == 1) 10 else 0, discountSource = "manual") })
+    val before = dao.lines(chave)
+    val out = reader.read(r)
+    assertEquals(Verdict.CONFLICT, out.result.verdict)
+    assertFalse(out.applied)
+    assertEquals(before, dao.lines(chave))
+  }
 }

@@ -33,7 +33,13 @@ class PhotoDiscountReader(
     val items = lines.map { PhotoDiscounts.Item(it.lineNo, it.code, it.description, it.grossCents) }
     val texts = withContext(Dispatchers.Default) { receipt.photos.map { text(receipt.chave, it) } }
     val typed = lines.filter { it.discountSource == "manual" }.associate { it.lineNo to it.discountCents }
-    val result = PhotoDiscounts.read(texts, items, parsed.discountCents ?: 0, typed)
+    val result = PhotoDiscounts.read(texts, items, parsed.discountCents ?: 0, typed).let { r ->
+      // Partial, with every line typed or read: no line is left to take the rest (T-33).
+      val open = lines.any { it.lineNo !in typed && r.discounts.none { f -> f.lineNo == it.lineNo } }
+      if (r.verdict != PhotoDiscounts.Verdict.PARTIAL || open) r
+      else r.copy(verdict = PhotoDiscounts.Verdict.CONFLICT, discounts = emptyList(),
+        problems = r.problems + "every line has a discount, adding up to less than the page's ${r.totalCents}")
+    }
     val apply = result.verdict == PhotoDiscounts.Verdict.COMPLETE || result.verdict == PhotoDiscounts.Verdict.PARTIAL
     if (apply) write(receipt.chave, parsed.discountCents ?: 0, result.discounts)
     return Outcome(result, apply, texts.size)

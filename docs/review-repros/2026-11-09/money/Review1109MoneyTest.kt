@@ -28,18 +28,6 @@ class Review1109MoneyTest {
     ReceiptParser(db, File(tmp.root, "r"), log = { _, _ -> }).parse(store.get(chave)!!)
   }
 
-  /** M1: T-14's fix caps a typed discount from above only. Once every line is typed, less than the receipt's discount stays. */
-  @Test fun handTypedDiscountsOnEveryLineMustStillAddUpToTheReceipts() = runTest {
-    receipt()
-    val header = dao.parsed(chave)!!
-    assertEquals("fixture: the lines start out adding up to what was paid", header.paidCents, dao.lines(chave).sumOf { it.grossCents - it.discountCents + it.surchargeCents })
-    // The person clears the estimated discount line by line ("this item had no discount"): each edit is accepted.
-    for (l in dao.lines(chave)) editor.setDiscount(chave, l.lineNo, 0)
-    val lines = dao.lines(chave)
-    assertEquals("the lines' discounts must still add up to the receipt's discount", header.discountCents, lines.sumOf { it.discountCents })
-    assertEquals("spending for the receipt must stay what was paid", header.paidCents, lines.sumOf { it.grossCents - it.discountCents + it.surchargeCents })
-  }
-
   /** M2: the rest of a discount is prorated without a cap, so a line can get more discount than it cost. */
   @Test fun aProratedShareMustNotExceedItsLine() {
     // A R$ 10,00 discount on a receipt of a R$ 100,00 item and a R$ 2,00 item; the person types "0" on the first
@@ -47,20 +35,6 @@ class Review1109MoneyTest {
     val gross = listOf(10_000L, 200L)
     val shares = Derive.lineDiscounts(1_000, gross, known = mapOf(0 to 0L))
     for ((i, s) in shares.withIndex()) assertTrue("line $i: discount ${s.cents} > its price ${gross[i]} (net ${gross[i] - s.cents})", s.cents <= gross[i])
-  }
-
-  /** M3: two valid moves on two phones make a parent cycle (nothing on the server refuses it); the reports must survive it. */
-  @Test fun aCategoryCycleMustNotHangTheReports() {
-    val parents = mapOf<String, String?>("a" to "b", "b" to "a")
-    val line = SpendingLine("c", 1, 1_760_000_000_000, null, null, 100, 0, "prorated", "p", "a", 10_000, "UN", 10_000, null, null)
-    var outcome = "still running after 1.5 s (generateSequence never ends)"
-    val t = Thread {
-      outcome = try { Spending(listOf(line), parents).slices(Period.month(line.issuedAt!!), null); "finished" }
-        catch (e: Throwable) { "died: ${e.javaClass.simpleName}" }
-    }.apply { isDaemon = true; start() }
-    t.join(1500)
-    @Suppress("DEPRECATION") if (t.isAlive) runCatching { t.stop() }
-    assertEquals("slices() over a cyclic tree", "finished", outcome)
   }
 
   /** M4: a product left in a category that another phone merged away counts as "sem categoria" but asks for nothing. */

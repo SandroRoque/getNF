@@ -60,7 +60,7 @@ class LocalCadernetas(private val context: Context, private val settings: Accoun
         val category = product.categoryId?.let(categories::get) ?: continue
         val there = to.storeItemNow(line.storeItemId)?.let { to.productNow(it.productId) } ?: continue
         if (there.categoryReview in DECIDED && there.categorySource == SOURCE_USER) continue
-        val chain = generateSequence(category) { it.parentId?.let(categories::get) }.toList().reversed()
+        val chain = chainUp(category.id) { categories[it]?.parentId }.mapNotNull(categories::get).reversed()
         editor.setCategory(there.id, categoryIn(to, editor, chain))
         count++
       }

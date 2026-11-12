@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.sandroroque.getnf.GetNFApp
 import io.github.sandroroque.getnf.data.CategoryNode
+import io.github.sandroroque.getnf.data.chainUp
 import io.github.sandroroque.getnf.data.Decision
 import io.github.sandroroque.getnf.data.Ipci
 import io.github.sandroroque.getnf.data.Spending
@@ -217,8 +218,7 @@ fun rememberCategoryColor(categories: List<CategoryNode>): (String?) -> Color {
     val byId = categories.associateBy { it.id }
     val tops = flatten(categories).filter { it.second == 0 }.map { it.first.id }
     val f: (String?) -> Color = { id ->
-      var top = id?.let(byId::get)
-      while (top?.parentId != null && byId[top.parentId] != null) top = byId[top.parentId]
+      val top = chainUp(id?.takeIf { it in byId }) { byId[it]?.parentId?.takeIf { p -> p in byId } }.lastOrNull()?.let(byId::get)
       tops.indexOf(top?.id).let { i -> if (i < 0) c.none else c.categories[i % c.categories.size] }
     }
     f

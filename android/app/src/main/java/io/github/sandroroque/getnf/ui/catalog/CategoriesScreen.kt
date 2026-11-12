@@ -70,8 +70,10 @@ fun CategoryTree() {
   // Products counted in a category and everything under it.
   val totals = remember(categories) {
     val children = categories.groupBy { it.parentId }
-    fun total(c: CategoryNode): Int = c.products + children[c.id].orEmpty().sumOf(::total)
-    categories.associate { it.id to total(it) }
+    // Each category once, so a parent cycle (T-32) ends instead of overflowing.
+    fun total(c: CategoryNode, seen: MutableSet<String>): Int =
+      if (!seen.add(c.id)) 0 else c.products + children[c.id].orEmpty().sumOf { total(it, seen) }
+    categories.associate { it.id to total(it, HashSet()) }
   }
 
   LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp)) {

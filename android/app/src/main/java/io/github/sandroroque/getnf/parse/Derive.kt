@@ -99,6 +99,17 @@ object Derive {
     minOf(lineCents, maxOf(0, totalDiscountCents - otherKnownCents))
 
   /**
+   * The discounts a person may type on one line. With another line still taking a share ([othersOpen]), anything up to
+   * [discountRoom]. Without one, nothing is left to take the rest, so the line must close the receipt's discount
+   * exactly (T-33), or nothing fits when that is more than the line or less than zero: another line has to change.
+   */
+  fun discountRange(totalDiscountCents: Long, lineCents: Long, otherKnownCents: Long, othersOpen: Boolean): LongRange {
+    if (othersOpen) return 0..discountRoom(totalDiscountCents, lineCents, otherKnownCents)
+    val exact = totalDiscountCents - otherKnownCents
+    return if (exact in 0..lineCents) exact..exact else LongRange.EMPTY
+  }
+
+  /**
    * Discount per line, in cents. Lines with a known discount (read from the photo) keep it; the rest of the receipt's
    * discount is prorated over the other lines. [known] maps a line's index to its discount.
    */

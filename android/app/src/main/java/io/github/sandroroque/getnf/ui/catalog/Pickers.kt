@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.sandroroque.getnf.data.CategoryNode
+import io.github.sandroroque.getnf.data.chainUp
 import io.github.sandroroque.getnf.data.ProductSummary
 import io.github.sandroroque.getnf.ui.Format
 import java.text.Normalizer
@@ -69,16 +70,21 @@ private fun CoroutineScope.launchEdit(context: android.content.Context, block: s
 fun flatten(categories: List<CategoryNode>): List<Pair<CategoryNode, Int>> {
   val children = categories.groupBy { it.parentId }
   val ids = categories.map { it.id }.toSet()
+  val placed = HashSet<String>()
   fun walk(parent: String?, depth: Int): List<Pair<CategoryNode, Int>> =
-    children[parent].orEmpty().sortedWith(compareBy({ it.sort }, { it.label })).flatMap { listOf(it to depth) + walk(it.id, depth + 1) }
-  // A category whose parent is gone (deleted elsewhere) still shows, at the top.
-  return walk(null, 0) + categories.filter { it.parentId != null && it.parentId !in ids }.flatMap { listOf(it to 0) + walk(it.id, 1) }
+    children[parent].orEmpty().filter { placed.add(it.id) }.sortedWith(compareBy({ it.sort }, { it.label }))
+      .flatMap { listOf(it to depth) + walk(it.id, depth + 1) }
+  fun top(c: CategoryNode) = if (placed.add(c.id)) listOf(c to 0) + walk(c.id, 1) else emptyList()
+  // A category whose parent is gone (deleted elsewhere) still shows, at the top; so does one in a parent cycle (T-32),
+  // which no root reaches, so it can be moved out of it.
+  return walk(null, 0) + categories.filter { it.parentId != null && it.parentId !in ids }.flatMap(::top) +
+    categories.sortedWith(compareBy({ it.sort }, { it.label })).flatMap(::top)
 }
 
 /** "Alimentos › Frutas" for a category id. */
 fun pathOf(categories: List<CategoryNode>, id: String?): String? {
   val byId = categories.associateBy { it.id }
-  val chain = generateSequence(id?.let(byId::get)) { c -> c.parentId?.let(byId::get) }.toList().reversed()
+  val chain = chainUp(id?.takeIf { it in byId }) { byId[it]?.parentId?.takeIf { p -> p in byId } }.map(byId::getValue).reversed()
   return chain.takeIf { it.isNotEmpty() }?.joinToString(" › ") { it.label }
 }
 
@@ -116,7 +122,7 @@ fun CategoryPickerDialog(
 ) {
   var query by remember { mutableStateOf("") }
   val byId = remember(categories) { categories.associateBy { it.id } }
-  fun ancestors(id: String?) = generateSequence(byId[id]?.parentId) { p -> byId[p]?.parentId }
+  fun ancestors(id: String?) = chainUp(byId[id]?.parentId) { p -> byId[p]?.parentId }
   val visible = remember(categories, exclude) {
     val hidden = mutableSetOf<String>().apply { addAll(exclude) }
     flatten(categories).filter { (c, _) -> (c.id !in hidden && c.parentId !in hidden).also { if (!it) hidden += c.id } }

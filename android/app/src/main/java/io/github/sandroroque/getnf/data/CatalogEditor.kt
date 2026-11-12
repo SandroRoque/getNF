@@ -313,15 +313,19 @@ class CatalogEditor(
   // ---- lines ----
 
   /**
-   * A discount typed by hand; the rest of the receipt's discount is spread again over the lines without one. More than
-   * [Derive.discountRoom] is refused: the receipt's total stays what it paid (T-14).
+   * A discount typed by hand; the rest of the receipt's discount is spread again over the lines without one. Outside
+   * [Derive.discountRange] is refused: the lines' discounts always add up to the receipt's, so its total stays what it
+   * paid (T-14, T-33).
    */
   suspend fun setDiscount(chave: String, lineNo: Int, cents: Long) = write {
     val lines = dao.lines(chave)
     val line = lines.single { it.lineNo == lineNo }
-    val others = lines.filter { it.lineNo != lineNo && (it.discountSource == "photo" || it.discountSource == "manual") }.sumOf { it.discountCents }
-    val room = Derive.discountRoom(dao.receiptDiscount(chave) ?: 0, line.grossCents, others)
-    require(cents in 0..room) { "Esse desconto passa do que sobra do desconto da nota." }
+    val (known, open) = lines.filter { it.lineNo != lineNo }.partition { it.discountSource == "photo" || it.discountSource == "manual" }
+    val range = Derive.discountRange(dao.receiptDiscount(chave) ?: 0, line.grossCents, known.sumOf { it.discountCents }, open.isNotEmpty())
+    require(cents in range) {
+      if (open.isEmpty()) "As outras linhas já têm desconto definido: esta precisa fechar o desconto da nota."
+      else "Esse desconto passa do que sobra do desconto da nota."
+    }
     reprorate(chave) { if (it.lineNo == lineNo) it.copy(discountCents = cents, discountSource = "manual", discountReview = REVIEW_CONFIRMED) else it }
   }
 
@@ -432,7 +436,7 @@ class CatalogEditor(
 
   private suspend fun ancestors(id: String): List<String> {
     val byId = dao.categoriesNow().associateBy { it.id }
-    return generateSequence(byId[id]?.parentId) { byId[it]?.parentId }.toList()
+    return chainUp(byId[id]?.parentId) { byId[it]?.parentId }
   }
 
   private suspend fun event(

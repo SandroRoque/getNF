@@ -84,6 +84,23 @@ class CatalogEditorTest {
     assertEquals(total, dao.lines(chave).sumOf { it.discountCents })
   }
 
+  /** T-33 (D186): with no line left to take a share, the last one typed must close the receipt's discount. */
+  @Test fun handTypedDiscountsOnEveryLineStillAddUpToTheReceipts() = runTest {
+    receipt()
+    val header = dao.parsed(chave)!!
+    val lines = dao.lines(chave)
+    // Every line but the last cleared ("no discount here"): each accepted, the rest moving to the open lines.
+    for (l in lines.dropLast(1)) editor.setDiscount(chave, l.lineNo, 0)
+    val last = lines.last()
+    assertEquals(header.discountCents, dao.lines(chave).sumOf { it.discountCents })
+    // The last can't drop it too: it must take exactly the receipt's discount, if it fits.
+    assertThrows(IllegalArgumentException::class.java) { kotlinx.coroutines.runBlocking { editor.setDiscount(chave, last.lineNo, 0) } }
+    if (last.grossCents >= header.discountCents!!) editor.setDiscount(chave, last.lineNo, header.discountCents!!)
+    val after = dao.lines(chave)
+    assertEquals(header.discountCents, after.sumOf { it.discountCents })
+    assertEquals(header.paidCents, after.sumOf { it.grossCents - it.discountCents + it.surchargeCents })
+  }
+
   @Test fun aHandTypedDiscountSpreadsTheRestAgain() = runTest {
     receipt()
     val total = dao.parsed(chave)!!.discountCents!!

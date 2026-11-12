@@ -130,7 +130,7 @@ class Spending(lines: List<SpendingLine>, private val parents: Map<String, Strin
 
   /** The path from a category up to the root, itself first. */
   fun ancestry(categoryId: String?): List<String> =
-    generateSequence(categoryId) { parents[it] }.takeWhile { it in parents }.toList()
+    chainUp(categoryId) { parents[it] }.takeWhile { it in parents }
 
   /**
    * Slices of [period] directly under [parentId] (null: the top level). Lines of [parentId] itself, not further
