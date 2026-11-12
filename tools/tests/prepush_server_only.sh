@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Review 2026-11-09 (tooling): the pre-push hook skips tools/check.sh -- and so the server tests D176 added --
+# T-44 (review 2026-11-09): the pre-push hook must not skip tools/check.sh -- and so the server tests D176 added --
 # for a push that changes only supabase/ (a migration, an Edge Function, a pgTAP test).
 # Runs the real tools/githooks/pre-push in a throwaway repo under $TMPDIR with a stub check.sh. Touches nothing else.
 set -euo pipefail
-hook="$(cd "$(dirname "$0")/../../../.." && pwd)/tools/githooks/pre-push"
+hook="$(cd "$(dirname "$0")/.." && pwd)/githooks/pre-push"
 t="$(mktemp -d)"; trap 'rm -rf "$t"' EXIT
 cd "$t"; git init -q -b main .; git config user.email r@example.invalid; git config user.name r
 mkdir -p tools android supabase/migrations
