@@ -84,13 +84,15 @@ abstract class EditDao {
     """
     SELECT p.id AS productId, p.name,
       (SELECT s.description FROM store_item s WHERE s.productId = p.id AND s.deleted = 0 ORDER BY s.rowid DESC LIMIT 1) AS description,
-      p.categoryId, c.label AS categoryLabel, p.categoryReview, p.categorySource, p.categoryConfidence,
-      p.suggestionCategoryId, sc.label AS suggestionLabel, p.suggestionConfidence,
+      c.id AS categoryId, c.label AS categoryLabel, p.categoryReview, p.categorySource, p.categoryConfidence,
+      sc.id AS suggestionCategoryId, sc.label AS suggestionLabel, p.suggestionConfidence,
       EXISTS (SELECT 1 FROM category ch WHERE ch.parentId = p.categoryId AND ch.deleted = 0) AS categoryHasChildren,
       COALESCE(u.spent, 0) AS spentCents, COALESCE(u.n, 0) AS purchases, p.suggestionModel
     FROM product p
-    LEFT JOIN category c ON c.id = p.categoryId
-    LEFT JOIN category sc ON sc.id = p.suggestionCategoryId
+    -- A deleted category (merged or removed on another phone) is no category: the reports count it so, and so it asks
+    -- for one (T-42).
+    LEFT JOIN category c ON c.id = p.categoryId AND c.deleted = 0
+    LEFT JOIN category sc ON sc.id = p.suggestionCategoryId AND sc.deleted = 0
     LEFT JOIN (
       SELECT COALESCE(l.productOverrideId, s.productId) AS pid, SUM(l.grossCents - l.discountCents + l.surchargeCents) AS spent, COUNT(DISTINCT l.receipt) AS n
       FROM receipt_line l JOIN store_item s ON s.id = l.storeItemId GROUP BY pid
@@ -321,10 +323,14 @@ class CatalogEditor(
     val lines = dao.lines(chave)
     val line = lines.single { it.lineNo == lineNo }
     val (known, open) = lines.filter { it.lineNo != lineNo }.partition { it.discountSource == "photo" || it.discountSource == "manual" }
-    val range = Derive.discountRange(dao.receiptDiscount(chave) ?: 0, line.grossCents, known.sumOf { it.discountCents }, open.isNotEmpty())
+    val range = Derive.discountRange(dao.receiptDiscount(chave) ?: 0, line.grossCents, known.sumOf { it.discountCents }, open.isNotEmpty(),
+      open.sumOf { it.grossCents })
     require(cents in range) {
-      if (open.isEmpty()) "As outras linhas já têm desconto definido: esta precisa fechar o desconto da nota."
-      else "Esse desconto passa do que sobra do desconto da nota."
+      when {
+        open.isEmpty() -> "As outras linhas já têm desconto definido: esta precisa fechar o desconto da nota."
+        cents < range.first -> "Com esse desconto, o resto não cabe nas outras linhas."
+        else -> "Esse desconto passa do que sobra do desconto da nota."
+      }
     }
     reprorate(chave) { if (it.lineNo == lineNo) it.copy(discountCents = cents, discountSource = "manual", discountReview = REVIEW_CONFIRMED) else it }
   }

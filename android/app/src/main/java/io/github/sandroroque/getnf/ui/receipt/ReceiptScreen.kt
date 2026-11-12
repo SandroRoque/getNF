@@ -169,13 +169,15 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
     val (known, open) = lines.filter { it.lineNo != line.lineNo }.partition { it.discountSource == "photo" || it.discountSource == "manual" }
     val others = known.sumOf { it.discountCents }
     val total = h?.discountCents ?: 0
-    val range = io.github.sandroroque.getnf.parse.Derive.discountRange(total, line.grossCents, others, open.isNotEmpty())
+    val range = io.github.sandroroque.getnf.parse.Derive.discountRange(total, line.grossCents, others, open.isNotEmpty(), open.sumOf { it.grossCents })
     val hint = when {
       total == 0L -> "A nota não tem desconto"
       // No other line takes a share any more (T-33): this one closes the receipt's discount, or another must change.
       open.isEmpty() && range.isEmpty() -> "As outras linhas não fecham o desconto da nota (${Format.brl(total)}): ajuste uma delas"
       open.isEmpty() -> "As outras linhas já têm desconto: esta fica com ${Format.brl(range.first)}"
       range.last == 0L -> "O desconto da nota já está nas outras linhas"
+      // The other lines can't hold all of the rest (T-41): this one takes at least what they can't.
+      range.first > 0L -> "De ${Format.brl(range.first)} a ${Format.brl(range.last)}"
       else -> "Até ${Format.brl(range.last)}"
     }
     LineSheet(chave, line, range, hint, onOpenProduct = { editing = null; onOpenProduct(it) }, onDismiss = { editing = null })

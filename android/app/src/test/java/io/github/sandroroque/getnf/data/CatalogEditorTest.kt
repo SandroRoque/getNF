@@ -101,6 +101,16 @@ class CatalogEditorTest {
     assertEquals(header.paidCents, after.sumOf { it.grossCents - it.discountCents + it.surchargeCents })
   }
 
+  /** T-42 (D190): a product left in a category deleted on another phone counts as "sem categoria", so it asks. */
+  @Test fun aProductInADeletedCategoryAsksForOne() = runTest {
+    receipt()
+    dao.insertCategory(CategoryRow("gone", null, "Antiga", null, 1, deleted = true))
+    dao.updateProduct(apple().copy(categoryId = "gone", categorySource = "user", categoryReview = "confirmed"))
+    val row = db.edit().products().first().single { it.productId == apple().id }
+    assertNull(row.categoryLabel)
+    assertTrue(row.toPick)
+  }
+
   @Test fun aHandTypedDiscountSpreadsTheRestAgain() = runTest {
     receipt()
     val total = dao.parsed(chave)!!.discountCents!!

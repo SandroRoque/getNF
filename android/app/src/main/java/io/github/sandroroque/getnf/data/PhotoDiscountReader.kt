@@ -34,11 +34,13 @@ class PhotoDiscountReader(
     val texts = withContext(Dispatchers.Default) { receipt.photos.map { text(receipt.chave, it) } }
     val typed = lines.filter { it.discountSource == "manual" }.associate { it.lineNo to it.discountCents }
     val result = PhotoDiscounts.read(texts, items, parsed.discountCents ?: 0, typed).let { r ->
-      // Partial, with every line typed or read: no line is left to take the rest (T-33).
-      val open = lines.any { it.lineNo !in typed && r.discounts.none { f -> f.lineNo == it.lineNo } }
-      if (r.verdict != PhotoDiscounts.Verdict.PARTIAL || open) r
+      // Partial: the lines neither typed nor read take the rest, so they must be there (T-33) and able to hold it, a
+      // share never more than its line (T-41).
+      val open = lines.filter { it.lineNo !in typed && r.discounts.none { f -> f.lineNo == it.lineNo } }
+      val rest = r.totalCents - r.foundCents - typed.values.sum()
+      if (r.verdict != PhotoDiscounts.Verdict.PARTIAL || open.isNotEmpty() && rest <= open.sumOf { it.grossCents }) r
       else r.copy(verdict = PhotoDiscounts.Verdict.CONFLICT, discounts = emptyList(),
-        problems = r.problems + "every line has a discount, adding up to less than the page's ${r.totalCents}")
+        problems = r.problems + "the other lines can't hold the rest of the page's ${r.totalCents}")
     }
     val apply = result.verdict == PhotoDiscounts.Verdict.COMPLETE || result.verdict == PhotoDiscounts.Verdict.PARTIAL
     if (apply) write(receipt.chave, parsed.discountCents ?: 0, result.discounts)

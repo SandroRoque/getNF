@@ -4468,3 +4468,18 @@ Four of the 2026-11-09 review's parsing findings (P2-2 to P2-5), none seen on a 
   tester's receipts would change nothing.
 - **Checked:** `NfcePageTest` (the review's repros, moved in and turned positive), `SefazPageTest`; the whole suite,
   `NfceParityTest`'s golden files unchanged.
+
+## D190. A prorated share never exceeds its line; a deleted category is no category (2026-11-11, T-41, T-42)
+
+Two of the 2026-11-09 review's money findings (P2-6, P2-7).
+- **T-41:** the rest of a receipt's discount was spread over the open lines with no cap, so typing 0,00 on a R$ 100,00
+  line of a receipt with R$ 10,00 off put all R$ 10,00 on a R$ 2,00 line (net −R$ 8,00). A proportional share is
+  never more than its line while the rest fits in the open lines together, so the check is on the rest:
+  `Derive.discountRange` gets a floor, what the open lines can't hold, and the sheet says "De R$ … a R$ …". The photo
+  reader refuses a partial reading whose rest the open lines can't hold, as D186 does for no open line.
+- **T-42:** a product left in a category deleted on another phone counted as "sem categoria" in the reports but the
+  catalog showed the dead label and nothing asked. The catalog's product query joins only live categories, so such a
+  product has no category, shows as one to pick, and becomes a card in Para você. Its stored `categoryId` stays; a
+  pick replaces it.
+- **Checked:** `DeriveTest.aTypedDiscountLeavesTheOpenLinesNoMoreThanTheyHold`,
+  `CatalogEditorTest.aProductInADeletedCategoryAsksForOne` (the review's repros M2 and M4, moved in); the whole suite.

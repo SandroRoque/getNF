@@ -28,29 +28,6 @@ class Review1109MoneyTest {
     ReceiptParser(db, File(tmp.root, "r"), log = { _, _ -> }).parse(store.get(chave)!!)
   }
 
-  /** M2: the rest of a discount is prorated without a cap, so a line can get more discount than it cost. */
-  @Test fun aProratedShareMustNotExceedItsLine() {
-    // A R$ 10,00 discount on a receipt of a R$ 100,00 item and a R$ 2,00 item; the person types "0" on the first
-    // (CatalogEditor.setDiscount accepts 0 for any line), so the whole R$ 10,00 lands on the R$ 2,00 line.
-    val gross = listOf(10_000L, 200L)
-    val shares = Derive.lineDiscounts(1_000, gross, known = mapOf(0 to 0L))
-    for ((i, s) in shares.withIndex()) assertTrue("line $i: discount ${s.cents} > its price ${gross[i]} (net ${gross[i] - s.cents})", s.cents <= gross[i])
-  }
-
-  /** M4: a product left in a category that another phone merged away counts as "sem categoria" but asks for nothing. */
-  @Test fun aProductInADeletedCategoryMustAskForACategory() = runTest {
-    receipt()
-    dao.insertCategory(CategoryRow("gone", null, "Antiga", null, 1, deleted = true))
-    val p = dao.products().first()
-    dao.updateProduct(p.copy(categoryId = "gone", categorySource = "user", categoryReview = "confirmed"))
-    val parents = db.edit().categories().first().associate { it.id to it.parentId }
-    val s = Spending(db.spending().lines().first(), parents)
-    val uncategorized = s.caveats(s.periods.last()).uncategorizedCents
-    assertTrue("fixture: the reports count it as uncategorized", uncategorized > 0)
-    val row = db.edit().products().first().single { it.productId == p.id }
-    assertTrue("reports say 'sem categoria' for it, so the catalog must ask (toPick), not show '${row.categoryLabel}'", row.toPick)
-  }
-
   /** M5 (demonstration, not a defect of arithmetic): chained current-month weights drift when a price returns to where it was. */
   @Test fun aPriceThatComesBackMustBringTheIndexBack() {
     fun line(month: Int, product: String, qty: Long, unitCents: Long) = SpendingLine(

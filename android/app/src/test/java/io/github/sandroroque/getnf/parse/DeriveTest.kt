@@ -54,4 +54,15 @@ class DeriveTest {
     // Everything known from the photo: nothing left to prorate.
     assertEquals(listOf(20L, 0L), Derive.lineDiscounts(20, listOf(500, 500), mapOf(0 to 20L, 1 to 0L)).map { it.cents })
   }
+
+  /** T-41 (D190): R$ 10,00 off a R$ 100,00 and a R$ 2,00 line: the big one can't drop below R$ 8,00, or the rest wouldn't fit. */
+  @Test fun aTypedDiscountLeavesTheOpenLinesNoMoreThanTheyHold() {
+    assertEquals(800L..1_000L, Derive.discountRange(1_000, 10_000, 0, othersOpen = true, openCents = 200))
+    assertEquals(0L..1_000L, Derive.discountRange(1_000, 10_000, 0, othersOpen = true, openCents = 5_000))
+    // Whatever the range allows, every prorated share fits its line.
+    for (typed in listOf(800L, 900L, 1_000L)) {
+      val shares = Derive.lineDiscounts(1_000, listOf(10_000L, 200L), known = mapOf(0 to typed))
+      assertTrue("typed $typed: ${shares.map { it.cents }}", shares[1].cents <= 200)
+    }
+  }
 }
