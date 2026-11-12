@@ -5,6 +5,7 @@ import io.github.sandroroque.getnf.GetNFApp
 import io.github.sandroroque.getnf.RestartActivity
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
 /**
@@ -15,19 +16,24 @@ import kotlinx.coroutines.withContext
 object Demo {
   private const val ASSET = "demo.zip"
 
-  /** Stages the bundled backup into the demo's files and restarts into it. Never returns. */
+  /**
+   * Stages the bundled backup into the demo's files and restarts into it. Never returns. Not cancellable (D184): the
+   * caller's scope is a screen's, which rotation or Back cancels, and stopping between the marker and the flag left a
+   * restore the next start would apply. The marker names the demo's database, so even then it can't land elsewhere.
+   */
   suspend fun enter(context: Context): Nothing {
     val app = context.applicationContext as GetNFApp
-    withContext(Dispatchers.IO) {
+    withContext(NonCancellable + Dispatchers.IO) {
       val zip = File(app.cacheDir, ASSET)
       app.assets.open(ASSET).use { input -> zip.outputStream().use { input.copyTo(it) } }
       val pending = pendingRestore(app)
-      pending.staged.deleteRecursively()
+      pending.clear()
       BackupArchive.extract(zip, pending.staged, ReceiptDatabase.VERSION)
-      pending.markReady()
       zip.delete()
+      // The flag first: a start in the demo with nothing staged opens an empty demo, never the user's files.
+      app.accountSettings.demo = true
+      pending.markReady()
     }
-    app.accountSettings.demo = true
     RestartActivity.restart(app)
   }
 

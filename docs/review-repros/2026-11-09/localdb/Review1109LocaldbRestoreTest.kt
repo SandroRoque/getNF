@@ -30,31 +30,6 @@ class Review1109LocaldbRestoreTest {
   }
 
   /**
-   * Demo.enter() stages demo.zip with a PendingRestore built for the demo's paths, calls markReady(), and only THEN
-   * sets accountSettings.demo = true (Demo.kt:24-30). The READY marker lives in the shared files/restore/ and does not
-   * say which files it was staged for. If `demo = true` never lands (the composition scope that launched enterDemo is
-   * cancelled while withContext(IO) runs: rotation or Back closes MainActivity, and withContext throws on return; or
-   * the process dies), the next start builds PendingRestore for the USER's caderneta (GetNFApp.kt:99) and swaps the
-   * made-up household into it; cleanUp() (GetNFApp.kt:107) then deletes the user's real data from restore/previous,
-   * and SyncWorker (not in demo) pushes the demo receipts into the user's server caderneta.
-   */
-  @Test fun aRestoreStagedForTheDemoIsNotAppliedToTheUsersCaderneta() {
-    val files = tmp.newFolder("files")
-    val userDb = File(tmp.root, "databases/getnf.db").apply { parentFile!!.mkdirs(); writeText("USER'S REAL DATABASE") }
-    File(files, "receipts/$chave").mkdirs(); File(files, "receipts/$chave/mine.jpg").writeText("user photo")
-    val demoDb = File(tmp.root, "databases/getnf-demo.db")
-    val demoPending = PendingRestore(files, demoDb, File(files, "receipts-demo"))
-    BackupArchive.extract(archive("DEMO DATABASE".toByteArray()), demoPending.staged, ReceiptDatabase.VERSION)
-    demoPending.markReady()
-    // ... `accountSettings.demo = true` is lost. Next start, demo == false: GetNFApp builds the user's PendingRestore.
-    val startup = PendingRestore(files, userDb, File(files, "receipts"))
-    startup.applyIfReady()
-    startup.cleanUp()
-    assertEquals("a restore staged for the demo's files must never replace the user's caderneta (and cleanUp must not then delete it)",
-      "USER'S REAL DATABASE", userDb.readText())
-  }
-
-  /**
    * inspect() checks the manifest and hashes only: the database entry is never opened. A file that is not SQLite, or
    * a SQLite file whose user_version is newer than the manifest says, passes inspect and stage; the swap then happens
    * before Room opens it (GetNFApp.kt:99-107), Room throws in the startup coroutine, the app crashes on every start

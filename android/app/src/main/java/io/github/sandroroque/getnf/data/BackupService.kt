@@ -65,6 +65,7 @@ class BackupService(
   /** Extracts the inspected backup where the next start swaps it in ([PendingRestore]). */
   suspend fun stage() = withContext(Dispatchers.IO) {
     val local = File(context.cacheDir, LOCAL_COPY)
+    pending.clear()
     BackupArchive.extract(local, pending.staged, ReceiptDatabase.VERSION)
     pending.markReady()
     local.delete()

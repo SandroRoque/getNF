@@ -4362,3 +4362,22 @@ other phones. The JVM tests' fake server accepted any column set.
 - **Checked:** `catalog_merge.test.sql` (pgTAP) and `SupabaseLocalTest.aStoreItemMovedToAnotherProductReachesTheOtherPhone`
   (failing with 23502 before, passing with the migration); `SyncEngineTest.aCatalogRowRefusedForANotNullColumnIsSentAgain`
   fails on the old engine and passes now; the whole suite, local stack included.
+
+## D184. A staged restore names the database it was staged for; entering the demo can't stop halfway (2026-11-11, T-35)
+
+The 2026-11-09 review's P1-8. The demo is opened by staging its bundled backup as a restore (D115). `Demo.enter`
+marked the restore ready and only then set `demo = true`, from a screen's coroutine scope. Rotating or pressing Back
+during the extraction cancelled the scope after the marker but before the flag, and so did the process dying there.
+The next start wasn't in the demo, built the restore for the user's own caderneta, swapped the made-up household in,
+and `cleanUp()` deleted the user's data from `restore/previous`. Signed in, the next sync pushed the demo into their
+caderneta online.
+- **Chosen, three layers:** the `READY` marker holds the database path it was staged for, and a start that opens
+  other files leaves it alone (no swap, no cleanup). `Demo.enter` runs `NonCancellable` and sets the flag before the
+  marker: an interruption between them starts an empty demo, which the person can leave. Staging (the demo's or
+  Ajustes') first clears any earlier marker and staged files, so another target's half-staged files can't mix in.
+- **Old markers:** `READY` used to say `1`. That is still applied, since only Ajustes' restore could stage before this,
+  always for the open caderneta, and a start in between would already have applied a demo's.
+- **Considered:** launching the demo from the application's scope. `NonCancellable` gives the same within the call,
+  and the marker's target covers the process dying, which no scope does.
+- **Checked:** `BackupTest.aRestoreStagedForOtherFilesIsLeftAlone` (the review's repro, moved in), the old marker and
+  `clear()`; the whole unit suite.

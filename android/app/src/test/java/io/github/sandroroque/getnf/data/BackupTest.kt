@@ -160,4 +160,45 @@ class BackupTest {
     assertEquals(listOf("a.jpg", "page.html"), File(files, "receipts/$chave").list()!!.sorted())
     assertEquals("old db", File(files, "restore/previous/getnf.db").readText())
   }
+
+  /** T-35 (D184): a restore staged for the demo's files, its flag lost, must not replace the user's caderneta. */
+  @Test fun aRestoreStagedForOtherFilesIsLeftAlone() {
+    val files = tmp.newFolder("files"); val userDb = File(tmp.root, "databases/getnf.db")
+    live(files, userDb)
+    val demo = PendingRestore(files, File(tmp.root, "databases/getnf-demo.db"), File(files, "receipts-demo"))
+    BackupArchive.extract(archive(), demo.staged, 2)
+    demo.markReady()
+    // The next start isn't in the demo: it builds the user's restore.
+    val startup = PendingRestore(files, userDb)
+    assertFalse(startup.applyIfReady())
+    startup.cleanUp()
+    assertEquals("old db", userDb.readText())
+    assertEquals("old", File(files, "receipts/$chave/old.jpg").readText())
+    // In the demo it applies as before.
+    assertTrue(demo.applyIfReady())
+    assertEquals("database", File(tmp.root, "databases/getnf-demo.db").readText())
+  }
+
+  /** A marker written before D184 says "1": only Ajustes staged then, for the open caderneta. */
+  @Test fun aMarkerFromBeforeTargetsWereRecordedStillApplies() {
+    val files = tmp.newFolder("files"); val db = File(tmp.root, "databases/getnf.db")
+    live(files, db)
+    val restore = PendingRestore(files, db)
+    BackupArchive.extract(archive(), restore.staged, 2)
+    File(files, "restore/READY").writeText("1")
+    assertTrue(restore.applyIfReady())
+    assertEquals("database", db.readText())
+  }
+
+  @Test fun clearDropsAnEarlierMarkerAndItsFiles() {
+    val files = tmp.newFolder("files"); val db = File(tmp.root, "databases/getnf.db")
+    live(files, db)
+    val restore = PendingRestore(files, db)
+    BackupArchive.extract(archive(), restore.staged, 2)
+    restore.markReady()
+    restore.clear()
+    assertFalse(restore.applyIfReady())
+    assertFalse(restore.staged.exists())
+    assertEquals("old db", db.readText())
+  }
 }

@@ -128,11 +128,15 @@ class PendingRestore(filesDir: File, private val database: File, private val rec
   private val ready = File(root, "READY")
   private val previous = File(root, "previous")
 
-  fun markReady() { check(File(staged, BackupArchive.DATABASE).isFile) { "nothing staged" }; ready.writeText("1") }
+  /** Before staging: no earlier marker or half-staged files (another caderneta's, or the demo's) can mix in. */
+  fun clear() { ready.delete(); staged.deleteRecursively() }
+
+  /** The marker names the database it was staged for (D184): a start that opens other files leaves it alone. */
+  fun markReady() { check(File(staged, BackupArchive.DATABASE).isFile) { "nothing staged" }; ready.writeText(target) }
 
   /** Returns true when a restore was applied. */
   fun applyIfReady(): Boolean {
-    if (!ready.isFile) return false
+    if (!ready.isFile || !forThisTarget()) return false
     previous.mkdirs()
     // Current data out of the way. Once previous holds it, never again: by then the live paths hold restored data.
     if (!File(previous, "getnf.db").exists() && !File(previous, "getnf.db.none").exists()) {
@@ -159,6 +163,11 @@ class PendingRestore(filesDir: File, private val database: File, private val rec
 
   /** The restored database opened: the replaced data can go. */
   fun cleanUp() { if (!ready.exists()) previous.deleteRecursively() }
+
+  private val target get() = database.absoluteFile.normalize().path
+
+  // "1" is what markers said before D184; only Ajustes' restore staged then, always for the open caderneta.
+  private fun forThisTarget() = ready.readText().trim().let { it == target || it == "1" }
 
   private fun move(from: File, to: File) {
     to.parentFile!!.mkdirs()
