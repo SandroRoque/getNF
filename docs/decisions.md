@@ -4675,3 +4675,26 @@ variant matched nothing and was added: the session assembled 98 rows for a recei
   stays open for a phone session of such a receipt.
 - **Benchmark:** no session lost, no item lost; one regression accepted: 2026-10-31T03-21-20 takes 7.4 → 9.5 s and
   saves one photo fewer. Photos 3 → 2 on two sessions, 2 → 3 on one. Accepted as the baseline.
+
+## D199. Photo discounts are read from each item's block, in any layout, and the page decides (2026-11-12, T-52)
+
+Replaces the layout rules of D54 and D197. D197 added a third layout to the two D54 knew, and the user objected: with
+full-resolution photos and the page's exact transcription, the reader shouldn't depend on where a store prints the
+value. Now it reads no layout:
+
+- **Each item's block.** An item is found in a photo by its code (leading zeros ignored, as some print a padded
+  barcode), else by its printed number with its description's first word (a Rio chain prints barcodes where the page
+  has the store's own codes), else by its gross when no other item has it and one line shows it. Its block runs from
+  there to the next item's start (found or not: a short number then a mostly-digit code), the totals ("total",
+  "pagar", "qtd"), or six typical lines, by line centres and the typical line height (box tops and heights grow with
+  any tilt left on a long line).
+- **What a block says.** An amount printed negative (`-1,26`, `1,26-`, `-R$ 89,78`), or on a line that says
+  "desconto" ("DESC", "0esconto", "descunto"; not "Descrição", not "VISCONTI"), or alone in its box level with such a
+  line, is that item's discount, wherever across the receipt it sits. Two different ones in one block in one photo
+  say nothing (other photos may). The gross followed on its row by a smaller amount ("De R$ 256,51 por R$ 166,73")
+  gives the difference, used only if it makes the readings add up to the page's discount exactly.
+- **The page decides,** as before: exact is complete, less is partial, more or disagreeing photos is a conflict.
+- **Checked:** the nine receipts of D54's eval, OCR recorded again on the emulator from the 2026-10-20 export, give
+  exactly what the old reader gave (5 complete, 1 partial, nothing on the 3 without a discount); the Rio video frame
+  gives R$ 0,80 and R$ 1,26 with the page's own codes, which the print doesn't show. D54's "too far below" limit of
+  2.2 lines is gone (the Rio layout prints the discount three lines under its item); a block ends at the next item.

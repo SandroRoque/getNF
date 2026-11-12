@@ -84,7 +84,7 @@ class PhotoDiscountsTest {
   @Test fun aDiscountTooFarBelowItsItemIsNotTaken() {
     val p = PhotoText("a.jpg", 3072, 4096, listOf(
       TextLine("10 7896014400645 POLPA BRASFRUT 100G", 740, 500, 1500, 545, .8f),
-      TextLine("Desconto: 1,56", 736, 700, 1100, 745, .8f),
+      TextLine("Desconto: 1,56", 736, 900, 1100, 945, .8f), // nine lines down, nothing between
     ))
     assertEquals(Verdict.NONE, PhotoDiscounts.read(listOf(p), items, 156).verdict)
   }
@@ -145,10 +145,11 @@ class PhotoDiscountsTest {
    * A Rio supermarket's layout (seen 2026-11-12): "desconto item 013" after the item, its "-1,26" in the value column on
    * that row. OCR reads the two as separate lines, the value a little higher, and the words misread, as here.
    */
+  // The page has the store's own codes; the print shows barcodes, so items are found by their printed number.
   private val rioItems = listOf(
-    Item(8, "7891000100103", "ESMALTE IMPALA ACETINADO ARE BABA", 599),
-    Item(9, "7891000100110", "ESMALTE IMPALA ACETINADO ME CHAMA", 789),
-    Item(13, "7891000100127", "BISC.MARILAN MAIZENA C/3 300G", 525),
+    Item(8, "2798", "ESMALTE IMPALA ACETINADO ARE BABA", 599),
+    Item(9, "61342", "ESMALTE IMPALA ACETINADO ME CHAMA", 789),
+    Item(13, "40226", "BISC.MARILAN MAIZENA C/3 300G", 525),
   )
   private fun line(text: String, left: Int, top: Int, right: Int, bottom: Int) = TextLine(text, left, top, right, bottom, .8f)
   private val rio = PhotoText("r.jpg", 1000, 1500, listOf(
@@ -163,6 +164,8 @@ class PhotoDiscountsTest {
     line("5,25", 461, 664, 500, 682),
     line("-1,26", 461, 684, 502, 702),
     line("0esconto iten 013", 43, 686, 169, 708),
+    line("VALOR TOTAL R$", 40, 870, 200, 890),
+    line("317,97", 420, 870, 500, 890),
     line("DESCONTO", 40, 900, 120, 920),
     line("R$ 2,06", 420, 900, 500, 920),
   ))
@@ -182,12 +185,22 @@ class PhotoDiscountsTest {
     }
   }
 
-  @Test fun anItemNumberedDiscountWithoutItsValueOrForNoSuchItemIsNotTaken() {
+  @Test fun anItemNumberedDiscountWithoutItsValueIsNotTaken() {
     val noValue = rio.copy(lines = rio.lines.filterNot { it.text == "-1,26" })
-    assertEquals(listOf(8 to 80L), PhotoDiscounts.read(listOf(noValue), rioItems, 206).discounts.map { it.lineNo to it.cents })
-    val stray = rio.copy(lines = rio.lines.map { if (it.text.startsWith("0esconto")) it.copy(text = "desconto item 021") else it })
-    val r = PhotoDiscounts.read(listOf(stray), rioItems, 206)
+    val r = PhotoDiscounts.read(listOf(noValue), rioItems, 206)
+    assertEquals(Verdict.PARTIAL, r.verdict)
     assertEquals(listOf(8 to 80L), r.discounts.map { it.lineNo to it.cents })
-    assertEquals(1, r.unassigned)
+  }
+
+  @Test fun aDiscountReadsTheSameWhereverItsValueSits() {
+    // The layout isn't what's read: the value left of its label, under it, or on its line all give the same.
+    for ((name, moved) in listOf(
+      "left" to listOf(line("-1,26", 10, 686, 40, 708), line("0esconto iten 013", 43, 686, 169, 708)),
+      "under" to listOf(line("0esconto iten 013", 43, 684, 169, 702), line("1,26-", 60, 704, 110, 722)),
+      "one line" to listOf(line("Desc. item 013 -1,26", 43, 686, 300, 708)),
+    )) {
+      val p = rio.copy(lines = rio.lines.filterNot { it.text == "-1,26" || it.text.startsWith("0esconto") } + moved)
+      assertEquals(name, listOf(8 to 80L, 13 to 126L), PhotoDiscounts.read(listOf(p), rioItems, 206).discounts.map { it.lineNo to it.cents })
+    }
   }
 }
