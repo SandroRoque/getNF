@@ -33,12 +33,16 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     val account = app.accountSettings.account()
     if (!project.isComplete || account == null) return@withContext Result.success()
 
-    val client = SupabaseClient(project.url, project.key)
+    // Every request checks the person is still the one this run signed in as (T-20).
+    val client = SupabaseClient(project.url, project.key, active = { s -> app.accountSettings.account()?.userId == s.userId })
     try {
       // Only a refused refresh token means the sign-in is gone (signed out elsewhere, or expired); a refusal later in
       // the run is about one request, and signing out for it would do so on every run (T-28).
       val session = try {
-        client.refresh(account.refreshToken).also { app.accountSettings.signedIn(it) }
+        client.refresh(account.refreshToken).also {
+          // Signed out while the refresh was on its way: it isn't kept, and the run stops (T-20).
+          if (!app.accountSettings.refreshed(account.refreshToken, it)) return@withContext Result.success()
+        }
       } catch (e: SupabaseException) {
         if (e.status == 400 || e.status == 401) app.accountSettings.signOut()
         Log.w(TAG, "sign-in refused", e)
@@ -74,6 +78,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
       OtherLedgers(app, app.accountSettings, app.photoArchiver).sync(client, session, mine, app.accountSettings.ledgerId())
       app.accountSettings.lastSync = System.currentTimeMillis()
       Result.success()
+    } catch (e: SignedOutException) {
+      Log.i(TAG, "signed out during the run: stopped")
+      Result.success()
     } catch (e: IOException) {
       Log.w(TAG, "server unreachable, will retry", e)
       Result.retry()
@@ -107,6 +114,12 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
       // REPLACE: start now, even if an earlier run is waiting out a retry backoff. Cancelling a run mid-sync is
       // harmless: pushes are idempotent upserts and the next run picks up everything still dirty.
       WorkManager.getInstance(context).enqueueUniqueWork(NAME, ExistingWorkPolicy.REPLACE, request)
+    }
+
+    /** Stops a run (signing out, T-20); one already mid-request stops at its next, by the client's check. */
+    fun cancel(context: Context) {
+      WorkManager.getInstance(context).cancelUniqueWork(NAME)
+      WorkManager.getInstance(context).cancelUniqueWork("sync-follow-up")
     }
 
     /** The unique work's name, to watch it run (Ajustes, D123). */

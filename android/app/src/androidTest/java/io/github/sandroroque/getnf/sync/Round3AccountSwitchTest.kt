@@ -54,7 +54,8 @@ class Round3AccountSwitchTest {
   @Before fun before() { ctl("token_ms=0&rest_ms=0") }
   @After fun after() { ctl("token_ms=0&rest_ms=0"); settings.signOut() }
 
-  @Ignore("T-20: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound3SignOutWhileTheWorkerRefreshesMustStaySignedOut() {
+  /** T-20 (D191). */
+  @Test fun reviewRound3SignOutWhileTheWorkerRefreshesMustStaySignedOut() {
     signIn()
     ctl("token_ms=3000")                       // the worker's refresh is slow, in flight when the person taps "Sair"
     SyncWorker.enqueue(ctx)
@@ -65,7 +66,8 @@ class Round3AccountSwitchTest {
     assertNull("a refresh already in flight must not sign the person back in", settings.account())
   }
 
-  @Ignore("T-20: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound3SignOutMidSyncMustStopSendingTheirData() = runBlocking {
+  /** T-20 (D191). */
+  @Test fun reviewRound3SignOutMidSyncMustStopSendingTheirData() = runBlocking {
     val session = signIn()
     val ledger = Ledgers.pick(Ledgers.mine(SupabaseClient(proxy, key), session), null, session.userId)!!
     settings.openLedger(ledger)

@@ -62,7 +62,8 @@ class BackupServiceTest {
     assertEquals(before, snapshot(restored, receiptsRoot))
     restored.close()
   }
-  @Ignore("T-19: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound2ConcurrentPageWriteMustProduceCoherentBackup() = runBlocking {
+  /** T-19 (D191): a page fetched again while the archive is written. */
+  @Test fun reviewRound2ConcurrentPageWriteMustProduceCoherentBackup() = runBlocking {
     val files = tmp.newFolder("concurrent-files")
     val dbFile = File(tmp.root, "concurrent-db/getnf.db").apply { parentFile!!.mkdirs() }
     val root = File(files, "receipts")
@@ -75,7 +76,7 @@ class BackupServiceTest {
       val beforeHtml = "<html>synthetic before 10.00</html>"
       val afterHtml = "<html>synthetic after 20.00</html>"
       store.savePage(chave, beforeUrl, beforeHtml)
-      val service = BackupService(context, db, root, dbFile, files)
+      val service = BackupService(context, db, root, dbFile, files, store)
       val zip = File(tmp.root, "concurrent.zip")
       var wrote = false
       service.export(Uri.fromFile(zip)) { done, _ ->
@@ -100,7 +101,8 @@ class BackupServiceTest {
     } finally { db.close() }
   }
 
-  @Ignore("T-18: reproduces the audit's finding; un-ignore with the fix") @Test fun reviewRound2ExportMustNotPromiseMissingPhoto() = runBlocking {
+  /** T-18 (D191): a photo the database names but the phone lacks is reported, not silently left out. */
+  @Test fun reviewRound2ExportMustNotPromiseMissingPhoto() = runBlocking {
     val files = tmp.newFolder("missing-files")
     val dbFile = File(tmp.root, "missing-db/getnf.db").apply { parentFile!!.mkdirs() }
     val receipts = File(files, "receipts")
@@ -113,8 +115,9 @@ class BackupServiceTest {
       check(photo.delete()) // simulate a missing source file, never a real receipt
       val service = BackupService(context, db, receipts, dbFile, files)
       val zip = File(tmp.root, "missing-photo.zip")
-      val result = runCatching { service.export(Uri.fromFile(zip)) { _, _ -> } }
-      org.junit.Assert.assertTrue("export must reject or explicitly report a missing photo, not claim a complete backup", result.isFailure)
+      val m = service.export(Uri.fromFile(zip)) { _, _ -> }
+      assertEquals("export must report the missing photo, not claim a complete backup", listOf("receipts/$chave/${photo.name}"), m.missing)
+      assertEquals(m, BackupArchive.inspect(zip, ReceiptDatabase.VERSION))
     } finally { db.close() }
   }
 

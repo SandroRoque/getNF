@@ -8,12 +8,14 @@
   the accounts (`auth.users`, `auth.identities`), data
   only, custom format, one file per run; the newest KEEP runs are kept. The schema itself is in supabase/migrations.
 - Files (pages, archive photos, masks in bucket `receipts`): mirrored into files/, downloading only what's new or
-  changed. Files deleted online stay here.
+  changed. A file deleted online moves to files-deleted/<date>/ and is removed KEEP days later, like the dumps, so the
+  privacy policy's 14 days hold for files too (T-21, D191). One that vanishes between the listing and its download is
+  skipped; the next run settles it.
 
 Reads SUPABASE_URL, SUPABASE_SECRET_KEY and SUPABASE_DB_PASSWORD from .env.local and never prints them.
 The restore drill (tools/supabase-restore-drill.sh) proves a dump can be read back.
 """
-import argparse, datetime, json, os, subprocess, sys, urllib.parse, urllib.request
+import argparse, datetime, json, os, shutil, subprocess, sys, urllib.error, urllib.parse, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KEEP = 14
@@ -88,26 +90,69 @@ def dump(e, out_dir):
   return target
 
 
-def mirror(e, files_dir):
+def save_index(index_path, index):
+  with open(index_path + ".part", "w") as f:
+    json.dump(index, f)
+  os.replace(index_path + ".part", index_path)
+
+
+def mirror(e, files_dir, today=None):
+  """Returns (fetched, total, retired): new or changed files, files online, files moved out because deleted online."""
   index_path = os.path.join(files_dir, ".index.json")
   index = json.load(open(index_path)) if os.path.exists(index_path) else {}
   fetched = total = 0
+  seen = set()
   for path, size, updated in objects(e):
     total += 1
+    seen.add(path)
     local = os.path.join(files_dir, path)
     if index.get(path) == updated and os.path.exists(local):
       continue
     os.makedirs(os.path.dirname(local), exist_ok=True)
-    data = storage(e, "object/receipts/" + urllib.parse.quote(path))
+    try:
+      data = storage(e, "object/receipts/" + urllib.parse.quote(path))
+    except urllib.error.HTTPError as err:
+      # Deleted between the listing and now (Storage says 400 NoSuchKey): not this run's to mirror.
+      if 400 <= err.code < 500:
+        print(f"skipped {path}: {err.code}", file=sys.stderr); continue
+      raise
     with open(local + ".part", "wb") as f:
       f.write(data)
     os.replace(local + ".part", local)
     index[path] = updated
     fetched += 1
-  with open(index_path + ".part", "w") as f:
-    json.dump(index, f)
-  os.replace(index_path + ".part", index_path)
-  return fetched, total
+    if fetched % 200 == 0:
+      save_index(index_path, index)  # a failed run keeps what it got
+  # Only after a whole listing: whatever the mirror holds that's no longer online moves out, to be removed later.
+  retired = 0
+  day = (today or datetime.date.today()).isoformat()
+  deleted_root = os.path.join(os.path.dirname(files_dir), "files-deleted")
+  for path in [p for p in index if p not in seen]:
+    local = os.path.join(files_dir, path)
+    if os.path.exists(local):
+      target = os.path.join(deleted_root, day, path)
+      os.makedirs(os.path.dirname(target), exist_ok=True)
+      os.replace(local, target)
+      retired += 1
+    del index[path]
+  save_index(index_path, index)
+  expire(deleted_root, today or datetime.date.today())
+  with open(os.path.join(files_dir, ".mirror.json"), "w") as f:
+    json.dump({"finished": datetime.datetime.now().isoformat(timespec="seconds"), "files": total}, f)
+  return fetched, total, retired
+
+
+def expire(deleted_root, today):
+  """Removes the files deleted online more than KEEP days ago."""
+  if not os.path.isdir(deleted_root):
+    return
+  for name in os.listdir(deleted_root):
+    try:
+      day = datetime.date.fromisoformat(name)
+    except ValueError:
+      continue
+    if (today - day).days > KEEP:
+      shutil.rmtree(os.path.join(deleted_root, name))
 
 
 def check(out_dir):
@@ -117,8 +162,14 @@ def check(out_dir):
   newest = os.path.join(out_dir, dumps[-1])
   age = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(newest))
   files = sum(len([f for f in fs if not f.startswith(".")]) for _, _, fs in os.walk(os.path.join(out_dir, "files")))
-  print(f"{len(dumps)} database dumps, newest {dumps[-1]} ({os.path.getsize(newest)} bytes, {age.total_seconds() / 3600:.1f} h old); {files} files")
-  return 0 if age < datetime.timedelta(hours=36) else 2
+  # The mirror's own last finished run: a mirror failing every night used to look fine next to a fresh dump (T-21).
+  state_path = os.path.join(out_dir, "files", ".mirror.json")
+  state = json.load(open(state_path)) if os.path.exists(state_path) else None
+  mirror_age = datetime.datetime.now() - datetime.datetime.fromisoformat(state["finished"]) if state else None
+  print(f"{len(dumps)} database dumps, newest {dumps[-1]} ({os.path.getsize(newest)} bytes, {age.total_seconds() / 3600:.1f} h old); {files} files; "
+        + (f"mirror finished {mirror_age.total_seconds() / 3600:.1f} h ago ({state['files']} online)" if state else "mirror never finished"))
+  fresh = datetime.timedelta(hours=36)
+  return 0 if age < fresh and mirror_age is not None and mirror_age < fresh else 2
 
 
 def main():
@@ -131,8 +182,8 @@ def main():
   e = env()
   os.makedirs(os.path.join(args.out, "files"), exist_ok=True)
   target = dump(e, args.out)
-  fetched, total = mirror(e, os.path.join(args.out, "files"))
-  print(f"database -> {target} ({os.path.getsize(target)} bytes); files: {fetched} new or changed of {total}")
+  fetched, total, retired = mirror(e, os.path.join(args.out, "files"))
+  print(f"database -> {target} ({os.path.getsize(target)} bytes); files: {fetched} new or changed of {total}, {retired} deleted online")
 
 
 if __name__ == "__main__":

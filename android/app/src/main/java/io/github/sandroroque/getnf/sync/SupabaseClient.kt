@@ -36,7 +36,17 @@ data class SupabaseSession(val userId: String, val email: String, val accessToke
  * off the main thread. Network failures surface as [IOException]; HTTP errors as [SupabaseException].
  * [url] is the project URL, [key] its publishable key (safe in the app; Row Level Security does the protecting).
  */
-class SupabaseClient(val url: String, private val key: String, private val http: OkHttpClient = OkHttpClient()) {
+/** The person signed out (or another signed in) while a run held the old session (T-20): nothing more goes out with it. */
+class SignedOutException : kotlinx.coroutines.CancellationException("signed out during the run")
+
+/**
+ * [active] says whether a session may still be used; checked before every request made with one, so a run stops at
+ * its next request once the person signs out (T-20).
+ */
+class SupabaseClient(
+  val url: String, private val key: String, private val http: OkHttpClient = OkHttpClient(),
+  private val active: (SupabaseSession) -> Boolean = { true },
+) {
   private val base = url.trimEnd('/').toHttpUrl()
 
   fun signIn(email: String, password: String): SupabaseSession =
@@ -180,6 +190,8 @@ class SupabaseClient(val url: String, private val key: String, private val http:
   fun download(session: SupabaseSession, path: String, target: File) {
     val url = base.newBuilder().addPathSegments("storage/v1/object/authenticated/$BUCKET").addPathSegments(path).build()
     http.newCall(authorized(session, url).get().build()).execute().use { r ->
+      // As for REST: 5xx and 429 may pass on a retry, so they're network trouble and the worker tries again (T-17).
+      if (r.code >= 500 || r.code == 429) throw IOException("download $path: ${r.code}")
       if (!r.isSuccessful) throw SupabaseException(r.code, "download $path: ${r.code}")
       val temp = File(target.parentFile, target.name + ".part")
       temp.outputStream().use { out -> r.body.byteStream().copyTo(out) }
@@ -189,8 +201,10 @@ class SupabaseClient(val url: String, private val key: String, private val http:
 
   private fun rest(table: String): HttpUrl.Builder = base.newBuilder().addPathSegments("rest/v1").addPathSegment(table)
 
-  private fun authorized(session: SupabaseSession, target: HttpUrl) =
-    Request.Builder().url(target).header("apikey", key).header("Authorization", "Bearer ${session.accessToken}")
+  private fun authorized(session: SupabaseSession, target: HttpUrl): Request.Builder {
+    if (!active(session)) throw SignedOutException()
+    return Request.Builder().url(target).header("apikey", key).header("Authorization", "Bearer ${session.accessToken}")
+  }
 
   private fun call(request: Request): JsonElement = http.newCall(request).execute().use { r ->
     val text = r.body.string()

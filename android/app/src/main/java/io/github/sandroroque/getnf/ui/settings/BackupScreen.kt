@@ -53,7 +53,13 @@ fun BackupScreen(onBack: () -> Unit) {
     busy = true; failed = false
     scope.launch {
       runCatching { app.backup.export(uri) { done, total -> status = "Exportando… $done de $total arquivos" } }
-        .onSuccess { status = "Pronto: ${it.receipts} notas e ${it.photos} fotos no arquivo." }
+        .onSuccess {
+          status = "Pronto: ${it.receipts} notas e ${it.photos} fotos no arquivo." +
+            // Named by the database but not on the phone (T-18): said, not hidden.
+            if (it.missing.isEmpty()) "" else " Faltavam neste celular ${Format.count(it.missing.size, "arquivo", "arquivos")} " +
+              "(fotos ou páginas): a cópia vai sem ${if (it.missing.size == 1) "ele" else "eles"}."
+          failed = it.missing.isNotEmpty()
+        }
         .onFailure { status = "A exportação falhou: ${it.message}"; failed = true }
       busy = false
     }
@@ -88,6 +94,7 @@ fun BackupScreen(onBack: () -> Unit) {
     CalmoSheet("Substituir tudo?", onDismiss = { candidate = null; app.backup.discardInspected() }) {
       Text("Cópia de ${Format.dateTime(m.createdAt)}: ${Format.count(m.receipts, "nota", "notas")}, " +
         "${Format.count(m.photos, "foto", "fotos")}.", style = MaterialTheme.typography.bodyMedium, color = Calmo.fg)
+      if (m.missing.isNotEmpty()) Sub("Feita sem ${Format.count(m.missing.size, "arquivo", "arquivos")} que já faltavam no celular de origem.")
       Sub("Tudo neste celular (${Format.count(receipts.size, "nota", "notas")}) é substituído pela cópia, e o app reinicia.")
       Wide("Substituir", ButtonKind.Solid) {
         candidate = null; busy = true; status = "Restaurando…"

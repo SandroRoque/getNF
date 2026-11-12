@@ -25,7 +25,7 @@ class GetNFApp : Application() {
   val receiptsDir by lazy { File(filesDir, localFiles.receipts) }
   val database by lazy { ReceiptDatabase.open(this, localFiles.database) }
   val receiptStore by lazy { ReceiptStore(receiptsDir, database) }
-  val backup by lazy { BackupService(this, database, receiptsDir, getDatabasePath(localFiles.database)) }
+  val backup by lazy { BackupService(this, database, receiptsDir, getDatabasePath(localFiles.database), store = receiptStore) }
   val receiptParser by lazy { ReceiptParser(database, receiptsDir) }
   private val photoOcr by lazy { PhotoOcr(this) }
   val photoDiscounts by lazy { PhotoDiscountReader(database, receiptsDir) { photoOcr.read(it) } }

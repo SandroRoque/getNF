@@ -81,7 +81,7 @@ fun AccountScreen(onBack: () -> Unit) {
   if (signingOut) CalmoSheet("Sair da conta?", onDismiss = { signingOut = false }) {
     Text("As notas continuam neste celular, e o app passa a funcionar só aqui. Para sincronizar de novo, é só entrar.",
       style = MaterialTheme.typography.bodyMedium, color = Calmo.fg)
-    Wide("Sair", ButtonKind.Solid) { app.accountSettings.signOut(); signingOut = false; onBack() }
+    Wide("Sair", ButtonKind.Solid) { app.accountSettings.signOut(); io.github.sandroroque.getnf.sync.SyncWorker.cancel(app); signingOut = false; onBack() }
     Wide("Continuar na conta", ButtonKind.Ghost) { signingOut = false }
   }
 
@@ -114,7 +114,7 @@ fun AccountScreen(onBack: () -> Unit) {
             return@launch
           }
           runCatching { LedgerService(app.accountSettings).deleteMe() }
-            .onSuccess { app.accountSettings.signOut(); app.photoContribution.withdrawPending = false; deleting = null; onBack() }
+            .onSuccess { app.accountSettings.signOut(); io.github.sandroroque.getnf.sync.SyncWorker.cancel(app); app.photoContribution.withdrawPending = false; deleting = null; onBack() }
             .onFailure { wrong = reason(it) }
           busy = false
         }

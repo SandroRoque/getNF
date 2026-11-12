@@ -4483,3 +4483,32 @@ Two of the 2026-11-09 review's money findings (P2-6, P2-7).
   pick replaces it.
 - **Checked:** `DeriveTest.aTypedDiscountLeavesTheOpenLinesNoMoreThanTheyHold`,
   `CatalogEditorTest.aProductInADeletedCategoryAsksForOne` (the review's repros M2 and M4, moved in); the whole suite.
+
+## D191. Sync and backup leftovers from the 2026-11-04 audit (2026-11-11, T-17–T-21)
+
+- **T-17, a download refused for a moment:** Storage's 503 and 429 came back as a final refusal, so the worker gave
+  up until the next trigger. Downloads now classify like REST: 5xx and 429 are network trouble (`IOException`), the
+  page stays pending, the run stops and the worker backs off and retries. Other 4xx stay final for that page (D178).
+- **T-20, signing out during a sync:** a refresh in flight wrote the account back after "Sair", and the run kept
+  sending with the old session. Now a refresh is kept only if the phone still holds the token it was made with
+  (`AccountSettings.refreshed`, also in `LedgerService`); the client checks before every request that the person is
+  still the one the run signed in as, and stops the run with `SignedOutException` (the worker ends quietly); "Sair"
+  and deleting the account cancel the unique work too. A request already on the wire still lands: the check is per
+  request.
+- **T-18, a backup missing a file:** the export left out a photo or page the database named but the phone didn't
+  have, and still said "Pronto". The manifest now lists them (`missing`, empty by default so older archives read), the
+  screen says how many were missing, and the restore sheet says the copy was made without them. Refusing the export
+  was considered: a photo lost for good would then block every backup.
+- **T-19, a page fetched again during a backup:** the database snapshot and the files are taken under the writer
+  connection, but `page.html` is rewritten in place outside it, so an archive could hold the old row and the new page.
+  `savePage` now writes the file and its row under the store's lock, the export takes that lock with the writer
+  connection, and copies the pages (small) into the snapshot there. Photos and masks are never rewritten; a page
+  another member fetched is adopted only where there was none, so its file never mismatches a copied row.
+- **T-21, the PC backup's retention:** files deleted online stayed in the mirror forever, while the privacy policy
+  promises 14 days. After a complete listing, a mirrored file no longer online moves to `files-deleted/<date>/`, removed
+  KEEP (14) days later like the dumps. A file gone between the listing and its download is skipped instead of
+  aborting the run; the index is saved every 200 downloads; `--check` also needs a mirror finished within 36 h.
+- **Checked:** `Round2HttpTest.downloadTransientFailureMustRetryAndKeepExistingFile`; on the emulator against the local
+  stack through the audit's delay proxy, `Round3AccountSwitchTest`'s two sign-out tests; `BackupServiceTest`'s
+  missing-photo and concurrent-page tests (all un-ignored); `tools/tests/test_supabase_backup.py` (now in
+  `tools/check.sh`); the whole unit suite.

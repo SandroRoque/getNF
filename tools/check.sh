@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Everything a change must pass before it's pushed (camera plan, step 0), on the PC, no phone, no network: the app
-# builds, the benchmark module builds, the JVM tests pass, the server's tests pass against the local Supabase (D176),
+# builds, the benchmark module builds, the JVM tests and the tools' tests pass, the server's tests pass against the local Supabase (D176),
 # and the capture benchmark (D89) has no regression against its accepted baseline. The git pre-push hook runs it
 # (tools/githooks/pre-push; install with `tools/check.sh --install`).
 #   tools/check.sh              everything
@@ -24,6 +24,7 @@ esac
 echo "check: build and JVM tests"
 (cd "$root/android" && ./gradlew -q assembleDebug :benchmark:assembleReleaseAndroidTest testDebugUnitTest) \
   || { echo "check: FAILED (build or JVM tests)" >&2; exit 1; }
+python3 -m unittest discover -s "$root/tools/tests" -q 2>/dev/null || { echo "check: FAILED (tools' tests: python3 -m unittest discover -s tools/tests)" >&2; exit 1; }
 
 # The local Supabase's API port. Only what's on this PC is ever tested: the online project is never touched from here.
 if (exec 3<>/dev/tcp/127.0.0.1/54321) 2>/dev/null; then

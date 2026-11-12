@@ -48,7 +48,7 @@ class AccountSettings(context: Context) {
   }
 
   /** Each refresh hands out a new refresh token and retires the old one: always keep the latest. */
-  fun signedIn(session: SupabaseSession) = prefs.edit {
+  @Synchronized fun signedIn(session: SupabaseSession) = prefs.edit(commit = true) {
     if (session.userId != prefs.getString(USER, null)) { remove(LAST_SYNC); remove(NAME) }
     putString(USER, session.userId); putString(EMAIL, session.email); putString(REFRESH, session.refreshToken)
     if (session.name.isNotBlank()) putString(NAME, session.name)
@@ -59,8 +59,18 @@ class AccountSettings(context: Context) {
     get() = prefs.getLong(LAST_SYNC, 0)
     set(value) = prefs.edit { putLong(LAST_SYNC, value) }
 
+  /**
+   * A refresh made with [old] came back: kept only if [old] is still this phone's token, so a sign-out (or another
+   * sign-in) while it was on its way isn't undone (T-20). False when it was.
+   */
+  @Synchronized fun refreshed(old: String, session: SupabaseSession): Boolean {
+    if (prefs.getString(REFRESH, null) != old) return false
+    signedIn(session)
+    return true
+  }
+
   /** Signing out leaves the open caderneta's data on the phone, and open: nothing is deleted. */
-  fun signOut() = prefs.edit { remove(USER); remove(EMAIL); remove(REFRESH); remove(NAME); remove(LAST_SYNC) }
+  @Synchronized fun signOut() = prefs.edit(commit = true) { remove(USER); remove(EMAIL); remove(REFRESH); remove(NAME); remove(LAST_SYNC) }
 
   /** The caderneta this phone has open (D104); null until the first sync picks one. */
   fun ledgerId(): String? = prefs.getString(LEDGER, null)

@@ -610,6 +610,10 @@ class SyncEngine(
     errors += "receipt $chave: page not downloaded: ${e.message}"
     dao.putState(SyncStateRow(PAGE_PENDING + chave, path))
     false
+  } catch (e: java.io.IOException) {
+    // Transient (T-17): kept pending for the next run, and the run stops so the worker backs off and retries.
+    dao.putState(SyncStateRow(PAGE_PENDING + chave, path))
+    throw e
   }
 
   /** Pages an earlier run couldn't download; one the phone got meanwhile (a lookup of its own) is no longer wanted. */

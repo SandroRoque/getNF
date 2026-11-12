@@ -115,11 +115,24 @@ class ReceiptStore(
     }
   }
 
-  /** The page as the receipt, without who bought it (D104). */
+  /**
+   * The page as the receipt, without who bought it (D104). The file and its row change under the store's lock, so a
+   * backup taken under it ([locked]) sees both or neither (T-19).
+   */
   suspend fun savePage(chave: String, url: String, html: String) {
-    io { File(dir(chave), PAGE_FILE).writeText(io.github.sandroroque.getnf.parse.BuyerRedaction.blank(html), Charsets.UTF_8) }
-    update(chave) { it.copy(pageUrl = url, pageFile = PAGE_FILE, pageFetchedAt = now()) }
+    val blanked = io.github.sandroroque.getnf.parse.BuyerRedaction.blank(html)
+    io {
+      mutex.withLock {
+        val old = read(chave) ?: error("no receipt $chave")
+        File(dir(chave), PAGE_FILE).writeText(blanked, Charsets.UTF_8)
+        dao.save(old.copy(pageUrl = url, pageFile = PAGE_FILE, pageFetchedAt = now(), version = old.version + 1).row())
+        publish()
+      }
+    }
   }
+
+  /** Runs [block] with no receipt, photo or page changing meanwhile (a backup's snapshot, T-19). */
+  suspend fun <T> locked(block: suspend () -> T): T = mutex.withLock { block() }
 
   /** A page another member fetched (D104), already saved as [PAGE_FILE]. Not a local change: nothing to push. */
   suspend fun adoptPage(chave: String, url: String?, fetchedAt: Long?) =

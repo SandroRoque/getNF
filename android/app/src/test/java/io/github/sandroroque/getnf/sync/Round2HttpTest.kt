@@ -4,7 +4,6 @@ import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.io.IOException
 import java.nio.file.Files
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.Assert.*
 
@@ -29,7 +28,7 @@ class Round2HttpTest {
       else assertEquals(status, (error as SupabaseException).status)
     }
   }
-  @Ignore("T-17: reproduces the audit's finding; un-ignore with the fix") @Test fun downloadTransientFailureMustRetryAndKeepExistingFile() {
+  @Test fun downloadTransientFailureMustRetryAndKeepExistingFile() {
     val dir = Files.createTempDirectory("review-http").toFile()
     try {
       for (status in listOf(503, 429)) withStatus(status) { client ->

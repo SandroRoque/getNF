@@ -27,6 +27,8 @@ data class BackupManifest(
   val products: Int,
   /** Archive path -> SHA-256 (hex), for every file but the manifest. */
   val files: Map<String, String>,
+  /** Files the database names that the phone didn't have when it was made (T-18): the copy goes without them. */
+  val missing: List<String> = emptyList(),
 ) {
   companion object { const val FORMAT = 1 }
 }

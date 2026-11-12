@@ -30,7 +30,8 @@ class LedgerService(private val settings: AccountSettings) {
   private suspend fun <T> signedIn(block: (SupabaseClient, SupabaseSession) -> T): T = withContext(Dispatchers.IO) {
     val account = checkNotNull(settings.account()) { "sem conta" }
     val client = client()
-    val session = client.refresh(account.refreshToken).also(settings::signedIn)
+    // Not kept if the person signed out while it was on its way (T-20).
+    val session = client.refresh(account.refreshToken).also { check(settings.refreshed(account.refreshToken, it)) { "sem conta" } }
     block(client, session)
   }
 
