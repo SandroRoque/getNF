@@ -5,6 +5,8 @@
 -- A tombstone is final against older copies: a phone that still holds the receipt and sends it again (a re-read page,
 -- before it pulled the removal) changes nothing, and its lines and photos are dropped. Only a scan made after the
 -- deletion (captured_at later than deleted_at) brings the receipt back.
+-- compat: the revoke is on delete_receipt, new here; builds before T-50 never call it, and their resent lines and
+-- photos for a deleted receipt are dropped as above (supabase/tests/database).
 
 alter table public.receipt add column deleted_at timestamptz;
 

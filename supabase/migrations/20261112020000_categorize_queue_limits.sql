@@ -3,8 +3,9 @@
 --    `running` for ever, never `failed`. Now a stale job on its sixth attempt fails at the next claim.
 -- 2. A failure reported late, by a run that had lost the job (taken up again after 10 minutes, and maybe done since),
 --    put it back to `pending`. Now a failure counts only for the attempt that is still running.
--- The provider calls' timeouts are in the Edge Function. compat: the queue is the Edge Function's alone; the
--- three-argument fail_categorize_job stays (only for a running job) until the function deployed with this is live.
+-- The provider calls' timeouts are in the Edge Function.
+-- compat: the queue is the Edge Function's alone (no client calls it); the revoke is on the new four-argument
+-- function only, and the three-argument fail_categorize_job stays (only for a running job) until the function deployed with this is live.
 
 create or replace function public.claim_categorize_jobs(batch int) returns table (
   ledger_id uuid, store_item_id uuid, product_id uuid, code_kind text, code text, description text, attempts int,

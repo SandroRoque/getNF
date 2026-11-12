@@ -2,7 +2,8 @@
 -- install's files of the last day and everyone's of the last hour, then wrote its row: parallel sends all passed the
 -- count before any wrote (331 accepted of a 300 limit with 32 at once). Now the count and the row are one call, under
 -- one lock, so the limits hold. One lock for everyone is fine at the closed test's volume, and the hour's limit is
--- global anyway. compat: a new function the Edge Function calls; no client touches it.
+-- global anyway.
+-- compat: the revoke is on a new function the Edge Function calls; no client touches it.
 
 create function public.reserve_contribution(install uuid, item uuid, file text, size int,
                                             day_files int, day_bytes bigint, hour_files int) returns text
