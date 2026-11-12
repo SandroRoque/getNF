@@ -4446,3 +4446,25 @@ swapped in, Room threw at start, and the app crashed at every start with the ori
 - **Checked:** `BackupTest`: a non-SQLite entry and a newer version refused by inspect and extract (the review's first
   repro, moved in), rollback with and without earlier data (its second, reworked: it assumed the next start rolls back
   by itself, which would also undo a good restore whose first start was merely killed before `cleanUp`).
+
+## D189. Odd pages: store codes as printed, a surcharge under an unknown label, a page cut short, a repeated item (2026-11-11, T-37–T-40)
+
+Four of the 2026-11-09 review's parsing findings (P2-2 to P2-5), none seen on a real page yet.
+- **Codes (T-38):** the parser kept the first run of digits of `cProd`, so "123-4" and "123-5" became one store item
+  and "SAC" became "". It now keeps the code as printed, trimmed and uppercased. All 39 codes on the real pages at hand
+  (SC and RJ) are digits only and read exactly as before, so no existing id changes; that's why the review's worry, a
+  migration of code-derived ids (D104), doesn't arise.
+- **Surcharge (T-37):** a total under a label the parser doesn't know ("Frete", say) was left out, and spending came
+  out below what was paid. When the totals block has such a line, the items add up to the page's total, and the
+  payable is more than items less discount, the difference is the surcharge (D175's own rule for older receipts), with
+  a warning naming the label. Without an unknown line the difference stays a warning: then the reading is off.
+- **Cut short (T-39):** a load that dropped mid-list gave items and no totals, saved as a complete receipt. The page
+  screen now saves a details page only with its totals block (`SefazPage.isComplete`), else "Não deu para ler a
+  página" and a retry later; a page already saved without "Valor a pagar" gets a warning.
+- **Repeated item (T-40):** a repeated `nItem` hit the lines' primary key outside the parser's try, and the startup
+  parse threw at every start. The parser refuses such a page, and anything the database refuses while storing a
+  reading is recorded as the page's error (`Outcome.Failed`), like an unreadable page.
+- **No parser version bump:** existing pages read the same (digits-only codes, labels known), so re-reading every
+  tester's receipts would change nothing.
+- **Checked:** `NfcePageTest` (the review's repros, moved in and turned positive), `SefazPageTest`; the whole suite,
+  `NfceParityTest`'s golden files unchanged.

@@ -155,8 +155,9 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
           keepOther = app.testContribution.active,
           onOtherHtml = { pageUrl, html -> otherPage = pageUrl to html },
           onDetailsHtml = { finalUrl, html ->
-            if (html == null || !SefazPage.hasReceipt(html)) {
-              status = if (html == null) Status.Failed else Status.NotFound
+            if (html == null || !SefazPage.isComplete(html)) {
+              // Items without the totals: the load was cut short (T-39); a retry later reads it whole.
+              status = if (html == null || SefazPage.hasReceipt(html)) Status.Failed else Status.NotFound
               release()
             } else {
               scope.launch {

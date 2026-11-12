@@ -79,7 +79,7 @@ object NfcePage {
   private val TAG = Regex("<[^>]*>")
   private val SPACE = Regex("[\\s\\u00a0]+")
   private val NUMBER = Regex("-?[\\d.]*\\d(?:,\\d+)?")
-  private val DIGITS = Regex("(\\d+)")
+  private val CODE = Regex("C\\S{0,2}digo\\s*:?\\s*([^)]*)", RegexOption.IGNORE_CASE)
   private val ITEM_ROW = Regex("<tr[^>]*id=\"Item \\+ (\\d+)\"[^>]*>([\\s\\S]*?)</tr>")
   private val PAIR = Regex("<label([^>]*)>([\\s\\S]*?)</label>\\s*<span[^>]*>([\\s\\S]*?)</span>")
   private val STORE = Regex(
@@ -145,13 +145,23 @@ object NfcePage {
     ParsedItem(
       line = m.groupValues[1].toInt(),
       description = spanByClass(r, "txtTit"),
-      code = DIGITS.find(spanByClass(r, "RCod") ?: "")?.value,
+      code = storeCode(spanByClass(r, "RCod")),
       qtyE4 = e4(afterLabel(spanByClass(r, "Rqtd") ?: "")),
       unit = afterLabel(spanByClass(r, "RUN") ?: "").ifEmpty { null },
       unitPriceE4 = e4(afterLabel(spanByClass(r, "RvlUnit") ?: "")),
       totalCents = cents(spanByClass(r, "valor")),
     )
   }.toList()
+
+  /**
+   * The store's code as printed (T-38, D189): "(Código: 243 )" → "243". A code with letters or dashes keeps them,
+   * uppercased, so "123-4" and "123-5" stay two items and "SAC" isn't lost; every code seen so far is digits only, and
+   * those read as before.
+   */
+  fun storeCode(rcod: String?): String? {
+    val printed = CODE.find(rcod ?: return null)?.groupValues?.get(1) ?: rcod.removePrefix("(").removeSuffix(")")
+    return SPACE.replace(printed, " ").trim().uppercase().ifEmpty { null }
+  }
 
   private class TotalsBlock(val values: Map<Total, String>, val raw: Map<String, String>, val payments: List<ParsedPayment>)
 
@@ -203,9 +213,28 @@ object NfcePage {
     return total?.let { ParsedTaxes(null, null, null, it) }
   }
 
+  /** Totals lines under labels none of [TOTAL_LABELS] knows. */
+  private fun unknownTotals(block: TotalsBlock) = block.raw.keys.filter { label -> TOTAL_LABELS.none { it.first.containsMatchIn(label) } }
+
+  /**
+   * A surcharge printed under a label the parser doesn't know ("Frete", say; T-37, D189): when such a line is there and
+   * what's payable is more than the items less the discount, the difference is the surcharge, as D175 took it for the
+   * receipts read before surcharges were. Nothing when the items don't add up to the page's total: then the difference
+   * says the reading is off, not that something was added.
+   */
+  private fun unlabeledSurcharge(block: TotalsBlock, v: Map<Total, String>, itemsCents: Long): Long? {
+    if (unknownTotals(block).isEmpty()) return null
+    val payable = cents(v[Total.PAYABLE]) ?: return null
+    val gross = v[Total.GROSS]?.let { cents(it) } ?: itemsCents
+    if (gross != itemsCents) return null
+    return (payable - (gross - (v[Total.DISCOUNT]?.let { cents(it) } ?: 0))).takeIf { it > 0 }
+  }
+
   fun parse(html: String): ParsedReceipt {
     val items = parseItems(html)
     if (items.isEmpty()) throw NfceParseException("no items found: not an NFC-e details page?")
+    // A line number twice can't be stored (T-40): the page is malformed, not a receipt to save as is.
+    items.groupBy { it.line }.entries.firstOrNull { it.value.size > 1 }?.let { throw NfceParseException("item ${it.key} appears twice") }
 
     val all = text(SCRIPT_STYLE.replace(html, " "))
     val chave = CHAVE.find(html)?.groupValues?.get(1)?.replace(Regex("\\D"), "")
@@ -222,13 +251,17 @@ object NfcePage {
       itemsCount = decimal(v[Total.ITEMS_COUNT])?.toLong(),
       grossCents = v[Total.GROSS]?.let { cents(it) } ?: itemsCents,
       discountCents = v[Total.DISCOUNT]?.let { cents(it) } ?: 0,
-      surchargeCents = cents(v[Total.SURCHARGE]),
+      surchargeCents = cents(v[Total.SURCHARGE]) ?: unlabeledSurcharge(block, v, itemsCents),
       payableCents = cents(v[Total.PAYABLE]),
       changeCents = cents(v[Total.CHANGE]),
       raw = block.raw,
     )
 
     val warnings = mutableListOf<String>()
+    // A page cut off while loading has items but no totals block (T-39, D189).
+    if (v[Total.PAYABLE] == null) warnings += "no \"Valor a pagar\": the page may be cut short"
+    if (v[Total.SURCHARGE] == null && totals.surchargeCents != null)
+      warnings += "surcharge ${reais(totals.surchargeCents)} taken from a total the parser doesn't know (${unknownTotals(block).joinToString()})"
     if (totals.itemsCount != null && totals.itemsCount != items.size.toLong())
       warnings += "page says ${totals.itemsCount} items, parsed ${items.size}"
     if (totals.grossCents != itemsCents) warnings += "items sum to ${reais(itemsCents)}, page total is ${reais(totals.grossCents)}"

@@ -1,8 +1,6 @@
 package io.github.sandroroque.getnf.data
 
-import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -18,28 +16,6 @@ class Review1109ParsingReceiptParserTest {
   private val parser by lazy { ReceiptParser(db, tmp.root, now = { 7 }, log = { _, _ -> }) }
   private val chave = "42260111222333000181651090000000011123456784"
   private val html = javaClass.classLoader!!.getResource("sc-detalhes-server-html.html")!!.readText()
-
-  /**
-   * A page whose item number repeats (malformed, or a DOM serialised oddly) makes write() hit receipt_line's primary
-   * key. The exception is outside parseLocked's try, so it escapes parse()/parsePending(): PageScreen's scope.launch
-   * and GetNFApp's startup MainScope().launch don't catch it, and since nothing was committed needsParse stays true:
-   * the same page throws again at every start.
-   */
-  @Test fun defect_duplicateItemNumberEscapesTheParser() = runTest {
-    val start = html.indexOf("<tr id=\"Item + 1\"")
-    val end = html.indexOf("</tr>", start) + "</tr>".length
-    val page = html.substring(0, end) + html.substring(start, end) + html.substring(end)
-    store.open(chave, "qr")
-    store.savePage(chave, "https://x", page)
-    val r = store.get(chave)!!
-    val outcome = try {
-      parser.parse(r)
-    } catch (e: Throwable) {
-      fail("a page the parser can't store should end as Outcome.Failed with the error recorded, not throw out of parse(): $e")
-      return@runTest
-    }
-    assertTrue("outcome=$outcome", outcome is ReceiptParser.Outcome.Failed || outcome is ReceiptParser.Outcome.Parsed)
-  }
 
   /**
    * The phone's clock was a day ahead when SEFAZ blocked it, then the clock is corrected. Entries "from the future"

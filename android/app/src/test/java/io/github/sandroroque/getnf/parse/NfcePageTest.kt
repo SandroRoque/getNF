@@ -115,4 +115,54 @@ class NfcePageTest {
     assertEquals("Número Emissão Autorização às Ê", NfcePage.text("N&uacute;mero Emiss&atilde;o Autoriza&ccedil;&atilde;o &agrave;s &Ecirc;"))
     assertEquals("&eacutex; &bogus;", NfcePage.text("&eacutex; &bogus;"))
   }
+
+  // ---- D189: odd pages (review 2026-11-09, T-37–T-40), built from the sanitized fixture's markup ----
+
+  private val fixture = javaClass.classLoader!!.getResource("sc-detalhes-server-html.html")!!.readText()
+
+  private fun item(n: Int, desc: String, code: String, total: String) = """
+      <tr id="Item + $n">
+        <td valign="top"><span class="txtTit">$desc</span><span class="RCod">(Código: $code )</span><br><span class="Rqtd"><strong>Qtde.:</strong>1</span><span class="RUN"><strong>UN: </strong>UN</span><span class="RvlUnit"><strong>Vl. Unit.:</strong> $total</span></td>
+        <td align="right" valign="top" class="txtTit noWrap">Vl. Total<br><span class="valor">$total</span></td>
+      </tr>"""
+
+  private fun page(items: String, totals: List<Pair<String, String>>) = """
+    <html><body><table id="tabResult">$items
+    </table>
+    <div id="totalNota" class="txtRight">
+    ${totals.joinToString("\n") { (l, v) -> "<div id=\"linhaTotal\"><label>$l</label><span class=\"totalNumb\">$v</span></div>" }}
+    </div><div id="infos"></div></body></html>"""
+
+  @Test fun aPageCutShortIsWarned() {
+    val truncated = fixture.substring(0, fixture.indexOf("<tr id=\"Item + 6\""))
+    val p = NfcePage.parse(truncated)
+    assertEquals(5, p.items.size)
+    assertTrue(p.warnings.toString(), p.warnings.any { "cut short" in it })
+    assertTrue(NfcePage.parse(fixture).warnings.none { "cut short" in it })
+  }
+
+  @Test fun storeCodesKeepWhatIsPrinted() {
+    val p = NfcePage.parse(page(item(1, "PAO FRANCES", "123-4", "1,00") + item(2, "PAO DOCE", "123-5", "2,00") +
+      item(3, "SACOLA", "sac", "0,10") + item(4, "ARROZ", "0243", "3,00"), listOf("Valor a pagar R$:" to "6,10")))
+    assertEquals(listOf("123-4", "123-5", "SAC", "0243"), p.items.map { it.code })
+  }
+
+  @Test fun aSurchargeUnderAnUnknownLabelIsTheDifference() {
+    val p = NfcePage.parse(page(item(1, "ARROZ 5KG", "7891234567895", "10,00"),
+      listOf("Qtd. total de itens:" to "1", "Valor total R$:" to "10,00", "Frete R$:" to "2,00", "Valor a pagar R$:" to "12,00")))
+    assertEquals(200L, p.totals.surchargeCents)
+    assertTrue(p.warnings.toString(), p.warnings.any { "Frete" in it })
+    assertTrue(p.warnings.none { "payable" in it })
+    // Without an unknown line the difference stays a warning: the reading is off, nothing was added.
+    val off = NfcePage.parse(page(item(1, "X", "1", "5,00"), listOf("Valor total R$:" to "5,00", "Valor a pagar R$:" to "6,00")))
+    assertNull(off.totals.surchargeCents)
+    assertTrue(off.warnings.any { "payable" in it })
+  }
+
+  @Test fun aRepeatedItemNumberIsRefused() {
+    val start = fixture.indexOf("<tr id=\"Item + 1\"")
+    val end = fixture.indexOf("</tr>", start) + "</tr>".length
+    try { NfcePage.parse(fixture.substring(0, end) + fixture.substring(start, end) + fixture.substring(end)); fail("parsed") }
+    catch (e: NfceParseException) { assertTrue(e.message!!, "twice" in e.message!!) }
+  }
 }

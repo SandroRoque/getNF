@@ -80,7 +80,14 @@ class ReceiptParser(
       record(receipt, error)
       return Outcome.Failed(error)
     }
-    val lines = write(receipt, parsed)
+    // Whatever the database refuses (T-40) is the page's problem, recorded like an unreadable page, not a crash at
+    // every start (the startup parse would meet it again).
+    val lines = try { write(receipt, parsed) } catch (e: CancellationException) { throw e } catch (e: Exception) {
+      val error = "could not store the page's reading: ${e.message ?: e}"
+      record(receipt, error)
+      log("could not store ${receipt.chave}: $error", null)
+      return Outcome.Failed(error)
+    }
     log("parsed ${receipt.chave}: $lines lines, ${parsed.warnings.size} warning(s)", null)
     return Outcome.Parsed(lines, parsed.warnings)
   }

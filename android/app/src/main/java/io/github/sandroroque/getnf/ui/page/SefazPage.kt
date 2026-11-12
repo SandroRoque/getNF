@@ -37,6 +37,9 @@ object SefazPage {
    */
   fun hasReceipt(html: String): Boolean = "id=\"tabResult\"" in html
 
+  /** The page came whole: the items and, after them, the totals block (T-39); a load cut short has only the first. */
+  fun isComplete(html: String): Boolean = hasReceipt(html) && "id=\"totalNota\"" in html
+
   /**
    * Whether to answer a subresource request with an empty response instead of fetching it, to stay under SEFAZ's
    * per-IP request limit (docs/sefaz-sc.md: one visit was ~59 requests to SEFAZ hosts). SC's portal only: RJ's isn't

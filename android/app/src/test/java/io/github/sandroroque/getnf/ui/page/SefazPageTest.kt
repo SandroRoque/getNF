@@ -85,4 +85,11 @@ class SefazPageTest {
     assertNull(SefazPage.decodeJsResult("null"))
     assertNull(SefazPage.decodeJsResult("\"\""))
   }
+
+  /** T-39 (D189): a details page cut off before its totals isn't saved. */
+  @Test fun aPageWithoutItsTotalsIsNotComplete() {
+    val page = javaClass.classLoader!!.getResource("sc-detalhes-webview-dom.html")!!.readText()
+    org.junit.Assert.assertTrue(SefazPage.isComplete(page))
+    org.junit.Assert.assertFalse(SefazPage.isComplete(page.substring(0, page.indexOf("id=\"totalNota\""))))
+  }
 }
