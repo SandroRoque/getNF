@@ -16,10 +16,14 @@ import org.junit.rules.TemporaryFolder
 class BackupTest {
   @get:Rule val tmp = TemporaryFolder()
   private val chave = "42260611222333000181651090000012341123456789"
+  /** Enough of an SQLite file for the archive's check: the header, and schema version 2 at byte 60 (D188). */
+  private val database = sqlite(2, "database")
+  private fun sqlite(version: Int, rest: String) =
+    "SQLite format 3\u0000" + "\u0000".repeat(44) + "\u0000\u0000\u0000" + version.toChar() + rest
 
-  private fun archive(schema: Int = 2): File {
+  private fun archive(schema: Int = 2, dbText: String = database): File {
     val src = tmp.newFolder()
-    val db = File(src, "db").apply { writeText("database") }
+    val db = File(src, "db").apply { writeText(dbText) }
     val photo = File(src, "a.jpg").apply { writeBytes(byteArrayOf(1, 2, 3)) }
     val page = File(src, "page.html").apply { writeText("<html/>") }
     val zip = tmp.newFile()
@@ -55,7 +59,7 @@ class BackupTest {
     assertEquals(3, m.files.size)
     val target = tmp.newFolder()
     BackupArchive.extract(zip, target, 2)
-    assertEquals("database", File(target, BackupArchive.DATABASE).readText())
+    assertEquals(database, File(target, BackupArchive.DATABASE).readText())
     assertEquals(listOf<Byte>(1, 2, 3), File(target, "receipts/$chave/a.jpg").readBytes().toList())
   }
 
@@ -93,7 +97,7 @@ class BackupTest {
     assertFalse(restore.applyIfReady()) // not marked ready: nothing happens
     restore.markReady()
     assertTrue(restore.applyIfReady())
-    assertEquals("database", db.readText())
+    assertEquals(database, db.readText())
     assertFalse(File(db.path + "-wal").exists())
     assertEquals(listOf("a.jpg", "page.html"), File(files, "receipts/$chave").list()!!.sorted())
     assertEquals("old", File(files, "restore/previous/receipts/$chave/old.jpg").readText())
@@ -113,7 +117,7 @@ class BackupTest {
     check(db.renameTo(File(files, "restore/previous/getnf.db")))
     check(File(files, "receipts").renameTo(File(files, "restore/previous/receipts")))
     assertTrue(restore.applyIfReady())
-    assertEquals("database", db.readText())
+    assertEquals(database, db.readText())
     assertEquals("old db", File(files, "restore/previous/getnf.db").readText())
     assertEquals(listOf("a.jpg", "page.html"), File(files, "receipts/$chave").list()!!.sorted())
   }
@@ -124,7 +128,7 @@ class BackupTest {
     BackupArchive.extract(archive(), restore.staged, 2)
     restore.markReady()
     assertTrue(restore.applyIfReady())
-    assertEquals("database", db.readText())
+    assertEquals(database, db.readText())
     restore.cleanUp()
     assertFalse(File(files, "restore").listFiles().orEmpty().any { it.name == "previous" })
   }
@@ -138,7 +142,7 @@ class BackupTest {
     File(files, "restore/previous").mkdirs(); File(files, "restore/previous/getnf.db.none").writeText("")
     db.parentFile!!.mkdirs(); check(File(restore.staged, BackupArchive.DATABASE).renameTo(db))
     assertTrue(restore.applyIfReady())
-    assertEquals("database", db.readText())
+    assertEquals(database, db.readText())
     assertEquals(listOf("a.jpg", "page.html"), File(files, "receipts/$chave").list()!!.sorted())
   }
 
@@ -155,7 +159,7 @@ class BackupTest {
     db.writeText("empty db"); File(db.path + "-wal").writeText("empty wal"); File(files, "receipts/$chave").mkdirs()
     File(files, "receipts/$chave/new.jpg").writeText("x")
     assertTrue(restore.applyIfReady())
-    assertEquals("database", db.readText())
+    assertEquals(database, db.readText())
     assertFalse(File(db.path + "-wal").exists())
     assertEquals(listOf("a.jpg", "page.html"), File(files, "receipts/$chave").list()!!.sorted())
     assertEquals("old db", File(files, "restore/previous/getnf.db").readText())
@@ -176,7 +180,7 @@ class BackupTest {
     assertEquals("old", File(files, "receipts/$chave/old.jpg").readText())
     // In the demo it applies as before.
     assertTrue(demo.applyIfReady())
-    assertEquals("database", File(tmp.root, "databases/getnf-demo.db").readText())
+    assertEquals(database, File(tmp.root, "databases/getnf-demo.db").readText())
   }
 
   /** A marker written before D184 says "1": only Ajustes staged then, for the open caderneta. */
@@ -187,7 +191,7 @@ class BackupTest {
     BackupArchive.extract(archive(), restore.staged, 2)
     File(files, "restore/READY").writeText("1")
     assertTrue(restore.applyIfReady())
-    assertEquals("database", db.readText())
+    assertEquals(database, db.readText())
   }
 
   @Test fun clearDropsAnEarlierMarkerAndItsFiles() {
@@ -200,5 +204,41 @@ class BackupTest {
     assertFalse(restore.applyIfReady())
     assertFalse(restore.staged.exists())
     assertEquals("old db", db.readText())
+  }
+
+  /** T-36 (D188): a database entry that isn't SQLite, or is newer than the app, is refused before anything changes. */
+  @Test fun aBackupWhoseDatabaseIsNotOneTheAppOpensIsRefused() {
+    assertRejected(archive(dbText = "this is not an SQLite file"))
+    assertRejected(archive(dbText = sqlite(3, "")))
+    try { BackupArchive.extract(archive(dbText = "nope"), tmp.newFolder(), 2); fail("extracted") } catch (_: BackupException) {}
+  }
+
+  /** T-36 (D188): restored data that didn't open goes away, and what it replaced comes back. */
+  @Test fun aRestoreThatDidNotOpenIsRolledBack() {
+    val files = tmp.newFolder("files"); val db = File(tmp.root, "databases/getnf.db")
+    live(files, db)
+    val restore = PendingRestore(files, db)
+    BackupArchive.extract(archive(), restore.staged, 2)
+    restore.markReady()
+    assertTrue(restore.applyIfReady())
+    // The app failed to open it (cleanUp not reached):
+    assertTrue(restore.rollBack())
+    assertEquals("old db", db.readText())
+    assertEquals("old wal", File(db.path + "-wal").readText())
+    assertEquals(listOf("old.jpg"), File(files, "receipts/$chave").list()!!.toList())
+    assertFalse(File(files, "restore/previous").exists())
+    // Nothing to put back after a clean start.
+    assertFalse(restore.rollBack())
+  }
+
+  @Test fun aRestoreOntoAFreshInstallRollsBackToNothing() {
+    val files = tmp.newFolder("files"); val db = File(tmp.root, "databases/getnf.db")
+    val restore = PendingRestore(files, db)
+    BackupArchive.extract(archive(), restore.staged, 2)
+    restore.markReady()
+    restore.applyIfReady()
+    assertTrue(restore.rollBack())
+    assertFalse(db.exists())
+    assertFalse(File(files, "receipts/$chave").exists())
   }
 }

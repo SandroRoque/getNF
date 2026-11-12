@@ -67,6 +67,7 @@ object BackupArchive {
   /** Reads and checks the whole archive without extracting anything. Throws [BackupException] if it can't be restored. */
   fun inspect(zip: File, maxSchema: Int): BackupManifest = ZipFile(zip).use { z ->
     val m = manifestOf(z, maxSchema)
+    z.getEntry(DATABASE)?.let { e -> z.getInputStream(e).use { checkDatabase(it, maxSchema) } }
     for ((path, hash) in m.files) {
       val entry = z.getEntry(path) ?: throw BackupException("missing $path")
       if (z.getInputStream(entry).use { copyHashing(it, Discard) } != hash) throw BackupException("corrupt $path")
@@ -77,6 +78,7 @@ object BackupArchive {
   /** Extracts a checked archive into [target], verifying every hash again on the way. */
   fun extract(zip: File, target: File, maxSchema: Int): BackupManifest = ZipFile(zip).use { z ->
     val m = manifestOf(z, maxSchema)
+    z.getEntry(DATABASE)?.let { e -> z.getInputStream(e).use { checkDatabase(it, maxSchema) } }
     target.deleteRecursively()
     for ((path, hash) in m.files) {
       val out = File(target, path).apply { parentFile!!.mkdirs() }
@@ -85,6 +87,22 @@ object BackupArchive {
     }
     m
   }
+
+  /**
+   * The database entry is an SQLite file of a version this app opens (T-36, D188): its header, and the schema version
+   * Room keeps in it (`PRAGMA user_version`, at byte 60). Hashes only say it's what was exported, and a database Room
+   * can't open would otherwise be swapped in and crash every start.
+   */
+  private fun checkDatabase(input: InputStream, maxSchema: Int) {
+    val header = ByteArray(64)
+    var read = 0
+    while (read < header.size) { val n = input.read(header, read, header.size - read); if (n < 0) break; read += n }
+    if (read < header.size || !header.copyOf(16).contentEquals(SQLITE_MAGIC)) throw BackupException("the backup's database isn't a database")
+    val version = (60 until 64).fold(0) { v, i -> (v shl 8) or (header[i].toInt() and 0xff) }
+    if (version <= 0 || version > maxSchema) throw BackupException("the backup's database is version $version; this app opens up to $maxSchema")
+  }
+
+  private val SQLITE_MAGIC = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII)
 
   private fun manifestOf(z: ZipFile, maxSchema: Int): BackupManifest {
     val entry = z.getEntry(MANIFEST) ?: throw BackupException("not a getNF backup (no manifest)")
@@ -163,6 +181,26 @@ class PendingRestore(filesDir: File, private val database: File, private val rec
 
   /** The restored database opened: the replaced data can go. */
   fun cleanUp() { if (!ready.exists()) previous.deleteRecursively() }
+
+  /**
+   * The restored data didn't open (T-36, D188): what it replaced goes back, and true. False when there's nothing to put
+   * back (no restore was applied since the last [cleanUp]).
+   */
+  fun rollBack(): Boolean {
+    if (ready.exists() || !previous.isDirectory) return false
+    val db = File(previous, "getnf.db")
+    if (!db.exists() && !File(previous, "getnf.db.none").exists()) return false
+    for (suffix in listOf("", "-wal", "-shm", "-journal")) File(database.path + suffix).delete()
+    for (suffix in listOf("-wal", "-shm", "-journal")) File(previous, database.name + suffix).let { if (it.exists()) move(it, File(database.path + suffix)) }
+    if (db.exists()) move(db, database)
+    val oldReceipts = File(previous, "receipts")
+    if (oldReceipts.exists() || File(previous, "receipts.none").exists()) {
+      receipts.deleteRecursively()
+      if (oldReceipts.exists()) move(oldReceipts, receipts)
+    }
+    previous.deleteRecursively()
+    return true
+  }
 
   private val target get() = database.absoluteFile.normalize().path
 

@@ -4430,3 +4430,19 @@ tree in the app was unbounded, so Início and Gastos hung at start for every mem
   with a timeout); `category_cycle.test.sql` (pgTAP: a direct move, a self-parent, the phone's field upsert, and the
   seed's scenario B, where the harmless part of the seed still applies); the review's SQL repro B now ends with no
   cycle; the whole unit suite and the server's tests.
+
+## D188. A backup's database is checked as one before it's staged; restored data that won't open is rolled back (2026-11-11, T-36)
+
+The 2026-11-09 review's P2-1. Inspecting a backup checked its manifest and hashes, never the database itself: a file
+that wasn't SQLite, or one of a newer schema than the manifest said (from a damaged phone, say), was staged and
+swapped in, Room threw at start, and the app crashed at every start with the original data stuck in `restore/previous`.
+- **Chosen, two parts:** `BackupArchive.inspect` and `extract` read the database entry's first 64 bytes: the SQLite
+  header and the schema version Room keeps at byte 60 (`PRAGMA user_version`), which must be between 1 and this app's.
+  At start, if opening the data fails while a restore's `previous` is still there (between the swap and `cleanUp`),
+  `PendingRestore.rollBack` moves the replaced database and receipts back and the app restarts on them.
+- **Considered:** opening the staged database with SQLite (`integrity_check`), as the review suggested. It needs the
+  device's SQLite (the archive is plain JVM code, tested as such) and reads the whole file; the header and version catch
+  the cases seen, and the rollback covers whatever else fails to open.
+- **Checked:** `BackupTest`: a non-SQLite entry and a newer version refused by inspect and extract (the review's first
+  repro, moved in), rollback with and without earlier data (its second, reworked: it assumed the next start rolls back
+  by itself, which would also undo a good restore whose first start was merely killed before `cleanUp`).

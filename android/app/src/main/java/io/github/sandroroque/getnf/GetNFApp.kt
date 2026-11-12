@@ -101,9 +101,16 @@ class GetNFApp : Application() {
     runCatching { if (restore.applyIfReady()) android.util.Log.i("Backup", "restored a backup") }
       .onFailure { android.util.Log.e("Backup", "restore swap failed; will retry on the next start", it) }
     MainScope().launch {
-      val deferred = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { captureSessions.recover(receiptStore) }
-      if (deferred > 0) android.util.Log.w("ReceiptCapture", "$deferred capture batch(es) await recovery")
-      receiptStore.load()
+      try {
+        val deferred = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { captureSessions.recover(receiptStore) }
+        if (deferred > 0) android.util.Log.w("ReceiptCapture", "$deferred capture batch(es) await recovery")
+        receiptStore.load()
+      } catch (e: Exception) {
+        // A restored database that doesn't open: what it replaced goes back and the app starts again on it (T-36).
+        if (!restore.rollBack()) throw e
+        android.util.Log.e("Backup", "the restored data didn't open; rolled back", e)
+        RestartActivity.restart(this@GetNFApp)
+      }
       restore.cleanUp()
       // Pages saved before D49, or read by an older parser (D49).
       receiptParser.parsePending(receiptStore.receipts.value).let { if (it > 0) android.util.Log.i("ReceiptParser", "parsed $it saved page(s)") }
