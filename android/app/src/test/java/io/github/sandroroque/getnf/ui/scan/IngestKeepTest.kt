@@ -10,12 +10,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Review 2026-11-09 (capture), T-6's wider cause: a short receipt seen whole in two frames of the same view keeps both
+ * T-6: a short receipt seen whole in two frames of the same view keeps both
  * photos, because keep() credits a row only to frames that read it within KEEP_MARGIN (0.05) of the best confidence,
  * and OCR's confidence for the same row moves more than that from frame to frame. Synthetic receipt drawn as in
  * PaperFinderTest (40 rows, the whole paper in view).
  */
-class Review1109CaptureKeepTest {
+class IngestKeepTest {
   private val lines = 40
   private val pitch = 30
   private val margin = 45

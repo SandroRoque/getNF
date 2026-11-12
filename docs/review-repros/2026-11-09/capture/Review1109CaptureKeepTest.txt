@@ -1,5 +1,0 @@
-Command (from the worktree root):
-. tools/env.sh && cd android && ./gradlew --init-script ../docs/review-repros/2026-11-09/repro.init.gradle -PreproDir=capture :app:testDebugUnitTest --tests '*Review1109CaptureKeep*'
-
-Result (2026-11-10):
-failure message="java.lang.AssertionError: expected only the frame that reads the whole receipt to be kept (the other is the same view); committed [f1, f2], kept expected:<[f2]> but was:<[f1, f2]>"

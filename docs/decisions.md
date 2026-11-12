@@ -4578,3 +4578,25 @@ continuam no catálogo.") and deletes it.
   phone, a stale copy then a new scan); `SupabaseLocalTest.aDeletedReceiptLeavesTheCadernetaWithItsFiles` against the
   local stack (PostgREST and Storage); on the emulator, deleting a receipt and a receipt of the example (the list and
   the totals follow).
+
+## D195. A kept photo covers a row it read at 0.7, even when another read it better (2026-11-12, T-6)
+
+T-6: a short receipt that fits in one frame was saved with 2 and 3 nearly identical photos. D90's reduction credits
+a row only to photos that read it within 0.05 of the best saved read, and OCR's confidence for the same row in the
+same view moves more than that from frame to frame: a frame that reads the whole receipt at 0.72 lost each row to an
+earlier frame of the same view that read most of them at 0.8, so both were kept (the audit's repro, now
+`IngestKeepTest`).
+
+Now a photo covers a row it read within the margin of the best **or** at 0.7 or more. D90's lost item came from
+covering rows with any passable read (0.5 for the row, 0.6 for each box); 0.7 stays well above that. Benchmark: no
+regression, every item still legible, photos 3 → 2 on two sessions (one video, one phone session).
+
+The same tester's other symptom, a capture of that receipt restarted by the person after 40 s with 14 photos, is not
+this. Its photos' row bands run to row 39 on a receipt of about 25 rows: the assembly had duplicated rows. Replaying
+the tester's photos as the emulator's camera (`test-media/live-dumps/emulator/2026-11-12T15-13-11`, not in the
+corpus: the frames jump 8 s apart and the emulator crops them, so it isn't a sweep) shows three things that would
+each keep it from completing: the card slip lying against the receipt is taken into the paper and its rows are
+required; rows are placed twice (the date, the access key, the total); and the RJ contingency layout's header
+("# | COD | DESC") and missing "Consulte pela Chave" leave D97's markers unfound, so every row must be read. Left for
+a phone session of such a receipt (a ticket of its own): changing the assembly on emulator frames would tune it to
+an artefact.

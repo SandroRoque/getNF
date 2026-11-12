@@ -66,3 +66,4 @@ run, so a fix for one session can't silently break another.
 | 2026-10-26 | (dropped) only the lines the app needs must be read, the rest in view (D97) | 21 of 22 | 4 | | 7.3 s, but overviews' garbled reads now completed captures |
 | 2026-10-26 | the same, with every box of a read row at 0.6 or more (D97) | 18 of 22 | 0 | all | 8.2 s (was 9.1), 2.5 photos (was 2.9); the 2 lost end before a closer frame |
 | 2026-10-26 | answer key: the last receipt's page fetched; items judged as D54 reads them (code, slips undone; number only for repeats) | 18 of 22 | 0 | all | re-baselined; not a capture change |
+| 2026-11-12 | a kept photo covers a row it read at 0.7, even if another read it better (D195, T-6) | 26 of 30 | 0 | all | photos 3 → 2 on two sessions; no regression |

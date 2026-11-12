@@ -172,7 +172,7 @@ internal class IngestSession {
     val best = mutableMapOf<RowAssembly.Entry, Double>()
     for (q in committedReads.values) for ((row, c) in q) best[row] = max(best[row] ?: 0.0, c)
     val read = toRead()
-    fun covers(id: String) = committedReads[id].orEmpty().filter { (row, c) -> c >= best.getValue(row) - KEEP_MARGIN }.keys +
+    fun covers(id: String) = committedReads[id].orEmpty().filter { (row, c) -> c >= min(best.getValue(row) - KEEP_MARGIN, KEEP_SURE) }.keys +
       committedShows[id].orEmpty().filter { it !in read }
     val left = required().filter { it in best || (it !in read && it in shown) }.toMutableSet()
     val kept = mutableSetOf<String>()
@@ -381,6 +381,9 @@ internal class IngestSession {
     const val PATIENCE_MS = 1500L
     // A kept photo covers a row when it read it nearly as surely as the best saved read of it.
     const val KEEP_MARGIN = .05
+    // ... or read it this surely, whatever the best: OCR's confidence for one row moves more than the margin from
+    // frame to frame, and two photos of the same view were both kept (T-6).
+    const val KEEP_SURE = .7
     /** A row that states the taxes (D96, D97). */
     val TAX_MARKERS = listOf("TRIBUTO", "IBPT", "12741")
     const val MIN_SHARED = 3

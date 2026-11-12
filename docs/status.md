@@ -97,7 +97,8 @@ The first contributions arrived 2026-11-07 (one install in RJ, 10 items): RJ pag
 them. T-5 is fixed (D167) in code 6, uploaded 2026-11-09. T-7 (a voucher slip photographed alone went out with its
 balance showing) was settled with the user: the blanking stays as it is, the privacy policy now calls it best effort
 and restates that nothing is sold or used otherwise (site redeployed 2026-11-07). T-6 (a short receipt kept as 2-3
-identical photos) is open, for the capture.
+identical photos) is fixed on main (D195); its other half, the same receipt's capture never completing, is left for a
+phone session of such a receipt (D195).
 
 The 2026-11-04 outside audit (D170) became T-8–T-26. Fixed on main 2026-11-09: T-8 (D171), T-9–T-11 (D172; the
 server half online the same day, T-9 resolved), T-12 (D173), T-14 (D174), T-13 (D175). Waiting: the line_surcharge
@@ -136,11 +137,13 @@ commit them there, not from a worktree. Since then, all on main and pushed, none
 - Tickets marked resolved are fixed on main; T-5, T-8, T-10–T-14 (in code 7) still read "aberto" until a tester has it.
 
 Do next, in order:
-0. **The normal tickets left:** T-50 (delete a receipt: a feature, the flow is in data-model.md › "Nota") and T-6 (a
-   short receipt kept as 2-3 identical photos; capture, through the benchmark; repro in
-   `docs/review-repros/2026-11-09/capture/Review1109CaptureKeepTest.kt`). Then the low ones (T-22–T-26, T-45–T-49);
+0. **The normal tickets left:** T-50 is done (D194) and T-6's identical photos (D195). T-6's other half (an RJ
+   contingency receipt never completes: the card slip taken into the paper, rows placed twice, D97's markers not
+   found) needs a ticket of its own (the session couldn't write tickets) and a phone dump of such a receipt; the
+   tester's photos replayed on the emulator are in `test-media/live-dumps/emulator/`, outside the corpus. The
+   emulator's camera plays that replay: restart it with `tools/emulator.sh` for a plain one. Then the low ones (T-22–T-26, T-45–T-49);
    T-26 before the LLM worker is switched back on. After T-24, run `tools/blank-buyers.py` (dry run first) over the
-   pages online. A next build (code 8) carries D184–D193; `tools/release.py pending` lists it.
+   pages online. A next build (code 8) carries D184–D195; `tools/release.py pending` lists it.
 1. ~~The phone on code 4~~: code 4 is replaced; its check is folded into code 5's (next item).
 2. **Code 6 (0.1.3, 6916fe9, `play/6`), with D167 (T-5):** uploaded straight to the closed track 2026-11-09 and
    promoted to internal; Google's review to be confirmed in the console (Publishing overview), and whether it got a
