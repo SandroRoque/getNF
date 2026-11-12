@@ -278,7 +278,7 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOp
           style = if (landscape) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
       }
       if (!state.saving && state.rows.isNotEmpty()) Text(
-        "${state.rows.count { it.captured }} de ${state.rows.size} linhas lidas · ${state.saved} ${if (state.saved == 1) "foto" else "fotos"}" +
+        "${state.rows.count { it.required && it.captured }} de ${state.rows.count { it.required }} linhas lidas · ${state.saved} ${if (state.saved == 1) "foto" else "fotos"}" +
           if (state.qr) " · QR Code lido" else "",
         color = onCamera.copy(alpha = .75f), style = MaterialTheme.typography.labelMedium)
       // R4 (D150): start over without leaving, once there's something to drop. Asked first when it would lose photos or

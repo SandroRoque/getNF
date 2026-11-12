@@ -68,7 +68,8 @@ internal data class CaptureUiState(
   val knownHasPage: Boolean = false,
 )
 
-internal data class RowMark(val captured: Boolean, val gapAfter: Double)
+/** [required]: the capture needs it read (D198): an artifact it set aside (a doubtful row, a splinter) isn't counted. */
+internal data class RowMark(val captured: Boolean, val gapAfter: Double, val required: Boolean = true)
 
 internal enum class CaptureHint(val label: String) {
   FIND_RECEIPT("Aponte para a nota ou um código de barras"),
@@ -381,7 +382,7 @@ internal class CaptureController(
       outline = step.paper?.corners?.mapNotNull { frame.mapping.map(it) }?.takeIf { it.size == 4 },
       down = step.down?.let { d -> arrow(frame, step.paper, d) },
       hint = hint,
-      rows = ingest.rows.map { RowMark(ingest.isCaptured(it), it.gapAfter) },
+      rows = ingest.required().toSet().let { required -> ingest.rows.map { RowMark(ingest.isCaptured(it), it.gapAfter, it in required) } },
       view = step.view, topClosed = ingest.topClosed, bottomClosed = ingest.bottomClosed,
       saved = manifest.segments.size, qr = manifest.chave != null, chave = manifest.chave,
       dark = dark(frame), mode = decided.mode, product = null,

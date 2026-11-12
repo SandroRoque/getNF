@@ -236,6 +236,8 @@ internal class RowAssembly {
     private const val EDGE_ROWS = 2
     private const val START_CONFIDENCE = .6
     private const val WEAK = .5
+    private const val LEVEL = .3
+    private val AMOUNT = Regex("""^[-~]?\s?(R\$\s?)?\d{1,3}(\.\d{3})*[.,]\s?\d{2}$""")
 
     /**
      * How strongly two rows match: 0 for unlike rows; otherwise growing with their length (a long code or a product
@@ -321,12 +323,22 @@ internal class RowAssembly {
     }
 
     fun rows(paper: PaperOutline, width: Int, height: Int): List<Row> {
-      val lines = paper.lines
+      if (paper.lines.isEmpty()) return emptyList()
+      val (across, down) = printAxes(paper, width, height)
+      fun centre(q: OcrQuad) = DocumentPoint(q.corners.sumOf { it.x } / 4, q.corners.sumOf { it.y } / 4)
+      fun downOf(q: OcrQuad) = centre(q).let { c -> c.x * down.x + c.y * down.y }
+      // A box that is an amount alone ("30,04", "-1,26") is the value column. Some receipts print it between two rows
+      // (a Rio supermarket's items sold by weight): it joined the row above in one frame, the row below in the next, or
+      // stood alone, and each variant was a new row, so the count grew at every pass (D198). Such an amount, level
+      // with no text, takes part in no row; one level with its row's text stays in it, as before.
+      val text = paper.lines.filterNot { AMOUNT.matches(it.text.trim()) }
+      val level = text.map(::downOf)
+      val lines = paper.lines.filter { q ->
+        q in text || level.any { abs(it - downOf(q)) < q.height * LEVEL }
+      }
       if (lines.isEmpty()) return emptyList()
       // A box at the frame's border is text cut by it: read in part, it would match nothing.
       val whole = lines.filter { q -> q.corners.all { it.x > 3 && it.y > 3 && it.x < width - 4 && it.y < height - 4 } }
-      val (across, down) = printAxes(paper, width, height)
-      fun centre(q: OcrQuad) = DocumentPoint(q.corners.sumOf { it.x } / 4, q.corners.sumOf { it.y } / 4)
       val placed = whole.map { q -> val c = centre(q); Triple(q, c.x * down.x + c.y * down.y, c.x * across.x + c.y * across.y) }.sortedBy { it.second }
       if (placed.isEmpty()) return emptyList()
       val rowHeight = whole.map { it.height }.sorted()[whole.size / 2]

@@ -4654,3 +4654,24 @@ few pixels higher and to the right, with its minus sign.
   The JVM tests use made-up lines shaped like that OCR, at every angle (D102).
 - **Existing receipts:** D101 already rereads, at start, a receipt with a discount, photos and every line still
   prorated, so the tester's receipt is read again once the new version is installed, if its photos are on the phone.
+
+## D198. An amount alone between two rows takes part in no row; the live count is of the rows the capture needs (2026-11-12, T-53)
+
+A tester capturing a Rio receipt saw "X de Y linhas" grow every time the camera passed one stretch of it, as the user
+had seen before. Replaying one of D155's Rio videos (frames OCR'd on the emulator, a scratch corpus, not the bench's)
+shows the stretch: items sold by weight print three rows (code and name, `N/S: …`, weight × price) with the line's
+value in the right-hand column **between** the last two. Rows are grouped by where boxes sit down the receipt, within
+half a row (D82), so from one frame to the next the value joined the row above, the row below, or stood alone, and each
+variant matched nothing and was added: the session assembled 98 rows for a receipt of about 80.
+
+- **Rows:** a box that is an amount alone (`30,04`, `-1,26`, `R$ 2,06`) takes part in no row unless it is level
+  (within 0.3 of its height) with some text box: then it stays in that row, as before. Leaving out every amount was
+  tried first: four regressions (SC receipts print the value on its row, and it helped rows match).
+- **The count:** the line under the camera counted every row the assembly holds, including those the capture already
+  set aside (doubtful rows later frames passed over, splinters under six characters, D90–D97). It now counts what
+  `required()` counts, so it says what the capture is waiting for. The strip still draws every row.
+- **Result:** that session 98 → 86 rows, 75 required. What is left are near-identical rows (the same product weighed
+  twice, its N/S and weight differing by a digit, in a 1024×576 video), which may be the video's resolution; T-51
+  stays open for a phone session of such a receipt.
+- **Benchmark:** no session lost, no item lost; one regression accepted: 2026-10-31T03-21-20 takes 7.4 → 9.5 s and
+  saves one photo fewer. Photos 3 → 2 on two sessions, 2 → 3 on one. Accepted as the baseline.
