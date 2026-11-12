@@ -140,4 +140,54 @@ class PhotoDiscountsTest {
     assertEquals(Verdict.NONE, r.verdict)
     assertEquals(1, r.unassigned)
   }
+
+  /**
+   * A Rio supermarket's layout (seen 2026-11-12): "desconto item 013" after the item, its "-1,26" in the value column on
+   * that row. OCR reads the two as separate lines, the value a little higher, and the words misread, as here.
+   */
+  private val rioItems = listOf(
+    Item(8, "7891000100103", "ESMALTE IMPALA ACETINADO ARE BABA", 599),
+    Item(9, "7891000100110", "ESMALTE IMPALA ACETINADO ME CHAMA", 789),
+    Item(13, "7891000100127", "BISC.MARILAN MAIZENA C/3 300G", 525),
+  )
+  private fun line(text: String, left: Int, top: Int, right: Int, bottom: Int) = TextLine(text, left, top, right, bottom, .8f)
+  private val rio = PhotoText("r.jpg", 1000, 1500, listOf(
+    line("008 07891000100103 ESMALTE IMPALA ACETINADO ARE BABA", 50, 430, 430, 452),
+    line("1UN X 5,99 T20,00%", 80, 455, 300, 475),
+    line("5,99", 460, 452, 500, 470),
+    line("-0.80", 460, 480, 493, 500),
+    line("desconto 1ten 008", 48, 490, 171, 507),
+    line("009 07891000100110 ESMALTE IWPALA ACETINADO ME CHAMA", 49, 500, 430, 523),
+    line("7,89", 460, 525, 500, 545),
+    line("013 07891000100127 BISC,MARILAN MAIZENA C/3 3006", 44, 648, 404, 671),
+    line("5,25", 461, 664, 500, 682),
+    line("-1,26", 461, 684, 502, 702),
+    line("0esconto iten 013", 43, 686, 169, 708),
+    line("DESCONTO", 40, 900, 120, 920),
+    line("R$ 2,06", 420, 900, 500, 920),
+  ))
+
+  @Test fun anItemNumberedDiscountGoesToThatItem() {
+    val r = PhotoDiscounts.read(listOf(rio), rioItems, 206)
+    assertEquals(Verdict.COMPLETE, r.verdict)
+    assertEquals(listOf(8 to 80L, 13 to 126L), r.discounts.map { it.lineNo to it.cents })
+    assertEquals(0, r.unassigned)
+  }
+
+  @Test fun anItemNumberedDiscountIsReadAtAnyAngle() {
+    val withCorners = rio.copy(lines = rio.lines.map { it.copy(corners = listOf(it.left, it.top, it.right, it.top, it.right, it.bottom, it.left, it.bottom)) })
+    for (angle in PHOTO_ANGLES) {
+      val r = PhotoDiscounts.read(listOf(withCorners.turnedBy(angle)), rioItems, 206)
+      assertEquals("at $angle°", listOf(8 to 80L, 13 to 126L), r.discounts.map { it.lineNo to it.cents })
+    }
+  }
+
+  @Test fun anItemNumberedDiscountWithoutItsValueOrForNoSuchItemIsNotTaken() {
+    val noValue = rio.copy(lines = rio.lines.filterNot { it.text == "-1,26" })
+    assertEquals(listOf(8 to 80L), PhotoDiscounts.read(listOf(noValue), rioItems, 206).discounts.map { it.lineNo to it.cents })
+    val stray = rio.copy(lines = rio.lines.map { if (it.text.startsWith("0esconto")) it.copy(text = "desconto item 021") else it })
+    val r = PhotoDiscounts.read(listOf(stray), rioItems, 206)
+    assertEquals(listOf(8 to 80L), r.discounts.map { it.lineNo to it.cents })
+    assertEquals(1, r.unassigned)
+  }
 }

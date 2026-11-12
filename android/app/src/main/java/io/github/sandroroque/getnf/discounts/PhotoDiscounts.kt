@@ -12,6 +12,9 @@ package io.github.sandroroque.getnf.discounts
  *
  * Some stores (a pharmacy) print "1 UN De R$ 256,51 por R$ 166,73" instead: the "from" price is the line's gross,
  * which identifies the item when no other line has the same gross, and the discount is the difference.
+ *
+ * Others (a Rio supermarket) print "desconto item 013" after the item, with "-1,26" in the value column on the same
+ * row, which OCR reads as a line of its own: the item number is the page's line number, so no anchor is needed.
  */
 object PhotoDiscounts {
   data class Item(val lineNo: Int, val code: String, val description: String, val grossCents: Long)
@@ -46,6 +49,10 @@ object PhotoDiscounts {
   private const val MAX_GAP = 2.2
   private val FROM_TO = Regex("""\bDe\s*R\S?\s*(\d{1,5}[.,]\s?\d{2})\s*p\w?r\s*R\S?\s*(\d{1,5}[.,]\s?\d{2})""", RegexOption.IGNORE_CASE)
   private val DISCOUNT = Regex("""^\W{0,2}desc\w{0,6}\s*[:;.]?\s*(\d{1,4}[.,]\d{2})\s*$""", RegexOption.IGNORE_CASE)
+  // "desconto item 013" as OCR reads it ("0esconto iten 013", "desconlo 1ten 013"), maybe with its value on the line.
+  private val ITEM_DISCOUNT = Regex("""^\W{0,2}\S{0,2}sc[o0][nm]\w{1,4}\.?\s+\S{0,2}t[e3][mn]\s+([0-9OoIlSB]{2,3})(?:\s+(.*))?$""", RegexOption.IGNORE_CASE)
+  // A negative value alone, as in the value column: "-1,26".
+  private val NEGATIVE = Regex("""^[-~–—]\s?(\d{1,4}[.,]\s?\d{2})$""")
   // An item's first line: a short token (the item number, often misread) and a code, or a long code alone (the
   // number read as a line of its own).
   private val ITEM_START = Regex("""^\W{0,2}(\w{1,3}\s+[0-9OoIl]{3,14}|[0-9OoIl]{7,14})\s+\S""")
@@ -106,6 +113,22 @@ object PhotoDiscounts {
       val previous = byLine[item.lineNo]
       if (previous != null && previous.first != value) conflicts += "line ${item.lineNo}: ${previous.first} and $value in ${photo.photo}"
       byLine[item.lineNo] = value to Evidence(photo.photo, above.top, line.bottom)
+    }
+    // "desconto item <n>" and the negative value printed on its row, to its right.
+    val numbers = items.map { it.lineNo }.toSet()
+    for (line in lines) {
+      val m = ITEM_DISCOUNT.find(line.text.trim()) ?: continue
+      val lineNo = digits(m.groupValues[1]).toIntOrNull()
+      val value = NEGATIVE.find(m.groupValues[2].trim())?.groupValues?.get(1)
+        ?: lines.filter { it !== line && it.left > line.right && NEGATIVE.matches(it.text.trim()) }
+          .map { it to kotlin.math.abs(it.centerY - line.centerY) }
+          .filter { (it, dy) -> dy <= 1.2 * maxOf(it.height, line.height) }
+          .minByOrNull { it.second }?.first?.let { NEGATIVE.find(it.text.trim())!!.groupValues[1] }
+      if (lineNo == null || lineNo !in numbers || value == null) { unassigned++; continue }
+      val v = cents(value)
+      val previous = byLine[lineNo]
+      if (previous != null && previous.first != v) conflicts += "line $lineNo: ${previous.first} and $v in ${photo.photo}"
+      byLine[lineNo] = v to Evidence(photo.photo, line.top, line.bottom)
     }
     // "De R$ <gross> por R$ <net>": the gross names the item when it's unique on the receipt.
     val byGross = items.groupBy { it.grossCents }

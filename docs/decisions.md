@@ -4637,3 +4637,20 @@ The low-priority tickets from the two audits (2026-11-04 round 2, 2026-11-09), e
   and a mark, so the last run out unloads it, and only if a run loaded it.
 
 T-49 (the IPCI's weights, D79) is a change to a method the user chose and waits for them.
+
+## D197. "desconto item 013": a discount printed with its item's number is read from the photos (2026-11-12, T-52)
+
+A tester's Rio receipt (a supermarket chain) kept its whole discount prorated. The page has only the total, and the
+photo reader (D54, D101) knew two layouts: `Desconto: 1,56` under an item, and "De R$ … por R$ …". This chain prints
+`desconto item 013` after the item, with `-1,26` in the value column on that row. On-device OCR of a frame from one of
+D155's Rio videos reads them as two lines: the words misread (`0esconto iten 013`, `desconlo 1ten 013`), the value a
+few pixels higher and to the right, with its minus sign.
+
+- **Read:** a line shaped like "desconto item <n>" names the page's line number `<n>` directly, so no code anchor is
+  needed. Its value is a negative amount alone on a line to its right, within 1.2 line heights of its row (or at the
+  end of the same line, if OCR joins them). A number that is no item on the page, or no value found, is unassigned,
+  never guessed. The rest of D54 (agreement across photos, the verdict, the check against the page's total) applies.
+- **Checked:** the real OCR of that frame gives R$ 0,80 and R$ 1,26, COMPLETE against the R$ 2,06 the receipt prints.
+  The JVM tests use made-up lines shaped like that OCR, at every angle (D102).
+- **Existing receipts:** D101 already rereads, at start, a receipt with a discount, photos and every line still
+  prorated, so the tester's receipt is read again once the new version is installed, if its photos are on the phone.
