@@ -153,7 +153,7 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
 
 > Correção: a SEFAZ de Santa Catarina bloqueia a sua internet por um tempo depois de umas 5 consultas por hora, e o app deve avisar antes disso. Ao ler o QR Code, esse aviso chegava tarde ou nem aparecia; agora aparece na hora certa. E, para quem aceitou enviar as fotos do teste, as notas do Rio de Janeiro não mandam mais uma tela de carregamento desnecessária junto.
 
-- **Release notes, 0.1.4** (code 7; Play shows up to 500; draft, to be checked by the user):
+- **Release notes, 0.1.4** (code 7; Play shows up to 500; approved by the user, uploaded 2026-11-12):
 
 > Novidade: dá para apagar uma nota (Mais › Apagar, na nota); numa caderneta dividida, ela some dos outros celulares também. Correções: o acréscimo de uma nota entra nos gastos, e um desconto digitado não passa mais do desconto da nota. A correção feita num celular não some mais quando outro lê a nota de novo. Cópia de segurança e sincronização mais confiáveis. Para quem envia as fotos do teste, mais dados pessoais ficam cobertos, e desligar o envio apaga tudo de vez.
 
