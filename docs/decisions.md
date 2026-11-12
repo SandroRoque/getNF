@@ -4512,3 +4512,18 @@ Two of the 2026-11-09 review's money findings (P2-6, P2-7).
   stack through the audit's delay proxy, `Round3AccountSwitchTest`'s two sign-out tests; `BackupServiceTest`'s
   missing-photo and concurrent-page tests (all un-ignored); `tools/tests/test_supabase_backup.py` (now in
   `tools/check.sh`); the whole unit suite.
+
+## D192. The categorize queue takes cadernetas in turn; descriptions no receipt prints are refused (2026-11-11, T-43)
+
+The 2026-11-09 review's P2-8. Anyone can sign up, and every store item queues a categorize job; jobs were claimed
+oldest first across all cadernetas, 25 a minute. 2,000 items from one account delayed a tester's next item by over
+an hour, and a 200,000-character description went to the provider.
+- **Chosen:** `claim_categorize_jobs` ranks the eligible jobs within each caderneta and takes them round robin (every
+  caderneta's oldest, then every one's second): a flood takes one slot per round like anyone else.
+  `store_item` gets checks: description at most 200 characters, code at most 60 (an NFC-e prints at most 120 and 60;
+  the longest description online was 40 when this was written).
+- **Not done:** a per-account rate on store-item inserts, the review's third suggestion. With the round robin a flood
+  no longer delays others, it only costs the provider calls for the flooder's own items, at 25 a minute in all; worth
+  revisiting if the closed test opens to people we don't know.
+- **Checked:** `categorize_fair.test.sql` (pgTAP: 40 older jobs of one caderneta, the other's one job in the first
+  batch of 5; a long description refused), `categorize.test.sql` unchanged.
