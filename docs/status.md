@@ -143,7 +143,7 @@ Do next, in order:
    emulator's camera plays that replay: restart it with `tools/emulator.sh` for a plain one. The low tickets are done
    (D196: T-22–T-26, T-45–T-48; the worker can be switched back on as far as T-26 goes); `blank-buyers.py`'s dry run
    online found nothing to blank. T-49 (IPCI weights, a change to D79's method) waits for the user. D196's three
-   migrations and the `categorize`/`contribute` functions: see releases/server.md for what's applied. A next build
+   migrations and the `categorize`/`contribute` functions are online (2026-11-12). A next build
    (code 8) carries D184–D196; `tools/release.py pending` lists it.
 1. ~~The phone on code 4~~: code 4 is replaced; its check is folded into code 5's (next item).
 2. **Code 6 (0.1.3, 6916fe9, `play/6`), with D167 (T-5):** uploaded straight to the closed track 2026-11-09 and
