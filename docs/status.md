@@ -1,6 +1,6 @@
 # Status and next steps
 
-Last updated 2026-11-09. A handoff for picking the project up again. For *why* things are the way they are, read
+Last updated 2026-11-12. A handoff for picking the project up again. For *why* things are the way they are, read
 `docs/decisions.md`. For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
@@ -116,11 +116,31 @@ signs in on the same phone, the server's auth and storage limits (`config.toml`,
 failures), the Room migrations one by one; the rest after the open store. One area per session, without subagents
 (they kept running out of usage).
 
+**Handoff, 2026-11-12 (session `claude/urgent-tickets`)**
+
+Code 7 (0.1.4, fd0a721) was cut on 2026-11-11 with D171–D183; its manifest `docs/releases/7.md` (state: preparing)
+and an edit to `docs/play-console.md` sit uncommitted in the main checkout, from the session that cut it: finish or
+commit them there, not from a worktree. Since then, all on main and pushed, none in a release yet:
+- Urgent T-32–T-35: category cycles refused online and survived on the phone (D187), typed discounts close the
+  receipt's (D186), photo discounts fit beside typed ones (D185), the demo can't replace a caderneta (D184).
+- Normal: T-36 (D188), T-37–T-40 (D189, parser), T-41–T-42 (D190), T-17–T-21 (D191: download retries, sign-out stops
+  a run, backup reports missing files and snapshots pages, the PC mirror keeps deletions 14 days), T-43 (D192, the
+  categorize queue in turn), T-44 (the pre-push runs for server-only pushes), T-16 (D193, chosen with the user: a
+  database syncs only with its own caderneta; another's backup is reported in Ajustes, not sent). T-15 and T-27 were
+  closed as already fixed.
+- Online (applied and checked): `20261111020000_category_no_cycles.sql`, `20261111030000_categorize_fair_queue.sql`.
+- The tools have tests now (`tools/tests/`, run by `check.sh`). A hook test once inherited the push's GIT_DIR and set
+  `core.bare` and a fake user in the main repository's config; undone, and the test no longer inherits git's variables.
+- The emulator's debug app was cleared (`pm clear`) and points at the delay proxy of the T-20 tests: install a plain
+  debug build to use it normally. The D193 notice in Ajustes was built, not looked at on screen.
+- Tickets marked resolved are fixed on main; T-5, T-8, T-10–T-14 (in code 7) still read "aberto" until a tester has it.
+
 Do next, in order:
-0. **Code 7, cut early** (privacy and numbers in the build testers have, rollout.md › Cutting): D177's first fixes
-   are on main (T-28 D178, T-29 D179 with Room 16, T-30 D180, T-31 D181; resolved, not yet in a release). Apply
-   `20261109010000_line_surcharge.sql` online and cut from main. After T-24, run `tools/blank-buyers.py` (dry run
-   first) over the pages online: it now knows the WebView's heading too. Then T-32–T-35, then the normal ones (T-15–T-21, T-36–T-44) by priority; T-26 before the LLM worker is switched back on.
+0. **The normal tickets left:** T-50 (delete a receipt: a feature, the flow is in data-model.md › "Nota") and T-6 (a
+   short receipt kept as 2-3 identical photos; capture, through the benchmark; repro in
+   `docs/review-repros/2026-11-09/capture/Review1109CaptureKeepTest.kt`). Then the low ones (T-22–T-26, T-45–T-49);
+   T-26 before the LLM worker is switched back on. After T-24, run `tools/blank-buyers.py` (dry run first) over the
+   pages online. A next build (code 8) carries D184–D193; `tools/release.py pending` lists it.
 1. ~~The phone on code 4~~: code 4 is replaced; its check is folded into code 5's (next item).
 2. **Code 6 (0.1.3, 6916fe9, `play/6`), with D167 (T-5):** uploaded straight to the closed track 2026-11-09 and
    promoted to internal; Google's review to be confirmed in the console (Publishing overview), and whether it got a
