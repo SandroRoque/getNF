@@ -1,5 +1,5 @@
 """The PC backup's file mirror (D191, T-21), against a fake Storage: no network, no real files."""
-import datetime, importlib.util, io, json, os, tempfile, unittest, urllib.error
+import contextlib, datetime, importlib.util, io, json, os, tempfile, unittest, urllib.error
 
 spec = importlib.util.spec_from_file_location("backup", os.path.join(os.path.dirname(__file__), "..", "supabase-backup.py"))
 backup = importlib.util.module_from_spec(spec)
@@ -61,10 +61,11 @@ class MirrorTest(unittest.TestCase):
 
   def test_check_needs_a_recent_mirror_too(self):
     open(os.path.join(self.out, "db-2026-11-01_033000.dump"), "w").write("x")
-    self.assertEqual(backup.check(self.out), 2)  # a fresh dump, but the mirror never finished
-    self.fake.files = {"l/a/page.html": (b"a", "1")}
-    self.run_on("2026-11-01")
-    self.assertEqual(backup.check(self.out), 0)
+    with contextlib.redirect_stdout(io.StringIO()):
+      self.assertEqual(backup.check(self.out), 2)  # a fresh dump, but the mirror never finished
+      self.fake.files = {"l/a/page.html": (b"a", "1")}
+      self.run_on("2026-11-01")
+      self.assertEqual(backup.check(self.out), 0)
 
 
 if __name__ == "__main__":
