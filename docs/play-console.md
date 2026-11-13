@@ -157,6 +157,10 @@ Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; no
 
 > Novidade: dá para apagar uma nota (Mais › Apagar, na nota); numa caderneta dividida, ela some dos outros celulares também. Correções: o acréscimo de uma nota entra nos gastos, e um desconto digitado não passa mais do desconto da nota. A correção feita num celular não some mais quando outro lê a nota de novo. Cópia de segurança e sincronização mais confiáveis. Para quem envia as fotos do teste, mais dados pessoais ficam cobertos, e desligar o envio apaga tudo de vez.
 
+- **Release notes, 0.1.5** (code 8; Play shows up to 500; draft, waiting for the user):
+
+> Correções: o desconto de cada item agora é lido das fotos em qualquer formato de nota, inclusive as do Rio que imprimem "desconto item" com o valor na coluna da direita. Na captura, o total de linhas não cresce mais ao passar de novo pelos itens vendidos a peso. Quando faltam poucas linhas, a tela diz qual falta, com o texto da própria nota, e aponta para ela; lidas todas, pede para mostrar o fim do papel.
+
 - **Closed testing › testers** (D153): Google Groups, `testadores-da-caderneta@googlegroups.com`
   (https://groups.google.com/g/testadores-da-caderneta: anyone can join, members and conversations visible to
   managers only, posts by managers only). The opt-in link the site sends people to is
