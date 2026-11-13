@@ -58,6 +58,14 @@ internal data class CaptureUiState(
   val dark: Boolean = false,
   /** The receipt's access key, once its QR code is read. */
   val chave: String? = null,
+  /**
+   * The rows still to read, when only a few are (D200): how many, and the printed text of the one nearest the camera's
+   * view, so the person knows where to point.
+   */
+  val missingCount: Int = 0,
+  val nearestMissing: String? = null,
+  /** [nearestMissing] is a row already read, with unread print right after it. */
+  val nearestAfter: Boolean = false,
   /** What the camera decided it's looking at (camera plan, step 2). */
   val mode: CameraMode = CameraMode.UNDECIDED,
   /** In [CameraMode.PRODUCT], the barcode being shown; [productShown] counts the codes announced, to open the sheet. */
@@ -68,8 +76,14 @@ internal data class CaptureUiState(
   val knownHasPage: Boolean = false,
 )
 
-/** [required]: the capture needs it read (D198): an artifact it set aside (a doubtful row, a splinter) isn't counted. */
-internal data class RowMark(val captured: Boolean, val gapAfter: Double, val required: Boolean = true)
+/**
+ * [required]: the capture needs it read (D198): an artifact it set aside (a doubtful row, a splinter) isn't counted.
+ * [missing]: still to read, not even in the frame held to be saved (D200).
+ */
+internal data class RowMark(val captured: Boolean, val gapAfter: Double, val required: Boolean = true, val missing: Boolean = false)
+
+/** Up to this many rows left, the screen names the nearest one (D200). */
+internal const val FEW_MISSING = 6
 
 internal enum class CaptureHint(val label: String) {
   FIND_RECEIPT("Aponte para a nota ou um código de barras"),
@@ -79,6 +93,8 @@ internal enum class CaptureHint(val label: String) {
   HOLD_STILL("Segure firme"),
   MOVE_UP("Suba pela nota"),
   MOVE_DOWN("Desça pela nota"),
+  SHOW_TOP("Mostre o começo da nota, até a borda do papel"),
+  SHOW_BOTTOM("Mostre o fim da nota, até a borda do papel"),
   SHOW_QR("Mostre o QR Code"),
   OTHER_RECEIPT("Outra nota à vista. Volte à desta captura"),
   PRODUCT("Código de barras lido"),
@@ -378,11 +394,23 @@ internal class CaptureController(
       step.complete && manifest.chave == null -> CaptureHint.SHOW_QR
       else -> step.hint.toCapture()
     }
+    val missing = ingest.missing()
+    // "Few left" means few left to read at all, as the count under it says, not few outside the frame about to be saved.
+    val required = ingest.required()
+    val left = required.count { !ingest.isCaptured(it) } + missing.count { ingest.isCaptured(ingest.rows[it]) }
+    val nearest = missing.takeIf { left in 1..FEW_MISSING }?.minByOrNull { i ->
+      val v = step.view
+      if (v == null) 0 else if (i < v.first) v.first - i else if (i > v.last) i - v.last else 0
+    }
     state = state.copy(
       outline = step.paper?.corners?.mapNotNull { frame.mapping.map(it) }?.takeIf { it.size == 4 },
       down = step.down?.let { d -> arrow(frame, step.paper, d) },
       hint = hint,
-      rows = ingest.required().toSet().let { required -> ingest.rows.map { RowMark(ingest.isCaptured(it), it.gapAfter, it in required) } },
+      rows = required.toSet().let { needed -> missing.toSet().let { toRead ->
+        ingest.rows.mapIndexed { i, r -> RowMark(ingest.isCaptured(r), r.gapAfter, r in needed, i in toRead) } } },
+      missingCount = left,
+      nearestMissing = nearest?.let { ingest.rows[it].display.trim { c -> !c.isLetterOrDigit() } }?.takeIf { it.isNotEmpty() },
+      nearestAfter = nearest != null && ingest.isCaptured(ingest.rows[nearest]),
       view = step.view, topClosed = ingest.topClosed, bottomClosed = ingest.bottomClosed,
       saved = manifest.segments.size, qr = manifest.chave != null, chave = manifest.chave,
       dark = dark(frame), mode = decided.mode, product = null,
@@ -426,7 +454,7 @@ internal class CaptureController(
       sessions.remove(manifest); manifest = sessions.create()
     }
     ingest = IngestSession(); held = null; savedAs.clear(); attempt.reset()
-    state = state.copy(rows = emptyList(), view = null, topClosed = false, bottomClosed = false, saved = 0, qr = false, chave = null)
+    state = state.copy(rows = emptyList(), view = null, topClosed = false, bottomClosed = false, saved = 0, qr = false, chave = null, missingCount = 0, nearestMissing = null, nearestAfter = false)
   }
 
   /**
@@ -577,6 +605,8 @@ internal class CaptureController(
     IngestHint.HOLD_STILL -> CaptureHint.HOLD_STILL
     IngestHint.MOVE_UP -> CaptureHint.MOVE_UP
     IngestHint.MOVE_DOWN -> CaptureHint.MOVE_DOWN
+    IngestHint.SHOW_TOP -> CaptureHint.SHOW_TOP
+    IngestHint.SHOW_BOTTOM -> CaptureHint.SHOW_BOTTOM
     IngestHint.DONE -> CaptureHint.DONE
   }
 

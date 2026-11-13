@@ -4698,3 +4698,27 @@ value. Now it reads no layout:
   exactly what the old reader gave (5 complete, 1 partial, nothing on the 3 without a discount); the Rio video frame
   gives R$ 0,80 and R$ 1,26 with the page's own codes, which the print doesn't show. D54's "too far below" limit of
   2.2 lines is gone (the Rio layout prints the discount three lines under its item); a block ends at the next item.
+
+## D200. When few rows are left, the screen names the nearest one and points to it; an unseen end is asked for by name (2026-11-12, T-54)
+
+The user: it must be easier to know where to point the camera when only a few rows are left. Watching a capture in
+the emulator (a receipt video as the camera) showed why it wasn't:
+
+- the map drew every row the assembly holds, so rows the capture had set aside (D198) looked missing for ever, and the
+  few really missing were faint ticks among eighty in a 56 dp strip;
+- the hint said "Desça pela nota" while the one row left was the header at the top: an end not seen yet pulled the
+  hint as hard as the rows (D85), and won;
+- with "58 de 58 linhas lidas" and the QR code read, the capture waited for the paper's bottom edge, and the screen
+  kept saying "Desça pela nota" without saying what for.
+
+Now:
+
+- **The map** draws rows still to read in amber, full width; rows set aside as a faint tick; read rows green as before.
+- **Six or fewer left** (as the count says, not just outside the frame about to be saved): the hint's pill adds, in
+  amber, "Falta 1 linha: “Cod Descricao Qt Un Vlr”" or "Faltam 3 linhas, como “…”", the printed text of the missing row
+  nearest the view (rows carry their text as OCR read it, spaces kept); for unread print after a read row, "logo
+  depois de “…”". The arrow goes toward those rows; the ends count again once they're read.
+- **Every row read, an end not seen:** "Mostre o fim da nota, até a borda do papel" (or "o começo"), with the arrow.
+- **Checked** in the emulator: "Suba pela nota" with "Falta 1 linha: “Cod Descricao 0t Un Vlr”" while the header was
+  the one left, then "Mostre o fim da nota" with the receipt running past the frame. Benchmark: no change (hints and
+  the map don't change what is saved).

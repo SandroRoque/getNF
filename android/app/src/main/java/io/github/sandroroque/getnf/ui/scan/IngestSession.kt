@@ -6,7 +6,7 @@ import kotlin.math.*
 internal class IngestFrame(val id: String, val image: GrayImage, val ocr: List<OcrQuad>, val atMs: Long)
 
 /** What the person should do next, one at a time. */
-internal enum class IngestHint { FIND_RECEIPT, BACK_TO_CAPTURED, CLOSER, HOLD_STILL, MOVE_UP, MOVE_DOWN, DONE }
+internal enum class IngestHint { FIND_RECEIPT, BACK_TO_CAPTURED, CLOSER, HOLD_STILL, MOVE_UP, MOVE_DOWN, SHOW_TOP, SHOW_BOTTOM, DONE }
 
 /**
  * What the session decided about a frame.
@@ -335,20 +335,37 @@ internal class IngestSession {
    * direction until the other way has clearly more (twice), so a few rows left behind don't turn the person around
    * mid-sweep; they're collected on the way back. Rows to capture inside the view: hold still for them.
    */
-  private fun direction(view: IntRange?): IngestHint {
-    if (view == null) return IngestHint.BACK_TO_CAPTURED
+  /**
+   * The rows still to read, as indices into [rows]: required, not captured, and not in the frame held to be saved; and
+   * the rows before a stretch of print no frame has read (D97). What the camera is sent toward, and what the screen
+   * names when only a few are left (D200).
+   */
+  fun missing(): List<Int> {
     val required = required().toSet()
     val read = toRead()
     val pending = candidate?.let { covers(it.reads, it.shows, read) }.orEmpty()
-    val missing = assembly.rows.indices.filter { assembly.rows[it] in required && !isCaptured(assembly.rows[it]) && assembly.rows[it] !in pending } + unreadGaps()
-    if (missing.isEmpty() && assembly.topClosed && assembly.bottomClosed) return IngestHint.HOLD_STILL
+    return (assembly.rows.indices.filter { assembly.rows[it] in required && !isCaptured(assembly.rows[it]) && assembly.rows[it] !in pending } + unreadGaps()).distinct().sorted()
+  }
+
+  private fun direction(view: IntRange?): IngestHint {
+    if (view == null) return IngestHint.BACK_TO_CAPTURED
+    val missing = missing()
+    // Every row read: what's left is an end of the paper not seen yet, and the person is told so (D200).
+    if (missing.isEmpty()) return when {
+      !assembly.bottomClosed -> IngestHint.SHOW_BOTTOM
+      !assembly.topClosed -> IngestHint.SHOW_TOP
+      else -> IngestHint.HOLD_STILL
+    }
     val span = max(1, view.last - view.first + 1).toDouble()
     fun weight(distance: Int) = 1 / (1 + distance / span)
     var up = missing.filter { it < view.first }.sumOf { weight(view.first - it) }
     var down = missing.filter { it > view.last }.sumOf { weight(it - view.last) }
     val inside = missing.count { it in view }
-    if (!assembly.topClosed) up += span * weight(view.first)
-    if (!assembly.bottomClosed) down += span * weight(assembly.rows.lastIndex - view.last)
+    // A few rows left: toward them, the ends after (the screen names the nearest row, D200). Before that, an end not
+    // seen pulls as much as the receipt it may still hold.
+    val few = missing.size <= FEW_MISSING && required().count { !isCaptured(it) } <= FEW_MISSING
+    if (!few && !assembly.topClosed) up += span * weight(view.first)
+    if (!few && !assembly.bottomClosed) down += span * weight(assembly.rows.lastIndex - view.last)
     if (inside > 0 && inside >= up + down) return IngestHint.HOLD_STILL
     val choice = when (sweep) {
       IngestHint.MOVE_UP -> if (down > 2 * up) IngestHint.MOVE_DOWN else IngestHint.MOVE_UP

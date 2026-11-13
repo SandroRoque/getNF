@@ -270,12 +270,22 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOp
       ) {
         val down = state.down
         // The arrow points along the receipt, the way to go: down it, or back up it.
-        if (!state.saving && state.error == null && down != null && (state.hint == CaptureHint.MOVE_DOWN || state.hint == CaptureHint.MOVE_UP)) Icon(
+        val towardBottom = state.hint == CaptureHint.MOVE_DOWN || state.hint == CaptureHint.SHOW_BOTTOM
+        if (!state.saving && state.error == null && down != null && (towardBottom || state.hint == CaptureHint.MOVE_UP || state.hint == CaptureHint.SHOW_TOP)) Icon(
           io.github.sandroroque.getnf.ui.calmo.Icons.Arrow, null, tint = onCamera,
-          modifier = Modifier.size(22.dp).rotate(down + if (state.hint == CaptureHint.MOVE_DOWN) 180f else 0f),
+          modifier = Modifier.size(22.dp).rotate(down + if (towardBottom) 180f else 0f),
         )
-        Text(message, color = if (state.error != null) PENDING else onCamera,
-          style = if (landscape) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+          Text(message, color = if (state.error != null) PENDING else onCamera,
+            style = if (landscape) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
+          // A few rows left: which one, in the receipt's own words, so the person knows where to point (D200).
+          val nearest = state.nearestMissing
+          if (!state.saving && state.error == null && nearest != null) Text(
+            (if (state.missingCount == 1) "Falta 1 linha" else "Faltam ${state.missingCount} linhas") +
+              (if (state.nearestAfter) ", logo depois de " else if (state.missingCount == 1) ": " else ", como ") +
+              "“${nearest.take(34)}${if (nearest.length > 34) "…" else ""}”",
+            color = PENDING, style = MaterialTheme.typography.bodyMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        }
       }
       if (!state.saving && state.rows.isNotEmpty()) Text(
         "${state.rows.count { it.required && it.captured }} de ${state.rows.count { it.required }} linhas lidas · ${state.saved} ${if (state.saved == 1) "foto" else "fotos"}" +
@@ -325,8 +335,8 @@ private val GOOD = Color(0xFF7CC29A)
 private val PENDING = Color(0xFFE8C46A)
 
 /**
- * The receipt so far, as a strip of paper: its rows in order (blank gaps to scale), green where captured, faint where
- * still to read; a bracket where the camera is; its top and bottom drawn as an edge once seen, fading while unknown.
+ * The receipt so far, as a strip of paper: its rows in order (blank gaps to scale), green where captured, amber where
+ * still to read (D200); a bracket where the camera is; its top and bottom drawn as an edge once seen, fading while unknown.
  */
 @Composable
 private fun ReceiptMap(state: CaptureUiState, modifier: Modifier) {
@@ -339,8 +349,14 @@ private fun ReceiptMap(state: CaptureUiState, modifier: Modifier) {
     var y = 0f
     for ((i, row) in state.rows.withIndex()) {
       val h = heights[i] * unit
-      drawRect(if (row.captured) GOOD else Color.White.copy(alpha = .28f), Offset(3.dp.toPx(), y + h * .15f),
-        androidx.compose.ui.geometry.Size(size.width - 6.dp.toPx(), maxOf(1f, unit * .7f)))
+      // Read: green. Still to read: amber, and full width, so the few left stand out. Set aside by the capture (not
+      // needed): a faint tick, so it doesn't look like something missing (D200).
+      when {
+        row.captured -> drawRect(GOOD, Offset(3.dp.toPx(), y + h * .15f), androidx.compose.ui.geometry.Size(size.width - 6.dp.toPx(), maxOf(1f, unit * .7f)))
+        row.missing -> drawRect(PENDING, Offset(0f, y), androidx.compose.ui.geometry.Size(size.width, maxOf(3.dp.toPx(), unit)))
+        row.required -> drawRect(Color.White.copy(alpha = .28f), Offset(3.dp.toPx(), y + h * .15f), androidx.compose.ui.geometry.Size(size.width - 6.dp.toPx(), maxOf(1f, unit * .7f)))
+        else -> drawRect(Color.White.copy(alpha = .12f), Offset(size.width * .35f, y + h * .4f), androidx.compose.ui.geometry.Size(size.width * .3f, maxOf(1f, unit * .2f)))
+      }
       y += h
     }
     fun edge(at: Float, seen: Boolean) {

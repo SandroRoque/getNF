@@ -7,10 +7,10 @@ import kotlin.math.*
  * normalized for matching; [confidence] is the boxes' length-weighted mean; [down] is where it sits down the receipt
  * in frame pixels, [height] its height, [start] where its first box begins along the rows. [cut]: part of the row
  * can't have been read (a box across the frame's border left out, or something over the paper before it), so the text
- * is only part of the row, however well read (D134).
+ * is only part of the row, however well read (D134). [display]: the row as printed, to show the person (D200).
  */
 internal data class Row(val text: String, val confidence: Double, val down: Double, val height: Double, val weakest: Double = confidence,
-                        val cut: Boolean = false, val start: Double = 0.0)
+                        val cut: Boolean = false, val start: Double = 0.0, val display: String = text)
 
 /**
  * The receipt as the sequence of its printed rows, assembled from frames that each see part of it (D82): every frame's
@@ -19,7 +19,7 @@ internal data class Row(val text: String, val confidence: Double, val down: Doub
  * are told apart by their neighbours, and a row OCR missed or split in one frame is filled in by another.
  */
 internal class RowAssembly {
-  class Entry(var text: String, var confidence: Double) {
+  class Entry(var text: String, var confidence: Double, var display: String = text) {
     /** Blank rows after this one, as frames saw them (the QR code or a blank line). */
     var gapAfter = 0.0
     /**
@@ -57,7 +57,7 @@ internal class RowAssembly {
     if (entries.isEmpty()) {
       // Only a frame read well starts it: misread rows would hold back every frame after.
       if (frame.count { it.confidence >= START_CONFIDENCE } < max(MIN_MATCHES + 2, (frame.size * .7).toInt())) return null
-      frame.forEach { entries += Entry(it.text, it.confidence) }
+      frame.forEach { entries += Entry(it.text, it.confidence, it.display) }
       gaps(frame, IntArray(frame.size) { it })
       marks(IntArray(frame.size) { it }, printBetween)
       if (topSeen) topClosed = true
@@ -68,7 +68,7 @@ internal class RowAssembly {
     skips.forEach { entries[it].skipped++ }
     // Rows are tracked by reference while the assembly changes; indices are worked out at the end.
     val ref = arrayOfNulls<Entry>(frame.size)
-    fun reread(e: Entry, i: Int, margin: Double) { if (frame[i].confidence > e.confidence + margin) { e.text = frame[i].text; e.confidence = frame[i].confidence } }
+    fun reread(e: Entry, i: Int, margin: Double) { if (frame[i].confidence > e.confidence + margin) { e.text = frame[i].text; e.confidence = frame[i].confidence; e.display = frame[i].display } }
     for ((i, j) in pairs) { ref[i] = entries[j]; entries[j].confirmed++; reread(entries[j], i, 0.0) }
     // Between matched rows, a row paired with a different text is the same row read differently: the surer read wins,
     // and a row no later frame has confirmed (a misread, two lines fused into one box) loses even at equal confidence.
@@ -87,7 +87,7 @@ internal class RowAssembly {
       // print came out "VOHSLGOO", "YOTSTPOO"...): it isn't added, or each frame adds its own reading, and the extra
       // rows push the frame's good reads out of line with the assembly's, which then get added again too.
       if (frame[i].confidence < WEAK) continue
-      val created = Entry(frame[i].text, frame[i].confidence)
+      val created = Entry(frame[i].text, frame[i].confidence, frame[i].display)
       entries.add(entries.indexOf(previous) + 1, created)
       previous.unreadAfter = 0; previous.clearAfter = 0 // the rows that were missing there
       ref[i] = created; previous = created
@@ -104,7 +104,7 @@ internal class RowAssembly {
       // replace them.
       if (bottomClosed) bottomClosed = false
       tail.clear()
-      after.forEach { i -> Entry(frame[i].text, frame[i].confidence).also { entries += it; ref[i] = it } }
+      after.forEach { i -> Entry(frame[i].text, frame[i].confidence, frame[i].display).also { entries += it; ref[i] = it } }
     } else if (after.isNotEmpty() && tail.size <= EDGE_ROWS && after.size > tail.size) {
       // The frame goes on past the assembly's end: its last rows there were read by an earlier frame at its edge,
       // often in part, so a row or two left unmatched at the end are this frame's next rows, read better.
@@ -112,9 +112,9 @@ internal class RowAssembly {
       val reused = tail.toList()
       after.forEachIndexed { n, i ->
         when {
-          n < reused.size -> { reused[n].text = frame[i].text; reused[n].confidence = frame[i].confidence; ref[i] = reused[n] }
+          n < reused.size -> { reused[n].text = frame[i].text; reused[n].confidence = frame[i].confidence; reused[n].display = frame[i].display; ref[i] = reused[n] }
           sameRow(entries.last().text, frame[i].text) -> ref[i] = entries.last() // a piece of the row before
-          else -> Entry(frame[i].text, frame[i].confidence).also { entries += it; ref[i] = it }
+          else -> Entry(frame[i].text, frame[i].confidence, frame[i].display).also { entries += it; ref[i] = it }
         }
       }
     }
@@ -124,14 +124,14 @@ internal class RowAssembly {
       before.map { frame[it].confidence }.average() > head.map { it.confidence }.average()) {
       if (topClosed) topClosed = false
       head.clear()
-      before.forEachIndexed { n, i -> Entry(frame[i].text, frame[i].confidence).also { entries.add(n, it); ref[i] = it } }
+      before.forEachIndexed { n, i -> Entry(frame[i].text, frame[i].confidence, frame[i].display).also { entries.add(n, it); ref[i] = it } }
     } else if (before.isNotEmpty() && head.size <= EDGE_ROWS && before.size > head.size) {
       // The assembly's first rows left unmatched are this frame's rows just before the match, read better.
       if (topClosed) topClosed = false
       val reused = head.toList()
       val fresh = before.size - reused.size
-      before.takeLast(reused.size).forEachIndexed { n, i -> reused[n].text = frame[i].text; reused[n].confidence = frame[i].confidence; ref[i] = reused[n] }
-      before.take(fresh).forEachIndexed { n, i -> Entry(frame[i].text, frame[i].confidence).also { entries.add(n, it); ref[i] = it } }
+      before.takeLast(reused.size).forEachIndexed { n, i -> reused[n].text = frame[i].text; reused[n].confidence = frame[i].confidence; reused[n].display = frame[i].display; ref[i] = reused[n] }
+      before.take(fresh).forEachIndexed { n, i -> Entry(frame[i].text, frame[i].confidence, frame[i].display).also { entries.add(n, it); ref[i] = it } }
     }
     closeEnds(frame, ref, topSeen, bottomSeen)
     val at = IntArray(frame.size) { i -> ref[i]?.let(entries::indexOf) ?: -1 }
@@ -354,7 +354,8 @@ internal class RowAssembly {
         Row(text, ordered.sumOf { it.first.confidence * max(1, it.first.text.length) } / weight, at, ordered.maxOf { it.first.height },
           ordered.filter { normalize(it.first.text).length >= 3 }.ifEmpty { ordered }.minOf { it.first.confidence },
           cut = cutAt.any { abs(it - at) < rowHeight * .5 },
-          start = ordered.first().first.corners.minOf { it.x * across.x + it.y * across.y })
+          start = ordered.first().first.corners.minOf { it.x * across.x + it.y * across.y },
+          display = ordered.joinToString(" ") { it.first.text.trim() })
       }.filter { it.text.isNotEmpty() }
     }
   }
