@@ -4740,3 +4740,22 @@ past the edge, the same rule as the check after the fit), and the window before 
 bottom when there are three samples of blank paper there. Benchmark: that session 31.2 → 5.8 s, 2 → 1 photo; no
 regression in the other sessions; accepted as the baseline. The five 2026-10-31 phone sessions never pulled before
 came with it and were measured blind first (6 holdouts at code 8: 2 completed, 0 false completions).
+
+## D202. With no step at the paper's end, three blank lines past the last print end the receipt (2026-11-15)
+
+D201 didn't fix it on the phone: a second session of the same receipt, held closer, still waited 30 s and finished
+only when the table's own edge came into view. Its frames show why. Past the cut, the desk is as light as the paper
+(about 175 grey levels both, on the working copy); the end leaves only a shadow under half a line wide, and where the
+cut runs through the last line it merges with the print. There is no step to find, at any threshold, and a weak one
+"confirmed" along a line two columns fixed was tried and dropped: the two strong columns themselves disagreed.
+
+What the capture needs from an end is that nothing of the receipt lies past it. So when the walks find no end, the
+end still counts as seen if the frame shows at least 3 lines of surface past the last print, the whole width of the
+print (13 columns), with no OCR box in it and no column varying by more than 25 grey levels (print varies far more;
+a desk's grain and shading less). The end is then put half a line past the print. A receipt whose print stops for
+three lines and then goes on would close early; an NFC-e doesn't (its gaps are a line or two), but a card slip fed
+apart from the receipt would be left out of the photos, which is the part D98 blanks anyway.
+
+Benchmark: no regression. The two sessions of this receipt 32.5 → 4.0 s and 5.8 → 1.5 s; 2026-10-31T02-09-07
+18.5 → 8.4 s; 2026-10-25T20-56-17 now completes (14.3 s, all items legible, no false completion). Accepted as the
+baseline. The new session was measured blind first (32.5 s at code 8), then promoted to dev.

@@ -64,6 +64,8 @@ internal object PaperFinder {
 
   private const val SIZE = 1000        // long side of the working copy for the edge walk
   private const val EDGE = .72         // the paper ends where brightness falls under this share of the paper's
+  private const val BLANK_LINES = 3.0  // lines of blank surface past the last print that end it, with no step (D202)
+  private const val BLANK_RANGE = 25.0 // most a blank stretch varies along a column, in grey levels (print varies far more)
 
   fun find(image: GrayImage, lines: List<OcrQuad>, trace: PaperTrace? = null): PaperOutline? {
     fun stop(why: String): PaperOutline? { trace?.stopped = why; return null }
@@ -259,7 +261,28 @@ internal object PaperFinder {
         while (inside(t + k)) t += k
         return (v0 + dv * t to 0.0) to false
       }
-      if (found.size < 2 || cut > 1) return cutEnd()
+      // Paper as light as the desk (D202): past the cut both read alike and no step marks the end, only a faint shadow.
+      // The print ends there all the same: some lines of blank surface past the last print, the whole width, no box in
+      // them and nothing that varies like print, and nothing of the receipt is left to read that way.
+      fun blankBeyond(): Pair<Pair<Double, Double>, Boolean>? {
+        val near = v0 + dv * lineHeight * .5; val far = v0 + dv * lineHeight * (.5 + BLANK_LINES)
+        val (lo, hi) = if (dv > 0) near to far else far to near
+        if (lines.any { l -> DocumentPoint(l.corners.sumOf { it.x } / 4, l.corners.sumOf { it.y } / 4).let { p -> v(p) in lo..hi && u(p) in blockU0..blockU1 } }) return null
+        for (f in 0..12) {
+          val uu = blockU0 + width * f / 12
+          var min = Double.MAX_VALUE; var max = -Double.MAX_VALUE
+          var vv = lo
+          while (vv <= hi) {
+            var sum = 0.0
+            for (o in -4..4) { val g = grayUv(uu + o * k, vv); if (g.isNaN()) return null; sum += g }
+            min = min(min, sum / 9); max = max(max, sum / 9)
+            vv += k
+          }
+          if (max - min > BLANK_RANGE) return null
+        }
+        return (near to 0.0) to true
+      }
+      if (found.size < 2 || cut > 1) return blankBeyond() ?: cutEnd()
       // An end runs straight across, like the print: its lean is kept small, as the sides'.
       val (a, b) = robustLine(found)
       val lean = b.coerceIn(-.15, .15)
