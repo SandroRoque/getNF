@@ -4722,3 +4722,21 @@ Now:
 - **Checked** in the emulator: "Suba pela nota" with "Falta 1 linha: “Cod Descricao 0t Un Vlr”" while the header was
   the one left, then "Mostre o fim da nota" with the receipt running past the frame. Benchmark: no change (hints and
   the map don't change what is saved).
+
+## D201. A paper's end is looked for past its last print, not on it (2026-11-15)
+
+The user captured a short, slightly crumpled receipt on code 8 "with great sacrifice" and suspected a regression. A
+phone session of the same receipt (debug build) shows every row read by 2.8 s and the next 30 s spent on "Mostre o fim
+da nota": the bottom end was never found, though the whole receipt was in view. Replayed, play/7's code takes the
+same 31.2 s, so it isn't a regression of 0.1.5; D200 only gave the wait its words.
+
+Why: this receipt's last line sits right at the cut, and the paper is barely lighter than the desk. The end's walk
+starts two lines inside the print (for a line torn through) and takes the largest step down; here that was the last
+line itself (bright paper, then dark print), and since print lay past that "end" it was judged cut by the frame. The
+real edge was weaker, and its window before the step was darkened by the same print.
+
+Now, per column, a step counts only past the centre of the last box over that column (a torn line's centre can't lie
+past the edge, the same rule as the check after the fit), and the window before the step starts after the print's
+bottom when there are three samples of blank paper there. Benchmark: that session 31.2 → 5.8 s, 2 → 1 photo; no
+regression in the other sessions; accepted as the baseline. The five 2026-10-31 phone sessions never pulled before
+came with it and were measured blind first (6 holdouts at code 8: 2 completed, 0 false completions).

@@ -68,3 +68,5 @@ run, so a fix for one session can't silently break another.
 | 2026-10-26 | answer key: the last receipt's page fetched; items judged as D54 reads them (code, slips undone; number only for repeats) | 18 of 22 | 0 | all | re-baselined; not a capture change |
 | 2026-11-12 | a kept photo covers a row it read at 0.7, even if another read it better (D195, T-6) | 26 of 30 | 0 | all | photos 3 → 2 on two sessions; no regression |
 | 2026-11-12 | an amount alone between two rows takes part in no row (D198, T-53) | 26 of 30 | 0 | all | 1 regression explained in D198: one session 7.4 → 9.5 s with a photo fewer; photos 3 → 2 on two sessions, 2 → 3 on one |
+| 2026-11-15 | **holdout**: 6 phone sessions (five from 2026-10-31 never pulled, one crumpled receipt), measured blind | 2 of 6 | 0 | 14 of 14 | 16.3 s, 0.8 photos; then promoted to dev |
+| 2026-11-15 | a paper’s end is looked for past its last print (D201) | 28 of 33 | 0 | all | the crumpled receipt 31.2 → 5.8 s, 2 → 1 photo; no regression |

@@ -151,7 +151,7 @@ internal object PaperFinder {
     var lastBorder = 0.0
     /** The last walk reached the frame's border too soon to tell (rather than finding no step on the way). */
     var lastShort = false
-    fun walk(u0: Double, v0: Double, du: Double, dv: Double, paper: Double, sliver: Boolean = false): Double? {
+    fun walk(u0: Double, v0: Double, du: Double, dv: Double, paper: Double, sliver: Boolean = false, past: Double = 0.0, clear: Double = 0.0): Double? {
       val reach = width * 1.2 + lineHeight * 20
       val samples = DoubleArray(max(1, ((reach - 2.0 * k) / k).toInt() + 2))
       var count = 0
@@ -172,9 +172,14 @@ internal object PaperFinder {
       if (count < 3 + after) return null
       val prefix = DoubleArray(count + 1).also { for (i in 0 until count) it[i + 1] = it[i] + samples[i] }
       fun mean(a: Int, b: Int) = (prefix[b] - prefix[a]) / (b - a)
+      // [past]: no step before it counts (an end lies past the last print). [clear]: from there on the samples are
+      // blank paper, and the window before a step starts there at the earliest, so the print doesn't darken it.
+      fun index(t: Double) = max(0, ceil((t - 2.0 * k) / k).toInt())
+      val first = max(3, index(past)); val clean = index(clear)
       var best = -1; var bestDrop = 0.0
-      for (i in 3..count - after) {
-        val drop = mean(max(0, i - w), i) - mean(i, min(count, i + w))
+      for (i in first..count - after) {
+        val from = if (i - clean >= 3) max(clean, i - w) else max(0, i - w)
+        val drop = mean(from, i) - mean(i, min(count, i + w))
         if (drop > bestDrop) { bestDrop = drop; best = i }
       }
       if (best < 0 || bestDrop < max(10.0, paper * .08)) return null
@@ -236,7 +241,13 @@ internal object PaperFinder {
         // From two lines inside the print: a receipt can be torn right through its last line, which then pokes past
         // the edge, so a walk started at the last line's edge may already be off the paper.
         val start = v0 - dv * lineHeight * 2
-        val t = walk(uu, start, 0.0, dv, paper)?.takeIf { lastDrop >= sideDrop * .35 }
+        // The end is past the last print in this column, never on it: print right at the paper's end (a receipt cut
+        // just under its last line) on paper hardly lighter than the desk made the print the stronger step, and the
+        // end was then judged cut by the frame. A torn line pokes past the edge, but its centre doesn't.
+        val over = block.filter { l -> l.corners.minOf(::u) <= uu && l.corners.maxOf(::u) >= uu }.ifEmpty { block }
+        val past = over.maxOf { l -> (l.corners.sumOf(::v) / 4 - start) * dv }
+        val clear = over.maxOf { l -> l.corners.maxOf { (v(it) - start) * dv } }
+        val t = walk(uu, start, 0.0, dv, paper, past = past, clear = clear)?.takeIf { lastDrop >= sideDrop * .35 }
         if (t != null) { found += uu to start + dv * t; trace?.edges?.add(xy(uu, start + dv * t)) }
         else if (lastShort) short++ else cut++
       }
