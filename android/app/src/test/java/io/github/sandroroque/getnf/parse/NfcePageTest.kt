@@ -90,6 +90,25 @@ class NfcePageTest {
     assertEquals(emptyList<String>(), p.warnings)
   }
 
+  @Test fun sergipesLookupByChave() {
+    // SEFAZ-SE's result page (D207): RJ's markup, "Data de Emissão:", and an empty payment line printed as NaN.
+    val p = NfcePage.parse(fixture("se-consulta-chave.html"))
+    assertEquals("28260111222333000181650020000000011123456786", p.chave)
+    assertEquals("1", p.number)
+    assertEquals("2", p.series)
+    assertEquals(1768482000000, p.issuedAt) // 2026-01-15T10:00:00-03:00
+    assertEquals(1768482000000, p.authorizedAt)
+    assertEquals(listOf(
+      ParsedItem(1, "SABONETE EXEMPLO 90G", "101", 10000, "UN", 144900, 1449),
+      ParsedItem(2, "CREME EXEMPLO 200ML", "102", 10000, "UN", 690000, 6900),
+      ParsedItem(3, "ALGODAO EXEMPLO 50G", "103", 10000, "UN", 99900, 999),
+    ), p.items)
+    assertEquals(9348L, p.totals.payableCents)
+    assertEquals(emptyList<ParsedPayment>(), p.payments)
+    assertEquals(123L, p.taxesEstimate!!.totalCents)
+    assertEquals(emptyList<String>(), p.warnings)
+  }
+
   @Test fun twoPaymentMethodsAndChange() {
     // No real receipt paid two ways yet: the committed page with cash and a card, and change from the cash.
     val card = "<div id=\"linhaTotal\"><label class=\"tx\">\n\t\t\t\t\t\t\t\t\t\t\tCartão de Crédito\n\t\t\t\t\t\t\t\t\t\t</label><span class=\"totalNumb\">30,64</span></div>"

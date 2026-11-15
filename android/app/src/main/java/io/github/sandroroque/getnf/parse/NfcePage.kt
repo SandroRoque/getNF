@@ -89,7 +89,8 @@ object NfcePage {
   )
   private val SCRIPT_STYLE = Regex("<script[\\s\\S]*?</script>|<style[\\s\\S]*?</style>", RegexOption.IGNORE_CASE)
   private val CHAVE = Regex("class=\"chave\"[^>]*>([\\d\\s]+)<")
-  private val INFO = Regex("Número:\\s*(\\d+)\\s*Série:\\s*(\\d+)\\s*Emissão:\\s*(\\d{2}/\\d{2}/\\d{4})\\s+(\\d{2}:\\d{2}:\\d{2})")
+  // SE writes "Data de Emissão:" (D207).
+  private val INFO = Regex("Número:\\s*(\\d+)\\s*Série:\\s*(\\d+)\\s*(?:Data de )?Emissão:\\s*(\\d{2}/\\d{2}/\\d{4})\\s+(\\d{2}:\\d{2}:\\d{2})")
   // SC and RJ write "… 15/01/2026 às 10:00:00", SP only "… 15/01/2026 10:00:00" (D206).
   private val PROTOCOL = Regex("Protocolo de Autorização:\\s*(\\d+)\\s+(\\d{2}/\\d{2}/\\d{4})\\s+(?:às\\s+)?(\\d{2}:\\d{2}:\\d{2})")
   private val TAX_TOTAL = Regex("Tributos Totais Incidentes\\s*\\(Lei Federal 12\\.741/2012\\)\\s*R\\$\\s*(\\d[\\d.]*,\\d{2})", RegexOption.IGNORE_CASE)
@@ -178,7 +179,11 @@ object NfcePage {
       val label = text(m.groupValues[2])
       val value = text(m.groupValues[3])
       // A payment method's line; RJ marks "Troco" the same way (D155), which is change, not a payment.
-      if (m.groupValues[1].contains("class=\"tx\"") && !label.startsWith("troco", ignoreCase = true)) { payments += ParsedPayment(label, cents(value)); continue }
+      if (m.groupValues[1].contains("class=\"tx\"") && !label.startsWith("troco", ignoreCase = true)) {
+        // SE's page can print an empty method with "NaN" (D207): no payment there, not one of unknown kind.
+        if (label.isNotBlank() || cents(value) != null) payments += ParsedPayment(label, cents(value))
+        continue
+      }
       if (label.contains("forma de pagamento", ignoreCase = true)) continue
       raw[label] = value
       TOTAL_LABELS.firstOrNull { it.first.containsMatchIn(label) }?.let { values[it.second] = value }

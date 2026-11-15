@@ -26,6 +26,22 @@ class SefazPageTest {
       SefazPage.classify("https://www.nfce.fazenda.sp.gov.br/NFCeConsultaPublica/Paginas/ConsultaQRCode.aspx?p=35000|2|1|1|AB"))
     // The same path on another state's host isn't SP's page.
     assertEquals(Kind.Other, SefazPage.classify("https://nfce.example.gov.br/NFCeConsultaPublica/Paginas/ConsultaQRCode.aspx?p=1"))
+    // SE (D207): its QR page says "QR Code INVÁLIDO!"; the lookup form by chave, then the result page.
+    assertEquals(Kind.Other, SefazPage.classify("https://nfce.sefaz.se.gov.br/portal/qrcode.jsp?p=28000|3|1"))
+    assertEquals(Kind.LookupForm, SefazPage.classify(SefazPage.SERGIPE_FORM))
+    assertEquals(Kind.Details, SefazPage.classify("https://nfce.sefaz.se.gov.br/portal/consultarNFCeDCA.jsp"))
+    assertEquals(Kind.Other, SefazPage.classify("https://nfce.example.gov.br/portal/consultarNFCeDCA.jsp"))
+  }
+
+  @Test
+  fun sergipeIsLookedUpByChave() {
+    val se = "28260111222333000181650020000000011123456786"
+    assertEquals(SefazPage.SERGIPE_FORM, SefazPage.lookupUrl(se, "http://www.nfce.se.gov.br/nfce/qrcode?p=$se|3|1"))
+    assertEquals(SefazPage.SERGIPE_FORM, SefazPage.lookupUrl(se, null))
+    assertEquals("https://sat.sef.sc.gov.br/nfce/consulta?p=1", SefazPage.lookupUrl("42" + se.drop(2), "https://sat.sef.sc.gov.br/nfce/consulta?p=1"))
+    assertTrue(SefazPage.isRead("https://nfce.sefaz.se.gov.br/portal/consultarNFCeDCA.jsp"))
+    assertTrue(SefazPage.fillLookupForm(se).contains("'$se'"))
+    assertTrue(SefazPage.isComplete(javaClass.classLoader!!.getResource("se-consulta-chave.html")!!.readText()))
   }
 
   @Test

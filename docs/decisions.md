@@ -172,6 +172,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D204 | sefaz | current | Another state's receipt says so before its portal opens; plain HTTP allowed for `gov.br` portals |
 | D205 | UI | current | Sem categoria opens, the IPCI says why it has no reading, no "rateado" on nothing, Raízes e tubérculos |
 | D206 | sefaz | current | São Paulo's NFC-e is read: its "Consulta Resumida" is RJ's markup on the QR Code's own address; no lookup budget for SP |
+| D207 | sefaz | current | Sergipe's NFC-e is read, looked up by chave: its portal refuses its own QR Codes; the app fills the form and sends it once Turnstile passes |
 
 ---
 
@@ -4853,3 +4854,40 @@ D204 left reading São Paulo as a separate step. The closed test had already sen
 
 Not checked on a device: no live lookup was made (CLAUDE.md), so the redirect from SP's short QR address
 (`/qrcode?p=…`) to `ConsultaQRCode.aspx` is assumed from the copies, not watched.
+
+## D207. Sergipe's NFC-e is read, looked up by chave (2026-11-15)
+
+D204 let Sergipe's HTTP QR address open (T-55), but the closed test's three Sergipe "pages" were only the WebView's
+`ERR_CLEARTEXT_NOT_PERMITTED` screen, so there was nothing to read from. Following the links (with the user's go-ahead,
+6 lookups in all at SEFAZ-SE, none at SC's) showed why opening them wouldn't have been enough:
+
+- **SE's portal refuses its own QR Codes.** The new-format QR (`…/nfce/qrcode?p=<chave>|3|1`, the "version 3" payload),
+  which redirects to `https://nfce.sefaz.se.gov.br/portal/qrcode.jsp`, answers "QR Code INVÁLIDO!", from `curl` and
+  from the app's WebView alike. The photos' QR decodes to exactly the address the app kept, so it's the portal, not the
+  scan. An older receipt's contingency QR (`consultarNFCe.jsp?p=…|||<signature>`) got a 403 from a web application
+  firewall.
+- **The lookup by chave works**, the one the receipt itself prints ("Consulte pela Chave de Acesso em …"): a form on
+  `portalNoticias.jsp?jsp=barra-menu/servicos/consultaDANFENFCe.htm` with the chave (`cdChaveAcesso`), an optional
+  emission date, and Cloudflare Turnstile, which passed by itself in the emulator. Consultar posts to
+  `consultarNFCeDCA.jsp`, which shows the receipt in RJ's markup (`tabResult`, `RCod`, `totalNota`, `chave`), as SP's
+  does (D206).
+
+What the app does:
+- **A Sergipe chave (UF 28) opens the form, not the QR address** (`SefazPage.lookupUrl`). On the form the app puts the
+  chave in its field, scrolls it into view, and presses Consultar as soon as Turnstile has left its token; if Turnstile
+  asks, the person solves it and the same wait sends it. The portal is shown during the form with a line saying so,
+  like SC's check. `consultarNFCeDCA.jsp` on a `se.gov.br` host is the details page, saved and read as RJ's.
+- **The parser**: SE writes "Data de Emissão:" where the others write "Emissão:", so the number, series and emission
+  time weren't read; both are accepted now. The payment line comes with no method and "NaN" for the amount: that's no
+  payment, not one of unknown kind, so it's left out (SP's "Troco" NaN was D206).
+- `Chave.READ_UFS` adds 28; the other-state panel and the welcome step say SC, RJ, SP and SE. The site, privacy policy
+  and Play listing still say SC, RJ and SP: they describe the version testers have, and change when one with Sergipe
+  ships.
+- Fixture `se-consulta-chave.html` from the real page through `tools/make-nfce-fixture.py`, with the pharmacy's item
+  names, codes and COO replaced as well (a pharmacy purchase says something about a person).
+
+Pressing Consultar for the person is not solving the check: Turnstile still decides, and the form is SEFAZ-SE's
+public lookup, used once per receipt as the person would. Checked end to end on the emulator: the receipt's page was
+fetched, saved and its 3 items, total and emission date read.
+
+Not known: whether SE limits lookups per IP as SC does (no limit seen in 6), and whether Turnstile asks on a phone.

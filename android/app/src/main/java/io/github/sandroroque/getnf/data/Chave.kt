@@ -33,8 +33,8 @@ object Chave {
   /** The issuing state's IBGE code, the chave's first two digits ("42" is Santa Catarina). */
   fun uf(chave: String): String = chave.take(2)
 
-  /** States whose receipt page the app reads (D155, D206): SC, RJ and SP. Another state's portal opens, but nothing is read. */
-  val READ_UFS = setOf("42", "33", "35")
+  /** States whose receipt page the app reads (D155, D206, D207): SC, RJ, SP and SE. Another state's portal opens, but nothing is read. */
+  val READ_UFS = setOf("42", "33", "35", "28")
 
   fun isRead(chave: String): Boolean = uf(chave) in READ_UFS
 

@@ -16,9 +16,10 @@ class ChaveTest {
   fun stateFromTheChave() {
     assertTrue(Chave.isRead(chave))
     assertEquals("de Santa Catarina", Chave.stateOf(chave))
-    val sergipe = "28" + chave.drop(2)
-    assertFalse(Chave.isRead(sergipe))
-    assertEquals("de Sergipe", Chave.stateOf(sergipe))
+    val bahia = "29" + chave.drop(2)
+    assertFalse(Chave.isRead(bahia))
+    assertEquals("da Bahia", Chave.stateOf(bahia))
+    assertTrue(Chave.isRead("28" + chave.drop(2))) // D207
     assertTrue(Chave.isRead("33" + chave.drop(2)))
     assertTrue(Chave.isRead("35" + chave.drop(2))) // D206
     assertNull(Chave.stateOf("99" + chave.drop(2)))

@@ -54,6 +54,7 @@ import kotlinx.coroutines.launch
 private enum class Status(val text: String) {
   Loading("Abrindo a página da SEFAZ…"),
   Challenge("A SEFAZ quer confirmar que você é uma pessoa: resolva abaixo."),
+  LookupForm("A SEFAZ de Sergipe consulta pela chave: o app já a preencheu e envia sozinho assim que a verificação abaixo passar. Se ela pedir, resolva."),
   RateLimited("A SEFAZ está bloqueando esta rede por alguns minutos (consultas demais). As fotos estão salvas: feche e busque a página mais tarde, em Para você."),
   Saved("Página salva ✓ Ela sobe para o servidor em segundo plano."),
   Failed("Não deu para ler a página. Tente de novo em Para você."),
@@ -114,17 +115,17 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
     },
   ) { padding ->
     Column(Modifier.fillMaxSize().padding(padding)) {
-      if (status == Status.Challenge) Surface(color = MaterialTheme.colorScheme.errorContainer) {
+      if (status == Status.Challenge || status == Status.LookupForm) Surface(color = MaterialTheme.colorScheme.errorContainer) {
         Text(status.text, Modifier.fillMaxWidth().padding(12.dp), style = MaterialTheme.typography.bodyMedium)
       }
 
-      val url = receipt?.qrUrl
+      val url = receipt?.let { SefazPage.lookupUrl(chave, it.qrUrl) }
       if (!readHere && !openAnyway) {
         val state = io.github.sandroroque.getnf.data.Chave.stateOf(chave)
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
           horizontalAlignment = Alignment.CenterHorizontally) {
           Text(if (state != null) "Notas $state ainda não são lidas." else "Notas deste estado ainda não são lidas.", style = MaterialTheme.typography.bodyLarge)
-          Text("Por enquanto o app lê as notas de Santa Catarina, do Rio de Janeiro e de São Paulo. Esta fica guardada, com as fotos, " +
+          Text("Por enquanto o app lê as notas de Santa Catarina, do Rio de Janeiro, de São Paulo e de Sergipe. Esta fica guardada, com as fotos, " +
             "esperando a página: quando o app passar a ler notas de lá, ela pode ser buscada.", style = MaterialTheme.typography.bodyMedium)
           Pill("Voltar", ButtonKind.Solid, onClick = onDone)
           if (url != null) Pill("Ver a página da SEFAZ assim mesmo", ButtonKind.Ghost) { openAnyway = true }
@@ -156,10 +157,12 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
         }
         SefazWebView(
           url = url,
+          chave = chave,
           onLookup = { app.lookupBudget.record(network.key) },
           onKind = { kind ->
             when (kind) {
               SefazPage.Kind.Challenge -> status = Status.Challenge
+              SefazPage.Kind.LookupForm -> status = Status.LookupForm
               SefazPage.Kind.RateLimited -> {
                 status = Status.RateLimited
                 release()
@@ -194,7 +197,7 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
         var slow by remember { mutableStateOf(false) }
         LaunchedEffect(status) { slow = false; if (status == Status.Loading) { kotlinx.coroutines.delay(12_000); slow = true } }
         // Another state's portal is shown as it is: the person opened it to look, and nothing here reads it.
-        if (readHere && status != Status.Challenge && !(status == Status.Loading && slow)) Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        if (readHere && status != Status.Challenge && status != Status.LookupForm && !(status == Status.Loading && slow)) Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
           Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally) {
             when (status) {
@@ -212,7 +215,7 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
 
 @SuppressLint("SetJavaScriptEnabled") // Turnstile and the portal need JS.
 @Composable
-private fun SefazWebView(url: String, onLookup: () -> Unit, onKind: (SefazPage.Kind) -> Unit, onDetailsHtml: (String, String?) -> Unit,
+private fun SefazWebView(url: String, chave: String, onLookup: () -> Unit, onKind: (SefazPage.Kind) -> Unit, onDetailsHtml: (String, String?) -> Unit,
                          keepOther: Boolean = false, onOtherHtml: (String, String) -> Unit = { _, _ -> }) {
   // Requests per host for this visit (fetched vs answered empty by us), logged after each page, so we can see what one
   // visit costs against SEFAZ's per-IP rate limit (docs/sefaz-sc.md).
@@ -274,6 +277,8 @@ private fun SefazWebView(url: String, onLookup: () -> Unit, onKind: (SefazPage.K
               Log.i("PageScreen", "finished $kind $pageUrl")
               Log.i("PageScreen", "requests this visit so far: " + summary())
               onKind(kind)
+              if (kind == SefazPage.Kind.LookupForm)
+                view.evaluateJavascript(SefazPage.fillLookupForm(chave)) { Log.i("PageScreen", "lookup form: $it") }
               if (kind == SefazPage.Kind.Details && pageUrl != savedUrl) {
                 savedUrl = pageUrl
                 view.evaluateJavascript(SefazPage.GET_HTML) { result -> onDetailsHtml(pageUrl, SefazPage.decodeJsResult(result)) }

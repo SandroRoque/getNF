@@ -6,7 +6,8 @@ import kotlinx.serialization.json.Json
 /**
  * Recognises the pages the SEFAZ portals go through: SC's (docs/sefaz-sc.md), RJ's (D155), which shows the same
  * receipt markup after a check of its own that runs without the person, and SP's (D206), whose "Consulta Resumida" is
- * RJ's markup served on the QR Code's own address.
+ * RJ's markup served on the QR Code's own address, and SE's (D207), looked up by chave on a form of its own, since its
+ * portal refuses its own QR Codes, then shown in RJ's markup too.
  */
 object SefazPage {
   enum class Kind {
@@ -14,6 +15,8 @@ object SefazPage {
     Details,
     /** `SecurityVerify.aspx`: Cloudflare Turnstile, the user has to solve it. */
     Challenge,
+    /** SE's lookup form (D207): the app fills in the chave and sends it once Turnstile has passed. */
+    LookupForm,
     /** `appMaximoRequisicoesExcedidas.htm`: too many requests from this IP. Only waiting helps. */
     RateLimited,
     /** Redirects and anything else. */
@@ -25,6 +28,8 @@ object SefazPage {
     return when {
       "nfce_detalhes.aspx" in u || "/consultanfce/paginas/resultadoqrcode" in u -> Kind.Details
       "/nfceconsultapublica/paginas/consultaqrcode.aspx" in u && isSaoPaulo(url) -> Kind.Details
+      "/portal/consultarnfcedca.jsp" in u && isSergipe(url) -> Kind.Details
+      "consultadanfenfce.htm" in u && isSergipe(url) -> Kind.LookupForm
       "securityverify.aspx" in u -> Kind.Challenge
       "maximorequisicoesexcedidas" in u -> Kind.RateLimited
       else -> Kind.Other
@@ -65,15 +70,42 @@ object SefazPage {
     return runCatching { URI(authority).host }.getOrNull()?.lowercase()
   }
 
-  /** A portal whose receipt page the app reads: SC's, RJ's (D155) and SP's (D206). Any other is another state's (D161). */
+  /** A portal whose receipt page the app reads: SC's, RJ's (D155), SP's (D206) and SE's (D207). Any other is another state's (D161). */
   fun isRead(url: String): Boolean {
     val host = hostOf(url) ?: return false
-    return isSefaz(url) || host == "fazenda.rj.gov.br" || host.endsWith(".fazenda.rj.gov.br") || isSaoPaulo(url)
+    return isSefaz(url) || host == "fazenda.rj.gov.br" || host.endsWith(".fazenda.rj.gov.br") || isSaoPaulo(url) || isSergipe(url)
   }
 
   private fun isSaoPaulo(url: String): Boolean {
     val host = hostOf(url) ?: return false
     return host == "fazenda.sp.gov.br" || host.endsWith(".fazenda.sp.gov.br")
+  }
+
+  private fun isSergipe(url: String): Boolean {
+    val host = hostOf(url) ?: return false
+    return host == "se.gov.br" || host.endsWith(".se.gov.br")
+  }
+
+  /**
+   * SE's portal answers its own QR Codes, old and new, with "QR Code INVÁLIDO!" (D207): its receipts are looked up by
+   * chave on this form instead.
+   */
+  const val SERGIPE_FORM = "https://nfce.sefaz.se.gov.br/portal/portalNoticias.jsp?jsp=barra-menu/servicos/consultaDANFENFCe.htm"
+
+  /** Where a receipt's page is looked up: the QR Code's address, except for SE's (D207). */
+  fun lookupUrl(chave: String, qrUrl: String?): String? = if (chave.startsWith("28")) SERGIPE_FORM else qrUrl
+
+  /**
+   * JS for SE's form: puts the chave in its field, then presses Consultar as soon as Turnstile has left its token
+   * (it usually passes by itself; if it asks, the person solves it and the same wait sends it). Gives up after 3 minutes.
+   * The form is scrolled into view, so Turnstile is on screen if it asks.
+   */
+  fun fillLookupForm(chave: String): String {
+    require(chave.length == 44 && chave.all { it in '0'..'9' })
+    return """(function(){var f=document.getElementById('cdChaveAcesso');if(!f)return 'no field';f.value='$chave';f.scrollIntoView({block:'center'});
+      |var n=0,t=setInterval(function(){var r=document.querySelector('[name="cf-turnstile-response"]');
+      |if(r&&r.value){clearInterval(t);var b=document.getElementById('btnConsultar');if(b)b.click();}
+      |else if(++n>360)clearInterval(t);},500);return 'filled';})()""".trimMargin()
   }
 
   fun shouldBlock(pageKind: Kind, url: String, accept: String?): Boolean {
