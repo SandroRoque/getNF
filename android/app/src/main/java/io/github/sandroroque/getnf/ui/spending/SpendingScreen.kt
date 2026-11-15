@@ -65,6 +65,8 @@ fun SpendingScreen(
   var selectedKey by rememberSaveable { mutableStateOf<String?>(null) }
   var path by rememberSaveable { mutableStateOf(listOf<String>()) }
   var lens by rememberSaveable { mutableStateOf(0) }
+  // The "Sem categoria" or "(sem subcategoria)" slice picked (T-57): the products below are only those.
+  var onlyHere by rememberSaveable { mutableStateOf(false) }
 
   val parents = remember(categories) { categories.associate { it.id to it.parentId } }
   val spending = remember(lines, parents, yearly) { lines?.let { Spending(it, parents, yearly) } }
@@ -83,7 +85,7 @@ fun SpendingScreen(
       TabHeader("Gastos") {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
           for ((i, l) in listOf("Mês", "Ano").withIndex())
-            Pill(l, if ((i == 1) == yearly) ButtonKind.Solid else ButtonKind.Ghost) { yearly = i == 1; selectedKey = null }
+            Pill(l, if ((i == 1) == yearly) ButtonKind.Solid else ButtonKind.Ghost) { yearly = i == 1; selectedKey = null; onlyHere = false }
         }
       }
     }
@@ -92,7 +94,7 @@ fun SpendingScreen(
       item { EmptyState("Os gastos aparecem aqui quando a primeira nota tiver a página da SEFAZ lida.") }
       return@LazyColumn
     }
-    item { Bars(spending, selected) { selectedKey = it.key } }
+    item { Bars(spending, selected) { selectedKey = it.key; onlyHere = false } }
     item {
       Column {
         MidNumber(Format.brl(spending.total(selected)))
@@ -113,11 +115,11 @@ fun SpendingScreen(
     if (path.isNotEmpty()) item {
       // Where we are in the tree; each step goes back up.
       Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Pill("Tudo", ButtonKind.Outline) { path = emptyList() }
+        Pill("Tudo", ButtonKind.Outline) { path = emptyList(); onlyHere = false }
         path.forEachIndexed { i, id ->
           Sub("›")
           if (i == path.lastIndex) Text(byId[id]?.label ?: "?", style = MaterialTheme.typography.labelLarge, color = Calmo.fg)
-          else Pill(byId[id]?.label ?: "?", ButtonKind.Outline) { path = path.take(i + 1) }
+          else Pill(byId[id]?.label ?: "?", ButtonKind.Outline) { path = path.take(i + 1); onlyHere = false }
         }
       }
     }
@@ -130,12 +132,23 @@ fun SpendingScreen(
         title = when { s.categoryId == null -> "Sem categoria"; here -> "${byId[node]?.label} (sem subcategoria)"; else -> byId[s.categoryId]?.label ?: "?" },
         subtitle = "${Math.round(s.netCents * 100.0 / total)}% · ${s.lines} itens",
         amount = Format.brl(s.netCents), dot = colorOf(s.categoryId ?: node),
-        onClick = if (deeper) ({ path = path + s.categoryId!! }) else null,
+        // A category goes down the tree; what has no category further down narrows the products to it (T-57).
+        onClick = if (deeper) ({ path = path + s.categoryId!!; onlyHere = false }) else ({ onlyHere = !onlyHere }),
+        trailingMark = if (!deeper && onlyHere) "✓" else null,
       )
     }
     item { IpciLine(lines.orEmpty(), spending, node, onIpci) }
-    item { SectionLabel(if (node == null) "Produtos" else "Produtos em ${byId[node]?.label}", Modifier.padding(top = 6.dp)) }
-    items(productsIn(spending.linesUnder(selected, node)).take(40), key = { "p:${it.productId}" }) { p ->
+    item {
+      SectionLabel(when {
+        onlyHere && node == null -> "Produtos sem categoria"
+        onlyHere -> "Produtos em ${byId[node]?.label}, sem subcategoria"
+        node == null -> "Produtos"
+        else -> "Produtos em ${byId[node]?.label}"
+      }, Modifier.padding(top = 6.dp))
+    }
+    if (onlyHere && node == null) item { Sub("Toque num produto para dar uma categoria a ele.") }
+    val listed = if (onlyHere) spending.linesOnlyAt(selected, node) else spending.linesUnder(selected, node)
+    items(productsIn(listed).take(40), key = { "p:${it.productId}" }) { p ->
       AmountRow(titles[p.productId] ?: "?", Format.brl(p.netCents),
         subtitle = p.qty.entries.joinToString(" + ") { (unit, q) -> "${Format.e4(q)} ${unit.lowercase()}" },
         onClick = { onOpenProduct(p.productId) })

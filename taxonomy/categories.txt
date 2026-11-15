@@ -14,8 +14,9 @@
 food                          Alimentos e mercado
   produce                     Frutas e verduras
     fruit                     Frutas  # MACA, TANGERINA, BANANA
-    vegetables                Legumes e verduras  # BROCOLIS, CEBOLA, BATATA, TOMATE
+    vegetables                Legumes e verduras  # BROCOLIS, CEBOLA, TOMATE, CENOURA
     greens_herbs              Folhas e ervas  # ALFACE
+    roots_tubers              Raízes e tubérculos  # BATATA, AIPIM, MANDIOCA, INHAME
   meat_fish                   Carnes e peixes
     beef                      Carne bovina
     pork                      Carne suína

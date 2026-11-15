@@ -3,8 +3,9 @@
 food	Groceries: food to cook or eat at home
 food.produce	Fresh fruit, vegetables and herbs
 food.produce.fruit	Fresh fruit
-food.produce.vegetables	Fresh vegetables
+food.produce.vegetables	Fresh vegetables: tomato, onion, carrot, broccoli, squash (not potatoes or cassava)
 food.produce.greens_herbs	Lettuce, leafy greens, herbs
+food.produce.roots_tubers	Roots and tubers: potato, sweet potato, cassava (aipim, mandioca), yam, taro (inhame), arracacha (mandioquinha)
 food.meat_fish	Meat, fish, deli
 food.meat_fish.beef	Beef cuts, ground beef, beef burgers
 food.meat_fish.pork	Fresh pork cuts

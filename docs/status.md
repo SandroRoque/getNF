@@ -1,6 +1,6 @@
 # Status and next steps
 
-Last updated 2026-11-12. A handoff for picking the project up again. For *why* things are the way they are, read
+Last updated 2026-11-15. A handoff for picking the project up again. For *why* things are the way they are, read
 `docs/decisions.md`. For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
@@ -115,6 +115,12 @@ The audit's coverage was partial (its Coverage table); still to examine, in this
 signs in on the same phone, the server's auth and storage limits (`config.toml`, invite codes, Edge Function
 failures), the Room migrations one by one; the rest after the open store. One area per session, without subagents
 (they kept running out of usage).
+
+**2026-11-15, the notebook of app issues** (`docs/notes-expansion-2026-11-15.md`): fixed on main with D203–D205 and
+tickets T-55–T-60: "Terminar com o que foi lido" when a capture won't finish, another state's receipt says so before
+its portal opens (Sergipe's HTTP QR now loads), Sem categoria opens in Gastos, the IPCI says why it has no reading, no
+"rateado" on a line with nothing, and the "Raízes e tubérculos" category. Its two migrations wait for `db push`
+(`docs/releases/server.md`); the app changes wait for a build.
 
 **Handoff, 2026-11-12 (session `claude/urgent-tickets`)**
 

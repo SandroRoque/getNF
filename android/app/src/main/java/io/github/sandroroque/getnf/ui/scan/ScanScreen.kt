@@ -322,11 +322,20 @@ private fun ContinuousCapture(onCaptured: () -> Unit, onCancel: () -> Unit, onOp
     }
   }
   if (showExit) io.github.sandroroque.getnf.ui.catalog.CalmoSheet("Sair sem terminar?", onDismiss = { showExit = false; model.setAttached(true) }) {
-    io.github.sandroroque.getnf.ui.calmo.Sub("O QR Code já foi lido. As imagens desta tentativa são descartadas ao sair; as fotos anteriores desta nota ficam.")
+    // Each way out says what is left afterwards (D203): the receipt with these photos, the receipt alone, or nothing new.
+    val photos = state.saved
+    io.github.sandroroque.getnf.ui.calmo.Sub(if (photos > 0) "O QR Code já foi lido, e ${io.github.sandroroque.getnf.ui.Format.count(photos, "foto", "fotos")} desta nota."
+      else "O QR Code já foi lido, mas nenhuma foto desta nota ainda.")
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
       io.github.sandroroque.getnf.ui.calmo.Pill("Continuar escaneando", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Solid) { showExit = false; model.setAttached(true) }
-      io.github.sandroroque.getnf.ui.calmo.Pill("Sair guardando só o código", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Outline) { showExit = false; model.exit(ExitChoice.KEEP_CODE) }
-      io.github.sandroroque.getnf.ui.calmo.Pill("Descartar a tentativa", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Ghost) { showExit = false; model.exit(ExitChoice.DISCARD) }
+      if (photos > 0) {
+        io.github.sandroroque.getnf.ui.calmo.Pill("Terminar com o que foi lido", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Outline) { showExit = false; model.exit(ExitChoice.FINISH) }
+        io.github.sandroroque.getnf.ui.calmo.Sub("A nota fica salva com estas fotos. Um desconto que elas não mostrem fica rateado.")
+      }
+      io.github.sandroroque.getnf.ui.calmo.Pill(if (photos > 0) "Guardar só a nota, sem as fotos" else "Guardar a nota", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Outline) { showExit = false; model.exit(ExitChoice.KEEP_CODE) }
+      io.github.sandroroque.getnf.ui.calmo.Sub("Ela aparece em Para você, esperando a página da SEFAZ.")
+      io.github.sandroroque.getnf.ui.calmo.Pill("Não guardar nada", io.github.sandroroque.getnf.ui.calmo.ButtonKind.Ghost) { showExit = false; model.exit(ExitChoice.DISCARD) }
+      io.github.sandroroque.getnf.ui.calmo.Sub("As fotos desta tentativa são apagadas. Se a nota já estava na caderneta, continua como estava.")
     }
   }
 }

@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,7 +84,13 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
   val ledger = remember { app.accountSettings.ledgerId().takeIf { app.accountSettings.account() != null } }
   val ledgers = remember { io.github.sandroroque.getnf.sync.LedgerService(app.accountSettings) }
   var claim by remember { mutableStateOf(if (ledger == null) io.github.sandroroque.getnf.sync.LedgerService.FetchClaim.MINE else null) }
-  LaunchedEffect(chave) {
+  // Another state's receipt (T-55, T-56, D204): the app reads only SC's and RJ's pages, and knows the state from the
+  // chave, so it says so before opening a portal that would show the receipt and then save nothing. The person may
+  // still look.
+  val readHere = remember(chave) { io.github.sandroroque.getnf.data.Chave.isRead(chave) }
+  var openAnyway by rememberSaveable { mutableStateOf(false) }
+  LaunchedEffect(chave, openAnyway) {
+    if (!readHere && !openAnyway) return@LaunchedEffect
     if (ledger != null) claim = runCatching { kotlinx.coroutines.withTimeout(8_000) { ledgers.claimFetch(ledger, chave) } }
       .getOrDefault(io.github.sandroroque.getnf.sync.LedgerService.FetchClaim.MINE)
   }
@@ -112,7 +119,17 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
       }
 
       val url = receipt?.qrUrl
-      if (mayFetch != true) {
+      if (!readHere && !openAnyway) {
+        val state = io.github.sandroroque.getnf.data.Chave.stateOf(chave)
+        Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+          horizontalAlignment = Alignment.CenterHorizontally) {
+          Text(if (state != null) "Notas $state ainda não são lidas." else "Notas deste estado ainda não são lidas.", style = MaterialTheme.typography.bodyLarge)
+          Text("Por enquanto o app lê as notas de Santa Catarina e do Rio de Janeiro. Esta fica guardada, com as fotos, " +
+            "esperando a página: quando o app passar a ler notas de lá, ela pode ser buscada.", style = MaterialTheme.typography.bodyMedium)
+          Pill("Voltar", ButtonKind.Solid, onClick = onDone)
+          if (url != null) Pill("Ver a página da SEFAZ assim mesmo", ButtonKind.Ghost) { openAnyway = true }
+        }
+      } else if (mayFetch != true) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
           horizontalAlignment = Alignment.CenterHorizontally) {
           if (claim == null) CircularProgressIndicator()
@@ -176,7 +193,8 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
         // check the app doesn't recognize would stay hidden: after a while loading, the portal shows anyway.
         var slow by remember { mutableStateOf(false) }
         LaunchedEffect(status) { slow = false; if (status == Status.Loading) { kotlinx.coroutines.delay(12_000); slow = true } }
-        if (status != Status.Challenge && !(status == Status.Loading && slow)) Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        // Another state's portal is shown as it is: the person opened it to look, and nothing here reads it.
+        if (readHere && status != Status.Challenge && !(status == Status.Loading && slow)) Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
           Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally) {
             when (status) {

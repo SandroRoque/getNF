@@ -5,6 +5,20 @@ Nenhuma correção feita. Cada item traz: o que entendi, o que o código/a docum
 Nenhum ticket foi aberto (`tools/tickets.py new` fica para quem for corrigir). Itens com 🔶 têm uma pergunta para o
 usuário antes de mexer.
 
+## Correções feitas (2026-11-15, branch `claude/tickets-notes-fixes`)
+
+| # | Ticket | O que mudou | Decisão |
+|---|---|---|---|
+| 1 | T-60 | "Raízes e tubérculos" (`food.produce.roots_tubers`) e palavras no léxico do Jev; migrações ainda não aplicadas online | D205 |
+| 3 | T-57 | "Sem categoria" e "(sem subcategoria)" filtram a lista de produtos | D205 |
+| 4 | T-58 | IPCI sem leitura diz a regra, os números do último mês e o que ajuda; cada mês diz o limite que faltou | D205 |
+| 7 | T-59 | Linha com fatia R$ 0,00 aparece "sem desconto", não "rateado" | D205 |
+| 8 | — | "Terminar com o que foi lido" na saída da captura; os outros dois botões dizem o que fica | D203 |
+| 9 | T-55 | Sergipe: HTTP liberado para portais `gov.br` (a página volta a abrir; continua não lida) | D204 |
+| 10 | T-56 | Nota de outro estado avisa antes de abrir o portal ("Notas de São Paulo ainda não são lidas") | D204 |
+
+Sem mudança: #2 (descartado), #5 e #6 (deixados de lado pelo usuário). Ler as notas de SP de verdade continua em aberto.
+
 ## Resumo
 
 | # | Nota | Natureza | Confirmado no código? |

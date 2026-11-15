@@ -11,6 +11,18 @@ class ChaveTest {
   // anyone can look a real one up on the SEFAZ portal.
   private val chave = "42260611222333000181651090000012341123456789"
 
+  /** T-56: the state comes from the chave, so another state's receipt is known before its portal opens. */
+  @Test
+  fun stateFromTheChave() {
+    assertTrue(Chave.isRead(chave))
+    assertEquals("de Santa Catarina", Chave.stateOf(chave))
+    val sergipe = "28" + chave.drop(2)
+    assertFalse(Chave.isRead(sergipe))
+    assertEquals("de Sergipe", Chave.stateOf(sergipe))
+    assertTrue(Chave.isRead("33" + chave.drop(2)))
+    assertNull(Chave.stateOf("99" + chave.drop(2)))
+  }
+
   @Test
   fun validChave() {
     assertTrue(Chave.isValid(chave))

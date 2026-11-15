@@ -168,6 +168,9 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D168 | categorizer | current | The nightly LLM worker is suspended; the backup retries and notifies when it fails |
 | D183 | sync | current | The catalog's field upserts pass NOT NULL: defaults for the columns they leave out; refused rows go again (review L8) |
 | D182 | sync | current | Receipt lines merge by field: a changed line sends its extracted columns and only the corrections it changed (review L1) |
+| D203 | capture | current | A capture that won't finish can end with what it has ("Terminar com o que foi lido"); each way out says what is left |
+| D204 | sefaz | current | Another state's receipt says so before its portal opens; plain HTTP allowed for `gov.br` portals |
+| D205 | UI | current | Sem categoria opens, the IPCI says why it has no reading, no "rateado" on nothing, Raízes e tubérculos |
 
 ---
 
@@ -4759,3 +4762,56 @@ apart from the receipt would be left out of the photos, which is the part D98 bl
 Benchmark: no regression. The two sessions of this receipt 32.5 → 4.0 s and 5.8 → 1.5 s; 2026-10-31T02-09-07
 18.5 → 8.4 s; 2026-10-25T20-56-17 now completes (14.3 s, all items legible, no false completion). Accepted as the
 baseline. The new session was measured blind first (32.5 s at code 8), then promoted to dev.
+
+## D203. A capture that won't finish can end with what it has; each way out says what is left (2026-11-15)
+
+From the 2026-11-15 notebook (`docs/notes-expansion-2026-11-15.md`, #8). In a long session the user watched the receipt
+read correctly on screen while the capture never completed (an end it can't see, D201/D202; T-51 and T-53 on RJ's
+receipts), and the only ways out were "Sair guardando só o código" and "Descartar a tentativa", which both threw the
+photos away and read almost the same. The exit sheet now offers, once the QR code is read and a photo is saved,
+**"Terminar com o que foi lido"**: the capture finishes as if it had completed, keeping the fewest of its photos that
+read what was read (the same `keep()` as a finished capture), and goes on to "Nota salva" and the page. The receipt's
+items come from the page anyway; only a discount the photos don't show stays prorated, which the sheet says. The other
+two say their result: "Guardar só a nota, sem as fotos" (it waits in Para você for its page) and "Não guardar nada"
+(this attempt's photos are deleted; a receipt already in the caderneta stays as it was). For the closed test's copies a
+capture ended this way is `abandonada`, not `salva`, so the benchmark doesn't count it as a capture that completed;
+`events.txt` in a debug dump records it. Checked on the emulator with a still receipt: 3 photos saved, ended from the
+sheet, 2 kept with the receipt.
+
+## D204. Another state's receipt says so before its portal opens; state portals may use plain HTTP (2026-11-15)
+
+From the notebook (#9, #10). The "Rio" receipts that failed were Sergipe's (UF 28): the app doesn't read Sergipe, and
+its QR code points at `http://www.nfce.se.gov.br/…`, which the WebView refused since D105's HTTPS-only rule, so not even
+the page showed (T-55). São Paulo's opened its portal and then nothing happened, without a word (T-56).
+
+- **The chave says the state** (its first two digits), so the page screen checks it first: for a state other than SC
+  (42) and RJ (33) it says "Notas de Sergipe ainda não são lidas", that the receipt stays with its photos waiting for
+  its page, and offers "Voltar" or "Ver a página da SEFAZ assim mesmo". Nothing is claimed in the caderneta and no
+  lookup is made until the person asks. When they do, the portal is shown as it is (no "Buscando…" panel over it), and
+  its page is still kept for the closed test if they agreed (D161).
+- **Plain HTTP is allowed for `gov.br` hosts** (`network_security_config.xml`, release and debug). Only the WebView
+  opens such addresses, nothing from them is read, and SC's and RJ's portals stay on HTTPS. The alternative, rewriting
+  `http://` to `https://`, depends on each state serving HTTPS, which can't be checked without live lookups.
+- Reading São Paulo (its "Consulta Resumida" page has SC's markup) is not part of this: it's a separate step.
+
+## D205. Small fixes from the 2026-11-15 notebook: Sem categoria opens, the IPCI says why, no "rateado" on nothing, roots and tubers (2026-11-15)
+
+- **Gastos (T-57):** "Sem categoria" and "X (sem subcategoria)" were the only rows that did nothing. A tap now narrows
+  the products below to that slice's lines (marked ✓, tap again to undo; picking another period, level or Mês/Ano
+  clears it), with "Toque num produto para dar uma categoria a ele." The list used to show every product of the period.
+- **IPCI without a reading (T-58):** "Ainda poucos produtos comprados de novo para medir preços" said neither what was
+  missing nor what to do. It now states the rule (at least 3 products bought in an earlier month too, 30% of the
+  month's spending), the latest month's numbers ("Em fevereiro de 2026: 2 produtos, 100% do gasto"), and that more
+  receipts or joining duplicate products help. Each month without a reading says which limit it missed ("poucos
+  produtos", "pouco do gasto") instead of "poucos dados". The method (D79) is unchanged; the notebook's #5/#6 were set
+  aside by the user.
+- **"rateado" on a line with no discount (T-59):** a line not read from the photos keeps the source `prorated` (it takes
+  a share again if another line changes), even when its share is R$ 0,00 because the photos found the whole discount.
+  The line sheet labelled it "rateado". Such a line now reads "sem desconto"; the stored source is unchanged, and the
+  reports already counted only non-zero prorated amounts as estimates.
+- **Raízes e tubérculos (T-60):** `food.produce.roots_tubers`, with potato, sweet potato, cassava (aipim, mandioca),
+  yam/taro (inhame) and arracacha in the categorizer's description; "Legumes e verduras" now says it excludes potatoes
+  and cassava. A lexicon migration adds AIPIM, MANDIOCA, MACAXEIRA, INHAME, MANDIOQUINHA, BAROA and two spellings of
+  batata-doce (BATATA already was). Every caderneta gets the category from the migration's `sync_taxonomy_for` and the
+  phone's next sync; as in D122, products already categorized aren't moved (the user moves them with a tap). The
+  "licor"/"balas" part of the notebook's #1 needed nothing: no such category exists online.

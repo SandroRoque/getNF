@@ -36,6 +36,18 @@ class IpciTest {
     assertEquals("a", months[1].contributions().first().first)
   }
 
+  /** T-58: a month without a reading says which limit it missed. */
+  @Test fun aMonthWithoutAReadingSaysWhy() {
+    // Two products bought again: too few, whatever their share.
+    val few = Ipci.compute(listOf(line("a", month(0), 1000), line("b", month(0), 1000), line("a", month(1), 1000), line("b", month(1), 1000)))[1]
+    assertNull(few.reading)
+    assertTrue(few.fewProducts)
+    // Three bought again, but a new product takes most of the month's spending.
+    val low = Ipci.compute(basket(0, 1000, 1000) + basket(1, 1000, 1000) + line("big", month(1), 20_000))[1]
+    assertNull(low.reading)
+    assertTrue(!low.fewProducts && low.lowCoverage)
+  }
+
   @Test fun thePriceIsWhatWasPaidPerKgWhenTheSizeIsKnown() {
     // 100 g packs: R$ 2,98 then R$ 2,98 with R$ 0,30 off (read from a photo) = cheaper per kg.
     val pack = 100_000L

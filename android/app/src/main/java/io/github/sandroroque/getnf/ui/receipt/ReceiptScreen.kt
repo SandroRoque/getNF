@@ -133,7 +133,7 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
       AmountRow(
         title = l.productName ?: l.description,
         subtitle = "${Format.e4(l.qtyE4)} ${l.unit.orEmpty().lowercase()} × ${Format.brl(Math.round(l.unitPriceE4 / 100.0))}" +
-          (if (l.discountCents != 0L) " · −${Format.brl(l.discountCents)} ${discountSource(l.discountSource)}" else "") +
+          (if (l.discountCents != 0L) " · −${Format.brl(l.discountCents)} ${discountSource(l.discountSource, l.discountCents)}" else "") +
           (if (l.surchargeCents != 0L) " · +${Format.brl(l.surchargeCents)} de acréscimo" else "") +
           (if (l.override) " · outro produto" else ""),
         amount = Format.brl(l.grossCents - l.discountCents + l.surchargeCents),
@@ -187,8 +187,14 @@ fun ReceiptScreen(chave: String, onOpenProduct: (String) -> Unit, onBack: () -> 
   }
 }
 
-private fun discountSource(source: String) = when (source) {
-  "prorated" -> "rateado"; "photo" -> "da foto"; "manual" -> "à mão"; "html" -> "da página"; else -> source
+/**
+ * Where a line's discount came from. A share of the receipt's discount that came to nothing (the photos found all of
+ * it on other lines, or the receipt has none) is no discount, not a "rateado" one (T-59): the line still takes a share
+ * if the others change, but there's nothing estimated on it now.
+ */
+private fun discountSource(source: String, cents: Long) = when (source) {
+  "prorated" -> if (cents == 0L) "sem desconto" else "rateado"
+  "photo" -> "da foto"; "manual" -> "à mão"; "html" -> "da página"; else -> source
 }
 
 /** What came of reading the photos, in a sentence. */
@@ -225,7 +231,7 @@ private fun LineSheet(chave: String, l: LineDetail, allowed: LongRange, hint: St
         isError = cents != null && cents != l.discountCents && cents !in allowed,
         supportingText = { Text(hint) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
-      Mark(discountSource(l.discountSource))
+      Mark(discountSource(l.discountSource, l.discountCents))
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
       if (l.discountSource == "photo" && l.discountReview != "confirmed" && cents == l.discountCents)

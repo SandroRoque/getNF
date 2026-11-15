@@ -156,6 +156,13 @@ class Spending(lines: List<SpendingLine>, private val parents: Map<String, Strin
   fun linesUnder(period: Period, categoryId: String?) =
     linesIn(period).filter { categoryId == null || categoryId in ancestry(it.categoryId) }
 
+  /**
+   * The lines of [period] in [categoryId] itself, not further down: its "(sem subcategoria)" slice. With a null id, the
+   * uncategorized ones (no category, or one that's gone): the "Sem categoria" slice (T-57).
+   */
+  fun linesOnlyAt(period: Period, categoryId: String?) =
+    linesIn(period).filter { if (categoryId == null) ancestry(it.categoryId).isEmpty() else it.categoryId == categoryId }
+
   /** Each period's spending per top-level category, for the stacked bars. */
   fun stacks(): Map<Period, List<Slice>> = periods.associateWith { slices(it, null) }
 

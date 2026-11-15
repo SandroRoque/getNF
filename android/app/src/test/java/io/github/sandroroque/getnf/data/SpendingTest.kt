@@ -37,6 +37,21 @@ class SpendingTest {
     return Spending(db.spending().lines().first(), parents, yearly)
   }
 
+  /** T-57: "Sem categoria" and "(sem subcategoria)" narrow the products to exactly their slice's lines. */
+  @Test fun onlyAtMatchesItsSlice() = runTest {
+    val s = spending()
+    val month = s.periods.single()
+    val none = s.slices(month, null).single { it.categoryId == null }
+    val uncategorized = s.linesOnlyAt(month, null)
+    assertEquals(none.lines, uncategorized.size)
+    assertEquals(none.netCents, uncategorized.sumOf { it.netCents })
+    assertTrue(uncategorized.all { it.categoryId == null })
+    val foodOnly = s.slices(month, "food").single { it.categoryId == "food" }
+    val atFood = s.linesOnlyAt(month, "food")
+    assertEquals(foodOnly.lines, atFood.size)
+    assertTrue(atFood.all { it.categoryId == "food" })
+  }
+
   @Test fun everyLevelAddsUpToTheReceipt() = runTest {
     val s = spending()
     val month = s.periods.single()

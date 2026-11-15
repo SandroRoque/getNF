@@ -101,7 +101,11 @@ internal enum class CaptureHint(val label: String) {
   DONE("Pronto"),
 }
 
-internal enum class ExitChoice { KEEP_CODE, DISCARD }
+/**
+ * How the person leaves a capture that hasn't finished. [FINISH] ends it with what it has (the code and the photos saved
+ * so far), as if it had completed (D203); [KEEP_CODE] keeps the code alone; [DISCARD] keeps nothing of this attempt.
+ */
+internal enum class ExitChoice { FINISH, KEEP_CODE, DISCARD }
 
 /**
  * One analysed camera frame, upright: its pixels for the paper finder, its mapping to the view, and the camera's planes
@@ -541,7 +545,8 @@ internal class CaptureController(
     if (BuildConfig.DEBUG) Log.d(TAG, "saved ${frame.id} as ${image.name}: rows ${frame.view}")
   }
 
-  private fun finish() {
+  /** [kind]: what the closed test's copy says of it; a capture the person ended early is the left one it was (D203). */
+  private fun finish(kind: TestContribution.Kind = TestContribution.Kind.Saved) {
     publish(state.copy(saving = true))
     // Photos saved on the way that the rest read entirely (an overview a closer frame read better) are dropped.
     val keep = ingest.keep().mapNotNull(savedAs::get).toSet()
@@ -555,7 +560,7 @@ internal class CaptureController(
     manifest = manifest.copy(committing = true)
     sessions.write(manifest)
     val before = runBlocking { receipts.get(manifest.chave!!) }
-    offerPhotos(TestContribution.Kind.Saved)
+    offerPhotos(kind)
     runBlocking { receipts.importCapture(manifest, sessions.dir(manifest.id)) }
     sessions.remove(manifest)
     done = true
@@ -575,6 +580,13 @@ internal class CaptureController(
 
   fun exit(choice: ExitChoice) {
     if (done) return
+    // The receipt read on screen but never completing (an end the capture can't see, D202): what it has is kept, the
+    // fewest photos that read it, and the receipt goes on to its page like any other (D203).
+    if (choice == ExitChoice.FINISH && manifest.chave != null && manifest.segments.isNotEmpty()) {
+      dump?.let { dir -> dumping.execute { File(dir, "events.txt").appendText("f%04d finished as it was by the person\n".format(frames)) } }
+      finish(TestContribution.Kind.Left)
+      return
+    }
     if (choice == ExitChoice.KEEP_CODE && manifest.chave != null) {
       runBlocking { receipts.open(manifest.chave!!, manifest.qrUrl) }
       enqueueUpload()

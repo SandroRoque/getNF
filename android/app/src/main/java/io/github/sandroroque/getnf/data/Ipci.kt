@@ -37,6 +37,10 @@ object Ipci {
     val estimated: Double,
   ) {
     val sufficient: Boolean get() = coverage >= MIN_COVERAGE && links.size >= MIN_PRODUCTS
+    /** Too few products with an earlier price ([MIN_PRODUCTS]): one of the two reasons a month has no reading. */
+    val fewProducts: Boolean get() = links.size < MIN_PRODUCTS
+    /** Those products are too small a share of the month's spending ([MIN_COVERAGE]): the other reason. */
+    val lowCoverage: Boolean get() = coverage < MIN_COVERAGE
     /** The month's change in percent, or null when the data can't support a number. */
     val reading: Double? get() = if (sufficient) (change - 1) * 100 else null
     /** What each product added to the month's change, in percentage points, largest first. */

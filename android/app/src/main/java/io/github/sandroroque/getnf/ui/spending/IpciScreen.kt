@@ -84,8 +84,15 @@ fun IpciScreen(initialCategory: String?, onOpenProduct: (String) -> Unit, onBack
     item {
       Column {
         if (latest == null) {
+          // Why there's no number, with the numbers (T-58): what a month needs, and how far the latest is from it.
           BigNumber("—")
-          Sub("Ainda poucos produtos comprados de novo para medir preços.")
+          val m = ms.last()
+          Sub("Para medir os preços de um mês, o app compara produtos que você comprou nele e também num mês anterior. " +
+            "Precisa de pelo menos ${Ipci.MIN_PRODUCTS} produtos assim, somando ${percent(Ipci.MIN_COVERAGE)} do gasto do mês.")
+          Sub("Em ${label(m.period, long = true)}: ${Format.count(m.links.size, "produto", "produtos")}, ${percent(m.coverage)} do gasto.",
+            Modifier.padding(top = 6.dp))
+          Sub("Mais notas ajudam. Se o mesmo item aparece como dois produtos, juntá-los (no produto, Juntar) também conta.",
+            Modifier.padding(top = 6.dp))
         } else {
           BigNumber(signed(latest.reading!!), color = if (latest.reading!! > 0) Calmo.up else Calmo.down)
           Sub("em ${label(latest.period, long = true)}, comparando ${Format.count(latest.links.size, "produto", "produtos")} que você comprou de novo")
@@ -112,7 +119,12 @@ fun IpciScreen(initialCategory: String?, onOpenProduct: (String) -> Unit, onBack
             if (!first) Sub("${Format.count(m.links.size, "produto", "produtos")}, ${percent(m.coverage)} do gasto" +
               if (m.estimated > 0) " · ${percent(m.estimated)} com desconto rateado" else "")
           }
-          Text(m.reading?.let(::signed) ?: if (first) "início" else "poucos dados", style = MaterialTheme.typography.bodyMedium,
+          // Which of the two limits the month missed (T-58), not just that it did.
+          Text(m.reading?.let(::signed) ?: when {
+            first -> "início"
+            m.fewProducts -> "poucos produtos"
+            else -> "pouco do gasto"
+          }, style = MaterialTheme.typography.bodyMedium,
             color = when { m.reading == null -> Calmo.mute; m.reading!! > 0 -> Calmo.up; else -> Calmo.down })
         }
         if (open == m.period.key) for ((id, pp) in m.contributions().take(8)) {
