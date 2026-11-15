@@ -46,7 +46,7 @@ android {
         applicationId = "br.com.roqlab.caderneta"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
+        versionCode = 10
         versionName = "0.1.6"
         // The closed test (D161): a build that asks testers for their photos. Every Play build is one until the
         // production release, which is built with -Pgetnf.testPeriod=false.

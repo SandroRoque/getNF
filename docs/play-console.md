@@ -158,9 +158,9 @@ sentence is changed in the console (the service account may not edit the listing
 
 > Novidade: dá para apagar uma nota (Mais › Apagar, na nota); numa caderneta dividida, ela some dos outros celulares também. Correções: o acréscimo de uma nota entra nos gastos, e um desconto digitado não passa mais do desconto da nota. A correção feita num celular não some mais quando outro lê a nota de novo. Cópia de segurança e sincronização mais confiáveis. Para quem envia as fotos do teste, mais dados pessoais ficam cobertos, e desligar o envio apaga tudo de vez.
 
-- **Release notes, 0.1.6** (code 9; Play shows up to 500; drafted 2026-11-15, waiting for the user):
+- **Release notes, 0.1.6** (code 10, after code 9 was abandoned; Play shows up to 500; drafted 2026-11-15, waiting for the user):
 
-> Novidades: as notas de São Paulo agora são lidas. Uma nota de outro estado avisa antes de abrir o portal, e as de Sergipe voltam a abrir. Se a captura não terminar, dá para encerrar com o que já foi lido. Em Gastos, tocar em "Sem categoria" mostra esses produtos. A inflação pessoal explica o que falta para medir. Nova categoria: Raízes e tubérculos. Correções: o fim de uma nota sem borda visível é achado antes; linha sem desconto não aparece mais como "rateado".
+> Novidades: as notas de São Paulo e de Sergipe agora são lidas. Uma nota de outro estado avisa antes de abrir o portal. Se a captura não terminar, dá para encerrar com o que já foi lido. Em Gastos, tocar em "Sem categoria" mostra esses produtos. A inflação pessoal explica o que falta para medir. Nova categoria: Raízes e tubérculos. Correções: o fim de uma nota sem borda visível é achado antes; linha sem desconto não aparece mais como "rateado".
 
 - **Release notes, 0.1.5** (code 8; Play shows up to 500; approved by the user, uploaded 2026-11-12):
 
