@@ -72,3 +72,4 @@ run, so a fix for one session can't silently break another.
 | 2026-11-15 | a paper’s end is looked for past its last print (D201) | 28 of 33 | 0 | all | the crumpled receipt 31.2 → 5.8 s, 2 → 1 photo; no regression |
 | 2026-11-15 | **holdout**: a second session of the crumpled receipt, measured blind | 1 of 1 | 0 | 10 of 10 | 32.5 s, 2 photos; then promoted to dev |
 | 2026-11-15 | with no step at an end, three blank lines past the last print end it (D202) | 30 of 34 | 0 | all | 32.5 → 4.0 s, 5.8 → 1.5 s, 18.5 → 8.4 s; 2026-10-25T20-56-17 now completes |
+| 2026-11-15 | **holdout**: a third session of the crumpled receipt, on the D202 build, measured blind | 1 of 1 | 0 | 10 of 10 | 1.4 s replayed (8.4 s live: the phone saw the top 7 frames later than the JPEGs show it); promoted to dev |
