@@ -9,7 +9,7 @@ usuário antes de mexer.
 
 | # | Ticket | O que mudou | Decisão |
 |---|---|---|---|
-| 1 | T-60 | "Raízes e tubérculos" (`food.produce.roots_tubers`) e palavras no léxico do Jev; migrações ainda não aplicadas online | D205 |
+| 1 | T-60 | "Raízes e tubérculos" (`food.produce.roots_tubers`) e palavras no léxico do Jev; migrações aplicadas online em 2026-11-15 | D205 |
 | 3 | T-57 | "Sem categoria" e "(sem subcategoria)" filtram a lista de produtos | D205 |
 | 4 | T-58 | IPCI sem leitura diz a regra, os números do último mês e o que ajuda; cada mês diz o limite que faltou | D205 |
 | 7 | T-59 | Linha com fatia R$ 0,00 aparece "sem desconto", não "rateado" | D205 |
