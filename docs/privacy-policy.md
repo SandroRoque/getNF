@@ -113,8 +113,9 @@ Usamos estes serviços para operar o app. Eles agem em nosso nome e não recebem
 
 Ao abrir a página de uma nota, o celular acessa diretamente o portal da SEFAZ do estado da nota: o de **Santa
 Catarina**, que pode exibir uma verificação da Cloudflare, o do **Rio de Janeiro**, que faz uma verificação
-automática e usa o Google Analytics, ou o de **São Paulo**. A pedido da pessoa, o app abre também o portal de outro
-estado, onde a nota é só exibida. Esse acesso segue as regras de cada portal, não desta política.
+automática e usa o Google Analytics, o de **São Paulo**, ou o de **Sergipe**, que consulta a nota pela chave de
+acesso: o app preenche a chave no formulário do portal, que exibe uma verificação da Cloudflare. A pedido da pessoa, o
+app abre também o portal de outro estado, onde a nota é só exibida. Esse acesso segue as regras de cada portal, não desta política.
 
 ## O que não fazemos
 

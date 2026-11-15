@@ -104,7 +104,7 @@ What makes the site's two steps work: a closed track whose testers are the Googl
 
 ### Listing text (pt-BR, for the closed test, 2026-10-31)
 
-Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; nothing promised that it doesn't do. São Paulo added 2026-11-15 (D206): the site was redeployed that day; the listing's
+Name: **Caderneta** (kept for now, D105). Checked against the app as of D146; nothing promised that it doesn't do. São Paulo added 2026-11-15 (D206), Sergipe the same day once code 10 was uploaded (D207): the site was redeployed; the listing's
 sentence is changed in the console (the service account may not edit the listing: 403).
 
 - **Short description** (75 of 80): Escaneie a nota fiscal e acompanhe seus gastos, seus preços e sua inflação.
@@ -121,8 +121,8 @@ sentence is changed in the console (the service account may not edit the listing
 > • Funciona sem conta. Com uma conta, os itens novos ganham categoria sozinhos (você confirma ou corrige), as notas
 >   ficam guardadas online e dá para dividir uma caderneta com quem mora com você.
 >
-> Por enquanto, lê as notas fiscais de consumidor de Santa Catarina, do Rio de Janeiro e de São Paulo. Sem uma nota
-> de SC, do RJ ou de SP, toque em "Ver um exemplo" para conhecer o app com notas inventadas.
+> Por enquanto, lê as notas fiscais de consumidor de Santa Catarina, do Rio de Janeiro, de São Paulo e de Sergipe. Sem
+> uma nota de SC, do RJ, de SP ou de SE, toque em "Ver um exemplo" para conhecer o app com notas inventadas.
 >
 > Privacidade: as fotos das notas ficam no seu celular. Só durante o teste fechado, e só se você aceitar, elas são
 > enviadas para melhorar a leitura, com o cartão e o CPF cobertos; na versão pública, não. O CPF e o nome do
@@ -175,7 +175,7 @@ sentence is changed in the console (the service account may not edit the listing
 - **Review login instructions** (App content › App access), in English for the reviewer:
 
 > The app works without an account; the account above unlocks cadernetas and sync. Sign in: account icon at the top
-> of Início › Entrar ou criar conta › Entrar. Without a receipt from Santa Catarina, Rio de Janeiro or São Paulo (Brazil), tap
+> of Início › Entrar ou criar conta › Entrar. Without a receipt from Santa Catarina, Rio de Janeiro, São Paulo or Sergipe (Brazil), tap
 > "Ver um exemplo" on the first screen (or on Início while there are no receipts) to explore the app with made-up
 > receipts. Barcode lookup: Catálogo › "Pelo código de barras" (finds products already bought in the receipts on the
 > phone).

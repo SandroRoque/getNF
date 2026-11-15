@@ -124,8 +124,8 @@ its portal opens (Sergipe's HTTP QR now loads), Sem categoria opens in Gastos, t
 
 **2026-11-15, Sergipe is read (D207)**, on main after code 9 was cut, so not in it: SE's portal refuses its own QR
 Codes ("QR Code INVÁLIDO!"), so a Sergipe chave opens SEFAZ-SE's lookup by chave, the app fills it in and sends it once
-Turnstile passes, and the result page is read as RJ's. Checked end to end on the emulator with a real receipt. The
-site, privacy policy and Play listing say SC, RJ and SP until a version with Sergipe ships; then add SE.
+Turnstile passes, and the result page is read as RJ's. Checked end to end on the emulator with a real receipt. Code 10
+carries it (uploaded 2026-11-15); the site and privacy policy name SE since then, the Play listing waits on the user.
 
 **Handoff, 2026-11-12 (session `claude/urgent-tickets`)**
 
@@ -327,8 +327,8 @@ out in Ajustes, install a plain debug build, enter the demo.
 
 ## Pending, by the user
 
-- The Play listing's full description still says SC and RJ: the site and privacy policy say "SC, RJ e SP" since
-  2026-11-15, but the API refused the listing edit (403, no store-presence permission). Change the sentence in Play
+- The Play listing's full description still says SC and RJ: the site and privacy policy say "SC, RJ, SP e SE" since
+  2026-11-15 (code 10), but the API refused the listing edit (403, no store-presence permission). Change the sentence in Play
   Console, or grant the service account that permission and run `tools/play.py listing --full-description-file`.
 - ~~Declare the account a non-trader in Play Console (D166, due 2027-02-01)~~: done, the user confirmed 2026-11-07.
 - Run `sudo bash tools/setup-system.sh` once (udev rules for the phone, Docker at boot for the local Supabase, adb and
