@@ -4,6 +4,11 @@
   tools/play.py status                    tracks, their releases and the closed tracks' testers
   tools/play.py bundles                   bundles uploaded so far (versionCode, sha256)
   tools/play.py listing                   the store listings (title, short description)
+  tools/play.py listing --full            the same, with the full description
+  tools/play.py listing --full-description-file f.txt [--language pt-BR] [--commit]
+                                          replace one listing's full description (a listing change goes to review;
+                                          needs the service account's store-presence permission, which it
+                                          lacked on 2026-11-15: validate answered 403)
   tools/play.py upload <aab> --track internal --name 0.1.1 --notes-file notes.txt [--commit]
   tools/play.py promote <code> --track alpha --name 0.1.1 --notes-file notes.txt [--commit]
 
@@ -168,7 +173,11 @@ def main():
   sub = p.add_subparsers(dest="cmd", required=True)
   sub.add_parser("status")
   sub.add_parser("bundles")
-  sub.add_parser("listing")
+  s = sub.add_parser("listing")
+  s.add_argument("--full", action="store_true", help="print the full description too")
+  s.add_argument("--full-description-file", help="replace the full description with this file's text")
+  s.add_argument("--language", default="pt-BR")
+  s.add_argument("--commit", action="store_true")
   for name in ("upload", "promote"):
     s = sub.add_parser(name)
     s.add_argument("aab" if name == "upload" else "code")
@@ -201,9 +210,20 @@ def main():
     for b in play.call("GET", f"{url}/bundles").get("bundles", []):
       print(f"{b['versionCode']:>4}  sha256:{b.get('sha256', '?')}")
     play.discard()
+  elif a.cmd == "listing" and a.full_description_file:
+    text = Path(a.full_description_file).read_text(encoding="utf-8").strip()
+    if len(text) > 4000:
+      play.discard()
+      sys.exit(f"the full description is {len(text)} characters; Play takes 4,000")
+    old = play.call("GET", f"{url}/listings/{a.language}")
+    print(f"{a.language}: full description {len(old.get('fullDescription', ''))} -> {len(text)} characters")
+    play.call("PATCH", f"{url}/listings/{a.language}", {"fullDescription": text})
+    play.finish(a.commit)
   elif a.cmd == "listing":
     for l in play.call("GET", f"{url}/listings").get("listings", []):
       print(f"{l['language']}: {l.get('title')} | {l.get('shortDescription')}")
+      if a.full:
+        print(l.get("fullDescription", "") + "\n")
     play.discard()
   elif a.cmd == "upload":
     code = a.code

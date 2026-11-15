@@ -112,8 +112,9 @@ Usamos estes serviços para operar o app. Eles agem em nosso nome e não recebem
 - **Computador do mantenedor:** uma cópia de segurança diária do servidor é guardada por 14 dias.
 
 Ao abrir a página de uma nota, o celular acessa diretamente o portal da SEFAZ do estado da nota: o de **Santa
-Catarina**, que pode exibir uma verificação da Cloudflare, ou o do **Rio de Janeiro**, que faz uma verificação
-automática e usa o Google Analytics. Esse acesso segue as regras de cada portal, não desta política.
+Catarina**, que pode exibir uma verificação da Cloudflare, o do **Rio de Janeiro**, que faz uma verificação
+automática e usa o Google Analytics, ou o de **São Paulo**. A pedido da pessoa, o app abre também o portal de outro
+estado, onde a nota é só exibida. Esse acesso segue as regras de cada portal, não desta política.
 
 ## O que não fazemos
 
