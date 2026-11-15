@@ -171,6 +171,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D203 | capture | current | A capture that won't finish can end with what it has ("Terminar com o que foi lido"); each way out says what is left |
 | D204 | sefaz | current | Another state's receipt says so before its portal opens; plain HTTP allowed for `gov.br` portals |
 | D205 | UI | current | Sem categoria opens, the IPCI says why it has no reading, no "rateado" on nothing, Raízes e tubérculos |
+| D206 | sefaz | current | São Paulo's NFC-e is read: its "Consulta Resumida" is RJ's markup on the QR Code's own address; no lookup budget for SP |
 
 ---
 
@@ -4815,3 +4816,40 @@ the page showed (T-55). São Paulo's opened its portal and then nothing happened
   batata-doce (BATATA already was). Every caderneta gets the category from the migration's `sync_taxonomy_for` and the
   phone's next sync; as in D122, products already categorized aren't moved (the user moves them with a tap). The
   "licor"/"balas" part of the notebook's #1 needed nothing: no such category exists online.
+
+## D206. São Paulo's NFC-e is read like Rio de Janeiro's (2026-11-15)
+
+D204 left reading São Paulo as a separate step. The closed test had already sent two copies of one SP receipt's page
+(`outro_estado`, codes 6 and 8, the same purchase both times), so this was done from those, with no lookup at SEFAZ-SP.
+
+- **It's NFC-e, and the page is RJ's.** "Consulta Resumida NFC-e" on `www.nfce.fazenda.sp.gov.br`, built from the same
+  XSLT as RJ's (its stylesheets are `Xsl/nfce_rj_v2.05/…`): `tabResult`, `txtTit`, `RCod`, `Rqtd`, `RUN`, `RvlUnit`,
+  `totalNota`, `chave`. `NfcePage` read the items, codes, units, quantities, discount, totals, payment, store and
+  emission date as it was. Two things differed:
+  - the protocol line has no "às" ("… 23/08/2026 19:03:08"): the authorization time was lost. "às" is now optional;
+  - the store's tax text writes a decimal point, with a percentage between amount and level ("R$ 6.93 (13.53%)
+    Federal, R$ 8.57 (16.73%) Estadual"): the parts weren't read. A third wording is recognised. SEFAZ's own total
+    on that page (6,93) is only the federal part, as the store filled it; the total stays SEFAZ's field, as before.
+  - "Troco" prints `NaN` when there's no change: read as no change, as it should be.
+- **The address.** The page is served on the QR Code's own page,
+  `/NFCeConsultaPublica/Paginas/ConsultaQRCode.aspx?p=…` (the copies' URL is the WebView's when the page finished):
+  `SefazPage.classify` takes that path as `Details` on a `fazenda.sp.gov.br` host only (the same path elsewhere is not
+  SP's), `isRead` takes the host, and `Chave.READ_UFS` gains "35", so D204's warning no longer shows for SP and the
+  SP receipts waiting for their page can be fetched. If a load ends on that address without the receipt, it's the
+  existing "not found"/"failed" path, as for RJ.
+- **No lookup budget for SP**, as D155 did for RJ: `isSefaz` stays SC's, so SP's requests are neither counted nor
+  blocked (its page carries F5 bot-defense scripts, like RJ's, which must run). If SP turns out to limit, it gets its
+  own budget. SP QR Codes that print `http://` open over plain HTTP (D204's `gov.br` rule), and that page is now read;
+  the receipt is the person's own data and nothing is sent back, so it's accepted rather than rewriting to HTTPS
+  without a live check.
+- **Fixture.** `sp-consulta-resumida.html`, from one copy through `tools/make-nfce-fixture.py`, which now takes SP's
+  page: "SP" in the fake address, label/value pairs split across lines, SP's tax sentence replaced (it carried the
+  operator's name and the PDV), ASP.NET's hidden fields, scripts and the lookup's timestamp dropped, a `NaN` change
+  kept. SC's fixture comes out the same; RJ's loses only scripts and a search box's input.
+- **Copy.** The welcome step ("Notas de SC, RJ e SP") and D204's screen say São Paulo. Still to change, by the user:
+  the site (`web/index.html`: eyebrow, og:description, the "Por que só…" answer, the footer, the receipts list), the
+  Play listing's description and review notes (`docs/play-console.md`), and the privacy policy's list of portals the
+  WebView opens (`docs/privacy-policy.md`): all say SC and RJ and should say "SC, RJ e SP".
+
+Not checked on a device: no live lookup was made (CLAUDE.md), so the redirect from SP's short QR address
+(`/qrcode?p=…`) to `ConsultaQRCode.aspx` is assumed from the copies, not watched.

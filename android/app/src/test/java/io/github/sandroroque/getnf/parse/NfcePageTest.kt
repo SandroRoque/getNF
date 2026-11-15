@@ -62,6 +62,34 @@ class NfcePageTest {
     assertEquals(emptyList<String>(), p.warnings)
   }
 
+  @Test fun saoPaulosConsultaResumida() {
+    // SEFAZ-SP's "Consulta Resumida" (D206): RJ's markup; the protocol's time without "às", "Troco" printed as NaN, and
+    // the store's taxes with a decimal point.
+    val p = NfcePage.parse(fixture("sp-consulta-resumida.html"))
+    assertEquals("35260111222333000181650020000000011123456780", p.chave)
+    assertEquals(ParsedStore("SUPERMERCADO EXEMPLO LTDA", "11222333000181", "RUA EXEMPLO, 100 , , CENTRO , CIDADE EXEMPLO , SP"), p.store)
+    assertEquals("1", p.number)
+    assertEquals("2", p.series)
+    // 2026-01-15T10:00:00-03:00
+    assertEquals(1768482000000, p.issuedAt)
+    assertEquals("000000000000000", p.authorizationProtocol)
+    assertEquals(1768482000000, p.authorizedAt)
+    assertEquals(listOf(
+      ParsedItem(1, "BF PAO DE SEMOLINA", "1049", 10000, "UN", 219000, 2190),
+      ParsedItem(2, "SELF CAFE MANHA E TARDE KG", "267", 1040, "KG", 1349000, 1403),
+      ParsedItem(3, "REFR COCA COLA 350ML", "13451", 10000, "UN", 105000, 1050),
+      ParsedItem(4, "DOCE COCADA BRANCA CAIPIRA E CIA 80G", "27358", 20000, "UN", 79000, 1580),
+    ), p.items)
+    assertEquals(4L, p.totals.itemsCount)
+    assertEquals(6223L, p.totals.grossCents)
+    assertEquals(622L, p.totals.discountCents)
+    assertEquals(5601L, p.totals.payableCents)
+    assertNull(p.totals.changeCents)
+    assertEquals(listOf(ParsedPayment("Cartão de Crédito", 5601)), p.payments)
+    assertEquals(ParsedTaxes(123, 234, 0, 123), p.taxesEstimate)
+    assertEquals(emptyList<String>(), p.warnings)
+  }
+
   @Test fun twoPaymentMethodsAndChange() {
     // No real receipt paid two ways yet: the committed page with cash and a card, and change from the cash.
     val card = "<div id=\"linhaTotal\"><label class=\"tx\">\n\t\t\t\t\t\t\t\t\t\t\tCartão de Crédito\n\t\t\t\t\t\t\t\t\t\t</label><span class=\"totalNumb\">30,64</span></div>"
@@ -87,6 +115,8 @@ class NfcePageTest {
       taxes("Consumidor nao identificado #DAV 0001|Trib aprox R$: 47,95 Federal e 28,88 Estadual|Fonte: IBPT 09/10/2026"))
     // Only SEFAZ's total; and "Lei Federal" outside the tax text isn't an amount.
     assertEquals(ParsedTaxes(null, null, null, 6353), taxes("Tributos Totais Incidentes (Lei Federal 12.741/2012) R$ 63,53"))
+    assertEquals(ParsedTaxes(693, 857, 0, 1550),
+      taxes("Tributos aproximados: R$ 6.93 (13.53%) Federal, R$ 8.57 (16.73%) Estadual, R$ 0.00 (0.00%) Municipal - Fonte: IBPT"))
     assertNull(taxes("Lei Federal 8.078, de 11/09/1990, R$ 10,00 de desconto"))
   }
 

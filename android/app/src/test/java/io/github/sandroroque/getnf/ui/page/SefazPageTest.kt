@@ -20,6 +20,12 @@ class SefazPageTest {
     // RJ (D155): the QR address, then the result page once its check has run.
     assertEquals(Kind.Other, SefazPage.classify("https://consultadfe.fazenda.rj.gov.br/consultaNFCe/QRCode?p=1|2|1|3|AB"))
     assertEquals(Kind.Details, SefazPage.classify("https://consultadfe.fazenda.rj.gov.br/consultaNFCe/paginas/resultadoQRCode2.faces?cid=1"))
+    // SP (D206): the receipt is served on the QR Code's own page, after the short address redirects there.
+    assertEquals(Kind.Other, SefazPage.classify("https://www.nfce.fazenda.sp.gov.br/qrcode?p=35000|2|1|1|AB"))
+    assertEquals(Kind.Details,
+      SefazPage.classify("https://www.nfce.fazenda.sp.gov.br/NFCeConsultaPublica/Paginas/ConsultaQRCode.aspx?p=35000|2|1|1|AB"))
+    // The same path on another state's host isn't SP's page.
+    assertEquals(Kind.Other, SefazPage.classify("https://nfce.example.gov.br/NFCeConsultaPublica/Paginas/ConsultaQRCode.aspx?p=1"))
   }
 
   @Test
@@ -30,6 +36,9 @@ class SefazPageTest {
     assertTrue(SefazPage.isSefaz(sc))
     assertTrue(SefazPage.isRead(sc))
     assertTrue(SefazPage.isRead(rj))
+    val sp = "https://www.nfce.fazenda.sp.gov.br/NFCeConsultaPublica/Paginas/ConsultaQRCode.aspx?p=35000000000000000000650010000000011000000010|2|1|1|AB12"
+    assertTrue(SefazPage.isRead(sp))
+    assertFalse(SefazPage.isSefaz(sp)) // SC's request limit and asset blocking stay SC's
     assertFalse(SefazPage.isSefaz(rj))
     assertFalse(SefazPage.isRead("https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx?p=43000|2|1|1|AB"))
     assertEquals("sat.sef.sc.gov.br", SefazPage.hostOf(sc))
@@ -44,6 +53,7 @@ class SefazPageTest {
     assertFalse(SefazPage.hasReceipt("<body><div>Não foi possível realizar a consulta. Por favor, entre em contato.</div></body>"))
     assertTrue(SefazPage.hasReceipt(javaClass.classLoader!!.getResource("rj-qrcode-server-html.html")!!.readText()))
     assertTrue(SefazPage.hasReceipt(javaClass.classLoader!!.getResource("sc-detalhes-webview-dom.html")!!.readText()))
+    assertTrue(SefazPage.isComplete(javaClass.classLoader!!.getResource("sp-consulta-resumida.html")!!.readText()))
   }
 
   @Test

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  HTTPS only, except state tax portals: Supabase and the SC and RJ portals are HTTPS, but some states print a plain HTTP
+  HTTPS only, except state tax portals: Supabase and the SC, RJ and SP portals are HTTPS, but some states print a plain HTTP
   address in the receipt's QR Code (Sergipe's is http://www.nfce.se.gov.br/…), and the WebView refused it with "Página
   da Web não disponível" (T-55, D204). Only the WebView opens those addresses, and nothing from them is read: another
-  state's page is shown, and kept for the closed test only if the person agreed (D161).
+  state's page is shown, and kept for the closed test only if the person agreed (D161). SP's page is read (D206), over
+  plain HTTP when its QR Code says http://.
   Debug builds add plain HTTP to the local Supabase (src/debug/res/xml/network_security_config.xml). Before D105
   cleartext was allowed everywhere, for PocketBase over Tailscale (D6, D12), retired in D73.
 -->

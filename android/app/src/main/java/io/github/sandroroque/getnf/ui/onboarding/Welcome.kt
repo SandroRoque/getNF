@@ -70,7 +70,7 @@ fun WelcomeScreen(onScan: () -> Unit, onDemo: () -> Unit, onExplore: () -> Unit,
         }
         else -> {
           ScreenTitle("Antes de começar")
-          Step("Notas de SC e do Rio", "Por enquanto o app lê a NFC-e de Santa Catarina e do Rio de Janeiro, a nota de consumidor com QR Code.")
+          Step("Notas de SC, RJ e SP", "Por enquanto o app lê a NFC-e de Santa Catarina, do Rio de Janeiro e de São Paulo, a nota de consumidor com QR Code.")
           Step("Sem conta", "Tudo funciona no celular. Com uma conta, os itens ganham categoria sozinhos e as notas ficam salvas online.")
           Step("As fotos ficam com você", "As fotos da nota ficam no celular. O CPF e o nome do comprador não são guardados.")
         }

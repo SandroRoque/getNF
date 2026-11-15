@@ -84,7 +84,7 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
   val ledger = remember { app.accountSettings.ledgerId().takeIf { app.accountSettings.account() != null } }
   val ledgers = remember { io.github.sandroroque.getnf.sync.LedgerService(app.accountSettings) }
   var claim by remember { mutableStateOf(if (ledger == null) io.github.sandroroque.getnf.sync.LedgerService.FetchClaim.MINE else null) }
-  // Another state's receipt (T-55, T-56, D204): the app reads only SC's and RJ's pages, and knows the state from the
+  // Another state's receipt (T-55, T-56, D204): the app reads only SC's, RJ's and SP's pages (D206), and knows the state from the
   // chave, so it says so before opening a portal that would show the receipt and then save nothing. The person may
   // still look.
   val readHere = remember(chave) { io.github.sandroroque.getnf.data.Chave.isRead(chave) }
@@ -124,7 +124,7 @@ fun PageScreen(chave: String, onDone: () -> Unit, onSaved: (String) -> Unit) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
           horizontalAlignment = Alignment.CenterHorizontally) {
           Text(if (state != null) "Notas $state ainda não são lidas." else "Notas deste estado ainda não são lidas.", style = MaterialTheme.typography.bodyLarge)
-          Text("Por enquanto o app lê as notas de Santa Catarina e do Rio de Janeiro. Esta fica guardada, com as fotos, " +
+          Text("Por enquanto o app lê as notas de Santa Catarina, do Rio de Janeiro e de São Paulo. Esta fica guardada, com as fotos, " +
             "esperando a página: quando o app passar a ler notas de lá, ela pode ser buscada.", style = MaterialTheme.typography.bodyMedium)
           Pill("Voltar", ButtonKind.Solid, onClick = onDone)
           if (url != null) Pill("Ver a página da SEFAZ assim mesmo", ButtonKind.Ghost) { openAnyway = true }

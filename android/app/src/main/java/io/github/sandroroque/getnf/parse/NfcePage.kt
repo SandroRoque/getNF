@@ -8,7 +8,8 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 /*
- * Parser for the national NFC-e consultation page (`NFCe_Detalhes.aspx`, docs/sefaz-sc.md), ported from
+ * Parser for the national NFC-e consultation page (`NFCe_Detalhes.aspx`, docs/sefaz-sc.md; RJ's and SP's pages share its
+ * markup, D155, D206), ported from
  * the retired server's nfce_page.js (D48). Accepts both the server's HTML and the WebView's DOM serialisation.
  * Golden files written from the JS parser when it was ported pin its output (NfceParityTest).
  *
@@ -89,7 +90,8 @@ object NfcePage {
   private val SCRIPT_STYLE = Regex("<script[\\s\\S]*?</script>|<style[\\s\\S]*?</style>", RegexOption.IGNORE_CASE)
   private val CHAVE = Regex("class=\"chave\"[^>]*>([\\d\\s]+)<")
   private val INFO = Regex("Número:\\s*(\\d+)\\s*Série:\\s*(\\d+)\\s*Emissão:\\s*(\\d{2}/\\d{2}/\\d{4})\\s+(\\d{2}:\\d{2}:\\d{2})")
-  private val PROTOCOL = Regex("Protocolo de Autorização:\\s*(\\d+)\\s+(\\d{2}/\\d{2}/\\d{4})\\s+às\\s+(\\d{2}:\\d{2}:\\d{2})")
+  // SC and RJ write "… 15/01/2026 às 10:00:00", SP only "… 15/01/2026 10:00:00" (D206).
+  private val PROTOCOL = Regex("Protocolo de Autorização:\\s*(\\d+)\\s+(\\d{2}/\\d{2}/\\d{4})\\s+(?:às\\s+)?(\\d{2}:\\d{2}:\\d{2})")
   private val TAX_TOTAL = Regex("Tributos Totais Incidentes\\s*\\(Lei Federal 12\\.741/2012\\)\\s*R\\$\\s*(\\d[\\d.]*,\\d{2})", RegexOption.IGNORE_CASE)
   private val TAX_CONTEXT = Regex("\\btrib|IBPT|12\\.741", RegexOption.IGNORE_CASE)
   private val DATE_TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
@@ -197,7 +199,8 @@ object NfcePage {
   /**
    * The taxes, from wherever the page states them: SEFAZ's "Tributos Totais Incidentes" total, and the store's own
    * text, which words each part its own way ("FEDERAL R$ 37,70 ESTADUAL R$ 42,63", "FEDERAIS: R$ 28,07 - ESTADUAIS:
-   * R$ 35,46", "Trib aprox R$: 47,95 Federal e 28,88 Estadual"). Parts are read only near a mention of taxes, so a
+   * R$ 35,46", "Trib aprox R$: 47,95 Federal e 28,88 Estadual", SP's "R$ 6.93 (13.53%) Federal" with a decimal point,
+   * D206). Parts are read only near a mention of taxes, so a
    * "Lei Federal" elsewhere isn't one.
    */
   fun parseTaxes(all: String): ParsedTaxes? {
@@ -205,6 +208,8 @@ object NfcePage {
     fun part(text: String, label: String): Long? =
       Regex("$label\\w*\\s*:?\\s*R\\$\\s*:?\\s*(\\d[\\d.]*,\\d{2})", RegexOption.IGNORE_CASE).find(text)?.let { cents(it.groupValues[1]) }
         ?: Regex("(\\d[\\d.]*,\\d{2})\\s*$label", RegexOption.IGNORE_CASE).find(text)?.let { cents(it.groupValues[1]) }
+        ?: Regex("R\\$\\s*(\\d+)\\.(\\d{2})\\s*\\([\\d.,]+\\s*%\\)\\s*$label", RegexOption.IGNORE_CASE).find(text)
+          ?.let { it.groupValues[1].toLong() * 100 + it.groupValues[2].toLong() }
     for (m in TAX_CONTEXT.findAll(all)) {
       val near = all.substring(maxOf(0, m.range.first - 160), minOf(all.length, m.range.last + 200))
       val federal = part(near, "FEDERA"); val state = part(near, "ESTADUA"); val municipal = part(near, "MUNICIPA")

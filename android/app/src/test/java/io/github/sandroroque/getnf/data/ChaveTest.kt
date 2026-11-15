@@ -20,6 +20,7 @@ class ChaveTest {
     assertFalse(Chave.isRead(sergipe))
     assertEquals("de Sergipe", Chave.stateOf(sergipe))
     assertTrue(Chave.isRead("33" + chave.drop(2)))
+    assertTrue(Chave.isRead("35" + chave.drop(2))) // D206
     assertNull(Chave.stateOf("99" + chave.drop(2)))
   }
 

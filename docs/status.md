@@ -322,6 +322,8 @@ out in Ajustes, install a plain debug build, enter the demo.
 
 ## Pending, by the user
 
+- São Paulo is read since D206: the site (`web/index.html`), the Play listing (`docs/play-console.md`) and the privacy
+  policy's portals still say SC and RJ; change them to "SC, RJ e SP" and redeploy the site.
 - ~~Declare the account a non-trader in Play Console (D166, due 2027-02-01)~~: done, the user confirmed 2026-11-07.
 - Run `sudo bash tools/setup-system.sh` once (udev rules for the phone, Docker at boot for the local Supabase, adb and
   kvm groups).

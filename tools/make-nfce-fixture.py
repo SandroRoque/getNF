@@ -25,7 +25,7 @@ def chave_dv(first43: str) -> int:
 FAKE_CNPJ = "11222333000181"  # the standard example CNPJ (valid check digits)
 FAKE_STORE = "SUPERMERCADO EXEMPLO LTDA"
 FAKE_ADDRESS = "RUA EXEMPLO, 100 , , CENTRO , CIDADE EXEMPLO , {uf}"
-UF = {"42": "SC", "33": "RJ"}
+UF = {"42": "SC", "33": "RJ", "35": "SP"}
 FAKE_DATE = "15/01/2026"
 FAKE_TIME = "10:00:00"
 
@@ -52,6 +52,8 @@ def main():
     body = s[start : s.rindex("<div", start, end)] if end >= 0 else s[start : s.index("</body>", start)]
     # RJ writes accents as entities ("N&uacute;mero"): plain text, so the patterns below see one spelling.
     body = re.sub(r"&(?!lt;|gt;|amp;)[a-zA-Z]+;", lambda m: html.unescape(m.group(0)), body)
+    # SP's page (D206) also carries ASP.NET's hidden fields and the lookup's own time after the receipt.
+    body = re.sub(r'<div class="aspNetHidden">[\s\S]*?</div>|<input[^>]*>|<span class="timestampConsulta">[^<]*</span>|<script[\s\S]*?</script>|<noscript[\s\S]*?</noscript>', "", body)
 
     # Keep the first N items.
     rows = list(re.finditer(r'<tr[^>]*id="Item \+ (\d+)"[^>]*>[\s\S]*?</tr>\s*', body))
@@ -64,16 +66,16 @@ def main():
     # Recompute totals; keep the discount (capped) so discount handling stays covered.
     def total_line(label_re, value):
         nonlocal body
-        body = re.sub(r"(<label>" + label_re + r"[^<]*</label><span[^>]*>)[^<]*(</span>)", lambda m: m.group(1) + value + m.group(2), body)
+        body = re.sub(r"(<label>" + label_re + r"[^<]*</label>\s*<span[^>]*>)[^<]*(</span>)", lambda m: m.group(1) + value + m.group(2), body)
 
-    disc_m = re.search(r"<label>Descontos[^<]*</label><span[^>]*>([^<]*)</span>", body)
+    disc_m = re.search(r"<label>Descontos[^<]*</label>\s*<span[^>]*>([^<]*)</span>", body)
     discount = min(cents(disc_m.group(1)), gross // 10) if disc_m else 0
     total_line(r"Qtd\. total de itens", str(len(kept)))
     total_line(r"Valor total", money(gross))
     total_line(r"Descontos", money(discount))
     total_line(r"Valor a pagar", money(gross - discount))
     body = re.sub(r'(<label class="tx">(?!\s*Troco)[^<]*</label>\s*<span[^>]*>)[^<]*(</span>)', lambda m: m.group(1) + money(gross - discount) + m.group(2), body)
-    body = re.sub(r'(<label class="tx">\s*Troco[^<]*</label>\s*<span[^>]*>)[^<]*(</span>)', lambda m: m.group(1) + "0,00" + m.group(2), body)
+    body = re.sub(r'(<label class="tx">\s*Troco[^<]*</label>\s*<span[^>]*>)[^<]*(</span>)', lambda m: m.group(1) + ("NaN" if "NaN" in m.group(0) else "0,00") + m.group(2), body)
 
     # Synthetic identifiers: UF and model/série are kept (they matter to parsing), the rest is made up.
     chave = re.search(r'class="chave"[^>]*>([\d\s]+)<', body).group(1)
@@ -91,6 +93,10 @@ def main():
     body = re.sub(r"\b\d{2}/\d{2}/\d{4}\b", FAKE_DATE, body)
     body = re.sub(r"\b\d{2}:\d{2}:\d{2}\b", FAKE_TIME, body)
     body = re.sub(r"(FEDERAL R\$ )[\d.,]+( ESTADUAL R\$ )[\d.,]+( MUNICIPAL R\$ )[\d.,]+", r"\g<1>1,23\g<2>2,34\g<3>0,00", body)
+    # SP's stores: "R$ 6.93 (13.53%) Federal, ..." then the operator's name and the PDV, which go.
+    body = re.sub(r"Tributos aproximados: R\$ [^<]*", "Tributos aproximados: R$ 1.23 (10.00%) Federal, R$ 2.34 (20.00%) Estadual, "
+                  "R$ 0.00 (0.00%) Municipal - Fonte: IBPT", body)
+    body = re.sub(r"(Tributos Totais Incidentes[^<]*</label>\s*<span[^>]*>)[^<]*(</span>)", r"\g<1>1,23\g<2>", body)
     body = re.sub(r"(IBPTEMPRESOMETRO\.COM\.BR )\w+", r"\g<1>000000", body)
     body = re.sub(r"(Número: </strong>)\d+", r"\g<1>1", body)
     body = re.sub(r"(Protocolo de Autorização: </strong>)\d+", r"\g<1>000000000000000", body)

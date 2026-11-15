@@ -4,12 +4,13 @@ import java.net.URI
 import kotlinx.serialization.json.Json
 
 /**
- * Recognises the pages the SEFAZ portals go through: SC's (docs/sefaz-sc.md) and RJ's (D155), which shows the same
- * receipt markup after a check of its own that runs without the person.
+ * Recognises the pages the SEFAZ portals go through: SC's (docs/sefaz-sc.md), RJ's (D155), which shows the same
+ * receipt markup after a check of its own that runs without the person, and SP's (D206), whose "Consulta Resumida" is
+ * RJ's markup served on the QR Code's own address.
  */
 object SefazPage {
   enum class Kind {
-    /** SC's `NFCe_Detalhes.aspx`, RJ's `resultadoQRCode2.faces`: the page we want to save. */
+    /** SC's `NFCe_Detalhes.aspx`, RJ's `resultadoQRCode2.faces`, SP's `ConsultaQRCode.aspx`: the page we want to save. */
     Details,
     /** `SecurityVerify.aspx`: Cloudflare Turnstile, the user has to solve it. */
     Challenge,
@@ -23,6 +24,7 @@ object SefazPage {
     val u = url?.lowercase() ?: return Kind.Other
     return when {
       "nfce_detalhes.aspx" in u || "/consultanfce/paginas/resultadoqrcode" in u -> Kind.Details
+      "/nfceconsultapublica/paginas/consultaqrcode.aspx" in u && isSaoPaulo(url) -> Kind.Details
       "securityverify.aspx" in u -> Kind.Challenge
       "maximorequisicoesexcedidas" in u -> Kind.RateLimited
       else -> Kind.Other
@@ -63,10 +65,15 @@ object SefazPage {
     return runCatching { URI(authority).host }.getOrNull()?.lowercase()
   }
 
-  /** A portal whose receipt page the app reads: SC's and RJ's (D155). Any other is another state's (D161). */
+  /** A portal whose receipt page the app reads: SC's, RJ's (D155) and SP's (D206). Any other is another state's (D161). */
   fun isRead(url: String): Boolean {
     val host = hostOf(url) ?: return false
-    return isSefaz(url) || host == "fazenda.rj.gov.br" || host.endsWith(".fazenda.rj.gov.br")
+    return isSefaz(url) || host == "fazenda.rj.gov.br" || host.endsWith(".fazenda.rj.gov.br") || isSaoPaulo(url)
+  }
+
+  private fun isSaoPaulo(url: String): Boolean {
+    val host = hostOf(url) ?: return false
+    return host == "fazenda.sp.gov.br" || host.endsWith(".fazenda.sp.gov.br")
   }
 
   fun shouldBlock(pageKind: Kind, url: String, accept: String?): Boolean {
