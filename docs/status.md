@@ -131,10 +131,11 @@ carries it (uploaded 2026-11-15); the site and privacy policy name SE since then
 access rule of the local database in turn and runs pgTAP; 62 of 255 were caught at first, 271 of 274 now, with three
 new test files, and `check.sh` runs it before every push. This is the audit's "server auth" area for the database;
 still on its list: invite-code guessing against the API's rate limit, `config.toml`'s auth limits, Edge Function
-failures. Waiting on the user: migration `20261116000000_no_truncate_for_clients.sql` online (`docs/releases/server.md`,
-pending), and the defect it found, with no ticket yet (the ticket tool was refused in that session): leaving a shared
-caderneta leaves the leaver's photo files in Storage (D208, `own_uploads`); choose between a SELECT policy for one's
-own photo uploads and the app deleting before it leaves, then check online for files already orphaned.
+failures. The defect it found (leaving a shared caderneta left the leaver's photo files in Storage) is fixed on the server by
+D209's read policy, chosen by the user; no ticket was filed (the ticket tool was refused in that session). Waiting on
+the user: both migrations online (`20261116000000_no_truncate_for_clients.sql`,
+`20261116010000_own_photos_after_leaving.sql`; pending in `docs/releases/server.md`), then a look online for photo
+files orphaned before the fix (the receipts bucket against `receipt_photo`).
 
 **Handoff, 2026-11-12 (session `claude/urgent-tickets`)**
 

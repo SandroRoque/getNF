@@ -2,7 +2,7 @@
 -- Storage. The tables are read from the catalog, so a new one must be given a row here before this passes.
 -- Run: npx supabase test db
 begin;
-select plan(24);
+select plan(27);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000001a1', 'ana@example.test'),
@@ -140,12 +140,25 @@ select throws_ok(format($$insert into storage.objects (bucket_id, name, owner_id
 select lives_ok(format($$insert into storage.objects (bucket_id, name, owner_id)
                          values ('receipts', %L, '00000000-0000-0000-0000-0000000001b1')$$,
                        current_setting('t.casa') || '/' || current_setting('t.c') || '/a.webp'), 'a member adds a file to the caderneta''s folder');
-select is(public.t_delete_objects(), 2::bigint, 'and deletes the caderneta''s files');
+select lives_ok(format($$insert into storage.objects (bucket_id, name, owner_id)
+                         values ('receipts', %L, '00000000-0000-0000-0000-0000000001b1')$$,
+                       current_setting('t.casa') || '/42261011222333000181650010000000021000000020/page.html'), 'and a page she fetched');
+-- Out of the caderneta, Bia still takes back the photo she sent (D209): that file, and nothing else.
 reset role;
-select is((select string_agg(bucket_id || ':' || name, ' ' order by name) from storage.objects
+delete from public.ledger_member where ledger_id = current_setting('t.casa')::uuid and user_id = '00000000-0000-0000-0000-0000000001b1';
+set local role authenticated;
+select is((select string_agg(split_part(name, '/', -1), ',') from storage.objects), 'a.webp',
+          'someone who left sees only the photo they sent: not the pages, not even the one they fetched');
+select is(public.t_delete_objects(), 1::bigint, 'and deletes it');
+reset role;
+select is((select string_agg(bucket_id || ':' || split_part(name, '/', -1), ' ' order by bucket_id, name) from storage.objects
            where name like current_setting('t.casa') || '/%' or name like 'isolation-test/%'),
-          'contributions:' || current_setting('t.casa') || '/a.webp contributions:isolation-test/item-1/a.webp',
-          'the other bucket is untouched, even a file there with the member as its owner');
+          'contributions:a.webp contributions:a.webp receipts:page.html receipts:page.html',
+          'both pages stay, and the other bucket is untouched, even a file there with her as its owner');
+-- A member deletes the caderneta's files.
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-0000000001a1", "role": "authenticated"}';
+select is(public.t_delete_objects(), 2::bigint, 'a member deletes the caderneta''s files');
 
 select * from finish();
 rollback;

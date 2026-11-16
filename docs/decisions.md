@@ -174,6 +174,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D206 | sefaz | current | São Paulo's NFC-e is read: its "Consulta Resumida" is RJ's markup on the QR Code's own address; no lookup budget for SP |
 | D207 | sefaz | current | Sergipe's NFC-e is read, looked up by chave: its portal refuses its own QR Codes; the app fills the form and sends it once Turnstile passes |
 | D208 | online | current | The server's security tests are checked by weakening the server: each access rule in turn must make pgTAP fail (`tools/mutate-security.py`, in `check.sh`); the access surface is pinned; clients lose TRUNCATE |
+| D209 | online | current | Someone who left a caderneta reads and deletes the photo files they sent, and only those (`own_uploads_read`): Storage deletes only what the caller may read |
 
 ---
 
@@ -4946,3 +4947,27 @@ caught now. About 2 minutes.
 Not covered, because no weakening of the database shows it: guessing invite codes (10 hex characters, 7 days, one
 use; what limits attempts is the API's rate limit, not a rule in SQL), `config.toml`'s auth limits, and the Edge
 Functions' own checks. Those stay on the audit's list.
+
+## D209. Someone who left a caderneta can delete the photo files they sent (2026-11-16)
+
+D208 found that `own_uploads` had no effect: leaving a shared caderneta left the leaver's photo files in Storage, the
+delete answered 200 with nothing removed. Two ways out were put to the user: a policy on the server, or the app
+deleting before it leaves. Chosen: the policy, because it fixes every installed version at once and the app's order
+(rows first, files after) stays as D104 describes it.
+
+`own_uploads_read` (migration `20261116010000_own_photos_after_leaving.sql`): a signed-in person reads the objects of
+the receipts bucket they uploaded themselves, except `…/page.html`. With it, `own_uploads` deletes them. Pages are
+left out because a page is the receipt's and stays with the caderneta, whoever fetched it.
+
+What it costs: a person who left can still fetch a photo they sent, by its path, until it is deleted. It is their own
+photo, and the app deletes it right after leaving.
+
+Checked: `isolation.test.sql` (out of the caderneta, a person sees and deletes the one photo they sent; both pages
+stay, the one they fetched included), and the local stack through the Storage API (upload a photo and a page, leave,
+the bulk delete the app sends removes the photo only; the page and another member's photo answer 400 to a read).
+`own_uploads`' own three weakenings stay in the accepted list (D208): what an outsider may delete is limited by what
+they may read, so a wider delete policy changes nothing a test could see.
+
+Not done: files orphaned online before this, if any (photos go online only when a person opts in, D103). Finding them
+means comparing the receipts bucket with `receipt_photo` on the online project, which waits for the user's go-ahead.
+
