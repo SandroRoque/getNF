@@ -483,6 +483,40 @@ class SyncEngineTest {
     assertEquals(1, server.rows("receipt").size)
   }
 
+  /** D211, found by the simulation (D210, seed 2:40): b's rows went up whole and emptied what a had set in them. */
+  @Test fun aPhoneThatMadeTheSameRowsOfflineKeepsWhatAnotherSetInThem() = runTest {
+    val a = Phone("a"); val b = Phone("b")
+    for (p in listOf(a, b)) {
+      p.store.open(chave, "qr"); p.store.savePage(chave, "https://x", html); p.parser.parse(p.store.get(chave)!!)
+    }
+    // a names a product, sets another's size and corrects a line, and syncs. b has done nothing by hand but one size.
+    val products = a.db.catalog().products().sortedBy { it.id }
+    val line = a.db.catalog().lines(chave).first()
+    val editor = io.github.sandroroque.getnf.data.CatalogEditor(a.db)
+    editor.rename(products[0].id, "Maçã da Ana")
+    editor.setSize(products[1].id, 500_000, "kg")
+    editor.overrideProduct(chave, line.lineNo, products[2].id)
+    assertTrue(a.engine.sync(server).errors.isEmpty())
+    io.github.sandroroque.getnf.data.CatalogEditor(b.db).setSize(products[3].id, 250_000, "kg")
+    val report = b.engine.sync(server)
+    assertTrue(report.errors.toString(), report.errors.isEmpty())
+    assertTrue(a.engine.sync(server).errors.isEmpty())
+    for (p in listOf(a, b)) {
+      val now = p.db.catalog().products().associateBy { it.id }
+      assertEquals("Maçã da Ana", now.getValue(products[0].id).name)
+      assertEquals(500_000L, now.getValue(products[1].id).sizeE6)
+      assertEquals(250_000L, now.getValue(products[3].id).sizeE6)
+      assertEquals(products[2].id, p.db.catalog().lines(chave).first().productOverrideId)
+      assertTrue(p.db.sync().stateNames("read-back:").isEmpty())
+      assertTrue(p.db.sync().dirtyProducts().isEmpty() && p.db.sync().dirtyLines().isEmpty())
+    }
+    assertEquals("Maçã da Ana", server.rows("product").single { it.str("id") == products[0].id }.str("name"))
+    assertEquals(products[2].id, server.rows("receipt_line").single { it.str("line_no") == "${line.lineNo}" }.str("product_override_id"))
+    // And nothing more to say: the next runs send nothing.
+    assertEquals(0, b.engine.sync(server).pushed)
+    assertEquals(0, a.engine.sync(server).pushed)
+  }
+
   @Test fun eachScanLeavesItsMarkButAnAdoptedReceiptDoesnt() = runTest {
     receiptWithPage()
     engine.sync(server)

@@ -492,10 +492,6 @@ class SyncSimulationTest {
           val (table, key, column) = field.split("/", limit = 2).let { (t, rest) -> Triple(t, rest.substringBeforeLast('/'), rest.substringAfterLast('/')) }
           val standing = all.filter { e -> all.none { it.over == e.value } }
           val allowed = standing.map { it.value }.toMutableSet<String?>()
-          // Finding 1: a phone that made the row itself (read a page before it had the caderneta's row) sends it whole.
-          val chaveOfLine = if (table == "line") key.substringBefore('/') else null
-          if (FIRST_PUSH_OVERWRITES && table != "category" &&
-            pages.filter { ours(it.files, ledger, bound) && (chaveOfLine == null || it.chave == chaveOfLine) }.map { it.files }.distinct().size > 1) allowed += null
           val final = when (table) {
             "product" -> products[key]?.text(if (column == "name") "name" else "size_e6")
             "category" -> categories[key]?.text("label")
@@ -599,10 +595,8 @@ class SyncSimulationTest {
     /** `seed:events`, run by tools/check.sh before every push. */
     const val FIXED = "1,2,3,4,5,6,2:40,101:30,105:39,107:35,109:33,112:21,129:27,1001:38,1005:19,1020:29,1051:38,1085:38,2216:26,2252:40"
 
-    // Findings the simulation made that are not fixed yet (D210): each relaxes one rule exactly where the finding
+    // Findings the simulation made that are not fixed yet (D210; its first is, D211): each relaxes one rule exactly where the finding
     // applies, so the rest of the rule still holds. Set one to false to see its failures again.
-    /** 1: the first push of a product or line a phone made itself replaces what another phone set in it. */
-    const val FIRST_PUSH_OVERWRITES = true
     /** 2: a scan made while one person was signed in, synced after another signed in on the phone, is marked as the other's. */
     const val SCAN_MARKS_FOLLOW_THE_SIGN_IN = true
     /** 3: phones keep scan marks the server dropped: those of someone who left, and of a receipt deleted and scanned again. */

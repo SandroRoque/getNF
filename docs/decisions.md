@@ -5091,3 +5091,44 @@ Not covered: lines a page read again no longer has (D164), tags, links between s
 merging categories, "Copiar notas", a backup restored (D193's other half), two phones syncing at the same instant
 (events here follow each other), a sync cut off halfway (T-12), clocks that disagree, and the categorizer online
 (the local stack doesn't run it).
+
+## D211. A row a phone made itself goes up as what the phone changed in it, not whole (2026-11-16)
+
+D210's first finding, the one that lost data, fixed at the user's word. Products, store items and lines get their ids
+from the code (D104), so a phone that reads a page before it has the caderneta's rows makes the same rows another
+phone made. They had no base (D164, D182), and a row with no base went up whole: Ana names a product, Bia reads a
+receipt with the same item offline and syncs, and the name, size, category or line correction Ana set is empty again,
+on every phone.
+
+Now:
+- **The parser keeps each row as it made it.** A product, store item or line it inserts gets a base at once: the row
+  as made, marked `_made_here` (`CatalogSync.kt`; no column has that name). Until the server's copy is seen, "what
+  this phone changed" is what differs from that.
+- **The push sends such a row in two steps.** The whole row, only if the caderneta has none (an insert that leaves
+  an existing row alone), then the fields changed here since it was made, as for any row with a base. Lines already
+  went this way for corrections (D182); a line made here now does too, changed or not.
+- **Then the phone reads the caderneta's row back** (`read-back:<table>:<key>` in `sync_state` until done, after the
+  run's pull): whatever else that row holds is taken like any pulled row, so the phone that pushed second ends with
+  Ana's name too, instead of waiting for the row to change again.
+- A pull that reaches such a row before its first push merges as D164 does, with the made-here row as the base; the
+  server's row then becomes the base and the mark goes.
+
+Considered: working out by hand-set markers which fields a person set (`category_source = user`, a name that isn't
+null), which is a rule per column and misses the next column; and asking the server for every row before sending it,
+which costs a request per push for everyone. The base at making is exact and costs one insert and one read per table,
+only in a run that sends rows the phone made.
+
+What it doesn't reach:
+- **Builds before this one** (codes up to 10) still send their rows whole, so a caderneta with an older phone in it
+  can still lose a name to that phone until it updates.
+- Rows made before this build and not yet sent have no base and go whole once, as before.
+- "Copiar notas" and the demo make rows without the parser; theirs go whole, as before.
+- A backup made by this build and restored into an older build would hold bases the older engine reads as "the server
+  has this row", and would not send those rows. Play doesn't downgrade; noted for completeness.
+
+No schema change on the phone (a key inside a base's JSON, a prefix in `sync_state`) and none on the server.
+
+Checked: `SyncEngineTest.aPhoneThatMadeTheSameRowsOfflineKeepsWhatAnotherSetInThem` (a name, a size and a line
+correction survive the other phone's first push, both phones end the same, the next runs send nothing); the
+simulation's rule 2c with its exemption removed: seed 2:40, the other fixed seeds, and 300 random seeds from 5000, all of which keep every rule; the whole suite.
+

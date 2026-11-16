@@ -141,11 +141,15 @@ class ReceiptParser(
         // Ids from the code (D104), so another phone reading the same item makes the same rows.
         val productId = CodeIds.product(key.kind, key.code, key.storeCnpj)
         if (dao.product(productId) == null) {
-          dao.insertProduct(ProductRow(productId, name = null, categoryId = null, sizeE6 = null, sizeUnit = null, sizeSource = null, createdAt = now(), dirty = true))
+          val product = ProductRow(productId, name = null, categoryId = null, sizeE6 = null, sizeUnit = null, sizeSource = null, createdAt = now(), dirty = true)
+          dao.insertProduct(product)
+          // As made here (D211): what's set later is what this phone changed, whatever the caderneta already holds.
+          if (sync.base(PRODUCT_TABLE, productId) == null) sync.putBase(SyncBaseRow(PRODUCT_TABLE, productId, madeHere(product.syncJson())))
         }
         val item = StoreItemRow(CodeIds.storeItem(key.kind, key.code, key.storeCnpj), key.kind, key.code, key.storeCnpj, description,
           size?.e6, size?.unit, productId, dirty = true)
         dao.insertStoreItem(item)
+        if (sync.base(STORE_ITEM_TABLE, item.id) == null) sync.putBase(SyncBaseRow(STORE_ITEM_TABLE, item.id, madeHere(item.syncJson())))
         item.id
       }
       val previous = old[item.line]
@@ -162,6 +166,8 @@ class ReceiptParser(
       if (previous != null && row.copy(dirty = previous.dirty) == previous) previous else row
     }
     dao.insertLines(rows)
+    // A line read for the first time here, as read (D211): another phone may have sent the same line, corrected.
+    for (row in rows) if (row.lineNo !in old && sync.base(LINE_TABLE, row.syncKey) == null) sync.putBase(SyncBaseRow(LINE_TABLE, row.syncKey, madeHere(row.syncJson())))
     // Lines the page no longer has go from the server too (D164); a number that's back isn't removed.
     sync.putRemovedLines((old.keys - rows.map { it.lineNo }.toSet()).map { LineRemovedRow(chave, it) })
     sync.clearRemovedLines(chave, rows.map { it.lineNo })

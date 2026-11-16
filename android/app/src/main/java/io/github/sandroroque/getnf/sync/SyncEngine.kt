@@ -18,6 +18,7 @@ import io.github.sandroroque.getnf.data.ReceiptStore
 import io.github.sandroroque.getnf.data.StoreItemRow
 import io.github.sandroroque.getnf.data.SyncBaseRow
 import io.github.sandroroque.getnf.data.LINE_CORRECTIONS
+import io.github.sandroroque.getnf.data.MADE_HERE
 import io.github.sandroroque.getnf.data.lineSyncKey
 import io.github.sandroroque.getnf.data.syncJson
 import io.github.sandroroque.getnf.data.syncKey
@@ -114,6 +115,7 @@ class SyncEngine(
     val (pushed, photos) = push(remote, errors)
     retryPages(remote, errors)
     pulled += pull(remote, TABLES, errors)
+    readBack(remote, errors)
     reconcileLines(remote)
     pullMembers(remote)
     Report(pushed, pulled, photos, errors, storeItemsPushed).also { log("sync: $it") }
@@ -219,7 +221,13 @@ class SyncEngine(
     }
     val requests = ready.filter { (row, _) -> payloads.getValue(row).size > 1 || bases[keyOf(row)] == null }
     val requested = requests.mapTo(HashSet()) { it.first }
+    // Rows this phone made itself and hasn't seen online (D211): another phone may have made the same row (ids come
+    // from the code, D104) and someone may have named it since. So the whole row goes only if the caderneta has
+    // none, then the fields changed here since the row was made, and the caderneta's row is read back ([readBack]).
+    val made = ready.filter { (row, _) -> bases[keyOf(row)]?.containsKey(MADE_HERE) == true }
+    val madeHere = made.mapTo(HashSet()) { it.first }
     val sent = try {
+      if (made.isNotEmpty()) io { remote.upsert(table, made.map { owned(remote, it.second) }, key, ignoreDuplicates = true) }
       for (group in requests.groupBy { payloads.getValue(it.first).keys }.values)
         io { remote.upsert(table, group.map { owned(remote, payloads.getValue(it.first)) }, key) }
       ready
@@ -227,6 +235,7 @@ class SyncEngine(
       if (e.status == 401) throw e
       ready.filter { (row, json) ->
         try {
+          if (row in madeHere) io { remote.upsert(table, listOf(owned(remote, json)), key, ignoreDuplicates = true) }
           if (row in requested) io { remote.upsert(table, listOf(owned(remote, payloads.getValue(row))), key) }
           true
         } catch (e: SupabaseException) {
@@ -240,10 +249,11 @@ class SyncEngine(
         if (current(row) == row) clean(row)
         // The server now has the fields sent, and the base already had the others.
         if (merges) dao.putBase(SyncBaseRow(table, keyOf(row), json.toString()))
+        if (row in madeHere) dao.putState(SyncStateRow("$READ_BACK$table:${keyOf(row)}", ""))
       }
       if (parkedRows.isNotEmpty()) dao.unpark(table, sent.map { keyOf(it.first) })
     }
-    return sent.count { it.first in requested }
+    return sent.count { it.first in requested || it.first in madeHere }
   }
 
   /** Rows from before D164 have no base: an unchanged one is what the server held. */
@@ -370,7 +380,10 @@ class SyncEngine(
       }
       // Fields alone can't make a row another phone has removed meanwhile: such a line is first put back whole, as
       // this phone has it, and an insert that finds the row there changes nothing (a correction outlives a removal, D182).
-      val ifMissing = changed.map { lineJson(it.first) }
+      // A line this phone made itself and hasn't seen online (D211) is put there only if missing, changed or not:
+      // another phone that read the same receipt may have it there already, corrected.
+      val made = rows.filter { bases[it.syncKey]?.containsKey(MADE_HERE) == true }
+      val ifMissing = (changed.map { it.first } + made).distinct().map(::lineJson)
       val sends = whole + changed.map { it.second }
       try {
         if (gone.isNotEmpty()) io {
@@ -390,9 +403,10 @@ class SyncEngine(
           }
           dao.clearRemovedLines(chave, gone)
           dao.deleteBases(LINES, gone.map { lineSyncKey(chave, it) })
+          if (made.isNotEmpty()) dao.putState(SyncStateRow("$READ_BACK$LINES:$chave", ""))
         }
         if (chave in parked) dao.unpark(LINES, listOf(chave))
-        n += sends.size + gone.size
+        n += sends.size + gone.size + made.count { m -> changed.none { it.first == m } }
       } catch (e: SupabaseException) {
         if (e.status == 401) throw e
         park(LINES, chave, payload, e, errors)
@@ -516,6 +530,31 @@ class SyncEngine(
       parts.singleOrNull() ?: "and(${parts.joinToString(",")})"
     }
     return "(${terms.joinToString(",")})"
+  }
+
+  /**
+   * The caderneta's copy of the rows this phone made itself and has now sent (D211; `read-back:<table>:<key>` in
+   * sync_state until done, so a run that stops before leaves them for the next). The phone's row was put online only
+   * if there was none, and only the fields changed here were sent: whatever else the caderneta's row holds (a name
+   * another member gave the product, a correction to the line) is taken here like any pulled row. After the pull, so
+   * the rows these point to are already here.
+   */
+  private suspend fun readBack(remote: SyncRemote, errors: MutableList<String>) {
+    val waiting = dao.stateNames(READ_BACK).map { it.removePrefix(READ_BACK) }.groupBy({ it.substringBefore(':') }, { it.substringAfter(':') })
+    for ((table, keys) in waiting) {
+      val column = if (table == LINES) "chave" else "id"
+      // Lines come a receipt's worth per key: few keys a request, to stay under a page.
+      for (chunk in keys.chunked(if (table == LINES) 5 else 100)) {
+        val rows = io {
+          remote.select(table, listOf("ledger_id" to "eq.${remote.ledgerId}", column to "in.(${chunk.joinToString(",")})", "limit" to PAGE.toString()))
+        }
+        // A store item the caderneta has under a product that isn't here yet waits for the pull that brings it.
+        val later = if (table != "store_item") emptySet() else
+          rows.filter { dao.product(it.string("product_id")!!) == null }.mapTo(HashSet()) { it.string("id")!! }
+        apply(remote, table, rows.filterNot { it.string("id") in later }, errors)
+        dao.deleteStates(chunk.filterNot { it in later }.map { "$READ_BACK$table:$it" })
+      }
+    }
   }
 
   /**
@@ -775,13 +814,7 @@ class SyncEngine(
   private fun tag(o: JsonObject) =
     TagRow(o.string("id")!!, o.string("slug")!!, o.string("description")!!, o.bool("seed") ?: true, o.bool("deleted") ?: false)
 
-  /** Suggestions are left out: only the server writes them (4b). */
-  private fun productJson(p: ProductRow) = buildJsonObject {
-    put("id", p.id); put("name", p.name); put("category_id", p.categoryId); put("category_source", p.categorySource)
-    put("category_review", p.categoryReview); put("category_model", p.categoryModel); put("category_confidence", p.categoryConfidence)
-    put("category_at", p.categoryAt?.let(::iso)); put("size_e6", p.sizeE6); put("size_unit", p.sizeUnit)
-    put("size_source", p.sizeSource); put("archived", p.archived); put("deleted", p.deleted); put("created_at", iso(p.createdAt))
-  }
+  private fun productJson(p: ProductRow) = p.syncJson()
 
   private fun product(o: JsonObject) = ProductRow(
     o.string("id")!!, o.string("name"), o.string("category_id"), o.long("size_e6"), o.string("size_unit"), o.string("size_source"),
@@ -793,13 +826,7 @@ class SyncEngine(
     sizeSuggestionModel = o.string("size_suggestion_model"),
   )
 
-  /** System-1's readings are left out: only the server writes them (D108). The user's answer goes up (D110). */
-  private fun storeItemJson(s: StoreItemRow) = buildJsonObject {
-    put("id", s.id); put("code_kind", s.codeKind); put("code", s.code); put("store_cnpj", s.storeCnpj)
-    put("description", s.description); put("parsed_size_e6", s.parsedSizeE6); put("parsed_size_unit", s.parsedSizeUnit)
-    put("product_id", s.productId); put("link_source", s.linkSource); put("link_review", s.linkReview); put("deleted", s.deleted)
-    put("sold_by_user", s.soldByUser)
-  }
+  private fun storeItemJson(s: StoreItemRow) = s.syncJson()
 
   private fun storeItem(o: JsonObject) = StoreItemRow(
     o.string("id")!!, o.string("code_kind")!!, o.string("code")!!, o.string("store_cnpj") ?: "", o.string("description")!!,
@@ -874,6 +901,8 @@ class SyncEngine(
     private const val RECONCILE = "reconcile:"
     /** sync_state's prefix for a receipt whose page is still to be downloaded (T-28); the value is its object path. */
     private const val PAGE_PENDING = "page:"
+    /** sync_state's prefix for a row this phone made and sent, whose copy in the caderneta is still to be read (D211). */
+    private const val READ_BACK = "read-back:"
     /** sync_state's prefix for a deleted receipt's Storage objects still to be removed (D194); the value is a JSON array. */
     private const val DELETED_FILES = "deleted-files:"
     /** The caderneta this database syncs with, recorded at its first sync (D193). */

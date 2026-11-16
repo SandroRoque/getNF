@@ -143,14 +143,16 @@ another person signing in on a phone) against the local Supabase, then checks D2
 nothing a person did is lost, phones on one caderneta hold the same. `check.sh` runs its fixed seeds before every push;
 `tools/sync-sim.sh --random 200` runs new ones and `tools/sync-sim.sh <seed>:<events>` replays one. This is the audit's
 "another person signs in on the same phone" area, at the engine and the worker's choices; WorkManager, the restart and
-a sign-out mid-run stay with `Round3AccountSwitchTest` on the emulator. It found six defects. Three are fixed on main
+a sign-out mid-run stay with `Round3AccountSwitchTest` on the emulator. It found seven defects. Three are fixed on main
 and wait for a build: reading the page of a receipt another member scanned without one threw (no directory); a phone
 sending its older copy of a deleted receipt left the page and photos in Storage; a receipt deleted before its first
 sync left no tombstone. **The last one's migration (`20261116020000_delete_unsent_receipt.sql`) is not applied online
-yet** (`docs/releases/server.md`: pending; it can go before any build). Three wait for the user's decision (D210, "Not
-fixed"), no tickets filed (the ticket tool writes online): the first push of a product or line a phone made itself
-wipes a name, size, category or correction another member set (the one that loses data); a scan synced after another
-person signed in is marked as theirs; scan marks the server dropped stay on phones that had them. Online, files
+yet** (`docs/releases/server.md`: pending; it can go before any build). The one that lost data is fixed too (D211, on main, waits
+for a build; phones on older builds still do it): the first push of a product or line a phone made itself wiped a
+name, size, category or correction another member had set. Three wait for the user's decision (D210, "Not fixed"), no
+tickets filed (the ticket tool writes online): a scan synced after another person signed in is marked as theirs; scan
+marks the server dropped stay on phones that had them; a phone away while a receipt was deleted and scanned again
+keeps the old copy's page. Online, files
 orphaned by the second defect before this fix, if any, would show in the same read-only comparison of the receipts
 bucket with its rows that D209 made (295 objects, all named, on 2026-11-16).
 
