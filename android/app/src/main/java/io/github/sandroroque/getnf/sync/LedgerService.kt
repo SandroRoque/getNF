@@ -66,17 +66,9 @@ class LedgerService(private val settings: AccountSettings) {
   suspend fun setRole(ledger: String, user: String, role: String) =
     signedIn { c, s -> c.rpc(s, "set_role", args { put("lid", ledger); put("uid", user); put("role", role) }); Unit }
 
-  /** Their photos' rows go now; the files right after (the server leaves them to whoever may delete them). */
-  suspend fun remove(ledger: String, user: String) = signedIn { c, s ->
-    c.deleteObjects(s, paths(c.rpc(s, "remove_member", args { put("lid", ledger); put("uid", user) })))
-  }
+  suspend fun remove(ledger: String, user: String) = signedIn { c, s -> LedgerCalls.remove(c, s, ledger, user) }
 
-  suspend fun leave(ledger: String) = signedIn { c, s ->
-    // The last one out takes the caderneta with them: its files go first, while they may still read the folder.
-    if (c.select(s, "ledger_member", listOf("ledger_id" to "eq.$ledger")).size == 1) c.deleteObjects(s, c.listObjects(s, "$ledger/"))
-    // Otherwise only their uploads, after the rows: `own_uploads` lets a person delete what they uploaded even once they've left.
-    c.deleteObjects(s, paths(c.rpc(s, "leave_ledger", args { put("lid", ledger) })))
-  }
+  suspend fun leave(ledger: String) = signedIn { c, s -> LedgerCalls.leave(c, s, ledger) }
 
   /** The caderneta's files first, while still a member, then the caderneta. */
   suspend fun delete(ledger: String) = signedIn { c, s ->
@@ -126,10 +118,27 @@ class LedgerService(private val settings: AccountSettings) {
   suspend fun releaseFetch(ledger: String, chave: String) =
     signedIn { c, s -> c.rpc(s, "release_fetch", args { put("lid", ledger); put("chave", chave) }); Unit }
 
-  private fun paths(result: JsonElement): List<String> =
-    (result as? JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.takeUnless { p -> p is JsonNull }?.content }
-
   private fun args(build: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit) = buildJsonObject(build)
   private fun JsonObject.text(name: String) = this[name]!!.jsonPrimitive.content
   private fun JsonObject.textOrNull(name: String) = (this[name] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.content
+}
+
+/**
+ * What removing a member and leaving send, given a client and a session ([LedgerService] signs in and calls these):
+ * no phone needed, so the sync simulation (D210) runs the same calls.
+ */
+internal object LedgerCalls {
+  /** Their photos' rows go now; the files right after (the server leaves them to whoever may delete them). */
+  fun remove(c: SupabaseClient, s: SupabaseSession, ledger: String, user: String) =
+    c.deleteObjects(s, paths(c.rpc(s, "remove_member", buildJsonObject { put("lid", ledger); put("uid", user) })))
+
+  fun leave(c: SupabaseClient, s: SupabaseSession, ledger: String) {
+    // The last one out takes the caderneta with them: its files go first, while they may still read the folder.
+    if (c.select(s, "ledger_member", listOf("ledger_id" to "eq.$ledger")).size == 1) c.deleteObjects(s, c.listObjects(s, "$ledger/"))
+    // Otherwise only their uploads, after the rows: `own_uploads` lets a person delete what they uploaded even once they've left.
+    c.deleteObjects(s, paths(c.rpc(s, "leave_ledger", buildJsonObject { put("lid", ledger) })))
+  }
+
+  private fun paths(result: JsonElement): List<String> =
+    (result as? JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.takeUnless { p -> p is JsonNull }?.content }
 }

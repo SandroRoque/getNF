@@ -152,7 +152,8 @@ class SyncEngine(
     var n = 0
     n += pushDeletions(remote, errors)
     n += pushRows(remote, errors, "issuer", "ledger_id,cnpj", dao.dirtyIssuers(), { it.cnpj }, ::issuerJson, { dao.issuer(it.cnpj) }) { dao.upsertIssuer(it.copy(dirty = false)) }
-    n += pushReceipts(remote, errors)
+    val deleted = deletedOnline(remote)
+    n += pushReceipts(remote, errors, deleted)
     n += pushRows(remote, errors, "category", BY_ID, dao.dirtyCategories(), { it.id }, ::categoryJson, { dao.category(it.id) }, merges = true) { dao.upsertCategory(it.copy(dirty = false)) }
     n += pushRows(remote, errors, "tag", BY_ID, dao.dirtyTags(), { it.id }, ::tagJson, { dao.tag(it.id) }, merges = true) { dao.upsertTag(it.copy(dirty = false)) }
     n += pushRows(remote, errors, "product", BY_ID, dao.dirtyProducts(), { it.id }, ::productJson, { dao.product(it.id) }, merges = true) { dao.upsertProduct(it.copy(dirty = false)) }
@@ -165,7 +166,31 @@ class SyncEngine(
     n += pushRows(remote, errors, "link_suggestion", BY_ID, dao.dirtyLinkSuggestions(), { it.id }, ::linkJson, { dao.linkSuggestion(it.id) }) {
       dao.putLinkSuggestion(it.copy(dirty = false))
     }
-    return n to pushPhotos(remote, errors)
+    return n to pushPhotos(remote, errors, deleted)
+  }
+
+  /**
+   * Receipts this phone is about to send that the caderneta deleted at or after this phone's scan (D194), a deletion
+   * this phone hasn't pulled yet. The server drops their rows, so their page and photos stay off Storage, where no row
+   * would name them and nothing would ever remove them (D210); this run's pull then deletes the copy here. One
+   * request, and only when a receipt or a photo is waiting to go.
+   */
+  private suspend fun deletedOnline(remote: SyncRemote): Set<String> {
+    val sending = store.receipts.value.filter { it.uploadedVersion != it.version || (it.pendingPhotos.isNotEmpty() && contribute(it)) }
+    val gone = HashSet<String>()
+    for (chunk in sending.chunked(100)) {
+      val rows = io {
+        remote.select(RECEIPT, listOf("select" to "chave,deleted,deleted_at", "ledger_id" to "eq.${remote.ledgerId}",
+          "chave" to "in.(${chunk.joinToString(",") { it.chave }})"))
+      }
+      for (o in rows) {
+        if (o.bool("deleted") != true) continue
+        val at = o.millis("deleted_at")
+        val mine = chunk.first { it.chave == o.string("chave") }
+        if (at == null || mine.capturedAt <= at) gone += mine.chave
+      }
+    }
+    return gone
   }
 
   /**
@@ -276,7 +301,7 @@ class SyncEngine(
   }
 
   /** The receipt row with its parsed header; the page goes to storage when the receipt itself changed. */
-  private suspend fun pushReceipts(remote: SyncRemote, errors: MutableList<String>): Int {
+  private suspend fun pushReceipts(remote: SyncRemote, errors: MutableList<String>, deleted: Set<String>): Int {
     val dirtyHeaders = dao.dirtyParsed().associateBy { it.chave }
     val parked = dao.parked(RECEIPT).associate { it.rowKey to it.payload }
     var n = 0
@@ -284,6 +309,7 @@ class SyncEngine(
       val changed = r.uploadedVersion != r.version
       val header = dirtyHeaders[r.chave] ?: if (changed) dao.parsed(r.chave) else null
       if (!changed && header == null) continue
+      if (r.chave in deleted) continue
       val pagePath = pagePath(remote, r)
       val row = receiptJson(r, header, pagePath)
       val attempt = "${r.version} $row"
@@ -405,10 +431,11 @@ class SyncEngine(
   }
 
   /** Each photo's archive copy (D61) and mask, then its row; confirmed one by one, so a run resumes where it stopped. */
-  private suspend fun pushPhotos(remote: SyncRemote, errors: MutableList<String>): Int {
+  private suspend fun pushPhotos(remote: SyncRemote, errors: MutableList<String>, deleted: Set<String>): Int {
     var n = 0
     for (r in store.receipts.value) {
       if (r.uploadedVersion != r.version) continue // the receipt row isn't up yet: its photos would have no parent
+      if (r.chave in deleted) continue
       if (!contribute(r)) continue
       for ((position, name) in r.photos.withIndex()) {
         if (name in r.uploadedPhotos) continue

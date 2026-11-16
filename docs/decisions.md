@@ -4971,3 +4971,123 @@ they may read, so a wider delete policy changes nothing a test could see.
 Not done: files orphaned online before this, if any (photos go online only when a person opts in, D103). Finding them
 means comparing the receipts bucket with `receipt_photo` on the online project, which waits for the user's go-ahead.
 
+
+## D210. The sync is tested by simulation: the rules that hold once the phones go quiet (2026-11-16)
+
+Three audits found about 50 defects by reading the code. Reading doesn't find the ones that need an unlucky order of
+events between phones; asked by the user, the sync is now also driven through random orders and checked against
+rules written down first. The audit's next area, another person signing in on the same phone, is part of it.
+
+**The rules.** "Quiet": nobody does anything more and every phone that can sync does, again and again. A phone *can
+sync* a caderneta's files when someone is signed in on it who belongs to that caderneta. A *copy* of a receipt is
+made when a phone scans a receipt its database doesn't hold; the copy's time is that scan's. Times are the phones'
+clocks, as D194 compares them.
+
+0. **It goes quiet.** Within a few rounds no phone sends anything and no database changes; no sync run fails, and
+   the only errors a run reports are rows the server refused (rule 2e).
+1. **Cadernetas stay apart.** A database syncs with one caderneta for its whole life (D193), the one its place on
+   the phone belongs to. Every row a database holds, and every row and Storage file under a caderneta online, was
+   made in a database of that caderneta. Online, a caderneta's folder holds exactly the files its rows name: no file
+   of another caderneta, and no file that nothing names.
+2. **Nothing a person did is lost.** Exactly:
+   - a. *Receipts.* A receipt is in the caderneta when the last copy of it made on any of the caderneta's phones is
+     later than the last deletion of it on any of them, and only then (D194). So a deletion takes every older copy,
+     sent or not, and yields only to a scan made after it. Scanning a receipt the phone already holds makes no copy.
+   - b. *Pages.* A page read into a copy made after the last deletion is in the caderneta.
+   - c. *Fields set by hand* (a product's name and size, a category's label, a line's product). Each time one is
+     set, the value shown on that phone just before is *replaced knowingly*. The field ends as one of the values set
+     and never replaced knowingly: the last one where the edits followed each other, any one of them where they were
+     made apart (D164: the same field on two phones ends with one of the two). Never an older value, never the value
+     of before anyone set it, never lost to an edit of another field or to a page read again. A line's correction
+     lives with its copy of the receipt: a deletion that takes the copy takes it too.
+   - d. *Scan marks.* A receipt is marked as scanned by someone only if they scanned it in that caderneta.
+   - e. *Refused rows.* A row the server refuses is parked on the phone that made it, with the person's values, and
+     differs only there; it holds back nothing else. Once the refusal's cause is gone and the person asks again
+     ("Tentar de novo"), it goes like any other. With everyone able to sync, no phone holds anything back: nothing
+     parked, no changed row unsent, no deletion or file removal half done.
+3. **Same data.** The databases of one caderneta hold the same receipts (and whether each has its page), headers,
+   lines, products, store items, categories, tags, stores, suggestions, scan marks and members, and that is what is
+   online. Each phone's own: its copy's scan time and page time, its photos, and whether it scanned the receipt.
+   (A header's payments are left out of the comparison: the phone and the server write the same list with its keys
+   in another order.)
+
+Rules 1 and 3 are checked twice: with everyone as the events left them (among the databases that can sync), and
+again after everyone is back in every caderneta and someone is signed in on every phone; rule 2 after that, when
+nothing has an excuse to be missing.
+
+**The simulation** (`SyncSimulationTest`): from a seed, two or three phones, three people each with their own
+caderneta (two of them shared), and by default 40 events: a scan with or without its page (five receipts with the
+same eight items, so phones collide on the same rows), a name, size, category or line correction, a category
+renamed, a receipt deleted, a photo, a sync, sign-out, sign-in (anyone, on any phone), another caderneta opened,
+someone joining, leaving, removed or changing role. The real `SyncEngine`, `ReceiptStore`, `ReceiptParser` and
+`CatalogEditor` run on in-memory databases against the local Supabase, so the server's rules, triggers and Storage
+are the real ones. Every phone reads one clock that moves a millisecond a reading, and every hand-set value is
+unique, so each rule is checked exactly: a value found anywhere says which database set it. A failure prints the
+seed, the events and the broken rules; the same seed gives the same events, and the events of a shorter run are the
+first events of a longer one. `tools/sync-sim.sh 17:23` replays seed 17's first 23 events; `--random 200` runs
+seeds nobody chose and prints each failure with the shortest run that still fails. `tools/check.sh` runs a fixed
+list of seeds (each a past failure, or the first six), about a minute, with the local stack up.
+
+**Another person signing in on the same phone.** That lives above the engine: `SyncWorker` decides which caderneta
+the open files sync with, `AccountSettings` where each caderneta's files are, `OtherLedgers` which others go too.
+Those choices are now functions without Android in them, used by the app and by the simulation alike
+(`Ledgers.toSync`, `Ledgers.others`, `LocalFiles.of`), and `LedgerService`'s remove and leave are
+`LedgerCalls.remove/leave`; no behaviour changed. The simulation's phone repeats the worker's order of calls in
+twenty lines (pick, the check that the open files are still the process's, the open caderneta, the parse of what
+arrived and a second sync, the others). Not covered here, and still only in `Round3AccountSwitchTest` on the
+emulator: WorkManager, SharedPreferences, the restart that swaps the database, a sign-out in the middle of a run
+(T-20), and "Enviar fotos" being turned off.
+
+**What it found.** 480 random seeds in three runs, after the first handful:
+
+Fixed here:
+- **Reading the page of a receipt another member scanned without one threw.** A receipt taken from the caderneta
+  without a page has no directory on the phone, and `savePage` wrote into it. D104's own flow (one scans, another
+  fetches the page). `savePage` and `newPhotoFile` make the directory. Seed 1051:38; `ReceiptStoreTest`.
+- **A phone that sent its older copy of a deleted receipt left the page and photos in Storage.** The files went up
+  before the rows, the server dropped the rows (D194), and nothing named the files or would ever remove them: a
+  photo of a receipt the person had deleted stayed online. The push now asks first which of the receipts it is
+  about to send are deleted online at or after its copy, and sends nothing of those; one request, only when a
+  receipt or photo is waiting. A deletion that lands between the question and the upload can still leave a file.
+  Seeds 112:21, 129:27; `SyncEngineTest.aPhoneThatHadntHeardLeavesNoFilesOnlineForADeletedReceipt`.
+- **A receipt deleted before it was ever synced left no tombstone.** `delete_receipt` did nothing for a row that
+  wasn't there, so another member's older copy, sent afterwards, stayed and came back to the phone that had deleted
+  it; sent before, it went. Rule 2a doesn't depend on who syncs first, so the function now leaves the tombstone
+  (`20261116020000_delete_unsent_receipt.sql`, not applied online yet). Seeds 1005:19, 1020:29; pgTAP
+  `receipt_deletion_unsent.test.sql`.
+
+Not fixed: each is switched off in the simulation by a constant that relaxes one rule exactly where the finding
+applies, and waits for the user.
+- **1. The first push of a row a phone made itself replaces what another phone set in it** (rule 2c). Product and
+  line ids come from the code (D104), so a phone that reads a page before it has the caderneta's rows makes the
+  same rows, with no base (D164, D182), and sends them whole: name, size and category empty, the line's correction
+  empty. Ana names a product; Bia, offline, reads a receipt with the same item; Bia syncs; the name is gone on every
+  phone. Seed 2:40 with `FIRST_PUSH_OVERWRITES = false`. The field merge needs to know what the row was when the
+  phone made it: the parser would record that as the row's base, the push would insert the row only if it is
+  missing and then send the fields that differ, and the phone would take the server's row for the rest. That changes
+  the push for every catalog table, so it wasn't done in passing.
+- **2. A scan is marked as whoever is signed in when it syncs** (rule 2d). Ana scans, signs out, Bia signs in on
+  that phone and syncs: "por Bia". The phone doesn't record who was signed in when a receipt was scanned; fixing it
+  means a column on the receipt (a Room migration) and deciding what a mark made with nobody signed in means.
+  Seeds 105:39, 109:33.
+- **3. Scan marks the server dropped stay on phones that had them** (rule 3): those of someone who left (and comes
+  back), and of a receipt deleted and scanned again while a phone holding the old copy was away. That phone shows
+  "por Ana" where the others don't. Marks only; the lines and the page are put right by D164's reconcile. Seeds
+  101:30, 1001:38.
+
+- **4. A phone that was away while a receipt was deleted and scanned again keeps its old copy** (rule 3). The
+  tombstone was replaced by the new scan before that phone pulled, so it never hears of the deletion: it keeps the
+  old copy's page and header (its lines go, D164) while the caderneta's receipt waits for a page. It mends itself
+  when someone reads the page again. Either the phone drops a copy older than the caderneta's whose page is gone
+  online, or it sends its page back and saves a lookup: the user's call. Seeds 2216:26, 2252:40.
+
+**Does it notice a broken sync?** Three defects put in on purpose, the fixed seeds run, the change undone:
+a pull that replaces a row the phone had changed (rule 2 broken 19 times over the 20 seeds); a pulled tombstone
+ignored (rules 2 and 3); and the open files syncing with another of the person's cadernetas when they don't belong to
+the open one, the classic way another person's sign-in would mix two cadernetas (rules 0, 1, 2 and 3). All three fail
+the run.
+
+Not covered: lines a page read again no longer has (D164), tags, links between store items and products, moving and
+merging categories, "Copiar notas", a backup restored (D193's other half), two phones syncing at the same instant
+(events here follow each other), a sync cut off halfway (T-12), clocks that disagree, and the categorizer online
+(the local stack doesn't run it).

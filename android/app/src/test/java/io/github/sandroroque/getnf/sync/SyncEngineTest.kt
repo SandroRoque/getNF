@@ -415,6 +415,25 @@ class SyncEngineTest {
     assertTrue(b.db.sync().stateNames("deleted").isEmpty())
   }
 
+  /** D210, found by the simulation: the page and the photo went to Storage before the server dropped their rows, and stayed. */
+  @Test fun aPhoneThatHadntHeardLeavesNoFilesOnlineForADeletedReceipt() = runTest {
+    // b scanned the receipt itself, with a photo, and hasn't synced.
+    val b = Phone("b")
+    b.store.open(chave, "qr"); b.store.savePage(chave, "https://x", html); b.parser.parse(b.store.get(chave)!!)
+    b.store.addPhoto(chave, b.store.newPhotoFile(chave).apply { writeBytes(byteArrayOf(1)) })
+    Thread.sleep(5) // the deletion is later than b's scan
+    receiptWithPage()
+    engine.sync(server)
+    store.delete(chave)
+    engine.sync(server)
+    assertTrue(server.objects.toString(), server.objects.isEmpty())
+    val report = SyncEngine(b.db, b.store, { _, _ -> byteArrayOf(1) }, contribute = { true }, log = {}).sync(server)
+    assertTrue(report.errors.toString(), report.errors.isEmpty())
+    assertTrue("nothing names these files: ${server.objects.keys}", server.objects.isEmpty())
+    assertNull(b.store.get(chave))
+    assertEquals("true", server.rows("receipt").single().str("deleted"))
+  }
+
   @Test fun aPhoneThatHadntHeardSendsItsCopyInVainButAScanAfterwardsBringsItBack() = runTest {
     receiptWithPage()
     engine.sync(server)
@@ -707,6 +726,10 @@ class SyncEngineTest {
     /** As supabase/migrations/20261112000000_receipt_deletion.sql (D194). */
     private fun deleteReceipt(chave: String, at: Instant): kotlinx.serialization.json.JsonArray {
       val r = rows("receipt").find { it.str("chave") == chave }
+      // Never sent: only the tombstone (20261116020000_delete_unsent_receipt.sql, D210).
+      if (r == null) put("receipt", "ledger_id,chave", buildJsonObject {
+        put("chave", chave); put("captured_at", at.toString()); put("deleted", true); put("deleted_at", at.toString())
+      })
       if (r == null || r.str("deleted") == "true" || instant(r.str("captured_at")!!) > at) return kotlinx.serialization.json.JsonArray(emptyList())
       val files = (listOfNotNull(r.str("page_path")) + rows("receipt_photo").filter { it.str("chave") == chave }
         .flatMap { listOfNotNull(it.str("object_path"), it.str("mask_path")) }).distinct()

@@ -60,8 +60,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
       }
       // The phone's files belong to the open caderneta: never push them into another (D104). One the person no longer
       // belongs to (they left, or another person signed in) waits for them to open another in Ajustes.
-      val ledger = if (open == null) Ledgers.pick(mine, null, session.userId)?.also { app.accountSettings.openLedger(it) }
-        else open.takeIf { mine.any { m -> m.id == open } }
+      val ledger = Ledgers.toSync(mine, open, session.userId)?.also { if (open == null) app.accountSettings.openLedger(it) }
       // Another caderneta was opened in Ajustes after this process started: its database is still the one before, and
       // the restart that swaps it is on its way. Sending it now would put one caderneta's receipts in another, so the
       // run stops here and the restarted app syncs (T-25). A check, not the timing of the process's death.

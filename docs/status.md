@@ -112,7 +112,7 @@ missing page object, buyer data left in pages and photos, a category cycle hangi
 demo replacing a caderneta), and a follow-up found T-50 (no way to delete a receipt). Report:
 `docs/review-2026-11-09.md`; repros in `docs/review-repros/2026-11-09/` (each fix moves its test into the app's tests).
 The audit's coverage was partial (its Coverage table); still to examine, in this order: sync when another person
-signs in on the same phone, the server's auth and storage limits (`config.toml`, invite codes, Edge Function
+signs in on the same phone (done by simulation, D210), the server's auth and storage limits (`config.toml`, invite codes, Edge Function
 failures), the Room migrations one by one; the rest after the open store. One area per session, without subagents
 (they kept running out of usage).
 
@@ -136,6 +136,23 @@ D209's read policy, chosen by the user; no ticket was filed (the ticket tool was
 are online since 2026-11-16 (`docs/releases/server.md`). A look online the same day (read-only, with the user's go-ahead) found no
 file orphaned before the fix: all 295 objects of the receipts bucket are referenced by a row and were sent by someone
 still in the caderneta, and no row points at a missing file.
+
+**2026-11-16, the sync tested by simulation (D210)**: `SyncSimulationTest` drives two or three phones, three people
+and their cadernetas through random events from a seed (scans, edits, deletions, syncs, joining, leaving, removal,
+another person signing in on a phone) against the local Supabase, then checks D210's rules: cadernetas stay apart,
+nothing a person did is lost, phones on one caderneta hold the same. `check.sh` runs its fixed seeds before every push;
+`tools/sync-sim.sh --random 200` runs new ones and `tools/sync-sim.sh <seed>:<events>` replays one. This is the audit's
+"another person signs in on the same phone" area, at the engine and the worker's choices; WorkManager, the restart and
+a sign-out mid-run stay with `Round3AccountSwitchTest` on the emulator. It found six defects. Three are fixed on main
+and wait for a build: reading the page of a receipt another member scanned without one threw (no directory); a phone
+sending its older copy of a deleted receipt left the page and photos in Storage; a receipt deleted before its first
+sync left no tombstone. **The last one's migration (`20261116020000_delete_unsent_receipt.sql`) is not applied online
+yet** (`docs/releases/server.md`: pending; it can go before any build). Three wait for the user's decision (D210, "Not
+fixed"), no tickets filed (the ticket tool writes online): the first push of a product or line a phone made itself
+wipes a name, size, category or correction another member set (the one that loses data); a scan synced after another
+person signed in is marked as theirs; scan marks the server dropped stay on phones that had them. Online, files
+orphaned by the second defect before this fix, if any, would show in the same read-only comparison of the receipts
+bucket with its rows that D209 made (295 objects, all named, on 2026-11-16).
 
 **Handoff, 2026-11-12 (session `claude/urgent-tickets`)**
 
@@ -325,8 +342,9 @@ out in Ajustes, install a plain debug build, enter the demo.
   `timing.tsv` (D129). On the phone, before a release: `tools/device-bench.sh` (installs and removes only its own
   test APK, D129).
 - **Before every push:** `tools/check.sh` runs from the pre-push hook (build, JVM tests, capture benchmark; D129).
-  With the local Supabase running it also runs the server's tests (D176): pgTAP, the Edge Functions' Deno tests and
-  the JVM tests that talk to it (`SupabaseLocalTest`, the Round2/Round3 ones). Without it they're skipped with a
+  With the local Supabase running it also runs the server's tests (D176): pgTAP, the Edge Functions' Deno tests,
+  the JVM tests that talk to it (`SupabaseLocalTest`, the Round2/Round3 ones) and the sync simulation's fixed seeds
+  (D210). Without it they're skipped with a
   warning, so keep the stack up (`npx supabase start`, from the main checkout).
 - **On GitHub:** every push to main runs `tools/check.sh --quick` (`.github/workflows/check.yml`, D140); the result is
   the ✓/✗ next to each commit. GitHub has no Supabase, so the server's tests don't run there.

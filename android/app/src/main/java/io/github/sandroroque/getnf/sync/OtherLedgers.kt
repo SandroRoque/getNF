@@ -23,7 +23,7 @@ class OtherLedgers(
 ) {
   /** Ledgers on this phone besides [open] that the person still belongs to. */
   fun onPhone(mine: List<Ledger>, open: String?): List<String> =
-    mine.map { it.id }.filter { it != open && context.getDatabasePath(settings.filesFor(it).database).isFile }
+    Ledgers.others(mine, open) { context.getDatabasePath(settings.filesFor(it).database).isFile }
 
   /** Network trouble ([java.io.IOException]) stops the run, for the worker to retry; a refusal skips that caderneta. */
   suspend fun sync(client: SupabaseClient, session: SupabaseSession, mine: List<Ledger>, open: String?) {

@@ -107,7 +107,8 @@ class ReceiptStore(
   }
 
   /** A fresh file to hand to the camera. Call [addPhoto] once it's been written. */
-  fun newPhotoFile(chave: String): File = File(dir(chave), "photo-${now()}.jpg")
+  /** A receipt that came from the caderneta without a page has no directory yet (D210). */
+  fun newPhotoFile(chave: String): File = File(dir(chave).apply { mkdirs() }, "photo-${now()}.jpg")
 
   suspend fun addPhoto(chave: String, file: File) = io {
     mutex.withLock {
@@ -126,7 +127,8 @@ class ReceiptStore(
     io {
       mutex.withLock {
         val old = read(chave) ?: error("no receipt $chave")
-        File(dir(chave), PAGE_FILE).writeText(blanked, Charsets.UTF_8)
+        // A receipt another member scanned and this phone took from the caderneta has no directory until now (D210).
+        File(dir(chave).apply { mkdirs() }, PAGE_FILE).writeText(blanked, Charsets.UTF_8)
         dao.save(old.copy(pageUrl = url, pageFile = PAGE_FILE, pageFetchedAt = now(), version = old.version + 1).row())
         publish()
       }

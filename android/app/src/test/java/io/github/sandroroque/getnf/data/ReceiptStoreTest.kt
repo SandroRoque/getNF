@@ -19,6 +19,17 @@ class ReceiptStoreTest {
   private val db = testDatabase()
   private fun store() = ReceiptStore(tmp.root, db, now = { clock++ })
 
+  /** D210, found by the sync simulation: the receipt had no directory, and saving its page threw. */
+  @Test
+  fun aReceiptTakenFromTheCadernetaWithoutAPageCanHaveItsPageReadHere() = runTest {
+    val store = store()
+    store.adoptRemote(Receipt(chave = chave, capturedAt = 5, version = 1, uploadedVersion = 1, remoteId = "supabase", scannedHere = false), emptyList())
+    store.open(chave, "qr")
+    store.savePage(chave, "https://x", "<html></html>")
+    assertEquals("<html></html>", File(store.dir(chave), ReceiptStore.PAGE_FILE).readText())
+    assertTrue(store.newPhotoFile(chave).parentFile!!.isDirectory)
+  }
+
   @Test
   fun openCreatesOnceAndIsListed() = runTest {
     val store = store()

@@ -7,7 +7,7 @@
 #   tools/check.sh --quick      without the capture benchmark and the security tests' own check (about 4 minutes shorter)
 # The server's tests need the local Supabase running (`npx supabase start`): migrations not yet applied to it are
 # applied, then pgTAP, the Edge Functions' Deno tests and the JVM tests that talk to it (the phone's sync, withdrawals,
-# reports), then pgTAP again with each access rule weakened in turn (D208, tools/mutate-security.py). Without it they're
+# reports), the sync simulation on its fixed seeds (D210; tools/sync-sim.sh runs random ones), then pgTAP again with each access rule weakened in turn (D208, tools/mutate-security.py). Without it they're
 # skipped with a warning, as on GitHub.
 # The capture benchmark needs test-media/ (real receipts, so never on GitHub); without it, it's skipped with a warning.
 set -euo pipefail
@@ -41,6 +41,9 @@ if (exec 3<>/dev/tcp/127.0.0.1/54321) 2>/dev/null; then
   out="$(deno test supabase/functions 2>&1)" || { echo "$out"; fail "the Edge Functions' Deno tests"; }
   (cd android && GETNF_SUPABASE_LOCAL="$PUBLISHABLE_KEY,$SECRET_KEY" ./gradlew -q :app:testDebugUnitTest --rerun \
     --tests '*SupabaseLocalTest' --tests '*Round2HttpTest' --tests '*Round3*') || fail "the JVM tests against the local Supabase"
+  # D210: phones, people and cadernetas through random events, from a fixed list of seeds (the same events every time).
+  (cd android && GETNF_SUPABASE_LOCAL="$PUBLISHABLE_KEY,$SECRET_KEY" GETNF_SIM_SEEDS= GETNF_SIM_RANDOM= ./gradlew -q :app:testDebugUnitTest --rerun \
+    --tests '*SyncSimulationTest') || fail "the sync simulation; replay a seed with tools/sync-sim.sh"
   if [ -z "$quick" ]; then
     # D208: each access rule weakened in turn must make pgTAP fail, or be listed in supabase/tests/mutation-accepted.txt.
     command -v psql >/dev/null || fail "psql isn't installed (the security tests' own check needs it)"
