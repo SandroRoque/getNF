@@ -133,8 +133,9 @@ new test files, and `check.sh` runs it before every push. This is the audit's "s
 still on its list: invite-code guessing against the API's rate limit, `config.toml`'s auth limits, Edge Function
 failures. The defect it found (leaving a shared caderneta left the leaver's photo files in Storage) is fixed on the server by
 D209's read policy, chosen by the user; no ticket was filed (the ticket tool was refused in that session). Both migrations
-are online since 2026-11-16 (`docs/releases/server.md`). Waiting on the user's go-ahead: a look online for photo files
-orphaned before the fix (the receipts bucket against `receipt_photo`).
+are online since 2026-11-16 (`docs/releases/server.md`). A look online the same day (read-only, with the user's go-ahead) found no
+file orphaned before the fix: all 295 objects of the receipts bucket are referenced by a row and were sent by someone
+still in the caderneta, and no row points at a missing file.
 
 **Handoff, 2026-11-12 (session `claude/urgent-tickets`)**
 
