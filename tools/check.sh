@@ -4,10 +4,11 @@
 # and the capture benchmark (D89) has no regression against its accepted baseline. The git pre-push hook runs it
 # (tools/githooks/pre-push; install with `tools/check.sh --install`).
 #   tools/check.sh              everything
-#   tools/check.sh --quick      without the capture benchmark (about 2 minutes shorter)
+#   tools/check.sh --quick      without the capture benchmark and the security tests' own check (about 4 minutes shorter)
 # The server's tests need the local Supabase running (`npx supabase start`): migrations not yet applied to it are
 # applied, then pgTAP, the Edge Functions' Deno tests and the JVM tests that talk to it (the phone's sync, withdrawals,
-# reports). Without it they're skipped with a warning, as on GitHub.
+# reports), then pgTAP again with each access rule weakened in turn (D208, tools/mutate-security.py). Without it they're
+# skipped with a warning, as on GitHub.
 # The capture benchmark needs test-media/ (real receipts, so never on GitHub); without it, it's skipped with a warning.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -40,6 +41,11 @@ if (exec 3<>/dev/tcp/127.0.0.1/54321) 2>/dev/null; then
   out="$(deno test supabase/functions 2>&1)" || { echo "$out"; fail "the Edge Functions' Deno tests"; }
   (cd android && GETNF_SUPABASE_LOCAL="$PUBLISHABLE_KEY,$SECRET_KEY" ./gradlew -q :app:testDebugUnitTest --rerun \
     --tests '*SupabaseLocalTest' --tests '*Round2HttpTest' --tests '*Round3*') || fail "the JVM tests against the local Supabase"
+  if [ -z "$quick" ]; then
+    # D208: each access rule weakened in turn must make pgTAP fail, or be listed in supabase/tests/mutation-accepted.txt.
+    command -v psql >/dev/null || fail "psql isn't installed (the security tests' own check needs it)"
+    out="$(python3 tools/mutate-security.py --check 2>&1)" || { echo "$out"; fail "a weakened access rule went unnoticed: add a test, see tools/mutate-security.py"; }
+  fi
   server="server tests passed"
 else
   echo "check: the server tests were skipped: no local Supabase on 127.0.0.1:54321 (npx supabase start)" >&2

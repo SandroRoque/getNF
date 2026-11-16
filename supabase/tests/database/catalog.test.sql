@@ -1,6 +1,6 @@
 -- Isolation between cadernetas, seeding and the "user's choice is final" rule (D51, D70, D104). Run: npx supabase test db
 begin;
-select plan(16);
+select plan(17);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'a@example.test'),
@@ -53,6 +53,14 @@ update public.product set size_e6 = 1000000, size_unit = 'kg', size_source = 'ma
 update public.product set size_e6 = 2000000, size_source = null where id = '10000000-0000-0000-0000-000000000001';
 select is((select size_e6 from public.product where id = '10000000-0000-0000-0000-000000000001'), 1000000::bigint,
           'a manual size survives a non-manual write');
+
+-- Nor can a model move a store item the person linked themselves.
+update public.store_item set link_source = 'user', link_review = 'confirmed' where id = '20000000-0000-0000-0000-000000000001';
+insert into public.product (ledger_id, id) values (current_setting('t.la')::uuid, '10000000-0000-0000-0000-000000000002');
+update public.store_item set product_id = '10000000-0000-0000-0000-000000000002', link_source = 'jev', link_review = 'automatic'
+  where id = '20000000-0000-0000-0000-000000000001';
+select is((select product_id::text || ' ' || link_source from public.store_item where id = '20000000-0000-0000-0000-000000000001'),
+          '10000000-0000-0000-0000-000000000001 user', 'a model never moves a store item the person linked');
 
 select ok((select updated_at from public.product where id = '10000000-0000-0000-0000-000000000001') > now(),
           'writes stamp updated_at with the clock, for the pull cursor');

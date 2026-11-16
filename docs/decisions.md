@@ -173,6 +173,7 @@ plan or a one-time step; worth knowing, not a rule. Index made 2026-10-29 (D107)
 | D205 | UI | current | Sem categoria opens, the IPCI says why it has no reading, no "rateado" on nothing, Raízes e tubérculos |
 | D206 | sefaz | current | São Paulo's NFC-e is read: its "Consulta Resumida" is RJ's markup on the QR Code's own address; no lookup budget for SP |
 | D207 | sefaz | current | Sergipe's NFC-e is read, looked up by chave: its portal refuses its own QR Codes; the app fills the form and sends it once Turnstile passes |
+| D208 | online | current | The server's security tests are checked by weakening the server: each access rule in turn must make pgTAP fail (`tools/mutate-security.py`, in `check.sh`); the access surface is pinned; clients lose TRUNCATE |
 
 ---
 
@@ -4891,3 +4892,57 @@ public lookup, used once per receipt as the person would. Checked end to end on 
 fetched, saved and its 3 items, total and emission date read.
 
 Not known: whether SE limits lookups per IP as SC does (no limit seen in 6), and whether Turnstile asks on a phone.
+
+## D208. The server's security tests are checked by weakening the server (2026-11-16)
+
+The three audits read the server's rules; nothing said whether the pgTAP suite would notice one of them going. Asked
+by the user: weaken each RLS policy and each invite check on purpose, one at a time, and see whether the suite fails.
+
+**The tool** (`tools/mutate-security.py`): reads the rules from the local database's catalog, so new tables and
+functions are covered unasked, and for each one runs the suite with the rule weakened. The weakening is written into
+each test file's own transaction, right after its `begin;`, so it goes with the file's `rollback;` and the database is
+never left changed; only 127.0.0.1 is accepted. The files run through `psql`, with pgTAP created inside the
+transaction (no Docker needed). What is weakened:
+
+- a policy's USING or WITH CHECK becomes true, loses one of its AND conditions, or takes members for managers;
+- a table's row level security goes off; a table is granted in full to anon or authenticated;
+- a function the app's roles can't call is granted to them; a SECURITY DEFINER function loses its search_path;
+- a function's `if … then raise exception` loses one of its OR alternatives, or goes when it has one; an
+  `= auth.uid()` becomes true;
+- a trigger is switched off; a bucket becomes public or loses its size or type limit.
+
+**First run: 255 weakenings, 62 caught.** The 193 that passed, by kind: grants and search paths (nothing checked
+them at all; the 2026-11-09 audit had by hand), most refusals of the caderneta functions (a manager deleting the
+caderneta, an outsider renaming it or leaving it, a member removing a member, an expired or never-issued invite code,
+a release of someone else's fetch claim), reads and writes from outside for about half the tables (the suite checked
+receipts, products and categories), every Storage policy, the hourly limit on reports, and most triggers.
+
+**What closed them** (274 weakenings now, 271 caught):
+- `access_surface.test.sql` pins what anon and authenticated may touch: every table has RLS on, the table and column
+  grants, the functions each may call, every definer function's empty search_path, the buckets, and the `touch`
+  trigger on every edited table. Supabase grants every new table and function to both roles by default, so a
+  migration that forgets its revoke fails here; a change to that file is a change to the access surface.
+- `isolation.test.sql`: a row in every table that has a `ledger_id` (the list comes from the catalog, so a new table
+  must be given one), then an outsider sees none and can write to none; Storage's folder and bucket conditions.
+- `roles.test.sql`: every refusal of the caderneta functions that `ledger.test.sql` doesn't walk through.
+- A scan mark for a deleted receipt, a model moving a store item the person linked, the 300-an-hour report limit.
+
+**Two findings in the server itself**, not in its tests:
+- The app's roles had TRUNCATE, REFERENCES and TRIGGER on most tables, from Supabase's default "grant all". TRUNCATE
+  ignores row level security. The Data API can't issue one, so nothing was reachable; migration
+  `20261116000000_no_truncate_for_clients.sql` takes them away, for new tables too.
+- **`own_uploads` has no effect.** It lets a person delete the files they uploaded "even after leaving", but Storage
+  needs a SELECT policy as well to delete, and someone who left has none. `LedgerService.leave` deletes the leaver's
+  photo files after `leave_ledger`: the Storage API answers 200 with an empty list and the files stay (reproduced
+  against the local stack through the real API). Removing another member, deleting the account and leaving as the only
+  member are not affected (the caller is still a member when the files go). Not fixed here: the two ways out (a SELECT
+  policy for one's own photo uploads, or the app deleting before it leaves, as `deleteMe` does) are the user's choice.
+  Its three weakenings are the only ones in `supabase/tests/mutation-accepted.txt`.
+
+**In `check.sh`** (the full one, so before every push with the local stack up; not `--quick`, so not on GitHub, which
+has no stack): `--check` fails on a weakening that passes and isn't in the accepted list, and on a listed one that is
+caught now. About 2 minutes.
+
+Not covered, because no weakening of the database shows it: guessing invite codes (10 hex characters, 7 days, one
+use; what limits attempts is the API's rate limit, not a rule in SQL), `config.toml`'s auth limits, and the Edge
+Functions' own checks. Those stay on the audit's list.

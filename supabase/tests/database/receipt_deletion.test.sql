@@ -1,7 +1,7 @@
 -- Deleting a receipt (T-50, D194): a tombstone the older copies can't undo, and a later scan can.
 -- Run: npx supabase test db
 begin;
-select plan(13);
+select plan(14);
 
 insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000d5', 'del@example.test');
 set local role authenticated;
@@ -72,6 +72,14 @@ select public.delete_receipt(current_setting('t.l')::uuid, '42261011222333000181
 reset role;
 select is((select deleted from public.receipt where chave = '42261011222333000181650010000000021000000020'), false,
   'an outsider deletes nothing');
+
+-- A scan mark sent for a deleted receipt is dropped, like its lines and photos.
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-0000000000d5", "role": "authenticated"}';
+select public.delete_receipt(current_setting('t.l')::uuid, '42261011222333000181650010000000021000000020', now() + interval '1 minute');
+insert into public.receipt_scan (ledger_id, chave, scanned_at) values (current_setting('t.l')::uuid, '42261011222333000181650010000000021000000020', now());
+select is((select count(*)::int from public.receipt_scan where chave = '42261011222333000181650010000000021000000020'), 0,
+  'a scan mark sent for a deleted receipt is dropped');
 
 select * from finish();
 rollback;

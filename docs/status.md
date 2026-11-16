@@ -1,6 +1,6 @@
 # Status and next steps
 
-Last updated 2026-11-15. A handoff for picking the project up again. For *why* things are the way they are, read
+Last updated 2026-11-16. A handoff for picking the project up again. For *why* things are the way they are, read
 `docs/decisions.md`. For the portal's behaviour, read `docs/sefaz-sc.md`. For the data flow and analytical
 semantics, read `docs/architecture.md`. Objectives are in [objectives.md](objectives.md), the stages in
 [roadmap.md](roadmap.md).
@@ -126,6 +126,15 @@ its portal opens (Sergipe's HTTP QR now loads), Sem categoria opens in Gastos, t
 Codes ("QR Code INVÁLIDO!"), so a Sergipe chave opens SEFAZ-SE's lookup by chave, the app fills it in and sends it once
 Turnstile passes, and the result page is read as RJ's. Checked end to end on the emulator with a real receipt. Code 10
 carries it (uploaded 2026-11-15); the site and privacy policy name SE since then, the Play listing waits on the user.
+
+**2026-11-16, the security tests checked by weakening the server (D208)**: `tools/mutate-security.py` weakens each
+access rule of the local database in turn and runs pgTAP; 62 of 255 were caught at first, 271 of 274 now, with three
+new test files, and `check.sh` runs it before every push. This is the audit's "server auth" area for the database;
+still on its list: invite-code guessing against the API's rate limit, `config.toml`'s auth limits, Edge Function
+failures. Waiting on the user: migration `20261116000000_no_truncate_for_clients.sql` online (`docs/releases/server.md`,
+pending), and the defect it found, with no ticket yet (the ticket tool was refused in that session): leaving a shared
+caderneta leaves the leaver's photo files in Storage (D208, `own_uploads`); choose between a SELECT policy for one's
+own photo uploads and the app deleting before it leaves, then check online for files already orphaned.
 
 **Handoff, 2026-11-12 (session `claude/urgent-tickets`)**
 

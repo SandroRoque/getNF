@@ -1,7 +1,7 @@
 -- Testers' reports and tickets (D152): anyone with the app writes a report, nobody reads one through the API.
 -- Run: npx supabase test db
 begin;
-select plan(13);
+select plan(14);
 
 set local role anon;
 select lives_ok($$insert into public.feedback (kind, body, about, install_id)
@@ -36,6 +36,16 @@ set local role anon;
 select throws_ok($$insert into public.feedback (kind, body, about, install_id)
                    values ('comentario', 'mais um', 'x', '00000000-0000-0000-0000-00000000f003')$$,
                  'P0001', null, 'a flood from one install stops at 30 a day');
+
+-- Many installs together stop at 300 an hour, whoever sends the next one.
+reset role;
+insert into public.feedback (kind, body, about, install_id)
+  select 'comentario', 'muitos ' || g, 'x', gen_random_uuid()
+  from generate_series(1, 300 - (select count(*)::int from public.feedback where received_at > now() - interval '1 hour')) g;
+set local role anon;
+select throws_ok($$insert into public.feedback (kind, body, about, install_id)
+                   values ('comentario', 'de outro aparelho', 'x', '00000000-0000-0000-0000-00000000f004')$$,
+                 'P0001', 'too many reports this hour', 'a flood from many installs stops at 300 an hour');
 
 -- Triage, as the developer's tool does it.
 reset role;

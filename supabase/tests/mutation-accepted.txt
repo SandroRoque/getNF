@@ -1,0 +1,9 @@
+# Weakenings of the server that the pgTAP suite doesn't notice, and why each is let through (D208,
+# tools/mutate-security.py --check). One per line: the weakening's id, two spaces, the reason. Keep it short: every
+# line here is a rule of the server that no test holds in place.
+#
+# own_uploads has no effect today: Storage also needs a SELECT policy to delete, and someone who left a caderneta has
+# none, so nothing tells the policy from a wider one. They go when leaving is fixed and its test is written.
+policy:storage.objects.own_uploads:using=true  the policy has no effect yet (leaving a caderneta leaves the leaver's files)
+policy:storage.objects.own_uploads:using=without-and1  the same
+policy:storage.objects.own_uploads:using=without-and2  the same
